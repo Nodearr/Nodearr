@@ -1,0 +1,13 @@
+{
+  "name": "nodearr",
+  "private": true,
+  "repository": "https://github.com/Nodearr/Nodearr/",
+  "version": "0.0.0",
+  "description": "Trusted peer-to-peer media file discovery and transfer for the Servarr ecosystem.",
+  "scripts": {
+    "build": "dotnet build src/Nodearr.sln",
+    "test": "dotnet test src/Nodearr.sln",
+    "lint": "echo \"lint not configured yet\"",
+    "format": "echo \"format not configured yet\""
+  }
+}
