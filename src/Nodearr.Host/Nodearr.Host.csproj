@@ -1,7 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
+    <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Nodearr.Api.V1\Nodearr.Api.V1.csproj" />
+    <ProjectReference Include="..\Nodearr.Common\Nodearr.Common.csproj" />
+    <ProjectReference Include="..\Nodearr.Core\Nodearr.Core.csproj" />
+    <ProjectReference Include="..\Nodearr.Http\Nodearr.Http.csproj" />
+    <ProjectReference Include="..\Nodearr.SignalR\Nodearr.SignalR.csproj" />
+  </ItemGroup>
 </Project>

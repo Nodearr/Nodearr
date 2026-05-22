@@ -1,0 +1,12 @@
+<Project>
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TargetLatestRuntimePatch>true</TargetLatestRuntimePatch>
+
+    <Product>Nodearr</Product>
+    <Company>Nodearr</Company>
+    <Copyright>Copyright $([System.DateTime]::Now.ToString('yyyy')) Nodearr contributors (GNU General Public v3)</Copyright>
+    <NeutralLanguage>en</NeutralLanguage>
+  </PropertyGroup>
+</Project>
