@@ -67,8 +67,7 @@ function Page({ children }: PageProps) {
   if (hasError || !isLocalStorageSupported) {
     return (
       <ErrorPage
-        translationsError={null} seriesError={null} customFiltersError={null} tagsError={null}
-        qualityProfilesError={null} uiSettingsError={null} {...errors}
+        {...errors}
         version={version}
         isLocalStorageSupported={isLocalStorageSupported}      />
     );

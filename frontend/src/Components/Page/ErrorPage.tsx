@@ -8,11 +8,6 @@ interface ErrorPageProps {
   version: string;
   isLocalStorageSupported: boolean;
   translationsError: ApiError | null;
-  seriesError: ApiError | null;
-  customFiltersError: ApiError | null;
-  tagsError: ApiError | null;
-  qualityProfilesError: ApiError | null;
-  uiSettingsError: ApiError | null;
   systemStatusError: ApiError | null;
 }
 
@@ -21,11 +16,6 @@ function ErrorPage(props: ErrorPageProps) {
     version,
     isLocalStorageSupported,
     translationsError,
-    seriesError,
-    customFiltersError,
-    tagsError,
-    qualityProfilesError,
-    uiSettingsError,
     systemStatusError,
   } = props;
 
@@ -37,31 +27,6 @@ function ErrorPage(props: ErrorPageProps) {
     errorMessage = getErrorMessage(
       translationsError,
       translate('FailedToLoadTranslationsFromApi')
-    );
-  } else if (seriesError) {
-    errorMessage = getErrorMessage(
-      seriesError,
-      translate('FailedToLoadSeriesFromApi')
-    );
-  } else if (customFiltersError) {
-    errorMessage = getErrorMessage(
-      customFiltersError,
-      translate('FailedToLoadCustomFiltersFromApi')
-    );
-  } else if (tagsError) {
-    errorMessage = getErrorMessage(
-      tagsError,
-      translate('FailedToLoadTagsFromApi')
-    );
-  } else if (qualityProfilesError) {
-    errorMessage = getErrorMessage(
-      qualityProfilesError,
-      translate('FailedToLoadQualityProfilesFromApi')
-    );
-  } else if (uiSettingsError) {
-    errorMessage = getErrorMessage(
-      uiSettingsError,
-      translate('FailedToLoadUiSettingsFromApi')
     );
   } else if (systemStatusError) {
     errorMessage = getErrorMessage(

@@ -1,20 +1,25 @@
 import { useMemo } from 'react';
+import { useTranslations } from "../../App/useTranslations";
 import useSystemStatus from 'System/Status/useSystemStatus';
 
 const useAppPage = () => {
   const { isFetched: isSystemStatusFetched, error: systemStatusError } =
     useSystemStatus();
 
-  const isPopulated = isSystemStatusFetched;
+  const { isFetched: isTranslationsFetched, error: translationsError } =
+    useTranslations();
+
+  const isPopulated = isSystemStatusFetched && isTranslationsFetched;
 
   const { hasError, errors } = useMemo(() => {
     return {
-      hasError: !!systemStatusError,
+      hasError: !!(systemStatusError || translationsError),
       errors: {
         systemStatusError,
+        translationsError
       },
     };
-  }, [systemStatusError]);
+  }, [systemStatusError, translationsError]);
 
   const isLocalStorageSupported = useMemo(() => {
     const key = 'nodearrTest';
