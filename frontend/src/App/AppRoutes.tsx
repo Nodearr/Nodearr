@@ -1,7 +1,15 @@
 import React from 'react';
 import { Route } from 'react-router-dom';
-import Status from 'System/Status/Status';
+import CatalogIndex from "Catalog/Index/CatalogIndex";
+import LocalCatalog from "Catalog/Local/LocalCatalog";
+import NodeInvites from "Nodes/Invites/NodeInvites";
+import NodesIndex from "Nodes/NodesIndex/NodesIndex";
 import NotFound from "Components/NotFound";
+import PeerCatalog from "Catalog/Peer/PeerCatalog";
+import Transfers from "Activity/Transfers/Transfers";
+import TrustedNodes from "Nodes/Trusted/TrustedNodes";
+import Settings from "Settings/Settings";
+import Status from 'System/Status/Status';
 
 export function appRouteElements() {
   return (
@@ -10,33 +18,33 @@ export function appRouteElements() {
         Catalog
       */}
 
-      <Route path={"/"} element={<div>Placeholder for catalog</div>} />
+      <Route path={"/"} element={<CatalogIndex />} />
 
-      <Route path={"/catalog/local"} element={<div>Placeholder for local catalog</div>} />
+      <Route path={"/catalog/local"} element={<LocalCatalog />} />
 
-      <Route path={"/catalog/peers"} element={<div>Placeholder for peers catalog</div>} />
+      <Route path={"/catalog/peers"} element={<PeerCatalog />} />
 
       {/*
         Nodes
       */}
 
-      <Route path={"/nodes"} element={<div>Placeholder for nodes</div>} />
+      <Route path={"/nodes"} element={<NodesIndex />} />
 
-      <Route path={"/nodes/trusted"} element={<div>Placeholder for trusted nodes</div>} />
+      <Route path={"/nodes/trusted"} element={<TrustedNodes />} />
 
-      <Route path={"/nodes/invites"} element={<div>Placeholder for invites</div>} />
+      <Route path={"/nodes/invites"} element={<NodeInvites />} />
 
       {/*
         Activity
       */}
 
-      <Route path="/activity/transfers" element={<div>Placeholder for transfers</div>} />
+      <Route path="/activity/transfers" element={<Transfers />} />
 
       {/*
         Settings
       */}
 
-      <Route path="/settings" element={<div>Placeholder for settings</div>} />
+      <Route path="/settings" element={<Settings />} />
 
       <Route path="/settings/apps" element={<div>Placeholder for apps</div>} />
 
