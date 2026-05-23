@@ -11,7 +11,7 @@ window.Nodearr = await response.json();
 
 /* eslint-disable no-undef, @typescript-eslint/ban-ts-comment */
 // @ts-ignore 2304
-__webpack_public_path__ = `${window.Nodearr.urlBase || ''}/`;
+__webpack_public_path__ = `${window.Nodearr.urlBase}/`;
 /* eslint-enable no-undef, @typescript-eslint/ban-ts-comment */
 
 const error = console.error;

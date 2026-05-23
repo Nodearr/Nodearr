@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFrameworks>net10.0</TargetFrameworks>
+
+    <ApplicationIcon>..\NzbDrone.Host\Nodearr.ico</ApplicationIcon>
+  </PropertyGroup>
+  <PropertyGroup Condition="!$(RuntimeIdentifier.StartsWith('win'))">
+    <AssemblyName>Nodearr</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\NzbDrone.Host\Nodearr.Host.csproj" />
+    <ProjectReference Include="..\Nodearr.RuntimePatches\Nodearr.RuntimePatches.csproj" />
+  </ItemGroup>
+</Project>

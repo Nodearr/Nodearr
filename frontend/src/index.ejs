@@ -54,18 +54,10 @@
 
     <script>
       window.Nodearr = {
-        apiKey: '',
-        apiRoot: '/api/v1',
-        instanceName: 'Nodearr',
-        isProduction: false,
-        theme: 'dark',
-        urlBase: '',
-        version: '0.0.0'
+        urlBase: '__URL_BASE__'
       };
 
-      window.Nodearr = window.Nodearr;
-
-      var theme = window.Nodearr.theme;
+      var theme = '_THEME_';
       var defaultDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
       var finalTheme =
         theme === 'dark' || (theme === 'auto' && defaultDark) ? 'dark' : 'light';

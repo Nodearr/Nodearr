@@ -16,6 +16,7 @@
     "lint-fix": "yarn lint --fix",
     "stylelint": "stylelint \"frontend/**/*.css\" --config frontend/.stylelintrc"
   },
+  "main": "index.ts",
   "dependencies": {
     "@floating-ui/react": "0.27.19",
     "@fortawesome/fontawesome-free": "7.2.0",

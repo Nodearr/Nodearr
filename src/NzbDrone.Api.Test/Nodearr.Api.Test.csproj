@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>net10.0</TargetFrameworks>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="NBuilder" Version="6.1.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\NzbDrone.Core\Nodearr.Core.csproj" />
+    <ProjectReference Include="..\NzbDrone.Test.Common\Nodearr.Test.Common.csproj" />
+    <ProjectReference Include="..\Nodearr.Api.V3\Nodearr.Api.V3.csproj" />
+    <ProjectReference Include="..\Nodearr.Http\Nodearr.Http.csproj" />
+  </ItemGroup>
+</Project>

@@ -34,7 +34,7 @@ export interface FetchJsonOptions<TData> extends Omit<RequestInit, 'body'> {
 }
 
 export const urlBase = window.Nodearr.urlBase;
-export const apiRoot = window.Nodearr.apiRoot;
+export const apiRoot = '/api/v5';
 
 async function fetchJson<T, TData>({
   body,
