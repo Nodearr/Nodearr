@@ -1,0 +1,64 @@
+using System;
+using System.Collections.Generic;
+using System.Text.RegularExpressions;
+using FluentValidation.Results;
+using NLog;
+using NzbDrone.Core.Indexers;
+using NzbDrone.Core.ThingiProvider;
+
+namespace NzbDrone.Core.Applications
+{
+    public abstract class ApplicationBase<TSettings> : IApplication
+        where TSettings : IApplicationSettings, new()
+    {
+        protected readonly IAppIndexerMapService _appIndexerMapService;
+        protected readonly Logger _logger;
+
+        protected static readonly Regex AppIndexerRegex = new(@"\/(?<indexer>\d+)(?:\/(?:api)?\/?)?$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+        public abstract string Name { get; }
+
+        public Type ConfigContract => typeof(TSettings);
+
+        public virtual ProviderMessage Message => null;
+
+        public ProviderDefinition Definition { get; set; }
+        public abstract ValidationResult Test();
+
+        protected TSettings Settings => (TSettings)Definition.Settings;
+
+        protected ApplicationBase(IAppIndexerMapService appIndexerMapService, Logger logger)
+        {
+            _appIndexerMapService = appIndexerMapService;
+            _logger = logger;
+        }
+
+        public override string ToString()
+        {
+            return GetType().Name;
+        }
+
+        public virtual IEnumerable<ProviderDefinition> DefaultDefinitions
+        {
+            get
+            {
+                yield return new ApplicationDefinition
+                {
+                    SyncLevel = ApplicationSyncLevel.FullSync,
+                    Implementation = GetType().Name,
+                    Settings = new TSettings()
+                };
+            }
+        }
+
+        public abstract void AddIndexer(IndexerDefinition indexer);
+        public abstract void UpdateIndexer(IndexerDefinition indexer, bool forceSync = false);
+        public abstract void RemoveIndexer(int indexerId);
+        public abstract List<AppIndexerMap> GetIndexerMappings();
+
+        public virtual object RequestAction(string action, IDictionary<string, string> query)
+        {
+            return null;
+        }
+    }
+}

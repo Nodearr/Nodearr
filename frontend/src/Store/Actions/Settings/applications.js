@@ -18,6 +18,7 @@ import selectProviderSchema from 'Utilities/State/selectProviderSchema';
 // Variables
 
 const section = 'settings.applications';
+const applicationsUrl = '/api/v5/applications';
 
 //
 // Actions Types
@@ -106,17 +107,17 @@ export default {
   // Action Handlers
 
   actionHandlers: {
-    [FETCH_APPLICATIONS]: createFetchHandler(section, '/applications'),
-    [FETCH_APPLICATION_SCHEMA]: createFetchSchemaHandler(section, '/applications/schema'),
+    [FETCH_APPLICATIONS]: createFetchHandler(section, applicationsUrl),
+    [FETCH_APPLICATION_SCHEMA]: createFetchSchemaHandler(section, `${applicationsUrl}/schema`),
 
-    [SAVE_APPLICATION]: createSaveProviderHandler(section, '/applications'),
+    [SAVE_APPLICATION]: createSaveProviderHandler(section, applicationsUrl),
     [CANCEL_SAVE_APPLICATION]: createCancelSaveProviderHandler(section),
-    [DELETE_APPLICATION]: createRemoveItemHandler(section, '/applications'),
-    [TEST_APPLICATION]: createTestProviderHandler(section, '/applications'),
+    [DELETE_APPLICATION]: createRemoveItemHandler(section, applicationsUrl),
+    [TEST_APPLICATION]: createTestProviderHandler(section, applicationsUrl),
     [CANCEL_TEST_APPLICATION]: createCancelTestProviderHandler(section),
-    [TEST_ALL_APPLICATIONS]: createTestAllProvidersHandler(section, '/applications'),
-    [BULK_EDIT_APPLICATIONS]: createBulkEditItemHandler(section, '/applications/bulk'),
-    [BULK_DELETE_APPLICATIONS]: createBulkRemoveItemHandler(section, '/applications/bulk')
+    [TEST_ALL_APPLICATIONS]: createTestAllProvidersHandler(section, applicationsUrl),
+    [BULK_EDIT_APPLICATIONS]: createBulkEditItemHandler(section, `${applicationsUrl}/bulk`),
+    [BULK_DELETE_APPLICATIONS]: createBulkRemoveItemHandler(section, `${applicationsUrl}/bulk`)
   },
 
   //

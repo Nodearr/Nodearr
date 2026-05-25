@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Dapper;
 using NzbDrone.Common.Reflection;
+using NzbDrone.Core.Applications;
 using NzbDrone.Core.Authentication;
 using NzbDrone.Core.AutoTagging.Specifications;
 using NzbDrone.Core.Blocklisting;
@@ -110,6 +111,12 @@ namespace NzbDrone.Core.Datastore
                   .Ignore(x => x.ImplementationName)
                   .Ignore(d => d.Protocol);
 
+            Mapper.Entity<ApplicationDefinition>("Applications").RegisterModel()
+                  .Ignore(x => x.ImplementationName)
+                  .Ignore(a => a.Enable);
+
+            Mapper.Entity<AppIndexerMap>("ApplicationIndexerMapping").RegisterModel();
+
             Mapper.Entity<SceneMapping>("SceneMappings").RegisterModel();
 
             Mapper.Entity<EpisodeHistory>("History").RegisterModel();
@@ -165,6 +172,7 @@ namespace NzbDrone.Core.Datastore
             Mapper.Entity<DownloadClientStatus>("DownloadClientStatus").RegisterModel();
             Mapper.Entity<ImportListStatus>("ImportListStatus").RegisterModel();
             Mapper.Entity<NotificationStatus>("NotificationStatus").RegisterModel();
+            Mapper.Entity<ApplicationStatus>("ApplicationStatus").RegisterModel();
 
             Mapper.Entity<CustomFilter>("CustomFilters").RegisterModel();
 
