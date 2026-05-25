@@ -1,4 +1,5 @@
 enum CommandNames {
+  ApplicationIndexerSync = 'ApplicationIndexerSync',
   ApplicationUpdate = 'ApplicationUpdate',
   Backup = 'Backup',
   ClearBlocklist = 'ClearBlocklist',

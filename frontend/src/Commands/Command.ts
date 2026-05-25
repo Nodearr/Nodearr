@@ -97,6 +97,7 @@ export interface NewCommandBody {
 }
 
 export interface CommandBodyMap {
+  ApplicationIndexerSync: BaseCommandBody;
   RefreshSeries: SeriesCommandBody | MultipleSeriesCommandBody;
   SeriesSearch: SeriesCommandBody;
   SeasonSearch: SeasonCommandBody;

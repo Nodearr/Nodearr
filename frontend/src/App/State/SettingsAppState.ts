@@ -5,6 +5,7 @@ import AppSectionState, {
   AppSectionSaveState,
   AppSectionSchemaState,
 } from 'App/State/AppSectionState';
+import Application from 'typings/Application';
 import CustomFormat from 'typings/CustomFormat';
 import CustomFormatSpecification from 'typings/CustomFormatSpecification';
 import DelayProfile from 'typings/DelayProfile';
@@ -14,6 +15,14 @@ import DownloadClientOptions from 'typings/Settings/DownloadClientOptions';
 type Presets<T> = T & {
   presets: T[];
 };
+
+export interface ApplicationAppState
+  extends AppSectionState<Application>,
+    AppSectionDeleteState,
+    AppSectionSaveState,
+    AppSectionSchemaState<Presets<Application>> {
+  isTestingAll: boolean;
+}
 
 export interface DelayProfileAppState
   extends AppSectionListState<DelayProfile>,
@@ -44,6 +53,7 @@ export interface CustomFormatSpecificationAppState
     AppSectionSchemaState<Presets<CustomFormatSpecification>> {}
 
 interface SettingsAppState {
+  applications: ApplicationAppState;
   customFormats: CustomFormatAppState;
   customFormatSpecifications: CustomFormatSpecificationAppState;
   delayProfiles: DelayProfileAppState;

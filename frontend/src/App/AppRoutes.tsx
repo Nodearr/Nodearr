@@ -10,6 +10,7 @@ import Transfers from "Activity/Transfers/Transfers";
 import TrustedNodes from "Nodes/Trusted/TrustedNodes";
 import Settings from "Settings/Settings";
 import Status from 'System/Status/Status';
+import ApplicationSettings from "../Settings/Applications/ApplicationSettings";
 
 export function appRouteElements() {
   return (
@@ -46,7 +47,7 @@ export function appRouteElements() {
 
       <Route path="/settings" element={<Settings />} />
 
-      <Route path="/settings/apps" element={<div>Placeholder for apps</div>} />
+      <Route path="/settings/apps" element={<ApplicationSettings />} />
 
       <Route path="/settings/general" element={<div>Placeholder for general settings</div>} />
 
