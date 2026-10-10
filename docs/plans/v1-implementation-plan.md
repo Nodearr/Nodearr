@@ -44,6 +44,7 @@ Completion means a real Sonarr/Radarr import of a verified, permitted peer trans
 - **S3: done.** Fourteen of fourteen acceptance checks pass (`acceptance/Run-S3CatalogImport.ps1`). Branch `v1/s3-catalog-import`.
 - **S4: done.** Eleven of eleven acceptance checks pass between two real instances on one machine (`acceptance/Run-S4Pairing.ps1`). ADR 0013. Branch `v1/s4-identity-trust`.
 - **S5: done.** Ten of ten acceptance checks pass between two real instances with real Arr catalogs (`acceptance/Run-S5Sharing.ps1`). ADR 0014. Branch `v1/s5-sharing-catalog-exchange`.
+- **S6: done.** Fourteen of fourteen acceptance checks pass: a second Sonarr and Radarr search Nodearr and find, parse and approve what a trusted node shares (`acceptance/Run-S6Indexer.ps1`). ADR 0015. Branch `v1/s6-matching-indexer`.
 
 Owner decisions made after the plan was written:
 
@@ -71,3 +72,10 @@ What S5 left for later slices:
 - Sharing is by whole series or movie. There is no per-season or per-file control.
 - Peer catalog rows are not yet indexer results (S6), and a transfer request is not yet checked against the sharing rule (S7).
 - An offer is rebuilt from the whole local catalog on each request. It has not been tried on a large library.
+
+What S6 left for later slices:
+
+- A grab reaches Nodearr's download client, which is still the S1 stub and refuses it with a plain reason. Transfers are S7.
+- Daily shows are not found, because peers are not told air dates. Series with scene numbering can be misnumbered when a file has no release name.
+- Nodearr-side profile filtering (decision 2, "UI-only") was not built. The peer catalog page shows the title the Arr apps will see, and the Arr apps do the judging.
+- The S1 spike harness no longer runs on later branches, because the indexer half of the stub is gone. The acceptance scripts now fill their test libraries by having the Arr apps import files directly.

@@ -92,6 +92,10 @@ The marks are worked out again whenever the local catalog is refreshed.
 - The same title held by two local Arr apps is offered twice, once per file.
 - The release title falls back to the Arr app's file name, which Sonarr and Radarr parse well. S6 decides the final form.
 
+## Amendments
+
+- 2026-10-10, S6 (ADR 0015): an offered file no longer carries a release title made from the file name. It carries the name the release was grabbed under, when the Arr app kept one, and no part of the file name otherwise. The receiving node builds the title the Arr apps see. An offer also carries the edition, the dynamic range and the audio channels, which that title needs.
+
 ## Follow-up work
 
 - S6: turn peer catalog rows into indexer results, with the opaque file identifier inside a signed GUID.

@@ -74,3 +74,24 @@ Needs Docker and ffmpeg, like S3, and the transport sidecar, like S4. Node A imp
 - Revoking trust empties B's copy, and B cannot fetch it again.
 
 `-KeepRunning` leaves both instances and the containers up. Open `http://localhost:6633/catalog/sharing` on A and `http://localhost:6634/catalog/peers` on B.
+
+## S6: the indexer
+
+```sh
+pwsh acceptance/Run-S6Indexer.ps1
+```
+
+Needs the same as S5. It starts four containers: node A's Sonarr and Radarr, which hold the files, and node B's Sonarr and Radarr, which know the same series and movie and hold nothing. The nodes pair, A shares, and the script searches from B's Sonarr and Radarr and reads what they make of Nodearr's answers:
+
+- Sonarr and Radarr find A's files by ID, read the right episode and quality from the title, and approve them.
+- A file with no release name gets a title built from what A's Sonarr knows about it.
+- A result keeps its ID and publish date when the catalog is fetched again, and names neither the node nor its file.
+- The link in a result returns a ticket only for an ID Nodearr issued.
+- Hiding a series or revoking trust on A empties the searches on B.
+- A grab is refused with a plain reason, because transfers are S7.
+
+`-KeepRunning` leaves everything up. B's Sonarr is at `http://localhost:28989` and B's Radarr at `http://localhost:27878`. Open a Pingu episode in Sonarr and use the interactive search to see the results as a person would.
+
+## How the scripts fill a library
+
+`Library.ps1` copies a test video into the folder an Arr app has mounted at `/downloads` and tells the app to import it, the way a finished download is imported. The name of the file decides what the app takes it to be.

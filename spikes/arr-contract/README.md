@@ -2,6 +2,8 @@
 
 Proves that Sonarr, Radarr and Prowlarr accept Nodearr as a Newznab indexer plus a SABnzbd-compatible download client, all the way to a real import. The result and the findings are in [ADR 0010](../../docs/adr/0010-arr-contract-newznab-indexer-and-sabnzbd-download-client.md).
 
+**This harness runs only on the `v1/s1-s2-spikes` branch.** It needs both halves of the stub, and S6 replaced the indexer half with the real indexer. The same ground is covered on later branches by the scripts in `acceptance/`.
+
 ## What is here
 
 - `docker-compose.yml`: Sonarr, Radarr and Prowlarr, pinned by version and digest, sharing one `/downloads` folder.

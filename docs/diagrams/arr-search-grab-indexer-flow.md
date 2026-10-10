@@ -4,6 +4,8 @@ Nodearr is a Newznab indexer and a SABnzbd-compatible download client to the Arr
 
 The messages below are the ones recorded in the S1 spike against Sonarr 4.0.20, Radarr 6.4.4 and Prowlarr 2.6.5, with the API key removed. See [ADR 0010](../adr/0010-arr-contract-newznab-indexer-and-sabnzbd-download-client.md).
 
+Since S6 the search half is real: results come from what trusted nodes share, matched by ID. See [ADR 0015](../adr/0015-the-indexer-id-matching-release-titles-and-candidate-ids.md) and the diagram before the last one here. The download half is still the S1 stub until S7.
+
 ## Direct: the Arr app has Nodearr as its indexer
 
 ```mermaid
@@ -78,6 +80,32 @@ sequenceDiagram
     Newznab-->>Arr: NZB ticket
     Arr->>Sab: POST mode=addfile, then queue and history as above
 ```
+
+## Where a search result comes from
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Arr as Ryan's Sonarr
+    participant Newznab as Ryan's Nodearr /newznab/api
+    participant Catalog as Ryan's copy of John's offer
+    participant John as John's Nodearr
+
+    Note over Catalog,John: Earlier, and again whenever John's sharing changes
+    John-->>Catalog: The files John shares with Ryan: IDs, quality, size, release name if any
+    Catalog->>Catalog: Give each file a candidate ID and a release title
+
+    Arr->>Newznab: t=tvsearch&tvdbid=75669&imdbid=tt0366069&season=1&ep=2
+    Newznab->>Catalog: TV files where any ID agrees, season 1, holding episode 2
+    Catalog-->>Newznab: One file from John
+    Newznab-->>Arr: title Pingu.S01E02.720p.WEB-DL.AAC.1.0.x264, guid nodearr:CANDIDATE, size, pubDate
+    Arr->>Arr: Parse the title: Pingu, S01E02, WEBDL-720p. Wanted? Then grab.
+    Arr->>Newznab: t=get&id=CANDIDATE
+    Newznab->>Catalog: Is this still offered by a trusted node?
+    Newznab-->>Arr: NZB ticket naming CANDIDATE, or "No such item"
+```
+
+Nothing in the answer names John or John's file. The candidate ID is a keyed hash only Ryan's Nodearr can produce or look up.
 
 ## Failed transfer
 
