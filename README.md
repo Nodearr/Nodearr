@@ -2,7 +2,7 @@
 
 Nodearr is a self-hosted, Servarr-compatible, trusted peer-to-peer media availability and transfer service. It runs next to your existing Sonarr and Radarr, lets a small private group of trusted peers see who has an acceptable copy of something, and retrieves verified files directly from them while the normal Arr import workflow stays in place.
 
-**Status: pre-alpha.** Nodearr can connect to Sonarr and Radarr, register itself in them as an indexer and download client, and import their libraries into a local catalog. Two nodes can pair with an invite, block or revoke each other, choose what to share, and see each other's shared catalogs compared with their own. Sonarr and Radarr can search Nodearr and find what trusted nodes share. Files are not transferred yet. The V1 plan is in [docs/plans/v1-implementation-plan.md](docs/plans/v1-implementation-plan.md).
+**Status: pre-alpha.** Nodearr can connect to Sonarr and Radarr, register itself in them as an indexer and download client, and import their libraries into a local catalog. Two nodes can pair with an invite, block or revoke each other, choose what to share, and see each other's shared catalogs compared with their own. Sonarr and Radarr can search Nodearr, grab what a trusted node shares, and import it: the file is fetched directly from the other node and verified first. This has been run with both nodes on one machine. Packaging and a run between two machines on different networks are still to come. The V1 plan is in [docs/plans/v1-implementation-plan.md](docs/plans/v1-implementation-plan.md).
 
 ## Prerequisites
 

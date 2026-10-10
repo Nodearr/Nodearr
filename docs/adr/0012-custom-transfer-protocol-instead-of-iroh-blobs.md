@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed, together with ADR 0011.
+Proposed, together with ADR 0011. The protocol was built into the sidecar in S7 (ADR 0016) and carries real imports between two nodes on one machine.
 
 ## Context
 

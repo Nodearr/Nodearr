@@ -45,6 +45,7 @@ Completion means a real Sonarr/Radarr import of a verified, permitted peer trans
 - **S4: done.** Eleven of eleven acceptance checks pass between two real instances on one machine (`acceptance/Run-S4Pairing.ps1`). ADR 0013. Branch `v1/s4-identity-trust`.
 - **S5: done.** Ten of ten acceptance checks pass between two real instances with real Arr catalogs (`acceptance/Run-S5Sharing.ps1`). ADR 0014. Branch `v1/s5-sharing-catalog-exchange`.
 - **S6: done.** Fourteen of fourteen acceptance checks pass: a second Sonarr and Radarr search Nodearr and find, parse and approve what a trusted node shares (`acceptance/Run-S6Indexer.ps1`). ADR 0015. Branch `v1/s6-matching-indexer`.
+- **S7: done.** A grab in Sonarr or Radarr ends in an import of a file fetched from a trusted node and verified (`acceptance/Run-S7Transfers.ps1`). ADR 0016. Branch `v1/s7-transfers`.
 
 Owner decisions made after the plan was written:
 
@@ -79,3 +80,11 @@ What S6 left for later slices:
 - Daily shows are not found, because peers are not told air dates. Series with scene numbering can be misnumbered when a file has no release name.
 - Nodearr-side profile filtering (decision 2, "UI-only") was not built. The peer catalog page shows the title the Arr apps will see, and the Arr apps do the judging.
 - The S1 spike harness no longer runs on later branches, because the indexer half of the stub is gone. The acceptance scripts now fill their test libraries by having the Arr apps import files directly.
+
+What S7 left for later slices:
+
+- Everything has run with both nodes on one machine. Two machines on different networks, and a transfer with no direct route, are S8.
+- Files are hashed when first asked for, not in the background.
+- Uploads are not shown on the Transfers page. The upload limit and the download folder are options with no settings page.
+- Unsharing a title does not stop a transfer of it that is already under way. Ending trust does.
+- The sidecar is still built separately with cargo.

@@ -96,6 +96,8 @@ The marks are worked out again whenever the local catalog is refreshed.
 
 - 2026-10-10, S6 (ADR 0015): an offered file no longer carries a release title made from the file name. It carries the name the release was grabbed under, when the Arr app kept one, and no part of the file name otherwise. The receiving node builds the title the Arr apps see. An offer also carries the edition, the dynamic range and the audio channels, which that title needs.
 
+- 2026-10-10, S7 (ADR 0016): an offered file carries its extension, such as `.mkv`, and still nothing else of its name. Every request for a file is checked against the sharing rule when it arrives, so the follow-up below is done.
+
 ## Follow-up work
 
 - S6: turn peer catalog rows into indexer results, with the opaque file identifier inside a signed GUID.

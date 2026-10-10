@@ -88,10 +88,44 @@ Needs the same as S5. It starts four containers: node A's Sonarr and Radarr, whi
 - A result keeps its ID and publish date when the catalog is fetched again, and names neither the node nor its file.
 - The link in a result returns a ticket only for an ID Nodearr issued.
 - Hiding a series or revoking trust on A empties the searches on B.
-- A grab is refused with a plain reason, because transfers are S7.
+- A grab hands the ticket to Nodearr, which starts a transfer.
 
 `-KeepRunning` leaves everything up. B's Sonarr is at `http://localhost:28989` and B's Radarr at `http://localhost:27878`. Open a Pingu episode in Sonarr and use the interactive search to see the results as a person would.
 
 ## How the scripts fill a library
 
 `Library.ps1` copies a test video into the folder an Arr app has mounted at `/downloads` and tells the app to import it, the way a finished download is imported. The name of the file decides what the app takes it to be.
+
+## S7: transfers
+
+```sh
+pwsh acceptance/Run-S7Transfers.ps1
+```
+
+Needs the same as S6, and takes about five minutes. Node A's uploads are slowed so that the script can act in the middle of a transfer. It presses "search" in node B's Sonarr and Radarr and follows each grab:
+
+- The file comes from node A, is verified, and is imported. The imported file is the same, byte for byte.
+- Nothing appears under `complete` while a file is still arriving.
+- The same ticket twice gives one transfer. Deleting it from the queue leaves nothing behind.
+- Node B is killed in the middle and started again. The transfer carries on from what had arrived.
+- Node A revokes trust in the middle. The transfer stops, and Sonarr records why and blocklists the release.
+
+### Trying it by hand
+
+```sh
+pwsh acceptance/Run-S7Transfers.ps1 -SetupOnly
+```
+
+This builds the same environment, pairs the nodes, shares everything, and stops there with nothing grabbed. `acceptance/.run/s7/ready.txt` appears when it is ready, with the addresses. Then:
+
+1. Open node B's Sonarr at `http://localhost:28989`, go to Pingu, and search for one of the first three episodes of season 1. Use the interactive search to see Nodearr's result before grabbing it.
+2. Watch it arrive at `http://localhost:6634/activity/transfers`.
+3. Sonarr imports it within a minute. The episode then shows as downloaded.
+
+Node B's Radarr at `http://localhost:27878` has one movie to try the same with. Node A is at `http://localhost:6633`: Catalog > Sharing decides what B is offered, and Nodes > Trusted Nodes can revoke B.
+
+Add `-UploadLimitKbps 300` to make transfers slow enough to watch. To stop everything and remove the containers:
+
+```sh
+pwsh acceptance/Run-S7Transfers.ps1 -Down
+```
