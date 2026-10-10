@@ -47,6 +47,7 @@ namespace NzbDrone.Core.Catalog
         public static readonly TimeSpan MissingRetention = TimeSpan.FromDays(7);
 
         private static readonly ConcurrentDictionary<Type, PropertyInfo[]> ComparedProperties = new();
+        private static readonly object RefreshLock = new();
 
         private readonly IApplicationFactory _applicationFactory;
         private readonly IApplicationStatusService _applicationStatusService;
@@ -57,6 +58,7 @@ namespace NzbDrone.Core.Catalog
         private readonly ICatalogMovieRepository _movies;
         private readonly ICatalogMovieFileRepository _movieFiles;
         private readonly ICatalogSyncStatusRepository _syncStatus;
+        private readonly IEventAggregator _eventAggregator;
         private readonly Logger _logger;
 
         public CatalogService(IApplicationFactory applicationFactory,
@@ -68,6 +70,7 @@ namespace NzbDrone.Core.Catalog
                               ICatalogMovieRepository movies,
                               ICatalogMovieFileRepository movieFiles,
                               ICatalogSyncStatusRepository syncStatus,
+                              IEventAggregator eventAggregator,
                               Logger logger)
         {
             _applicationFactory = applicationFactory;
@@ -79,6 +82,7 @@ namespace NzbDrone.Core.Catalog
             _movies = movies;
             _movieFiles = movieFiles;
             _syncStatus = syncStatus;
+            _eventAggregator = eventAggregator;
             _logger = logger;
         }
 
@@ -95,7 +99,12 @@ namespace NzbDrone.Core.Catalog
 
             foreach (var application in applications)
             {
-                Refresh(application, purgeMissing);
+                // Saving an application queues a refresh, and so can the user or the schedule. Two of
+                // them merging the same catalog at once would both try to insert the same rows.
+                lock (RefreshLock)
+                {
+                    Refresh(application, purgeMissing);
+                }
             }
         }
 
@@ -193,6 +202,7 @@ namespace NzbDrone.Core.Catalog
             status.LastSyncCompleted = now;
             status.LastSyncError = null;
             _syncStatus.Upsert(status);
+            _eventAggregator.PublishEvent(new CatalogRefreshedEvent(applicationId));
 
             _logger.Info("Catalog for {0} refreshed: {1} series, {2} episodes, {3} episode files, {4} movies, {5} movie files",
                 application.Definition.Name,

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using NzbDrone.Common.Messaging;
 using NzbDrone.Core.Datastore;
 
 namespace NzbDrone.Core.Catalog
@@ -108,6 +109,17 @@ namespace NzbDrone.Core.Catalog
         public List<CatalogEpisodeFile> EpisodeFiles { get; } = new();
         public List<CatalogMovie> Movies { get; } = new();
         public List<CatalogMovieFile> MovieFiles { get; } = new();
+    }
+
+    // Raised after an application's catalog was refreshed successfully.
+    public class CatalogRefreshedEvent : IEvent
+    {
+        public CatalogRefreshedEvent(int applicationId)
+        {
+            ApplicationId = applicationId;
+        }
+
+        public int ApplicationId { get; }
     }
 
     public class CatalogSyncStatus : ModelBase
