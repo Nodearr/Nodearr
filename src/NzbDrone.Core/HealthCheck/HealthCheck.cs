@@ -86,6 +86,7 @@ namespace NzbDrone.Core.HealthCheck
         NotificationStatusAll,
         NotificationStatusSingle,
         Package,
+        PeerTransportNotRunning,
         ProxyBadRequest,
         ProxyFailed,
         ProxyResolveIp,

@@ -29,6 +29,7 @@ using NzbDrone.Core.Jobs;
 using NzbDrone.Core.Languages;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.Messaging.Commands;
+using NzbDrone.Core.Nodes;
 using NzbDrone.Core.Notifications;
 using NzbDrone.Core.Organizer;
 using NzbDrone.Core.Parser.Model;
@@ -123,6 +124,9 @@ namespace NzbDrone.Core.Datastore
             Mapper.Entity<CatalogMovie>("CatalogMovies").RegisterModel();
             Mapper.Entity<CatalogMovieFile>("CatalogMovieFiles").RegisterModel();
             Mapper.Entity<CatalogSyncStatus>("CatalogSyncStatus").RegisterModel();
+
+            Mapper.Entity<Peer>("Peers").RegisterModel();
+            Mapper.Entity<PeerInvite>("PeerInvites").RegisterModel();
 
             Mapper.Entity<SceneMapping>("SceneMappings").RegisterModel();
 

@@ -1,0 +1,91 @@
+using NzbDrone.Core.Nodes;
+
+namespace Nodearr.Api.V5.Nodes;
+
+public class NodeIdentityResource
+{
+    public bool TransportRunning { get; set; }
+    public string? NodeId { get; set; }
+    public string? Name { get; set; }
+    public string? RelayUrl { get; set; }
+    public List<string> IpAddresses { get; set; } = new();
+
+    public static NodeIdentityResource FromModel(NodeIdentity identity)
+    {
+        return new NodeIdentityResource
+        {
+            TransportRunning = identity.TransportRunning,
+            NodeId = identity.NodeId,
+            Name = identity.Name,
+            RelayUrl = identity.RelayUrl,
+            IpAddresses = identity.IpAddresses
+        };
+    }
+}
+
+public class PeerResource
+{
+    public int Id { get; set; }
+    public string? NodeId { get; set; }
+    public string? Name { get; set; }
+    public PeerState State { get; set; }
+    public string? StateReason { get; set; }
+    public DateTime Added { get; set; }
+    public DateTime StateChanged { get; set; }
+    public DateTime? LastSeen { get; set; }
+    public string? LastError { get; set; }
+
+    public static PeerResource FromModel(Peer peer)
+    {
+        return new PeerResource
+        {
+            Id = peer.Id,
+            NodeId = peer.NodeId,
+            Name = peer.Name,
+            State = peer.State,
+            StateReason = peer.StateReason,
+            Added = peer.Added,
+            StateChanged = peer.StateChanged,
+            LastSeen = peer.LastSeen,
+            LastError = peer.LastError
+        };
+    }
+}
+
+public class InviteResource
+{
+    public int Id { get; set; }
+    public string? Label { get; set; }
+    public DateTime Created { get; set; }
+    public DateTime Expires { get; set; }
+    public DateTime? RedeemedAt { get; set; }
+    public string? RedeemedByNodeId { get; set; }
+
+    // Present only in the answer to creating the invite.
+    public string? Code { get; set; }
+
+    public static InviteResource FromModel(PeerInvite invite, string? code = null)
+    {
+        return new InviteResource
+        {
+            Id = invite.Id,
+            Label = invite.Label,
+            Created = invite.Created,
+            Expires = invite.Expires,
+            RedeemedAt = invite.RedeemedAt,
+            RedeemedByNodeId = invite.RedeemedByNodeId,
+            Code = code
+        };
+    }
+}
+
+public class CreateInviteResource
+{
+    public int ValidHours { get; set; } = 24;
+    public string? Label { get; set; }
+}
+
+public class RedeemInviteResource
+{
+    public string? Code { get; set; }
+}

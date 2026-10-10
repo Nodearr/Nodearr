@@ -109,6 +109,8 @@ namespace NzbDrone.Host
                     services.Configure<AppOptions>(config.GetSection("Nodearr:App"));
                     services.Configure<AuthOptions>(config.GetSection("Nodearr:Auth"));
                     services.Configure<ServerOptions>(config.GetSection("Nodearr:Server"));
+                    services.Configure<TransportOptions>(config.GetSection("Nodearr:Transport"));
+                    services.Configure<TransportOptions>(config.GetSection("Nodearr:Transport"));
                     services.Configure<LogOptions>(config.GetSection("Nodearr:Log"));
                     services.Configure<UpdateOptions>(config.GetSection("Nodearr:Update"));
                 })
@@ -186,6 +188,8 @@ namespace NzbDrone.Host
                     services.Configure<AppOptions>(config.GetSection("Nodearr:App"));
                     services.Configure<AuthOptions>(config.GetSection("Nodearr:Auth"));
                     services.Configure<ServerOptions>(config.GetSection("Nodearr:Server"));
+                    services.Configure<TransportOptions>(config.GetSection("Nodearr:Transport"));
+                    services.Configure<TransportOptions>(config.GetSection("Nodearr:Transport"));
                     services.Configure<LogOptions>(config.GetSection("Nodearr:Log"));
                     services.Configure<UpdateOptions>(config.GetSection("Nodearr:Update"));
                 })

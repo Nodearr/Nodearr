@@ -1,0 +1,71 @@
+.identity {
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  max-width: 760px;
+  border: 1px solid var(--borderColor);
+  border-radius: 4px;
+  background-color: var(--cardBackgroundColor);
+}
+
+.identityName {
+  margin-bottom: 6px;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.nodeId {
+  word-break: break-all;
+  font-size: 12px;
+  font-family: var(--monoSpaceFontFamily);
+}
+
+.muted {
+  color: var(--helpTextColor);
+  font-size: 12px;
+}
+
+.error {
+  color: var(--dangerColor);
+  font-size: 12px;
+}
+
+.actions {
+  composes: cell from '~Components/Table/Cells/TableRowCell.css';
+
+  white-space: nowrap;
+}
+
+.actionButton {
+  margin-right: 6px;
+}
+
+.code {
+  margin-bottom: 10px;
+  padding: 10px;
+  max-width: 760px;
+  border: 1px solid var(--borderColor);
+  border-radius: 4px;
+  background-color: var(--inputBackgroundColor);
+  word-break: break-all;
+  font-size: 12px;
+  font-family: var(--monoSpaceFontFamily);
+}
+
+.formRow {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+
+  margin-bottom: 10px;
+  max-width: 760px;
+  gap: 10px;
+}
+
+.field {
+  flex: 1 1 200px;
+}
+
+.fieldLabel {
+  margin-bottom: 4px;
+  font-weight: bold;
+}
