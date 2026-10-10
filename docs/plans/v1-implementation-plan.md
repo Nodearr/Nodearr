@@ -46,6 +46,7 @@ Completion means a real Sonarr/Radarr import of a verified, permitted peer trans
 - **S5: done.** Ten of ten acceptance checks pass between two real instances with real Arr catalogs (`acceptance/Run-S5Sharing.ps1`). ADR 0014. Branch `v1/s5-sharing-catalog-exchange`.
 - **S6: done.** Fourteen of fourteen acceptance checks pass: a second Sonarr and Radarr search Nodearr and find, parse and approve what a trusted node shares (`acceptance/Run-S6Indexer.ps1`). ADR 0015. Branch `v1/s6-matching-indexer`.
 - **S7: done.** A grab in Sonarr or Radarr ends in an import of a file fetched from a trusted node and verified (`acceptance/Run-S7Transfers.ps1`). ADR 0016. Branch `v1/s7-transfers`.
+- **S8: done on one machine, two-machine run still open.** One Docker image holds the UI, the application and the sidecar. Two complete deployments, each with its own Sonarr and Radarr, do the full flow and fail correctly in the five cases the plan lists (`acceptance/Run-S8Docker.ps1`). ADR 0017. Branch `v1/s8-docker`. The run between two PCs on different networks needs the owner and a second machine: `docs/guides/two-machine-test.md`.
 
 Owner decisions made after the plan was written:
 
@@ -88,3 +89,14 @@ What S7 left for later slices:
 - Uploads are not shown on the Transfers page. The upload limit and the download folder are options with no settings page.
 - Unsharing a title does not stop a transfer of it that is already under way. Ending trust does.
 - The sidecar is still built separately with cargo.
+
+What S8 left:
+
+- **The two-machine run.** It is the plan's last acceptance item and the open gate on ADR 0011 and ADR 0012. Until it is done, "files only travel over a direct connection" is proven between containers and on one machine, and not between two homes.
+- No image is published, and only linux/amd64 has been built.
+- The transport options are environment variables, with no settings page.
+- The inherited update check and error reporting still point at nodearr.com hosts that do not exist yet.
+
+## Where V1 stands
+
+The plan's definition of done is "a real Sonarr/Radarr import of a verified, permitted peer transfer between two deployed instances". That has been met between two deployed instances on one machine, many times over, with the failure cases checked. It has not been met between two machines.

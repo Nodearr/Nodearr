@@ -129,3 +129,28 @@ Add `-UploadLimitKbps 300` to make transfers slow enough to watch. To stop every
 ```sh
 pwsh acceptance/Run-S7Transfers.ps1 -Down
 ```
+
+## S8: the Docker image, deployed twice
+
+```sh
+pwsh acceptance/Run-S8Docker.ps1
+```
+
+Needs Docker and ffmpeg, and nothing else: no .NET, Node or Rust on the host. The first run builds the Nodearr image and a small relay image used only by this test, which takes ten minutes or so. Later runs take about eight. Add `-SkipBuild` to reuse the images.
+
+It runs `acceptance/docker-compose.s8.yml`: two complete deployments, John's and Ryan's, each a Nodearr container with its own Sonarr and Radarr, one shared `/downloads` volume and its libraries mounted read-only. The two sides reach each other over one network that stands in for a direct route, and a relay that stands in for a public one.
+
+- The container runs as the chosen user, keeps the key private, can write to `/downloads` and cannot write to the libraries.
+- No path mappings are needed anywhere.
+- A grab in Ryan's Sonarr and one in his Radarr are fetched from John's node and imported, byte for byte.
+- Ryan's Nodearr container is replaced in the middle of a transfer. The new one is the same node and carries on.
+- John hides a series while Ryan's node is frozen and cannot hear of it. Ryan's node then uses a ticket it already held, and John's node refuses.
+- One byte of a file is changed on John's side after its hash was fixed. The transfer fails verification and nothing reaches Sonarr.
+- The direct network is unplugged. The transfer fails as `NoDirectRoute`, and the relay's counters show that no file data went through it.
+- John blocks Ryan in the middle of a transfer. It is cut.
+
+`-KeepRunning` leaves it all up: John's Nodearr at `http://localhost:6633` and Ryan's at `http://localhost:6634`. By then John has blocked Ryan. `-Down` removes everything.
+
+## Between two machines
+
+`docs/guides/two-machine-test.md`. No script can do this one.

@@ -2,7 +2,27 @@
 
 Nodearr is a self-hosted, Servarr-compatible, trusted peer-to-peer media availability and transfer service. It runs next to your existing Sonarr and Radarr, lets a small private group of trusted peers see who has an acceptable copy of something, and retrieves verified files directly from them while the normal Arr import workflow stays in place.
 
-**Status: pre-alpha.** Nodearr can connect to Sonarr and Radarr, register itself in them as an indexer and download client, and import their libraries into a local catalog. Two nodes can pair with an invite, block or revoke each other, choose what to share, and see each other's shared catalogs compared with their own. Sonarr and Radarr can search Nodearr, grab what a trusted node shares, and import it: the file is fetched directly from the other node and verified first. This has been run with both nodes on one machine. Packaging and a run between two machines on different networks are still to come. The V1 plan is in [docs/plans/v1-implementation-plan.md](docs/plans/v1-implementation-plan.md).
+**Status: pre-alpha.** Nodearr can connect to Sonarr and Radarr, register itself in them as an indexer and download client, and import their libraries into a local catalog. Two nodes can pair with an invite, block or revoke each other, choose what to share, and see each other's shared catalogs compared with their own. Sonarr and Radarr can search Nodearr, grab what a trusted node shares, and import it: the file is fetched directly from the other node and verified first. It builds into one Docker image that sits beside Sonarr and Radarr (see `docker/docker-compose.yml`). All of this has been run between two deployments on one machine. A run between two machines on different networks is the one thing still to do: `docs/guides/two-machine-test.md`. The V1 plan is in [docs/plans/v1-implementation-plan.md](docs/plans/v1-implementation-plan.md).
+
+## Run it with Docker
+
+This is the way to run Nodearr beside Sonarr and Radarr. It needs only Docker.
+
+```sh
+docker build -t nodearr .
+```
+
+```sh
+docker compose -f docker/docker-compose.yml up -d
+```
+
+Edit `docker/docker-compose.yml` first: it needs the paths to your libraries, and it explains the two things that have to be right, the shared `/downloads` folder and the networking. The UI is then at `http://localhost:6633`.
+
+- `/config` holds the database and the node's key. Keep it. A node that loses it is a new node that nobody trusts.
+- `/downloads` must be the same folder Sonarr and Radarr have at `/downloads`.
+- Libraries are mounted read-only, at the same paths Sonarr and Radarr use.
+
+The rest of this page is for working on Nodearr itself.
 
 ## Prerequisites
 
@@ -67,7 +87,7 @@ Send the key as an `X-Api-Key` header or an `apikey` query parameter. It is gene
 
 ## Acceptance tests
 
-The scripts in `acceptance/` run a built Nodearr from the outside and check whole slices of behaviour: registration and catalog import against real Sonarr and Radarr containers, and pairing, blocking and revoking between two Nodearr instances. See [acceptance/README.md](acceptance/README.md).
+The scripts in `acceptance/` run a built Nodearr from the outside and check whole slices of behaviour against real Sonarr and Radarr containers: registration and catalog import, pairing and trust, sharing, searching, transfers, and the Docker image deployed twice. See [acceptance/README.md](acceptance/README.md).
 
 ## Documentation
 
