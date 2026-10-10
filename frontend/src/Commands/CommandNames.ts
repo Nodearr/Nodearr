@@ -2,6 +2,7 @@ enum CommandNames {
   ApplicationIndexerSync = 'ApplicationIndexerSync',
   ApplicationUpdate = 'ApplicationUpdate',
   Backup = 'Backup',
+  CatalogRefresh = 'CatalogRefresh',
   ClearBlocklist = 'ClearBlocklist',
   ClearLog = 'ClearLog',
   CutoffUnmetEpisodeSearch = 'CutoffUnmetEpisodeSearch',

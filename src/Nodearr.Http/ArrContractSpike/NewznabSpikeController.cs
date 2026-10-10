@@ -14,6 +14,8 @@ namespace Nodearr.Http.ArrContractSpike
     [AllowAnonymous]
     public class NewznabSpikeController : Controller
     {
+        private const string ConnectionTestId = "connection-test";
+
         private static readonly XNamespace Newznab = "http://www.newznab.com/DTD/2010/feeds/attributes/";
         private static readonly XNamespace NzbNamespace = "http://www.newzbin.com/DTD/2003/nzb";
 
@@ -105,6 +107,16 @@ namespace Nodearr.Http.ArrContractSpike
             }
 
             var results = candidates.ToList();
+
+            // Arr refuses to save an indexer whose test query comes back empty (ADR 0010, finding 1).
+            // The test query has no IDs and no text, so only that kind of request gets a stand-in.
+            var isBrowse = !hasTvdbId && !hasTmdbId && imdbId.Length == 0 && string.IsNullOrWhiteSpace(query["q"]);
+
+            if (results.Count == 0 && isBrowse)
+            {
+                results.AddRange(ConnectionTestItems(function, query["cat"].ToString()));
+            }
+
             var offset = int.TryParse(query["offset"], out var o) ? o : 0;
             var limit = int.TryParse(query["limit"], out var l) ? l : 100;
 
@@ -127,6 +139,40 @@ namespace Nodearr.Http.ArrContractSpike
             return Xml(rss, $"{results.Count} result(s): {string.Join(", ", results.Select(r => r.Id))}");
         }
 
+        // One stand-in per category family the request covers. The title matches no series or movie,
+        // so Arr ignores it everywhere except the connection test, and it cannot be grabbed.
+        private static IEnumerable<SpikeCandidate> ConnectionTestItems(string function, string categories)
+        {
+            var requested = categories.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToList();
+
+            foreach (var family in new[] { 5000, 2000 })
+            {
+                var isMovie = family == 2000;
+
+                if ((function == "tvsearch" && isMovie) || (function == "movie" && !isMovie))
+                {
+                    continue;
+                }
+
+                var inFamily = requested.Where(c => c / 1000 * 1000 == family).ToList();
+
+                if (requested.Count > 0 && inFamily.Count == 0)
+                {
+                    continue;
+                }
+
+                yield return new SpikeCandidate
+                {
+                    Id = ConnectionTestId,
+                    Title = "Nodearr connection test, not a release",
+                    Kind = isMovie ? "movie" : "tv",
+                    Category = inFamily.Count > 0 ? inFamily[0] : family + 40,
+                    SizeBytes = 1,
+                    PublishedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+                };
+            }
+        }
+
         private XElement Item(SpikeCandidate candidate)
         {
             var link = $"{BaseUrl()}/newznab/api?t=get&id={Uri.EscapeDataString(candidate.Id)}&apikey={_configFileProvider.ApiKey}";
@@ -135,7 +181,7 @@ namespace Nodearr.Http.ArrContractSpike
 
             var item = new XElement("item",
                 new XElement("title", candidate.Title),
-                new XElement("guid", new XAttribute("isPermaLink", "false"), "nodearr:" + candidate.Id),
+                new XElement("guid", new XAttribute("isPermaLink", "false"), "nodearr:" + candidate.Id + (candidate.Id == ConnectionTestId ? ":" + candidate.Kind : string.Empty)),
                 new XElement("link", link),
                 new XElement("pubDate", published),
                 new XElement("category", candidate.IsMovie ? "Movies" : "TV"),
@@ -145,6 +191,11 @@ namespace Nodearr.Http.ArrContractSpike
                 Attr("category", candidate.Category),
                 Attr("size", size),
                 Attr("usenetdate", published));
+
+            if (candidate.Id == ConnectionTestId)
+            {
+                return item;
+            }
 
             if (candidate.IsMovie)
             {

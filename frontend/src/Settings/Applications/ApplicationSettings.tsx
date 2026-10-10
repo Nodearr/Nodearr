@@ -8,6 +8,7 @@ import PageContentBody from 'Components/Page/PageContentBody';
 import PageToolbarButton from 'Components/Page/Toolbar/PageToolbarButton';
 import PageToolbarSeparator from 'Components/Page/Toolbar/PageToolbarSeparator';
 import { icons } from 'Helpers/Props';
+import RemotePathMappings from 'Settings/DownloadClients/RemotePathMappings/RemotePathMappings';
 import SettingsToolbar from 'Settings/SettingsToolbar';
 import { testAllApplications } from 'Store/Actions/settingsActions';
 import translate from 'Utilities/String/translate';
@@ -79,6 +80,8 @@ function ApplicationSettings() {
 
       <PageContentBody>
         <ApplicationsConnector />
+
+        <RemotePathMappings />
 
         <ManageApplicationsModal
           isOpen={isManageApplicationsOpen}

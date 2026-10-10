@@ -10,7 +10,7 @@ namespace Nodearr.Http.ArrContractSpike
     public class ArrContractSpikeConfig
     {
         public string CompleteDirLocal { get; set; }
-        public string CompleteDirReported { get; set; }
+        public string CompleteDirReported { get; set; } = "/downloads/complete";
         public int TransferSeconds { get; set; } = 6;
         public List<SpikeCandidate> Candidates { get; set; } = new();
     }

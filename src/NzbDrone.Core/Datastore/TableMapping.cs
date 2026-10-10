@@ -7,6 +7,7 @@ using NzbDrone.Core.Applications;
 using NzbDrone.Core.Authentication;
 using NzbDrone.Core.AutoTagging.Specifications;
 using NzbDrone.Core.Blocklisting;
+using NzbDrone.Core.Catalog;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.CustomFilters;
 using NzbDrone.Core.CustomFormats;
@@ -115,7 +116,13 @@ namespace NzbDrone.Core.Datastore
                   .Ignore(x => x.ImplementationName)
                   .Ignore(a => a.Enable);
 
-            Mapper.Entity<AppIndexerMap>("ApplicationIndexerMapping").RegisterModel();
+            Mapper.Entity<CatalogQualityProfile>("CatalogQualityProfiles").RegisterModel();
+            Mapper.Entity<CatalogSeries>("CatalogSeries").RegisterModel();
+            Mapper.Entity<CatalogEpisode>("CatalogEpisodes").RegisterModel();
+            Mapper.Entity<CatalogEpisodeFile>("CatalogEpisodeFiles").RegisterModel();
+            Mapper.Entity<CatalogMovie>("CatalogMovies").RegisterModel();
+            Mapper.Entity<CatalogMovieFile>("CatalogMovieFiles").RegisterModel();
+            Mapper.Entity<CatalogSyncStatus>("CatalogSyncStatus").RegisterModel();
 
             Mapper.Entity<SceneMapping>("SceneMappings").RegisterModel();
 

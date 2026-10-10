@@ -49,7 +49,11 @@ namespace Nodearr.Http.ArrContractSpike
             }
 
             // Read on every call so the harness can change candidates without a restart.
-            return JsonSerializer.Deserialize<ArrContractSpikeConfig>(File.ReadAllText(path), JsonOptions) ?? new ArrContractSpikeConfig();
+            var config = JsonSerializer.Deserialize<ArrContractSpikeConfig>(File.ReadAllText(path), JsonOptions) ?? new ArrContractSpikeConfig();
+
+            config.CompleteDirReported ??= new ArrContractSpikeConfig().CompleteDirReported;
+
+            return config;
         }
 
         public SpikeJob AddJob(SpikeCandidate candidate, string category, string nzbName)
