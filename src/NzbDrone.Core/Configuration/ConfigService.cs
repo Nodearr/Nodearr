@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Security.Cryptography;
 using NLog;
 using NzbDrone.Common.EnsureThat;
 using NzbDrone.Common.Http.Proxy;
@@ -392,6 +393,8 @@ namespace NzbDrone.Core.Configuration
         public string RijndaelSalt => GetValue("RijndaelSalt", Guid.NewGuid().ToString(), true);
 
         public string HmacSalt => GetValue("HmacSalt", Guid.NewGuid().ToString(), true);
+
+        public string CandidateIdSecret => GetValue("CandidateIdSecret", Convert.ToHexString(RandomNumberGenerator.GetBytes(32)), true);
 
         public bool ProxyEnabled => GetValueBoolean("ProxyEnabled", false);
 

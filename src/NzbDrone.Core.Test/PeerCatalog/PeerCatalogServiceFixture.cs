@@ -7,6 +7,7 @@ using NzbDrone.Core.Catalog;
 using NzbDrone.Core.Nodes;
 using NzbDrone.Core.Nodes.Transport;
 using NzbDrone.Core.PeerCatalog;
+using NzbDrone.Core.PeerIndexer;
 using NzbDrone.Core.Sharing;
 using NzbDrone.Core.Test.Framework;
 
@@ -36,6 +37,10 @@ namespace NzbDrone.Core.Test.PeerCatalog
                       Enumerable.Empty<CatalogEpisodeFile>(),
                       Enumerable.Empty<CatalogMovie>(),
                       Enumerable.Empty<CatalogMovieFile>()));
+
+            Mocker.GetMock<ICandidateIdProvider>()
+                  .Setup(p => p.For(It.IsAny<string>(), It.IsAny<string>()))
+                  .Returns<string, string>((nodeId, remoteId) => $"{nodeId}/{remoteId}");
 
             GivenOffer("v1", 3);
 
@@ -77,6 +82,25 @@ namespace NzbDrone.Core.Test.PeerCatalog
 
             Stored.Select(i => i.RemoteId).Should().BeEquivalentTo("e-1-1", "e-1-2", "e-1-3");
             StoredPeer.Should().Match<Peer>(p => p.CatalogVersion == "v1" && p.CatalogSyncedAt != null && p.CatalogError == null);
+        }
+
+        [Test]
+        public void should_give_each_file_the_id_and_the_title_the_arr_apps_will_see()
+        {
+            Subject.Sync(_alice.Id);
+
+            Stored.Select(i => i.CandidateId).Should().BeEquivalentTo("alice/e-1-1", "alice/e-1-2", "alice/e-1-3");
+            Stored.Select(i => i.ReleaseTitle).Should().BeEquivalentTo("Pingu.S01E01", "Pingu.S01E02", "Pingu.S01E03");
+        }
+
+        [Test]
+        public void should_keep_one_of_two_files_a_peer_gives_the_same_name()
+        {
+            _offered.Add(new OfferItem { Id = "e-1-1", Kind = MediaKind.Tv, TvdbId = 75669, Title = "Pingu", SeasonNumber = 1, EpisodeNumbers = new List<int> { 9 } });
+
+            Subject.Sync(_alice.Id);
+
+            Stored.Select(i => i.RemoteId).Should().BeEquivalentTo("e-1-1", "e-1-2", "e-1-3");
         }
 
         [Test]

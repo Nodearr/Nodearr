@@ -37,6 +37,8 @@ $downloads = Join-Path $run 'downloads'
 $library = Join-Path $run 'library'
 $peerLibrary = Join-Path $run 'peer-library'
 
+. (Join-Path $root 'Library.ps1')
+
 if (-not (Test-Path $dll)) { throw 'Build Nodearr first: dotnet build src/Nodearr.sln' }
 if (-not $TransportBin) {
     $target = $env:CARGO_TARGET_DIR ? $env:CARGO_TARGET_DIR : (Join-Path $repo 'transport/target')
@@ -231,27 +233,14 @@ try {
     $movie | Add-Member -Force -NotePropertyMembers @{ qualityProfileId = 1; rootFolderPath = '/movies'; monitored = $true; minimumAvailability = 'released'; addOptions = @{ searchForMovie = $false } }
     $movie = Invoke-Arr radarr POST '/movie' $movie
 
-    $published = [datetime]::UtcNow.Date.AddDays(-2)
-    [ordered]@{
-        completeDirLocal = (Join-Path $downloads 'complete'); completeDirReported = '/downloads/complete'; transferSeconds = 2
-        candidates = @(
-            [ordered]@{ id = 'tv-e1'; kind = 'tv'; category = 5040; tvdbId = 75669; season = 1; episode = 1; title = 'Pingu.S01E01.720p.WEB-DL.AAC2.0.H.264-NODEARR'; sourcePath = $tvMedia; publishedAt = $published.AddMinutes(1).ToString('o') }
-            [ordered]@{ id = 'tv-e2'; kind = 'tv'; category = 5040; tvdbId = 75669; season = 1; episode = 2; title = 'Pingu.S01E02.720p.WEB-DL.AAC2.0.H.264-NODEARR'; sourcePath = $tvMedia; publishedAt = $published.AddMinutes(2).ToString('o') }
-            [ordered]@{ id = 'movie-1'; kind = 'movie'; category = 2040; tmdbId = 10331; imdbId = $movie.imdbId; title = 'Night.of.the.Living.Dead.1968.720p.WEB-DL.AAC2.0.H.264-NODEARR'; sourcePath = $movieMedia; publishedAt = $published.AddHours(1).ToString('o') }
-        )
-    } | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $nodes.A.Data 'arr-contract-spike.json')
-
-    Invoke-ArrCommand sonarr @{ name = 'EpisodeSearch'; episodeIds = @($episodes[0].id) }
-    Invoke-ArrCommand sonarr @{ name = 'EpisodeSearch'; episodeIds = @($episodes[1].id) }
-    Invoke-ArrCommand radarr @{ name = 'MoviesSearch'; movieIds = @($movie.id) }
-    Wait-Until -What 'Sonarr to import two episodes' -TimeoutSec 240 -EverySec 3 -Condition {
-        Invoke-Arr sonarr POST '/command' @{ name = 'RefreshMonitoredDownloads' } | Out-Null
+    # The files arrive the way finished downloads do: each app imports them from /downloads.
+    Import-ArrDownload -ApiUrl $arr.sonarr.Url -ApiKey $arr.sonarr.Key -App Sonarr -SourceFile $tvMedia -Name 'Pingu.S01E01.720p.WEB-DL.AAC2.0.H.264-NODEARR' -DownloadsDir $downloads
+    Import-ArrDownload -ApiUrl $arr.sonarr.Url -ApiKey $arr.sonarr.Key -App Sonarr -SourceFile $tvMedia -Name 'Pingu.S01E02.720p.WEB-DL.AAC2.0.H.264-NODEARR' -DownloadsDir $downloads
+    Import-ArrDownload -ApiUrl $arr.radarr.Url -ApiKey $arr.radarr.Key -App Radarr -SourceFile $movieMedia -Name 'Night.of.the.Living.Dead.1968.720p.WEB-DL.AAC2.0.H.264-NODEARR' -DownloadsDir $downloads
+    Wait-Until -What 'Sonarr to import two episodes' -TimeoutSec 60 -Condition {
         @(Invoke-Arr sonarr GET "/episode?seriesId=$($series.id)" | Where-Object hasFile).Count -eq 2
     } | Out-Null
-    Wait-Until -What 'Radarr to import the movie' -TimeoutSec 240 -EverySec 3 -Condition {
-        Invoke-Arr radarr POST '/command' @{ name = 'RefreshMonitoredDownloads' } | Out-Null
-        (Invoke-Arr radarr GET "/movie/$($movie.id)").hasFile
-    } | Out-Null
+    Wait-Until -What 'Radarr to import the movie' -TimeoutSec 60 -Condition { (Invoke-Arr radarr GET "/movie/$($movie.id)").hasFile } | Out-Null
 
     # A's catalog: two Pingu episodes and one movie.
     Invoke-NodeCommand A @{ name = 'CatalogRefresh' }

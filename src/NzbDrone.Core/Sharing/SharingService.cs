@@ -281,8 +281,9 @@ namespace NzbDrone.Core.Sharing
                 Id = id,
                 Kind = kind,
 
-                // The file name is the only part of the path a peer ever sees, and only as a release title.
-                ReleaseTitle = file.SceneName.IsNotNullOrWhiteSpace() ? file.SceneName : FileNameOnly(file.RelativePath),
+                // Nothing of the path is sent, not even the file name.
+                SceneName = file.SceneName.IsNotNullOrWhiteSpace() ? file.SceneName : null,
+                Edition = (file as CatalogMovieFile)?.Edition,
                 Quality = file.Quality,
                 QualitySource = file.QualitySource,
                 Resolution = file.Resolution,
@@ -291,18 +292,11 @@ namespace NzbDrone.Core.Sharing
                 CustomFormats = file.CustomFormats,
                 ReleaseGroup = file.ReleaseGroup,
                 VideoCodec = file.VideoCodec,
+                VideoDynamicRange = file.VideoDynamicRange,
                 AudioCodec = file.AudioCodec,
+                AudioChannels = file.AudioChannels,
                 DateAdded = file.DateAdded
             };
-        }
-
-        // The Arr app may run on another OS, so both kinds of separator end the folder part.
-        private static string FileNameOnly(string path)
-        {
-            var name = (path ?? string.Empty).Split('/', '\\').Last();
-            var extension = name.LastIndexOf('.');
-
-            return extension > 0 ? name[..extension] : name;
         }
 
         private static Offer Seal(List<OfferItem> items)

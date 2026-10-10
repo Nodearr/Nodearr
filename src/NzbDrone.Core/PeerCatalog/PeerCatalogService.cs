@@ -2,12 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using NLog;
+using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Catalog;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Nodes;
 using NzbDrone.Core.Nodes.Transport;
+using NzbDrone.Core.PeerIndexer;
 using NzbDrone.Core.Sharing;
 
 namespace NzbDrone.Core.PeerCatalog
@@ -34,14 +36,16 @@ namespace NzbDrone.Core.PeerCatalog
         private readonly IPeerService _peerService;
         private readonly IPeerCatalogRepository _items;
         private readonly ILocalHoldingsFactory _holdings;
+        private readonly ICandidateIdProvider _candidateIds;
         private readonly Logger _logger;
 
-        public PeerCatalogService(IPeerRepository peers, IPeerService peerService, IPeerCatalogRepository items, ILocalHoldingsFactory holdings, Logger logger)
+        public PeerCatalogService(IPeerRepository peers, IPeerService peerService, IPeerCatalogRepository items, ILocalHoldingsFactory holdings, ICandidateIdProvider candidateIds, Logger logger)
         {
             _peers = peers;
             _peerService = peerService;
             _items = items;
             _holdings = holdings;
+            _candidateIds = candidateIds;
             _logger = logger;
         }
 
@@ -136,9 +140,18 @@ namespace NzbDrone.Core.PeerCatalog
                 if (offer != null)
                 {
                     var holdings = _holdings.Load();
-                    var items = offer.Items.Select(o => PeerCatalogItem.FromOffer(peer.Id, o)).ToList();
+                    var items = offer.Items
+                        .Where(o => o.Id.IsNotNullOrWhiteSpace())
+                        .DistinctBy(o => o.Id)
+                        .Select(o => PeerCatalogItem.FromOffer(peer.Id, o))
+                        .ToList();
 
-                    items.ForEach(i => i.LocalStatus = holdings.Classify(i));
+                    foreach (var item in items)
+                    {
+                        item.LocalStatus = holdings.Classify(item);
+                        item.CandidateId = _candidateIds.For(peer.NodeId, item.RemoteId);
+                        item.ReleaseTitle = ReleaseTitleBuilder.For(item);
+                    }
 
                     // The whole set is replaced, so what the peer stopped offering is gone.
                     _items.DeleteForPeer(peer.Id);

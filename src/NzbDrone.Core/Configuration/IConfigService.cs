@@ -83,6 +83,9 @@ namespace NzbDrone.Core.Configuration
         string RijndaelSalt { get; }
         string HmacSalt { get; }
 
+        // Keys the IDs Nodearr gives the Arr apps for what peers offer
+        string CandidateIdSecret { get; }
+
         // Proxy
         bool ProxyEnabled { get; }
         ProxyType ProxyType { get; }

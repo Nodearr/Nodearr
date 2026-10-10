@@ -32,6 +32,9 @@ namespace NzbDrone.Core.PeerCatalog
 
         // The peer's own name for the file. It means nothing here except when asking for the file.
         public string RemoteId { get; set; }
+
+        // The name the Arr apps know the file by. See CandidateIdProvider.
+        public string CandidateId { get; set; }
         public MediaKind MediaKind { get; set; }
         public int TvdbId { get; set; }
         public int TmdbId { get; set; }
@@ -41,6 +44,10 @@ namespace NzbDrone.Core.PeerCatalog
         public int SeasonNumber { get; set; }
         public string EpisodeNumbers { get; set; }
         public string EpisodeTitles { get; set; }
+        public string SceneName { get; set; }
+        public string Edition { get; set; }
+
+        // What the Arr apps are shown. Worked out here from the fields the peer sent.
         public string ReleaseTitle { get; set; }
         public string Quality { get; set; }
         public string QualitySource { get; set; }
@@ -50,7 +57,9 @@ namespace NzbDrone.Core.PeerCatalog
         public string CustomFormats { get; set; }
         public string ReleaseGroup { get; set; }
         public string VideoCodec { get; set; }
+        public string VideoDynamicRange { get; set; }
         public string AudioCodec { get; set; }
+        public double AudioChannels { get; set; }
         public DateTime? DateAdded { get; set; }
         public PeerItemStatus LocalStatus { get; set; }
 
@@ -74,7 +83,8 @@ namespace NzbDrone.Core.PeerCatalog
                 SeasonNumber = offer.SeasonNumber,
                 EpisodeNumbers = string.Join(",", offer.EpisodeNumbers ?? new List<int>()),
                 EpisodeTitles = string.Join(" + ", offer.EpisodeTitles ?? new List<string>()),
-                ReleaseTitle = offer.ReleaseTitle,
+                SceneName = offer.SceneName,
+                Edition = offer.Edition,
                 Quality = offer.Quality,
                 QualitySource = offer.QualitySource,
                 Resolution = offer.Resolution,
@@ -83,7 +93,9 @@ namespace NzbDrone.Core.PeerCatalog
                 CustomFormats = offer.CustomFormats,
                 ReleaseGroup = offer.ReleaseGroup,
                 VideoCodec = offer.VideoCodec,
+                VideoDynamicRange = offer.VideoDynamicRange,
                 AudioCodec = offer.AudioCodec,
+                AudioChannels = offer.AudioChannels,
                 DateAdded = offer.DateAdded
             };
         }

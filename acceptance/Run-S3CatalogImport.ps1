@@ -44,6 +44,8 @@ $downloads = Join-Path $run 'downloads'
 $library = Join-Path $run 'library'
 $peerLibrary = Join-Path $run 'peer-library'
 
+. (Join-Path $root 'Library.ps1')
+
 function Stop-Nodearr {
     if (Test-Path $pidFile) {
         Get-Process -Id ([int](Get-Content $pidFile)) -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false
@@ -244,31 +246,21 @@ $movie = (Invoke-Api radarr GET '/movie/lookup?term=tmdb:10331')[0]
 $movie | Add-Member -Force -NotePropertyMembers @{ qualityProfileId = 1; rootFolderPath = '/movies'; monitored = $true; minimumAvailability = 'released'; addOptions = @{ searchForMovie = $false } }
 $movie = Invoke-Api radarr POST '/movie' $movie
 
-# The S1 stub stands in for peers: these are the releases the Arr apps will find and "download".
-$published = [datetime]::UtcNow.Date.AddDays(-2)
-[ordered]@{
-    completeDirLocal = (Join-Path $downloads 'complete'); completeDirReported = '/downloads/complete'; transferSeconds = 2
-    candidates = @(
-        [ordered]@{ id = 'tv-e1'; kind = 'tv'; category = 5040; tvdbId = 75669; season = 1; episode = 1; title = 'Pingu.S01E01.720p.WEB-DL.AAC2.0.H.264-NODEARR'; sourcePath = $tvMedia; publishedAt = $published.AddMinutes(1).ToString('o') }
-        [ordered]@{ id = 'tv-e2'; kind = 'tv'; category = 5040; tvdbId = 75669; season = 1; episode = 2; title = 'Pingu.S01E02.720p.WEB-DL.AAC2.0.H.264-NODEARR'; sourcePath = $tvMedia; publishedAt = $published.AddMinutes(2).ToString('o') }
-        [ordered]@{ id = 'tv-e4e5'; kind = 'tv'; category = 5040; tvdbId = 75669; season = 1; episode = 4; title = 'Pingu.S01E04E05.720p.WEB-DL.AAC2.0.H.264-NODEARR'; sourcePath = $doubleMedia; publishedAt = $published.AddMinutes(4).ToString('o') }
-        [ordered]@{ id = 'movie-1'; kind = 'movie'; category = 2040; tmdbId = 10331; imdbId = $movie.imdbId; title = 'Night.of.the.Living.Dead.1968.720p.WEB-DL.AAC2.0.H.264-NODEARR'; sourcePath = $movieMedia; publishedAt = $published.AddHours(1).ToString('o') }
-    )
-} | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $nodearrData 'arr-contract-spike.json')
+# The files arrive the way finished downloads do: each app imports them from /downloads.
+$imports = @(
+    @{ App = 'Sonarr'; Key = 'sonarr'; File = $tvMedia; Name = 'Pingu.S01E01.720p.WEB-DL.AAC2.0.H.264-NODEARR' }
+    @{ App = 'Sonarr'; Key = 'sonarr'; File = $tvMedia; Name = 'Pingu.S01E02.720p.WEB-DL.AAC2.0.H.264-NODEARR' }
+    @{ App = 'Sonarr'; Key = 'sonarr'; File = $doubleMedia; Name = 'Pingu.S01E04E05.720p.WEB-DL.AAC2.0.H.264-NODEARR' }
+    @{ App = 'Radarr'; Key = 'radarr'; File = $movieMedia; Name = 'Night.of.the.Living.Dead.1968.720p.WEB-DL.AAC2.0.H.264-NODEARR' }
+)
+foreach ($import in $imports) {
+    Import-ArrDownload -ApiUrl $apps[$import.Key].Url -ApiKey $apps[$import.Key].Key -App $import.App -SourceFile $import.File -Name $import.Name -DownloadsDir $downloads
+}
 
-Invoke-Command-Api sonarr @{ name = 'EpisodeSearch'; episodeIds = @($episodes[0].id) }
-Invoke-Command-Api sonarr @{ name = 'EpisodeSearch'; episodeIds = @($episodes[1].id) }
-Invoke-Command-Api sonarr @{ name = 'EpisodeSearch'; episodeIds = @($episodes[3].id) }
-Invoke-Command-Api radarr @{ name = 'MoviesSearch'; movieIds = @($movie.id) }
-
-Wait-Until -What 'Sonarr to import three files covering four episodes' -TimeoutSec 240 -EverySec 3 -Condition {
-    Invoke-Api sonarr POST '/command' @{ name = 'RefreshMonitoredDownloads' } | Out-Null
+Wait-Until -What 'Sonarr to import three files covering four episodes' -TimeoutSec 60 -Condition {
     @(Invoke-Api sonarr GET "/episode?seriesId=$($series.id)" | Where-Object hasFile).Count -eq 4
 } | Out-Null
-Wait-Until -What 'Radarr to import the movie' -TimeoutSec 240 -EverySec 3 -Condition {
-    Invoke-Api radarr POST '/command' @{ name = 'RefreshMonitoredDownloads' } | Out-Null
-    (Invoke-Api radarr GET "/movie/$($movie.id)").hasFile
-} | Out-Null
+Wait-Until -What 'Radarr to import the movie' -TimeoutSec 60 -Condition { (Invoke-Api radarr GET "/movie/$($movie.id)").hasFile } | Out-Null
 
 # --- 3. Catalog import -------------------------------------------------------------------------
 

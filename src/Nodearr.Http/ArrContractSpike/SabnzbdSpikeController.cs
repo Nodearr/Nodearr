@@ -7,10 +7,13 @@ using System.Xml.Linq;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NzbDrone.Core.Configuration;
+using NzbDrone.Core.PeerIndexer;
 
 namespace Nodearr.Http.ArrContractSpike
 {
     // S1 spike: the part of the SABnzbd API that Sonarr's and Radarr's SABnzbd clients call.
+    // The indexer half of the spike was replaced in S6. This half stays until S7 builds transfers,
+    // so the Arr apps still have a download client to register and test.
     // Anonymous at the framework level so a bad key gets SABnzbd's own error text, which Arr matches on.
     [AllowAnonymous]
     public class SabnzbdSpikeController : Controller
@@ -18,11 +21,13 @@ namespace Nodearr.Http.ArrContractSpike
         private const string Version = "4.5.1";
 
         private readonly IArrContractSpikeStore _store;
+        private readonly ICandidateService _candidates;
         private readonly IConfigFileProvider _configFileProvider;
 
-        public SabnzbdSpikeController(IArrContractSpikeStore store, IConfigFileProvider configFileProvider)
+        public SabnzbdSpikeController(IArrContractSpikeStore store, ICandidateService candidates, IConfigFileProvider configFileProvider)
         {
             _store = store;
+            _candidates = candidates;
             _configFileProvider = configFileProvider;
         }
 
@@ -130,8 +135,7 @@ namespace Nodearr.Http.ArrContractSpike
                 using var stream = file.OpenReadStream();
                 var nzb = XDocument.Load(stream);
 
-                candidateId = nzb.Descendants()
-                    .FirstOrDefault(e => e.Name.LocalName == "meta" && (string)e.Attribute("type") == "x-nodearr-candidate")?.Value;
+                candidateId = NewznabFeed.ReadTicket(nzb);
             }
             catch (Exception)
             {
@@ -142,7 +146,10 @@ namespace Nodearr.Http.ArrContractSpike
 
             if (candidate == null)
             {
-                return Fail("NZB is not a Nodearr ticket for a known candidate");
+                // A real ticket names something a trusted node offers. Fetching it is S7.
+                return Fail(_candidates.Find(candidateId) != null
+                    ? "Nodearr found this release on a trusted node, but cannot transfer files between nodes yet"
+                    : "NZB is not a Nodearr ticket for anything a trusted node offers");
             }
 
             var job = _store.AddJob(candidate, Request.Query["cat"].ToString(), Path.GetFileName(file.FileName));

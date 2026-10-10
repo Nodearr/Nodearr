@@ -69,7 +69,10 @@ namespace NzbDrone.Core.Sharing
         public int SeasonNumber { get; set; }
         public List<int> EpisodeNumbers { get; set; } = new();
         public List<string> EpisodeTitles { get; set; } = new();
-        public string ReleaseTitle { get; set; }
+
+        // The name the release had when the Arr app grabbed it, when the Arr app kept one.
+        public string SceneName { get; set; }
+        public string Edition { get; set; }
         public string Quality { get; set; }
         public string QualitySource { get; set; }
         public int Resolution { get; set; }
@@ -78,7 +81,9 @@ namespace NzbDrone.Core.Sharing
         public string CustomFormats { get; set; }
         public string ReleaseGroup { get; set; }
         public string VideoCodec { get; set; }
+        public string VideoDynamicRange { get; set; }
         public string AudioCodec { get; set; }
+        public double AudioChannels { get; set; }
         public DateTime? DateAdded { get; set; }
     }
 

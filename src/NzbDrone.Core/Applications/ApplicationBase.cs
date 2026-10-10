@@ -20,6 +20,8 @@ namespace NzbDrone.Core.Applications
         // The name Nodearr's download client and indexer carry inside the Arr app.
         public const string RemoteName = "Nodearr";
 
+        private const int AnimeCategory = 5070;
+
         private static readonly HashSet<string> SecretFields = new() { "apiKey" };
 
         protected readonly IArrV3Proxy _proxy;
@@ -125,7 +127,12 @@ namespace NzbDrone.Core.Applications
                     { "baseUrl", Settings.NodearrUrl.TrimEnd('/') + "/newznab" },
                     { "apiPath", "/api" },
                     { "apiKey", apiKey },
-                    { "categories", new JArray(Settings.SyncCategories) }
+                    { "categories", new JArray(Settings.SyncCategories) },
+
+                    // Sonarr only. It lets anime be found by ID, season and episode like everything
+                    // else, which is the one way Nodearr matches. Radarr has no such fields.
+                    { "animeCategories", new JArray(AnimeCategory) },
+                    { "animeStandardFormatSearch", true }
                 },
                 new Dictionary<string, JToken>
                 {

@@ -168,16 +168,16 @@ namespace NzbDrone.Core.Test.Sharing
             var offer = Subject.BuildOffer(Mocker.Resolve<IPeerRepository>().Get(_bob.Id));
             var json = JsonSerializer.Serialize(offer);
 
-            json.Should().NotContain("/tv/").And.NotContain("/movies/").And.NotContain("Season 1");
+            // Not the folders, and not the file names either.
+            json.Should().NotContain("/tv/").And.NotContain("/movies/").And.NotContain("Season 1").And.NotContain(".mkv").And.NotContain("Pingu - S01E01");
 
             var pingu = offer.Items.Single(i => i.Id == "e-1-501");
 
             pingu.Should().Match<OfferItem>(i => i.Title == "Pingu" && i.TvdbId == 75669 && i.SeasonNumber == 1 && i.Quality == "WEBDL-720p" && i.Size == 100);
-            pingu.ReleaseTitle.Should().Be("Pingu - S01E01");
+            pingu.SceneName.Should().BeNull();
 
-            // A scene name wins over the file name, and a Windows path is cut down the same way.
-            offer.Items.Single(i => i.Id == "e-1-502").ReleaseTitle.Should().Be("Pingu.S01E04E05.720p.WEB-DL-GROUP");
-            offer.Items.Single(i => i.Id == "e-1-601").ReleaseTitle.Should().Be("Bluey - S01E01");
+            // The name the release was grabbed under is sent when the Arr app kept it.
+            offer.Items.Single(i => i.Id == "e-1-502").SceneName.Should().Be("Pingu.S01E04E05.720p.WEB-DL-GROUP");
         }
 
         [Test]
