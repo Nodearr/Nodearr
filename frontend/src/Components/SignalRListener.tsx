@@ -333,6 +333,11 @@ function SignalRListener() {
       return;
     }
 
+    if (name === 'transfers') {
+      queryClient.invalidateQueries({ queryKey: ['/transfers'] });
+      return;
+    }
+
     if (name === 'version') {
       setVersion({ version: body.version });
       return;

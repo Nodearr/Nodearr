@@ -1,0 +1,32 @@
+.title {
+  composes: cell from '~Components/Table/Cells/TableRowCell.css';
+
+  min-width: 260px;
+  word-break: break-all;
+}
+
+.progress {
+  composes: cell from '~Components/Table/Cells/TableRowCell.css';
+
+  min-width: 160px;
+}
+
+.muted {
+  color: var(--helpTextColor);
+  font-size: 12px;
+}
+
+.error {
+  color: var(--dangerColor);
+  font-size: 12px;
+}
+
+.actions {
+  composes: cell from '~Components/Table/Cells/TableRowCell.css';
+
+  white-space: nowrap;
+}
+
+.actionButton {
+  margin-right: 6px;
+}

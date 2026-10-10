@@ -168,8 +168,8 @@ namespace NzbDrone.Core.Test.Sharing
             var offer = Subject.BuildOffer(Mocker.Resolve<IPeerRepository>().Get(_bob.Id));
             var json = JsonSerializer.Serialize(offer);
 
-            // Not the folders, and not the file names either.
-            json.Should().NotContain("/tv/").And.NotContain("/movies/").And.NotContain("Season 1").And.NotContain(".mkv").And.NotContain("Pingu - S01E01");
+            // Not the folders, and not the file names either. Only the extension is sent.
+            json.Should().NotContain("/tv/").And.NotContain("/movies/").And.NotContain("Season 1").And.NotContain("Pingu - S01E01");
 
             var pingu = offer.Items.Single(i => i.Id == "e-1-501");
 
@@ -178,6 +178,38 @@ namespace NzbDrone.Core.Test.Sharing
 
             // The name the release was grabbed under is sent when the Arr app kept it.
             offer.Items.Single(i => i.Id == "e-1-502").SceneName.Should().Be("Pingu.S01E04E05.720p.WEB-DL-GROUP");
+        }
+
+        [Test]
+        public void an_offer_should_say_what_kind_of_file_it_is_and_nothing_else_of_its_name()
+        {
+            Subject.SetShareAll(_bob.Id, true);
+
+            var offer = Subject.BuildOffer(Mocker.Resolve<IPeerRepository>().Get(_bob.Id));
+
+            offer.Items.Should().OnlyContain(i => i.Extension == ".mkv");
+        }
+
+        [Test]
+        public void a_file_should_count_as_offered_only_to_a_peer_whose_offer_holds_it_now()
+        {
+            var list = Subject.Create("Kids");
+
+            Subject.Update(list.List.Id, "Kids", new[] { Pingu }, new[] { _bob.Id });
+
+            var bob = Mocker.Resolve<IPeerRepository>().Get(_bob.Id);
+
+            Subject.IsOffered(bob, "e-1-501").Should().BeTrue();
+            Subject.IsOffered(bob, "e-1-601").Should().BeFalse();
+            Subject.IsOffered(bob, "m-2-701").Should().BeFalse();
+            Subject.IsOffered(bob, "e-1-999").Should().BeFalse();
+            Subject.IsOffered(bob, null).Should().BeFalse();
+            Subject.IsOffered(Mocker.Resolve<IPeerRepository>().Get(_carol.Id), "e-1-501").Should().BeFalse();
+            Subject.IsOffered(Mocker.Resolve<IPeerRepository>().Get(_dave.Id), "e-1-501").Should().BeFalse();
+
+            // Hidden afterwards: the name Bob was given earlier earns nothing now.
+            Subject.Update(Hidden.List.Id, null, new[] { Pingu }, null);
+            Subject.IsOffered(bob, "e-1-501").Should().BeFalse();
         }
 
         [Test]

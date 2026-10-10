@@ -21,6 +21,9 @@ namespace NzbDrone.Core.Sharing
         List<ShareableTitle> GetTitles();
         Peer SetShareAll(int peerId, bool shareAll);
         Offer BuildOffer(Peer peer);
+
+        // Whether a peer is offered a file right now, by the name its offer gives the file.
+        bool IsOffered(Peer peer, string offerFileId);
     }
 
     // Decides what each peer is told about. The rule, in order:
@@ -264,6 +267,11 @@ namespace NzbDrone.Core.Sharing
             return Seal(offered);
         }
 
+        public bool IsOffered(Peer peer, string offerFileId)
+        {
+            return offerFileId.IsNotNullOrWhiteSpace() && BuildOffer(peer).Items.Any(i => i.Id == offerFileId);
+        }
+
         public void Handle(ProviderDeletedEvent<IApplication> message)
         {
             _items.DeleteForApplication(message.ProviderId);
@@ -284,6 +292,7 @@ namespace NzbDrone.Core.Sharing
                 // Nothing of the path is sent, not even the file name.
                 SceneName = file.SceneName.IsNotNullOrWhiteSpace() ? file.SceneName : null,
                 Edition = (file as CatalogMovieFile)?.Edition,
+                Extension = ExtensionOf(file.RelativePath),
                 Quality = file.Quality,
                 QualitySource = file.QualitySource,
                 Resolution = file.Resolution,
@@ -297,6 +306,16 @@ namespace NzbDrone.Core.Sharing
                 AudioChannels = file.AudioChannels,
                 DateAdded = file.DateAdded
             };
+        }
+
+        // The extension says what kind of file it is. It is the only part of the file name sent.
+        private static string ExtensionOf(string path)
+        {
+            var name = (path ?? string.Empty).Split('/', '\\').Last();
+            var dot = name.LastIndexOf('.');
+            var extension = dot > 0 ? name[dot..].ToLowerInvariant() : null;
+
+            return extension != null && extension.Length is > 1 and <= 6 && extension.Skip(1).All(char.IsAsciiLetterOrDigit) ? extension : null;
         }
 
         private static Offer Seal(List<OfferItem> items)

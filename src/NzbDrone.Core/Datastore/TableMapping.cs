@@ -44,6 +44,7 @@ using NzbDrone.Core.RootFolders;
 using NzbDrone.Core.Sharing;
 using NzbDrone.Core.Tags;
 using NzbDrone.Core.ThingiProvider;
+using NzbDrone.Core.Transfers;
 using NzbDrone.Core.Tv;
 using NzbDrone.Core.Update.History;
 using static Dapper.SqlMapper;
@@ -134,6 +135,7 @@ namespace NzbDrone.Core.Datastore
             Mapper.Entity<ShareListItem>("ShareListItems").RegisterModel();
             Mapper.Entity<ShareListPeer>("ShareListPeers").RegisterModel();
             Mapper.Entity<PeerCatalogItem>("PeerCatalogItems").RegisterModel();
+            Mapper.Entity<TransferJob>("Transfers").RegisterModel();
 
             Mapper.Entity<SceneMapping>("SceneMappings").RegisterModel();
 

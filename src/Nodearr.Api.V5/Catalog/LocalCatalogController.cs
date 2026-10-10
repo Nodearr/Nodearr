@@ -3,12 +3,9 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Nodearr.Http;
 using Nodearr.Http.Extensions;
-using NzbDrone.Common.Disk;
-using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Core.Applications;
 using NzbDrone.Core.Catalog;
 using NzbDrone.Core.Datastore;
-using NzbDrone.Core.RemotePathMappings;
 
 namespace Nodearr.Api.V5.Catalog;
 
@@ -26,18 +23,15 @@ public class LocalCatalogController : Controller
 
     private readonly ICatalogService _catalogService;
     private readonly IApplicationFactory _applicationFactory;
-    private readonly IRemotePathMappingService _remotePathMappingService;
-    private readonly IDiskProvider _diskProvider;
+    private readonly ICatalogFileLocator _locator;
 
     public LocalCatalogController(ICatalogService catalogService,
                                   IApplicationFactory applicationFactory,
-                                  IRemotePathMappingService remotePathMappingService,
-                                  IDiskProvider diskProvider)
+                                  ICatalogFileLocator locator)
     {
         _catalogService = catalogService;
         _applicationFactory = applicationFactory;
-        _remotePathMappingService = remotePathMappingService;
-        _diskProvider = diskProvider;
+        _locator = locator;
     }
 
     [HttpGet]
@@ -170,13 +164,11 @@ public class LocalCatalogController : Controller
         }
 
         resource.ApplicationName = application.Name;
-        var local = _remotePathMappingService.RemapRemoteToLocal(application.Host, new OsPath(resource.Path));
 
-        // An unmapped path from an Arr app on another OS is not a path here at all.
-        var isPathHere = local.IsRooted && (OsInfo.IsWindows ? local.IsWindowsPath : local.IsUnixPath);
+        var located = _locator.Locate(resource.ApplicationId, resource.Path);
 
-        resource.LocalPath = local.FullPath;
-        resource.Readable = isPathHere && _diskProvider.FileExists(local.FullPath);
+        resource.LocalPath = located.LocalPath;
+        resource.Readable = located.Readable;
 
         return resource;
     }

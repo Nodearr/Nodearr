@@ -22,7 +22,7 @@ namespace NzbDrone.Core.Nodes.Transport
 {
     // Runs the nodearr-transport sidecar and talks to it over its loopback API (plan decision 4).
     // The sidecar holds the node key and the iroh endpoint. If it stops, it is started again.
-    public class IrohSidecarTransport : IPeerTransport, IHandle<ApplicationStartedEvent>, IHandle<ApplicationShutdownRequested>
+    public class IrohSidecarTransport : IPeerTransport, IFileTransport, IHandle<ApplicationStartedEvent>, IHandle<ApplicationShutdownRequested>
     {
         private const string TokenHeader = "x-nodearr-token";
         private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
@@ -35,6 +35,7 @@ namespace NzbDrone.Core.Nodes.Transport
         private readonly CancellationTokenSource _shutdown = new();
 
         private IncomingMessageHandler _handler;
+        private FileSourceHandler _fileSource;
         private List<string> _blocked = new();
         private Process _process;
         private HttpClient _client;
@@ -143,6 +144,84 @@ namespace NzbDrone.Core.Nodes.Transport
             _handler = handler;
         }
 
+        public void SetSource(FileSourceHandler handler)
+        {
+            _fileSource = handler;
+        }
+
+        public void Start(FileTransferRequest request)
+        {
+            var body = new StartTransferBody
+            {
+                Id = request.Id,
+                NodeId = request.Peer.NodeId,
+                RelayUrl = request.Peer.RelayUrl,
+                IpAddrs = request.Peer.IpAddresses ?? new List<string>(),
+                File = request.File,
+                Dest = request.Destination,
+                ExpectedHash = request.ExpectedHash
+            };
+
+            Send(client => client.PostAsJsonAsync("/v1/transfers", body, JsonOptions));
+        }
+
+        public List<FileTransferProgress> List()
+        {
+            var client = RequireClient();
+
+            try
+            {
+                var states = client.GetFromJsonAsync<List<TransferState>>("/v1/transfers", JsonOptions).GetAwaiter().GetResult();
+
+                return states.ConvertAll(s => new FileTransferProgress
+                {
+                    Id = s.Id,
+                    State = Enum.TryParse<FileTransferState>(s.State, true, out var state) ? state : FileTransferState.Failed,
+                    BytesDone = s.BytesDone,
+                    Size = s.Size,
+                    Hash = s.Blake3,
+                    FailureKind = s.Failure?.Kind,
+                    FailureMessage = s.Failure?.Message
+                });
+            }
+            catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
+            {
+                throw new TransportException(TransportFailure.Unavailable, "The peer transport is not responding: " + ex.Message);
+            }
+        }
+
+        public void Cancel(string id)
+        {
+            // 404 is fine: the transport had already forgotten it.
+            Send(client => client.DeleteAsync("/v1/transfers/" + Uri.EscapeDataString(id)), allowNotFound: true);
+        }
+
+        public void Disconnect(string nodeId)
+        {
+            Send(client => client.PostAsJsonAsync("/v1/disconnect", new DisconnectBody { NodeId = nodeId }, JsonOptions));
+        }
+
+        private void Send(Func<HttpClient, System.Threading.Tasks.Task<HttpResponseMessage>> send, bool allowNotFound = false)
+        {
+            var client = RequireClient();
+
+            try
+            {
+                using var response = send(client).GetAwaiter().GetResult();
+
+                if (allowNotFound && response.StatusCode == HttpStatusCode.NotFound)
+                {
+                    return;
+                }
+
+                response.EnsureSuccessStatusCode();
+            }
+            catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
+            {
+                throw new TransportException(TransportFailure.Unavailable, "The peer transport is not responding: " + ex.Message);
+            }
+        }
+
         private HttpClient RequireClient()
         {
             var client = _client;
@@ -227,6 +306,18 @@ namespace NzbDrone.Core.Nodes.Transport
                 startInfo.ArgumentList.Add("--no-port-mapping");
             }
 
+            if (_options.DirectTimeoutSeconds is > 0)
+            {
+                startInfo.ArgumentList.Add("--direct-timeout-secs");
+                startInfo.ArgumentList.Add(_options.DirectTimeoutSeconds.Value.ToString());
+            }
+
+            if (_options.UploadLimitKbps is > 0)
+            {
+                startInfo.ArgumentList.Add("--upload-limit-kbps");
+                startInfo.ArgumentList.Add(_options.UploadLimitKbps.Value.ToString());
+            }
+
             // The token never appears on the command line, where other local users could read it.
             startInfo.Environment["NODEARR_TRANSPORT_TOKEN"] = token;
 
@@ -289,21 +380,33 @@ namespace NzbDrone.Core.Nodes.Transport
 
         private void Answer(HttpClient client, IncomingMessage incoming)
         {
-            byte[] reply = null;
+            var answer = new AnswerBody { Reject = true };
 
             try
             {
-                reply = _handler?.Invoke(incoming.RemoteNodeId, Convert.FromBase64String(incoming.Body));
+                if (incoming.Kind == "transfer")
+                {
+                    var grant = _fileSource?.Invoke(incoming.RemoteNodeId, incoming.File);
+
+                    answer = grant?.Path != null ? new AnswerBody { Path = grant.Path } : new AnswerBody { Reject = true, Reason = grant?.Refusal };
+                }
+                else
+                {
+                    var reply = _handler?.Invoke(incoming.RemoteNodeId, Convert.FromBase64String(incoming.Body));
+
+                    if (reply != null)
+                    {
+                        answer = new AnswerBody { Body = Convert.ToBase64String(reply) };
+                    }
+                }
             }
             catch (Exception ex)
             {
-                _logger.Error(ex, "Unable to handle a message from node {0}", incoming.RemoteNodeId);
+                _logger.Error(ex, "Unable to handle a request from node {0}", incoming.RemoteNodeId);
             }
 
             try
             {
-                var answer = reply == null ? new AnswerBody { Reject = true } : new AnswerBody { Body = Convert.ToBase64String(reply) };
-
                 client.PostAsJsonAsync($"/v1/incoming/{incoming.Id}", answer, JsonOptions).GetAwaiter().GetResult().Dispose();
             }
             catch (Exception ex)
@@ -413,14 +516,56 @@ namespace NzbDrone.Core.Nodes.Transport
         {
             public long Id { get; set; }
             public string RemoteNodeId { get; set; }
+
+            // "message" or "transfer".
+            public string Kind { get; set; }
             public string Body { get; set; }
+            public string File { get; set; }
         }
 
         private class AnswerBody
         {
             [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
             public string Body { get; set; }
+
+            [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+            public string Path { get; set; }
             public bool Reject { get; set; }
+
+            [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+            public string Reason { get; set; }
+        }
+
+        private class StartTransferBody
+        {
+            public string Id { get; set; }
+            public string NodeId { get; set; }
+            public string RelayUrl { get; set; }
+            public List<string> IpAddrs { get; set; }
+            public string File { get; set; }
+            public string Dest { get; set; }
+            public string ExpectedHash { get; set; }
+        }
+
+        private class TransferState
+        {
+            public string Id { get; set; }
+            public string State { get; set; }
+            public long BytesDone { get; set; }
+            public long Size { get; set; }
+            public string Blake3 { get; set; }
+            public TransferFailureBody Failure { get; set; }
+        }
+
+        private class TransferFailureBody
+        {
+            public string Kind { get; set; }
+            public string Message { get; set; }
+        }
+
+        private class DisconnectBody
+        {
+            public string NodeId { get; set; }
         }
 
         private class BlockedBody

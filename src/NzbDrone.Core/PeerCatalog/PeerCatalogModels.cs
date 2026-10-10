@@ -46,6 +46,7 @@ namespace NzbDrone.Core.PeerCatalog
         public string EpisodeTitles { get; set; }
         public string SceneName { get; set; }
         public string Edition { get; set; }
+        public string Extension { get; set; }
 
         // What the Arr apps are shown. Worked out here from the fields the peer sent.
         public string ReleaseTitle { get; set; }
@@ -85,6 +86,7 @@ namespace NzbDrone.Core.PeerCatalog
                 EpisodeTitles = string.Join(" + ", offer.EpisodeTitles ?? new List<string>()),
                 SceneName = offer.SceneName,
                 Edition = offer.Edition,
+                Extension = offer.Extension,
                 Quality = offer.Quality,
                 QualitySource = offer.QualitySource,
                 Resolution = offer.Resolution,

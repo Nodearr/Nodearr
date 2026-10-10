@@ -73,6 +73,9 @@ namespace NzbDrone.Core.Sharing
         // The name the release had when the Arr app grabbed it, when the Arr app kept one.
         public string SceneName { get; set; }
         public string Edition { get; set; }
+
+        // Such as .mkv. A transfer has to write a file the Arr app will recognise.
+        public string Extension { get; set; }
         public string Quality { get; set; }
         public string QualitySource { get; set; }
         public int Resolution { get; set; }

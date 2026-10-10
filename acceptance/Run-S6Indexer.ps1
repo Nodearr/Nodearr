@@ -382,12 +382,14 @@ try {
         $refused.Xml.error.code -eq '300' -and $noKey.Xml.error.code -eq '100'
     ) @{ ticketBytes = $ticket.Raw.Length; forged = $refused.Xml.error.description; wrongKey = $noKey.Xml.error.description }
 
-    # Grabbing goes as far as Nodearr's download client, which has no transfers until S7.
+    # A grab hands the ticket to Nodearr's download client, which starts a transfer. What becomes
+    # of the transfer is S7's script. Here it is removed again.
     $grab = Invoke-Arr sonarrB POST '/release' @{ guid = $one.guid; indexerId = $one.indexerId } -AllowError
-    $queue = Invoke-Arr sonarrB GET '/queue?pageSize=50'
-    Assert-That 'A grab is turned down with a plain reason, because transfers are not built yet' (
-        $grab.Failed -and $grab.Body -match 'cannot transfer files between nodes yet' -and $queue.totalRecords -eq 0
-    ) @{ status = $grab.Status; body = $grab.Body; queued = $queue.totalRecords }
+    $started = @(Invoke-Node B GET '/transfers')
+    Assert-That 'A grab in Sonarr hands the ticket to Nodearr, which starts a transfer for that file' (
+        -not $grab.Failed -and $started.Count -eq 1 -and $started[0].title -eq $sceneEpisode
+    ) @{ grabFailed = [bool]$grab.Failed; body = $grab.Body; transfers = @($started | ForEach-Object title) }
+    $started | ForEach-Object { Invoke-Node B DELETE "/transfers/$($_.downloadId)" | Out-Null }
 
     # --- Sharing rules reach the Arr apps --------------------------------------------------------
 

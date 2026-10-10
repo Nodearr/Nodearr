@@ -9,6 +9,10 @@
 //! What the messages mean, and who is trusted, is decided in Nodearr. The one policy the
 //! sidecar enforces is the block list, because a blocked node must be turned away when its
 //! connection is accepted, before it can send anything.
+//!
+//! Files move on a second protocol, in `transfer.rs`. Nodearr still decides who may have what.
+
+mod transfer;
 
 use std::{
     collections::{HashMap, HashSet},
@@ -28,7 +32,7 @@ use axum::{
     http::StatusCode,
     middleware::{self, Next},
     response::{IntoResponse, Response},
-    routing::{get, post, put},
+    routing::{delete, get, post, put},
     Json, Router,
 };
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
@@ -51,9 +55,9 @@ const TOKEN_ENV: &str = "NODEARR_TRANSPORT_TOKEN";
 const TOKEN_HEADER: &str = "x-nodearr-token";
 const MAX_MESSAGE: usize = 4 * 1024 * 1024;
 
-const CODE_DONE: u32 = 0;
-const CODE_NOT_AUTHORIZED: u32 = 2;
-const CODE_BLOCKED: u32 = 5;
+pub(crate) const CODE_DONE: u32 = 0;
+pub(crate) const CODE_NOT_AUTHORIZED: u32 = 2;
+pub(crate) const CODE_BLOCKED: u32 = 5;
 
 #[derive(Parser)]
 #[command(about = "Nodearr peer transport sidecar")]
@@ -72,6 +76,12 @@ struct Args {
     /// Do not ask the router for a port mapping (UPnP, NAT-PMP, PCP).
     #[arg(long)]
     no_port_mapping: bool,
+    /// How long a transfer waits for a direct path before it gives up.
+    #[arg(long, default_value_t = 20)]
+    direct_timeout_secs: u64,
+    /// The most each upload may send, in kilobytes per second. Zero means no limit.
+    #[arg(long, default_value_t = 0)]
+    upload_limit_kbps: u64,
 }
 
 #[derive(ValueEnum, Clone, Copy, PartialEq, Eq, Debug)]
@@ -84,19 +94,29 @@ enum Relay {
     Custom,
 }
 
-struct Incoming {
-    remote: EndpointId,
-    body: Vec<u8>,
-    reply: oneshot::Sender<Reply>,
+/// Something a peer sent that Nodearr has to decide about.
+pub(crate) struct Incoming {
+    pub remote: EndpointId,
+    pub kind: IncomingKind,
+    pub reply: oneshot::Sender<Reply>,
 }
 
-enum Reply {
+pub(crate) enum IncomingKind {
+    /// A control message. Nodearr answers with a message of its own.
+    Message(Vec<u8>),
+    /// A request for a file. Nodearr answers with where the file is, or refuses.
+    Transfer { file: String },
+}
+
+pub(crate) enum Reply {
     Body(Vec<u8>),
-    Reject,
+    File(PathBuf),
+    Reject(Option<String>),
 }
 
 struct App {
     endpoint: Endpoint,
+    transfers: Arc<transfer::Transfers>,
     token: String,
     blocked: RwLock<HashSet<EndpointId>>,
     incoming: tokio::sync::Mutex<mpsc::Receiver<Incoming>>,
@@ -124,6 +144,7 @@ async fn main() -> Result<()> {
     let (incoming_tx, incoming_rx) = mpsc::channel(64);
     let app = Arc::new(App {
         endpoint: endpoint.clone(),
+        transfers: Arc::new(transfer::Transfers::new(Duration::from_secs(args.direct_timeout_secs), args.upload_limit_kbps * 1024)),
         token,
         blocked: RwLock::new(HashSet::new()),
         incoming: tokio::sync::Mutex::new(incoming_rx),
@@ -139,6 +160,9 @@ async fn main() -> Result<()> {
         .route("/v1/request", post(send_request))
         .route("/v1/incoming", get(next_incoming))
         .route("/v1/incoming/{id}", post(answer_incoming))
+        .route("/v1/transfers", get(list_transfers).post(start_transfer))
+        .route("/v1/transfers/{id}", delete(cancel_transfer))
+        .route("/v1/disconnect", post(disconnect))
         .layer(middleware::from_fn_with_state(app.clone(), require_token))
         .with_state(app.clone());
 
@@ -195,7 +219,7 @@ async fn bind(args: &Args) -> Result<Endpoint> {
     // No address lookup service: nodes learn each other's addresses from invites and from each other.
     let mut builder = Endpoint::builder(presets::Minimal)
         .secret_key(load_key(&args.data_dir)?)
-        .alpns(vec![CONTROL_ALPN.to_vec()]);
+        .alpns(vec![CONTROL_ALPN.to_vec(), transfer::TRANSFER_ALPN.to_vec()]);
 
     builder = match args.relay {
         Relay::Disabled => builder.relay_mode(RelayMode::Disabled),
@@ -235,6 +259,11 @@ async fn accept_loop(app: Arc<App>, queue: mpsc::Sender<Incoming>) {
                 return;
             }
 
+            if conn.alpn() == transfer::TRANSFER_ALPN {
+                transfer::serve(app.transfers.clone(), conn, queue).await;
+                return;
+            }
+
             while let Ok((send, recv)) = conn.accept_bi().await {
                 if serve_stream(&conn, remote, send, recv, &queue).await.is_err() {
                     break;
@@ -247,7 +276,7 @@ async fn accept_loop(app: Arc<App>, queue: mpsc::Sender<Incoming>) {
 async fn serve_stream(conn: &Connection, remote: EndpointId, mut send: SendStream, mut recv: RecvStream, queue: &mpsc::Sender<Incoming>) -> Result<()> {
     let body = read_frame(&mut recv).await?;
     let (reply, answer) = oneshot::channel();
-    queue.send(Incoming { remote, body, reply }).await.map_err(|_| anyhow!("shutting down"))?;
+    queue.send(Incoming { remote, kind: IncomingKind::Message(body), reply }).await.map_err(|_| anyhow!("shutting down"))?;
 
     match tokio::time::timeout(Duration::from_secs(30), answer).await {
         Ok(Ok(Reply::Body(body))) => {
@@ -256,7 +285,7 @@ async fn serve_stream(conn: &Connection, remote: EndpointId, mut send: SendStrea
             Ok(())
         }
         _ => {
-            // Nodearr refused the message, or never answered.
+            // Nodearr refused the message, answered with the wrong kind of thing, or never answered.
             conn.close(VarInt::from_u32(CODE_NOT_AUTHORIZED), b"NotAuthorized");
             bail!("rejected")
         }
@@ -379,30 +408,32 @@ fn failed(kind: &'static str, message: impl Into<String>) -> Json<RequestResult>
     Json(RequestResult::Failed { error: Failure { kind, message: message.into() } })
 }
 
+/// Where a node can be reached, as Nodearr describes it.
+fn parse_address(node_id: &str, relay_url: Option<&str>, ip_addrs: &[String]) -> std::result::Result<EndpointAddr, String> {
+    let id = EndpointId::from_str(node_id).map_err(|_| "bad node id".to_string())?;
+
+    let mut addrs = Vec::new();
+    if let Some(relay) = relay_url.filter(|r| !r.is_empty()) {
+        addrs.push(TransportAddr::Relay(RelayUrl::from_str(relay).map_err(|_| "bad relay url".to_string())?));
+    }
+    for ip in ip_addrs {
+        addrs.push(TransportAddr::Ip(SocketAddr::from_str(ip).map_err(|_| format!("bad address {ip}"))?));
+    }
+
+    Ok(EndpointAddr::from_parts(id, addrs))
+}
+
 async fn send_request(State(app): State<Arc<App>>, Json(request): Json<RequestBody>) -> Json<RequestResult> {
-    let Ok(id) = EndpointId::from_str(&request.node_id) else {
-        return failed("BadRequest", "bad node id");
+    let target = match parse_address(&request.node_id, request.relay_url.as_deref(), &request.ip_addrs) {
+        Ok(target) => target,
+        Err(message) => return failed("BadRequest", message),
     };
     let Ok(body) = BASE64.decode(&request.body) else {
         return failed("BadRequest", "body is not base64");
     };
 
-    let mut addrs = Vec::new();
-    if let Some(relay) = request.relay_url.as_deref().filter(|r| !r.is_empty()) {
-        match RelayUrl::from_str(relay) {
-            Ok(url) => addrs.push(TransportAddr::Relay(url)),
-            Err(_) => return failed("BadRequest", "bad relay url"),
-        }
-    }
-    for ip in &request.ip_addrs {
-        match SocketAddr::from_str(ip) {
-            Ok(addr) => addrs.push(TransportAddr::Ip(addr)),
-            Err(_) => return failed("BadRequest", format!("bad address {ip}")),
-        }
-    }
-
     let timeout = Duration::from_millis(request.timeout_ms.unwrap_or(20_000));
-    match exchange(&app.endpoint, EndpointAddr::from_parts(id, addrs), &body, timeout).await {
+    match exchange(&app.endpoint, target, &body, timeout).await {
         Ok(body) => Json(RequestResult::Ok { body: BASE64.encode(body) }),
         Err((kind, message)) => failed(kind, message),
     }
@@ -422,7 +453,11 @@ async fn next_incoming(State(app): State<Arc<App>>, Query(query): Query<WaitQuer
         Ok(Some(incoming)) => {
             let id = app.next_id.fetch_add(1, Ordering::Relaxed);
             app.awaiting_reply.lock().unwrap().insert(id, incoming.reply);
-            Json(json!({ "id": id, "remote_node_id": incoming.remote.to_string(), "body": BASE64.encode(incoming.body) })).into_response()
+            let remote = incoming.remote.to_string();
+            match incoming.kind {
+                IncomingKind::Message(body) => Json(json!({ "id": id, "remote_node_id": remote, "kind": "message", "body": BASE64.encode(body) })).into_response(),
+                IncomingKind::Transfer { file } => Json(json!({ "id": id, "remote_node_id": remote, "kind": "transfer", "file": file })).into_response(),
+            }
         }
         _ => StatusCode::NO_CONTENT.into_response(),
     }
@@ -430,9 +465,14 @@ async fn next_incoming(State(app): State<Arc<App>>, Query(query): Query<WaitQuer
 
 #[derive(Deserialize)]
 struct AnswerBody {
+    /// The answer to a message.
     body: Option<String>,
+    /// The answer to a file request: where the file is on this machine.
+    path: Option<String>,
     #[serde(default)]
     reject: bool,
+    /// Why a file request was refused: NotAuthorized, Revoked or NotFound.
+    reason: Option<String>,
 }
 
 async fn answer_incoming(State(app): State<Arc<App>>, UrlPath(id): UrlPath<u64>, Json(answer): Json<AnswerBody>) -> StatusCode {
@@ -440,10 +480,70 @@ async fn answer_incoming(State(app): State<Arc<App>>, UrlPath(id): UrlPath<u64>,
         return StatusCode::NOT_FOUND;
     };
 
-    let reply_with = match answer.body.filter(|_| !answer.reject).map(|b| BASE64.decode(b)) {
-        Some(Ok(body)) => Reply::Body(body),
-        _ => Reply::Reject,
+    let reply_with = if answer.reject {
+        Reply::Reject(answer.reason)
+    } else if let Some(path) = answer.path {
+        Reply::File(PathBuf::from(path))
+    } else {
+        match answer.body.map(|b| BASE64.decode(b)) {
+            Some(Ok(body)) => Reply::Body(body),
+            _ => Reply::Reject(None),
+        }
     };
     let _ = reply.send(reply_with);
     StatusCode::NO_CONTENT
+}
+
+#[derive(Deserialize)]
+struct StartTransferBody {
+    id: String,
+    node_id: String,
+    relay_url: Option<String>,
+    #[serde(default)]
+    ip_addrs: Vec<String>,
+    file: String,
+    dest: String,
+    expected_hash: Option<String>,
+}
+
+async fn start_transfer(State(app): State<Arc<App>>, Json(body): Json<StartTransferBody>) -> Response {
+    let target = match parse_address(&body.node_id, body.relay_url.as_deref(), &body.ip_addrs) {
+        Ok(target) => target,
+        Err(message) => return (StatusCode::BAD_REQUEST, message).into_response(),
+    };
+
+    let request = transfer::DownloadRequest {
+        id: body.id,
+        target,
+        file: body.file,
+        dest: PathBuf::from(body.dest),
+        expected_hash: body.expected_hash.filter(|h| !h.is_empty()),
+    };
+    transfer::start(&app.transfers, app.endpoint.clone(), request);
+    StatusCode::ACCEPTED.into_response()
+}
+
+async fn list_transfers(State(app): State<Arc<App>>) -> Json<Vec<transfer::DownloadState>> {
+    Json(app.transfers.list())
+}
+
+async fn cancel_transfer(State(app): State<Arc<App>>, UrlPath(id): UrlPath<String>) -> StatusCode {
+    if app.transfers.cancel(&id) {
+        StatusCode::NO_CONTENT
+    } else {
+        StatusCode::NOT_FOUND
+    }
+}
+
+#[derive(Deserialize)]
+struct DisconnectBody {
+    node_id: String,
+}
+
+/// Cuts every upload to a node.
+async fn disconnect(State(app): State<Arc<App>>, Json(body): Json<DisconnectBody>) -> Response {
+    match EndpointId::from_str(&body.node_id) {
+        Ok(node) => Json(json!({ "closed": app.transfers.disconnect(node) })).into_response(),
+        Err(_) => (StatusCode::BAD_REQUEST, "bad node id").into_response(),
+    }
 }
