@@ -12,6 +12,7 @@ TestResults/
 
 # Node
 node_modules/
+.yarn/install-state.gz
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -19,6 +20,7 @@ pnpm-debug.log*
 
 # Build output
 _output/
+_tests/
 dist/
 build/
 coverage/

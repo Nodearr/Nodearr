@@ -40,7 +40,7 @@ Initial stack:
 - API style: versioned API routes using MVC controllers or minimal APIs where appropriate.
 - Real-time updates: SignalR.
 - API docs: OpenAPI/Swagger.
-- Logging: NLog or Serilog, final choice remains implementation work.
+- Logging: NLog.
 - Frontend: React + TypeScript.
 - Frontend build: use a modern build tool while preserving Arr-familiar UI conventions.
 - Database: SQLite for initial local persistence.
@@ -86,4 +86,8 @@ Rejected for the initial application stack. Rust may still be useful for transfe
 - Add initial SQLite persistence boundary.
 - Define transfer-provider integration points.
 - Validate Iroh integration feasibility behind a Nodearr abstraction.
+
+## Amendments
+
+- 2026-10-10: Logging is NLog. This ADR originally left the choice between NLog and Serilog open. The host and core that Nodearr inherits from Sonarr already log through NLog (5.5.x) in every project, so the decision now records what the code does. See [NOTICE.md](../../NOTICE.md) for the reused Sonarr code.
 
