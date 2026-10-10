@@ -23,6 +23,8 @@ _output/
 _tests/
 dist/
 build/
+# The webpack configuration lives in a folder of that name, and is source.
+!/frontend/build/
 coverage/
 src/Nodearr.Host/wwwroot/
 
