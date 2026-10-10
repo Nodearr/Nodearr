@@ -20,12 +20,28 @@ function Import-ArrDownload {
         [Parameter(Mandatory)] [string] $Name,
 
         # The folder on this machine that the app has mounted at /downloads.
-        [Parameter(Mandatory)] [string] $DownloadsDir
+        [string] $DownloadsDir,
+
+        # Or the app's container, when /downloads is a Docker volume and not a folder here.
+        [string] $Container
     )
 
-    $folder = Join-Path $DownloadsDir "seed/$Name"
-    New-Item -ItemType Directory -Force $folder | Out-Null
-    Copy-Item -LiteralPath $SourceFile (Join-Path $folder ($Name + [IO.Path]::GetExtension($SourceFile))) -Force
+    $fileName = $Name + [IO.Path]::GetExtension($SourceFile)
+
+    if ($Container) {
+        docker exec $Container mkdir -p "/downloads/seed/$Name" | Out-Null
+        docker cp $SourceFile "${Container}:/downloads/seed/$Name/$fileName" | Out-Null
+        docker exec $Container chown -R abc:abc /downloads/seed | Out-Null
+        if ($LASTEXITCODE -ne 0) { throw "Unable to put $fileName into $Container" }
+    }
+    elseif ($DownloadsDir) {
+        $folder = Join-Path $DownloadsDir "seed/$Name"
+        New-Item -ItemType Directory -Force $folder | Out-Null
+        Copy-Item -LiteralPath $SourceFile (Join-Path $folder $fileName) -Force
+    }
+    else {
+        throw 'Import-ArrDownload needs -DownloadsDir or -Container'
+    }
 
     $headers = @{ 'X-Api-Key' = $ApiKey }
     $command = @{ name = ($App -eq 'Sonarr' ? 'DownloadedEpisodesScan' : 'DownloadedMoviesScan'); path = "/downloads/seed/$Name"; importMode = 'copy' }

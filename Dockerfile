@@ -1,0 +1,77 @@
+# syntax=docker/dockerfile:1.7
+
+# Nodearr in one image: the web UI, the .NET application and the peer transport sidecar.
+#
+#   docker build -t nodearr .
+#
+# The three build stages share nothing, so they build side by side.
+
+# --- The web UI -----------------------------------------------------------------------------
+FROM node:20.11.1-bookworm AS frontend
+WORKDIR /build
+
+RUN corepack enable && corepack prepare yarn@4.15.0 --activate
+
+COPY package.json yarn.lock .yarnrc.yml tsconfig.json ./
+RUN --mount=type=cache,target=/root/.yarn/berry/cache \
+    yarn install --immutable
+
+COPY frontend ./frontend
+RUN yarn build --env production
+
+# --- The peer transport sidecar ---------------------------------------------------------------
+FROM rust:1-bookworm AS transport
+WORKDIR /build/transport
+
+COPY transport/Cargo.toml transport/Cargo.lock ./
+COPY transport/src ./src
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/build/transport/target \
+    cargo build --release --locked && \
+    cp target/release/nodearr-transport /nodearr-transport
+
+# --- The application --------------------------------------------------------------------------
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS backend
+WORKDIR /build
+
+# The repository's own global.json pins one SDK patch level for development. The image's SDK is
+# used here as it comes, so that file is left out.
+# .editorconfig sets which analyzer rules are errors. Without it every rule is.
+COPY .editorconfig ./
+COPY Logo ./Logo
+COPY src ./src
+RUN --mount=type=cache,target=/root/.nuget/packages \
+    dotnet build src/Nodearr.sln --configuration Release -p:Platform=Posix --nologo --verbosity minimal
+
+# --- What runs --------------------------------------------------------------------------------
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates curl gosu libsqlite3-0 tini && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY --from=backend /build/_output/net10.0 /app/bin
+COPY --from=frontend /build/_output/UI /app/bin/UI
+COPY --from=transport /nodearr-transport /app/bin/nodearr-transport
+COPY docker/entrypoint.sh /usr/local/bin/nodearr-entrypoint
+RUN chmod 0755 /usr/local/bin/nodearr-entrypoint /app/bin/nodearr-transport
+
+# /config holds the database and the node's key. Losing it loses the node's identity and every
+# trust it has. /downloads is where transfers land, and must be the same folder Sonarr and
+# Radarr see as /downloads.
+ENV HOME=/config \
+    PUID=1000 \
+    PGID=1000 \
+    Nodearr__Transport__DownloadFolder=/downloads \
+    Nodearr__Transport__Port=6633
+
+VOLUME ["/config", "/downloads"]
+
+# The web UI and the API the Arr apps call, and the UDP port other nodes connect to.
+EXPOSE 6633/tcp 6633/udp
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+    CMD curl -fsS http://localhost:6633/ping || exit 1
+
+ENTRYPOINT ["tini", "--", "nodearr-entrypoint"]
+CMD ["dotnet", "/app/bin/Nodearr.dll", "-nobrowser", "-data=/config"]

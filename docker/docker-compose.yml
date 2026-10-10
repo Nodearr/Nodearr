@@ -1,0 +1,84 @@
+# Nodearr beside Sonarr and Radarr.
+#
+#   docker compose -f docker/docker-compose.yml up -d
+#
+# Build the image first, from the repository root:  docker build -t nodearr .
+#
+# The three things that matter:
+#
+#   1. /downloads is ONE folder, mounted at the same path in Nodearr, Sonarr and Radarr.
+#      Nodearr puts a finished transfer there and the Arr app imports it from there.
+#   2. The libraries are mounted into Nodearr at the same paths Sonarr and Radarr use, read-only.
+#      Nodearr only ever reads them, to send files to nodes you share with.
+#   3. Other nodes reach this one over UDP. See "Networking" below.
+
+services:
+  nodearr:
+    image: nodearr
+    container_name: nodearr
+    restart: unless-stopped
+    environment:
+      # The same user Sonarr and Radarr run as.
+      PUID: "1000"
+      PGID: "1000"
+      TZ: Etc/UTC
+      # What other nodes see this one called.
+      Nodearr__Transport__NodeName: "My Nodearr"
+    volumes:
+      - ./config/nodearr:/config
+      - ./downloads:/downloads
+      - /path/to/tv:/tv:ro
+      - /path/to/movies:/movies:ro
+
+    # Networking, option A: the host's own network. Linux only. Best chance of a direct
+    # connection, and the only way the router can be asked for a port mapping (UPnP).
+    network_mode: host
+
+    # Networking, option B: a bridge network with the ports published. Use this on Docker
+    # Desktop (Windows and macOS), or if you prefer it. Forward UDP 6633 on your router to this
+    # machine, because a container on a bridge cannot ask the router itself. Remove
+    # "network_mode: host" above and use:
+    #
+    # ports:
+    #   - "6633:6633/tcp"
+    #   - "6633:6633/udp"
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    restart: unless-stopped
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: Etc/UTC
+    volumes:
+      - ./config/sonarr:/config
+      - ./downloads:/downloads
+      - /path/to/tv:/tv
+    ports:
+      - "8989:8989"
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    restart: unless-stopped
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: Etc/UTC
+    volumes:
+      - ./config/radarr:/config
+      - ./downloads:/downloads
+      - /path/to/movies:/movies
+    ports:
+      - "7878:7878"
+
+# Then, in Nodearr at http://localhost:6633:
+#
+#   Settings > Applications: add Sonarr and Radarr.
+#     With option A, Nodearr's address for them is http://localhost:6633 and theirs are
+#     http://localhost:8989 and http://localhost:7878.
+#     With option B, use the service names: http://nodearr:6633, http://sonarr:8989 and
+#     http://radarr:7878.
+#   Nodes > Invites: create an invite and send it to the person you want to share with.
+#   Catalog > Sharing: choose what they are offered. Nothing is shared until you do.

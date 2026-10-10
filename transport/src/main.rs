@@ -76,6 +76,10 @@ struct Args {
     /// Do not ask the router for a port mapping (UPnP, NAT-PMP, PCP).
     #[arg(long)]
     no_port_mapping: bool,
+    /// UDP port peers connect to. Zero picks a free one, which is fine unless the port has to be
+    /// published or forwarded, as it does for a container that is not on the host's network.
+    #[arg(long, default_value_t = 0)]
+    bind_port: u16,
     /// How long a transfer waits for a direct path before it gives up.
     #[arg(long, default_value_t = 20)]
     direct_timeout_secs: u64,
@@ -231,6 +235,11 @@ async fn bind(args: &Args) -> Result<Endpoint> {
     };
     if args.no_port_mapping {
         builder = builder.portmapper_config(PortmapperConfig::Disabled);
+    }
+    if args.bind_port != 0 {
+        builder = builder
+            .bind_addr(format!("0.0.0.0:{}", args.bind_port))
+            .map_err(|e| anyhow!("cannot use UDP port {}: {e}", args.bind_port))?;
     }
 
     let endpoint = builder.bind().await.map_err(|e| anyhow!("bind failed: {e:#}"))?;

@@ -306,6 +306,12 @@ namespace NzbDrone.Core.Nodes.Transport
                 startInfo.ArgumentList.Add("--no-port-mapping");
             }
 
+            if (_options.Port is > 0)
+            {
+                startInfo.ArgumentList.Add("--bind-port");
+                startInfo.ArgumentList.Add(_options.Port.Value.ToString());
+            }
+
             if (_options.DirectTimeoutSeconds is > 0)
             {
                 startInfo.ArgumentList.Add("--direct-timeout-secs");

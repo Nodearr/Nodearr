@@ -9,6 +9,13 @@ public class TransportOptions
     public string Relay { get; set; }
     public string RelayUrl { get; set; }
 
+    // The UDP port other nodes connect to. A free one is picked when not set. Set it when the
+    // port has to be published or forwarded, as for a container on a bridge network.
+    public int? Port { get; set; }
+
+    // What other nodes see this node called. The machine name when not set.
+    public string NodeName { get; set; }
+
     // Port mapping (UPnP, NAT-PMP, PCP) is on unless this is set.
     public bool? DisablePortMapping { get; set; }
 

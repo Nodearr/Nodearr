@@ -67,12 +67,15 @@ $readyFile = Join-Path $run 'ready.txt'
 
 . (Join-Path $root 'Library.ps1')
 
+# Stopping needs neither the build nor the sidecar.
+if (-not $Down) {
 if (-not (Test-Path $dll)) { throw 'Build Nodearr first: dotnet build src/Nodearr.sln' }
 if (-not $TransportBin) {
     $target = $env:CARGO_TARGET_DIR ? $env:CARGO_TARGET_DIR : (Join-Path $repo 'transport/target')
     $TransportBin = Join-Path $target ('release/nodearr-transport' + ($IsWindows ? '.exe' : ''))
 }
 if (-not (Test-Path $TransportBin)) { throw "Build the transport first: cargo build --release --manifest-path transport/Cargo.toml (looked for $TransportBin)" }
+}
 
 function New-Key { -join ((1..32) | ForEach-Object { '{0:x}' -f (Get-Random -Maximum 16) }) }
 

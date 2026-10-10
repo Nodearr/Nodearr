@@ -1,0 +1,166 @@
+# S8 acceptance: two whole deployments on one machine, each as a person would run it.
+#
+#   John:  nodearr-a + sonarr-a + radarr-a, on the network side-a.
+#   Ryan:  nodearr-b + sonarr-b + radarr-b, on the network side-b.
+#
+# The two sides cannot reach each other except in two ways:
+#
+#   wan      A network both Nodearr containers are on. It plays the part of a direct route
+#            between two homes. The script unplugs node B from it to take that route away.
+#            (Its name sorts after the side networks on purpose: Docker gives a container its
+#            default route, and its published ports, through the first network by name.)
+#   relay    An iroh relay both sides can reach. It plays the part of a public relay.
+#
+# Each side has one /downloads volume shared by its three containers, and its libraries are
+# mounted into its Nodearr read-only, at the paths its Sonarr and Radarr use.
+name: nodearr-s8
+
+x-nodearr: &nodearr
+  image: ${NODEARR_IMAGE:-nodearr:s8}
+  restart: "no"
+
+x-nodearr-env: &nodearr-env
+  PUID: "1000"
+  PGID: "1000"
+  TZ: Etc/UTC
+  Nodearr__Auth__Method: External
+  Nodearr__Log__AnalyticsEnabled: "false"
+  Nodearr__Transport__Relay: custom
+  Nodearr__Transport__RelayUrl: http://relay:3340
+  Nodearr__Transport__DisablePortMapping: "true"
+  # Short, so that the run with no direct route does not take minutes.
+  Nodearr__Transport__DirectTimeoutSeconds: "5"
+
+x-arr: &arr
+  restart: "no"
+
+services:
+  relay:
+    image: nodearr-test-relay
+    restart: "no"
+    networks: [side-a, side-b]
+
+  nodearr-a:
+    <<: *nodearr
+    hostname: nodearr-a
+    environment:
+      <<: *nodearr-env
+      Nodearr__Auth__ApiKey: ${NODEARR_A_API_KEY}
+      Nodearr__Transport__NodeName: John
+      # Slow enough for the script to act in the middle of a transfer.
+      Nodearr__Transport__UploadLimitKbps: ${UPLOAD_LIMIT_KBPS:-1024}
+    volumes:
+      - a-config:/config
+      - a-downloads:/downloads
+      - a-tv:/tv:ro
+      - a-movies:/movies:ro
+    networks: [side-a, wan]
+    ports:
+      - "127.0.0.1:6633:6633/tcp"
+
+  sonarr-a:
+    <<: *arr
+    image: lscr.io/linuxserver/sonarr:4.0.20.3014-ls327@sha256:dffc730adcb8b4f4342792fbb27fcad9c62fb8660523f2aeb082416980d7fe0c
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: Etc/UTC
+      SONARR__AUTH__APIKEY: ${SONARR_A_API_KEY}
+      SONARR__AUTH__METHOD: External
+      SONARR__LOG__ANALYTICSENABLED: "false"
+    volumes:
+      - sonarr-a-config:/config
+      - a-downloads:/downloads
+      - a-tv:/tv
+    networks: [side-a]
+    ports:
+      - "127.0.0.1:18989:8989"
+
+  radarr-a:
+    <<: *arr
+    image: lscr.io/linuxserver/radarr:6.4.4.10685-ls319@sha256:7dfd049e79c00b16fbc29c3f5d96a9e7b9e73a23930b4c5b3c4541d60b366814
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: Etc/UTC
+      RADARR__AUTH__APIKEY: ${RADARR_A_API_KEY}
+      RADARR__AUTH__METHOD: External
+      RADARR__LOG__ANALYTICSENABLED: "false"
+    volumes:
+      - radarr-a-config:/config
+      - a-downloads:/downloads
+      - a-movies:/movies
+    networks: [side-a]
+    ports:
+      - "127.0.0.1:17878:7878"
+
+  nodearr-b:
+    <<: *nodearr
+    hostname: nodearr-b
+    environment:
+      <<: *nodearr-env
+      Nodearr__Auth__ApiKey: ${NODEARR_B_API_KEY}
+      Nodearr__Transport__NodeName: Ryan
+    volumes:
+      - b-config:/config
+      - b-downloads:/downloads
+      - b-tv:/tv:ro
+      - b-movies:/movies:ro
+    networks: [side-b, wan]
+    ports:
+      - "127.0.0.1:6634:6633/tcp"
+
+  sonarr-b:
+    <<: *arr
+    image: lscr.io/linuxserver/sonarr:4.0.20.3014-ls327@sha256:dffc730adcb8b4f4342792fbb27fcad9c62fb8660523f2aeb082416980d7fe0c
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: Etc/UTC
+      SONARR__AUTH__APIKEY: ${SONARR_B_API_KEY}
+      SONARR__AUTH__METHOD: External
+      SONARR__LOG__ANALYTICSENABLED: "false"
+    volumes:
+      - sonarr-b-config:/config
+      - b-downloads:/downloads
+      - b-tv:/tv
+    networks: [side-b]
+    ports:
+      - "127.0.0.1:28989:8989"
+
+  radarr-b:
+    <<: *arr
+    image: lscr.io/linuxserver/radarr:6.4.4.10685-ls319@sha256:7dfd049e79c00b16fbc29c3f5d96a9e7b9e73a23930b4c5b3c4541d60b366814
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: Etc/UTC
+      RADARR__AUTH__APIKEY: ${RADARR_B_API_KEY}
+      RADARR__AUTH__METHOD: External
+      RADARR__LOG__ANALYTICSENABLED: "false"
+    volumes:
+      - radarr-b-config:/config
+      - b-downloads:/downloads
+      - b-movies:/movies
+    networks: [side-b]
+    ports:
+      - "127.0.0.1:27878:7878"
+
+networks:
+  side-a:
+  side-b:
+  wan:
+
+volumes:
+  a-config:
+  a-downloads:
+  a-tv:
+  a-movies:
+  sonarr-a-config:
+  radarr-a-config:
+  b-config:
+  b-downloads:
+  b-tv:
+  b-movies:
+  sonarr-b-config:
+  radarr-b-config:

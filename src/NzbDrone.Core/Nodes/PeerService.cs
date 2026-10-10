@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Extensions.Options;
 using NLog;
 using NzbDrone.Common.Exceptions;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Common.Options;
 using NzbDrone.Core.Lifecycle;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Nodes.Transport;
@@ -65,8 +67,9 @@ namespace NzbDrone.Core.Nodes
         private readonly IOfferExchange _offerExchange;
         private readonly IEventAggregator _eventAggregator;
         private readonly Logger _logger;
+        private readonly string _configuredName;
 
-        public PeerService(IPeerRepository peers, IPeerInviteRepository invites, IPeerTransport transport, IOfferExchange offerExchange, IEventAggregator eventAggregator, Logger logger)
+        public PeerService(IPeerRepository peers, IPeerInviteRepository invites, IPeerTransport transport, IOfferExchange offerExchange, IEventAggregator eventAggregator, Logger logger, IOptions<TransportOptions> options = null)
         {
             _peers = peers;
             _invites = invites;
@@ -74,10 +77,11 @@ namespace NzbDrone.Core.Nodes
             _offerExchange = offerExchange;
             _eventAggregator = eventAggregator;
             _logger = logger;
+            _configuredName = options?.Value?.NodeName;
         }
 
-        // Stands in for a display-name setting until there is one.
-        public virtual string LocalName => Environment.MachineName;
+        // What other nodes see this node called. There is no settings page for it yet.
+        public virtual string LocalName => _configuredName.IsNotNullOrWhiteSpace() ? _configuredName.Trim() : Environment.MachineName;
 
         public void Handle(ApplicationStartedEvent message)
         {
