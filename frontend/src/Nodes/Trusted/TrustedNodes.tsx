@@ -114,6 +114,13 @@ function PeerRow({ peer, isBusy, onAction }: PeerRowProps) {
         {peer.stateReason ? (
           <div className={styles.muted}>{peer.stateReason}</div>
         ) : null}
+        {peer.state === 'trusted' ? (
+          <div className={styles.muted}>
+            {peer.shareAll
+              ? translate('SharingEverything')
+              : translate('SharingListsOnly')}
+          </div>
+        ) : null}
         {peer.lastError ? (
           <div className={styles.error}>{peer.lastError}</div>
         ) : null}

@@ -5,6 +5,7 @@ using Nodearr.Http;
 using Nodearr.Http.REST;
 using NzbDrone.Core.Nodes;
 using NzbDrone.Core.Nodes.Transport;
+using NzbDrone.Core.Sharing;
 
 namespace Nodearr.Api.V5.Nodes;
 
@@ -46,10 +47,20 @@ public class NodeIdentityController : NodeControllerBase
 public class PeerController : NodeControllerBase
 {
     private readonly IPeerService _peerService;
+    private readonly ISharingService _sharingService;
 
-    public PeerController(IPeerService peerService)
+    public PeerController(IPeerService peerService, ISharingService sharingService)
     {
         _peerService = peerService;
+        _sharingService = sharingService;
+    }
+
+    [HttpPut("{id:int}/shareall")]
+    [Consumes("application/json")]
+    [Produces("application/json")]
+    public Ok<PeerResource> SetShareAll(int id, [FromBody] ShareAllResource resource)
+    {
+        return TypedResults.Ok(PeerResource.FromModel(_sharingService.SetShareAll(id, resource.ShareAll)));
     }
 
     [HttpGet]
@@ -128,7 +139,7 @@ public class InviteController : NodeControllerBase
             throw new BadRequestException("An invite can be valid for 1 hour to 7 days");
         }
 
-        var created = Run(() => _peerService.CreateInvite(TimeSpan.FromHours(resource.ValidHours), resource.Label));
+        var created = Run(() => _peerService.CreateInvite(TimeSpan.FromHours(resource.ValidHours), resource.Label, resource.ShareAll));
 
         return TypedResults.Ok(InviteResource.FromModel(created.Invite, created.Code));
     }

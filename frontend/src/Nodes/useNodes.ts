@@ -23,6 +23,7 @@ export interface Peer {
   stateChanged: string;
   lastSeen?: string;
   lastError?: string;
+  shareAll: boolean;
 }
 
 export interface Invite {
@@ -32,6 +33,7 @@ export interface Invite {
   expires: string;
   redeemedAt?: string;
   redeemedByNodeId?: string;
+  shareAll: boolean;
   code?: string;
 }
 
@@ -85,7 +87,11 @@ export const usePeerAction = () => {
 export const useCreateInvite = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<Invite, ApiError, { validHours: number; label: string }>({
+  return useMutation<
+    Invite,
+    ApiError,
+    { validHours: number; label: string; shareAll: boolean }
+  >({
     mutationFn: (body) => send<Invite>('POST', INVITES_PATH, body),
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: [INVITES_PATH] });

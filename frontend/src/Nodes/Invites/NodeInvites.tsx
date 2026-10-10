@@ -88,6 +88,7 @@ function InviteRow({
 function NodeInvites() {
   const [validHours, setValidHours] = useState(24);
   const [label, setLabel] = useState('');
+  const [shareAll, setShareAll] = useState(false);
   const [code, setCode] = useState('');
 
   const { data: invites = [] } = useInvites();
@@ -113,9 +114,13 @@ function NodeInvites() {
   const { mutate: createInvite } = create;
   const { mutate: redeemInvite } = redeem;
 
+  const handleShareAllChange = useCallback(() => {
+    setShareAll((current) => !current);
+  }, []);
+
   const handleCreatePress = useCallback(() => {
-    createInvite({ validHours, label });
-  }, [createInvite, validHours, label]);
+    createInvite({ validHours, label, shareAll });
+  }, [createInvite, validHours, label, shareAll]);
 
   const handleRedeemPress = useCallback(() => {
     redeemInvite(code.trim(), { onSuccess: () => setCode('') });
@@ -167,6 +172,15 @@ function NodeInvites() {
               {translate('InviteCreate')}
             </SpinnerButton>
           </div>
+
+          <label className={styles.muted}>
+            <input
+              type="checkbox"
+              checked={shareAll}
+              onChange={handleShareAllChange}
+            />{' '}
+            {translate('InviteShareAll')}
+          </label>
 
           {create.error ? (
             <Alert kind={kinds.DANGER}>{getErrorMessage(create.error)}</Alert>

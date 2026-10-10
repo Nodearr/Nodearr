@@ -9,6 +9,8 @@ using NzbDrone.Core.Lifecycle;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Nodes;
 using NzbDrone.Core.Nodes.Transport;
+using NzbDrone.Core.PeerCatalog;
+using NzbDrone.Core.Sharing;
 using NzbDrone.Core.Test.Framework;
 using NzbDrone.Test.Common;
 
@@ -143,6 +145,66 @@ namespace NzbDrone.Core.Test.Nodes
 
             Assert.Throws<TransportException>(() => _carol.Transport.Request(_alice.Address, ping, TimeSpan.FromSeconds(1)))
                   .Failure.Should().Be(TransportFailure.NotAuthorized);
+        }
+
+        [Test]
+        public void a_stranger_should_not_be_given_the_catalog()
+        {
+            var request = new PeerMessage { Type = PeerMessageTypes.Catalog }.ToBytes();
+
+            Assert.Throws<TransportException>(() => _carol.Transport.Request(_alice.Address, request, TimeSpan.FromSeconds(1)))
+                  .Failure.Should().Be(TransportFailure.NotAuthorized);
+            _alice.Offers.Verify(o => o.Answer(It.IsAny<Peer>(), It.IsAny<PeerMessage>()), Times.Never());
+        }
+
+        [Test]
+        public void a_trusted_node_should_be_given_the_catalog_built_for_it()
+        {
+            GivenPaired(_alice, _bob);
+
+            var reply = _bob.Service.Ask(_bob.PeerFor(_alice), new PeerMessage { Type = PeerMessageTypes.Catalog });
+
+            reply.CatalogVersion.Should().Be("v1");
+            _alice.Offers.Verify(o => o.Answer(It.Is<Peer>(p => p.NodeId == _bob.NodeId), It.IsAny<PeerMessage>()), Times.Once());
+        }
+
+        [Test]
+        public void a_revoked_node_should_not_be_given_the_catalog()
+        {
+            GivenPaired(_alice, _bob);
+            _alice.Service.Revoke(_alice.PeerFor(_bob).Id);
+
+            var request = new PeerMessage { Type = PeerMessageTypes.Catalog }.ToBytes();
+
+            Assert.Throws<TransportException>(() => _bob.Transport.Request(_alice.Address, request, TimeSpan.FromSeconds(1)));
+            _alice.Offers.Verify(o => o.Answer(It.IsAny<Peer>(), It.IsAny<PeerMessage>()), Times.Never());
+        }
+
+        [Test]
+        public void a_new_peer_should_be_offered_nothing_unless_the_invite_said_otherwise()
+        {
+            GivenPaired(_alice, _bob);
+
+            _alice.PeerFor(_bob).ShareAll.Should().BeFalse();
+        }
+
+        [Test]
+        public void an_invite_can_share_everything_with_whoever_redeems_it()
+        {
+            _bob.Service.RedeemInvite(_alice.Service.CreateInvite(TimeSpan.FromHours(1), null, true).Code);
+
+            _alice.PeerFor(_bob).ShareAll.Should().BeTrue();
+            _bob.PeerFor(_alice).ShareAll.Should().BeFalse();
+        }
+
+        [Test]
+        public void a_sharing_hint_should_ask_for_the_catalog_to_be_fetched_again()
+        {
+            GivenPaired(_alice, _bob);
+
+            _bob.Service.Ask(_bob.PeerFor(_alice), new PeerMessage { Type = PeerMessageTypes.CatalogChanged });
+
+            _alice.Events.Verify(e => e.PublishEvent(It.Is<PeerCatalogChangedEvent>(c => c.PeerId == _alice.PeerFor(_bob).Id)), Times.Once());
         }
 
         [Test]
@@ -334,7 +396,9 @@ namespace NzbDrone.Core.Test.Nodes
                     return i;
                 });
 
-                Service = new NamedPeerService(name, peers.Object, invites.Object, Transport, Events.Object, logger);
+                Offers.Setup(o => o.Answer(It.IsAny<Peer>(), It.IsAny<PeerMessage>())).Returns(new PeerReply { Ok = true, CatalogVersion = "v1" });
+
+                Service = new NamedPeerService(name, peers.Object, invites.Object, Transport, Offers.Object, Events.Object, logger);
                 Service.Handle(new ApplicationStartedEvent());
             }
 
@@ -344,6 +408,7 @@ namespace NzbDrone.Core.Test.Nodes
             public List<Peer> Peers { get; } = new();
             public List<PeerInvite> Invites { get; } = new();
             public Mock<IEventAggregator> Events { get; } = new();
+            public Mock<IOfferExchange> Offers { get; } = new();
             public NodeAddress Address => Transport.GetLocalAddress();
 
             public Peer PeerFor(TestNode other)
@@ -356,8 +421,8 @@ namespace NzbDrone.Core.Test.Nodes
         {
             private readonly string _name;
 
-            public NamedPeerService(string name, IPeerRepository peers, IPeerInviteRepository invites, IPeerTransport transport, IEventAggregator eventAggregator, Logger logger)
-                : base(peers, invites, transport, eventAggregator, logger)
+            public NamedPeerService(string name, IPeerRepository peers, IPeerInviteRepository invites, IPeerTransport transport, IOfferExchange offers, IEventAggregator eventAggregator, Logger logger)
+                : base(peers, invites, transport, offers, eventAggregator, logger)
             {
                 _name = name;
             }

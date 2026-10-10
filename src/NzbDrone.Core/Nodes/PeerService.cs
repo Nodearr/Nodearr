@@ -7,6 +7,8 @@ using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Lifecycle;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Nodes.Transport;
+using NzbDrone.Core.PeerCatalog;
+using NzbDrone.Core.Sharing;
 
 namespace NzbDrone.Core.Nodes
 {
@@ -40,7 +42,10 @@ namespace NzbDrone.Core.Nodes
         NodeIdentity GetIdentity();
         List<Peer> All();
         List<PeerInvite> Invites();
-        CreatedInvite CreateInvite(TimeSpan validFor, string label);
+        CreatedInvite CreateInvite(TimeSpan validFor, string label, bool shareAll = false);
+
+        // Sends a message to a trusted node and returns its answer.
+        PeerReply Ask(Peer peer, PeerMessage message);
         void DeleteInvite(int id);
         Peer RedeemInvite(string code);
         Peer Ping(int id);
@@ -57,14 +62,16 @@ namespace NzbDrone.Core.Nodes
         private readonly IPeerRepository _peers;
         private readonly IPeerInviteRepository _invites;
         private readonly IPeerTransport _transport;
+        private readonly IOfferExchange _offerExchange;
         private readonly IEventAggregator _eventAggregator;
         private readonly Logger _logger;
 
-        public PeerService(IPeerRepository peers, IPeerInviteRepository invites, IPeerTransport transport, IEventAggregator eventAggregator, Logger logger)
+        public PeerService(IPeerRepository peers, IPeerInviteRepository invites, IPeerTransport transport, IOfferExchange offerExchange, IEventAggregator eventAggregator, Logger logger)
         {
             _peers = peers;
             _invites = invites;
             _transport = transport;
+            _offerExchange = offerExchange;
             _eventAggregator = eventAggregator;
             _logger = logger;
         }
@@ -122,7 +129,23 @@ namespace NzbDrone.Core.Nodes
             return _invites.All().OrderByDescending(i => i.Created).ToList();
         }
 
-        public CreatedInvite CreateInvite(TimeSpan validFor, string label)
+        public PeerReply Ask(Peer peer, PeerMessage message)
+        {
+            if (peer.State != PeerState.Trusted)
+            {
+                throw new PeerException("Only a trusted node can be contacted");
+            }
+
+            var local = _transport.GetLocalAddress();
+
+            message.SenderName = LocalName;
+            message.SenderRelayUrl = local.RelayUrl;
+            message.SenderIpAddresses = local.IpAddresses;
+
+            return Send(peer, message);
+        }
+
+        public CreatedInvite CreateInvite(TimeSpan validFor, string label, bool shareAll = false)
         {
             var address = _transport.GetLocalAddress();
             var now = DateTime.UtcNow;
@@ -133,7 +156,8 @@ namespace NzbDrone.Core.Nodes
                 SecretHash = InviteCode.HashSecret(secret),
                 Label = label,
                 Created = now,
-                Expires = now + validFor
+                Expires = now + validFor,
+                ShareAll = shareAll
             });
 
             var code = new InviteCode
@@ -208,7 +232,7 @@ namespace NzbDrone.Core.Nodes
                 if (!alreadyTrusted)
                 {
                     peer.LastError = ex.Message;
-                    _peers.Update(peer);
+                    SaveContact(peer);
                 }
 
                 throw new PeerException("Unable to reach the node that created this invite: " + ex.Message);
@@ -219,7 +243,7 @@ namespace NzbDrone.Core.Nodes
                 if (!alreadyTrusted)
                 {
                     peer.LastError = "The other node did not accept the invite";
-                    _peers.Update(peer);
+                    SaveContact(peer);
                 }
 
                 throw new PeerException("The other node did not accept this invite. It may have expired or already been used");
@@ -259,7 +283,7 @@ namespace NzbDrone.Core.Nodes
                 peer.LastError = $"{ex.Failure}: {ex.Message}";
             }
 
-            return _peers.Update(peer);
+            return SaveContact(peer);
         }
 
         public Peer Block(int id)
@@ -324,6 +348,7 @@ namespace NzbDrone.Core.Nodes
             }
 
             _peers.Delete(id);
+            _eventAggregator.PublishEvent(new PeerDeletedEvent(id));
         }
 
         // Every message from another node arrives here. Returning null refuses it.
@@ -353,9 +378,19 @@ namespace NzbDrone.Core.Nodes
                 case PeerMessageTypes.Ping when peer is { State: PeerState.Trusted }:
                     peer.SetAddress(message.SenderRelayUrl, message.SenderIpAddresses);
                     peer.LastSeen = DateTime.UtcNow;
-                    _peers.Update(peer);
+                    SaveContact(peer);
 
                     return new PeerReply { Ok = true, Name = LocalName }.ToBytes();
+
+                // What this node is told is decided by the sharing rules, for this peer only.
+                case PeerMessageTypes.Catalog when peer is { State: PeerState.Trusted }:
+                    return _offerExchange.Answer(peer, message).ToBytes();
+
+                // Only a hint. This node fetches the catalog itself, when it gets to it.
+                case PeerMessageTypes.CatalogChanged when peer is { State: PeerState.Trusted }:
+                    _eventAggregator.PublishEvent(new PeerCatalogChangedEvent(peer.Id));
+
+                    return new PeerReply { Ok = true }.ToBytes();
 
                 case PeerMessageTypes.Revoke when peer is { State: PeerState.Trusted }:
                     ChangeState(peer, PeerState.Revoked, "Revoked by the other node");
@@ -390,7 +425,11 @@ namespace NzbDrone.Core.Nodes
             peer.SetAddress(message.SenderRelayUrl, message.SenderIpAddresses);
             peer.LastSeen = now;
             peer.LastError = null;
+
+            // The inviter chose this when creating the invite. Otherwise a new peer is offered nothing.
+            peer.ShareAll = invite.ShareAll;
             ChangeState(peer, PeerState.Trusted, null);
+            _peers.SetFields(peer, p => p.ShareAll);
 
             _logger.Info("Paired with {0} ({1})", peer.Name, remoteNodeId);
 
@@ -422,12 +461,29 @@ namespace NzbDrone.Core.Nodes
             peer.StateReason = reason;
             peer.StateChanged = DateTime.UtcNow;
 
-            peer = isNew ? _peers.Insert(peer) : _peers.Update(peer);
+            if (isNew)
+            {
+                peer = _peers.Insert(peer);
+            }
+            else
+            {
+                _peers.SetFields(peer, p => p.State, p => p.StateReason, p => p.StateChanged);
+                SaveContact(peer);
+            }
 
             if (isNew || previous != state)
             {
                 _eventAggregator.PublishEvent(new PeerStateChangedEvent(peer, previous));
             }
+
+            return peer;
+        }
+
+        // Writes only the fields this service owns. A whole-row update from here could undo a sharing
+        // or catalog change made elsewhere while a message was in flight.
+        private Peer SaveContact(Peer peer)
+        {
+            _peers.SetFields(peer, p => p.Name, p => p.RelayUrl, p => p.IpAddresses, p => p.LastSeen, p => p.LastError);
 
             return peer;
         }

@@ -1,16 +1,17 @@
 import React from 'react';
 import { Route } from 'react-router-dom';
-import CatalogIndex from "Catalog/Index/CatalogIndex";
-import LocalCatalog from "Catalog/Local/LocalCatalog";
-import NodeInvites from "Nodes/Invites/NodeInvites";
-import NodesIndex from "Nodes/NodesIndex/NodesIndex";
-import NotFound from "Components/NotFound";
-import PeerCatalog from "Catalog/Peer/PeerCatalog";
-import Transfers from "Activity/Transfers/Transfers";
-import TrustedNodes from "Nodes/Trusted/TrustedNodes";
-import Settings from "Settings/Settings";
+import Transfers from 'Activity/Transfers/Transfers';
+import CatalogIndex from 'Catalog/Index/CatalogIndex';
+import LocalCatalog from 'Catalog/Local/LocalCatalog';
+import PeerCatalog from 'Catalog/Peer/PeerCatalog';
+import Sharing from 'Catalog/Sharing/Sharing';
+import NotFound from 'Components/NotFound';
+import NodeInvites from 'Nodes/Invites/NodeInvites';
+import NodesIndex from 'Nodes/NodesIndex/NodesIndex';
+import TrustedNodes from 'Nodes/Trusted/TrustedNodes';
+import Settings from 'Settings/Settings';
 import Status from 'System/Status/Status';
-import ApplicationSettings from "../Settings/Applications/ApplicationSettings";
+import ApplicationSettings from '../Settings/Applications/ApplicationSettings';
 
 export function appRouteElements() {
   return (
@@ -19,21 +20,23 @@ export function appRouteElements() {
         Catalog
       */}
 
-      <Route path={"/"} element={<CatalogIndex />} />
+      <Route path="/" element={<CatalogIndex />} />
 
-      <Route path={"/catalog/local"} element={<LocalCatalog />} />
+      <Route path="/catalog/local" element={<LocalCatalog />} />
 
-      <Route path={"/catalog/peers"} element={<PeerCatalog />} />
+      <Route path="/catalog/peers" element={<PeerCatalog />} />
+
+      <Route path="/catalog/sharing" element={<Sharing />} />
 
       {/*
         Nodes
       */}
 
-      <Route path={"/nodes"} element={<NodesIndex />} />
+      <Route path="/nodes" element={<NodesIndex />} />
 
-      <Route path={"/nodes/trusted"} element={<TrustedNodes />} />
+      <Route path="/nodes/trusted" element={<TrustedNodes />} />
 
-      <Route path={"/nodes/invites"} element={<NodeInvites />} />
+      <Route path="/nodes/invites" element={<NodeInvites />} />
 
       {/*
         Activity
@@ -49,7 +52,10 @@ export function appRouteElements() {
 
       <Route path="/settings/apps" element={<ApplicationSettings />} />
 
-      <Route path="/settings/general" element={<div>Placeholder for general settings</div>} />
+      <Route
+        path="/settings/general"
+        element={<div>Placeholder for general settings</div>}
+      />
 
       {/*
         System

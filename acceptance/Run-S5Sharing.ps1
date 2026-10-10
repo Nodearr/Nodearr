@@ -1,0 +1,370 @@
+#requires -Version 7
+<#
+.SYNOPSIS
+    S5 acceptance: sharing rules and catalog exchange between two real Nodearr instances.
+
+.DESCRIPTION
+    Node A imports a real catalog from Sonarr and Radarr containers. Node B imports from the same
+    Sonarr only. The two pair, and the script checks from B's side exactly what A's sharing rules let
+    B see, and how B compares it with its own catalog.
+
+    Needs Docker and ffmpeg (as S3 does) and the transport sidecar (as S4 does).
+    Everything lives in .run/s5 next to this script and in the nodearr-s5 compose project.
+
+.PARAMETER TransportBin
+    Path to the built nodearr-transport binary.
+
+.PARAMETER KeepRunning
+    Leave both instances and the containers running afterwards: A on port 6633, B on port 6634.
+#>
+[CmdletBinding()]
+param(
+    [string] $TransportBin,
+    [switch] $KeepRunning
+)
+
+$ErrorActionPreference = 'Stop'
+# Version 1 only: the API leaves null properties out of its JSON, and reading one must give $null.
+Set-StrictMode -Version 1
+
+$root = $PSScriptRoot
+$repo = Resolve-Path (Join-Path $root '..')
+$run = Join-Path $root '.run/s5'
+$dll = Join-Path $repo '_output/net10.0/Nodearr.Console.dll'
+$composeFiles = @('-f', (Join-Path $repo 'spikes/arr-contract/docker-compose.yml'), '-f', (Join-Path $root 'docker-compose.library.yml'))
+$envFile = Join-Path $run '.env'
+$downloads = Join-Path $run 'downloads'
+$library = Join-Path $run 'library'
+$peerLibrary = Join-Path $run 'peer-library'
+
+if (-not (Test-Path $dll)) { throw 'Build Nodearr first: dotnet build src/Nodearr.sln' }
+if (-not $TransportBin) {
+    $target = $env:CARGO_TARGET_DIR ? $env:CARGO_TARGET_DIR : (Join-Path $repo 'transport/target')
+    $TransportBin = Join-Path $target ('release/nodearr-transport' + ($IsWindows ? '.exe' : ''))
+}
+if (-not (Test-Path $TransportBin)) { throw "Build the transport first: cargo build --release --manifest-path transport/Cargo.toml (looked for $TransportBin)" }
+
+function New-Key { -join ((1..32) | ForEach-Object { '{0:x}' -f (Get-Random -Maximum 16) }) }
+
+$nodes = @{
+    A = @{ Port = 6633; Data = Join-Path $run 'a'; Key = New-Key }
+    B = @{ Port = 6634; Data = Join-Path $run 'b'; Key = New-Key }
+}
+$arr = @{
+    sonarr = @{ Url = 'http://127.0.0.1:18989/api/v3'; Key = New-Key }
+    radarr = @{ Url = 'http://127.0.0.1:17878/api/v3'; Key = New-Key }
+}
+
+function Invoke-Compose {
+    docker compose -p nodearr-s5 @composeFiles --env-file $envFile @args
+    if ($LASTEXITCODE -ne 0) { throw "docker compose $($args -join ' ') failed" }
+}
+
+function Stop-Node {
+    param([string] $Name)
+    $pidFile = Join-Path $run "$Name.pid"
+    if (Test-Path $pidFile) {
+        Get-Process -Id ([int](Get-Content $pidFile)) -ErrorAction SilentlyContinue | Stop-Process -Force -Confirm:$false
+        Remove-Item $pidFile -Force
+    }
+}
+
+function Invoke-Http {
+    param([string] $BaseUrl, [string] $Key, [string] $Method, [string] $Path, $Body, [switch] $AllowError)
+
+    $request = @{ Uri = "$BaseUrl$Path"; Method = $Method; Headers = @{ 'X-Api-Key' = $Key }; SkipHttpErrorCheck = $true; StatusCodeVariable = 'status' }
+    if ($null -ne $Body) { $request.Body = ($Body | ConvertTo-Json -Depth 30); $request.ContentType = 'application/json' }
+
+    $response = Invoke-RestMethod @request
+    if ($status -ge 400) {
+        if ($AllowError) { return @{ Failed = $true; Status = $status } }
+        throw "$Method $BaseUrl$Path -> $status $($response | ConvertTo-Json -Depth 6 -Compress)"
+    }
+    return $response
+}
+
+function Invoke-Node { param([string] $Name, [string] $Method, [string] $Path, $Body) Invoke-Http "http://127.0.0.1:$($nodes[$Name].Port)/api/v5" $nodes[$Name].Key $Method $Path $Body }
+function Invoke-Arr { param([string] $App, [string] $Method, [string] $Path, $Body) Invoke-Http $arr[$App].Url $arr[$App].Key $Method $Path $Body }
+
+function Wait-Until {
+    param([scriptblock] $Condition, [int] $TimeoutSec = 60, [string] $What, [double] $EverySec = 1)
+    $deadline = (Get-Date).AddSeconds($TimeoutSec)
+    while ((Get-Date) -lt $deadline) {
+        $value = & $Condition
+        if ($value) { return $value }
+        Start-Sleep -Seconds $EverySec
+    }
+    throw "Timed out after ${TimeoutSec}s waiting for $What"
+}
+
+function Invoke-NodeCommand {
+    param([string] $Name, [hashtable] $Command)
+    $queued = Invoke-Node $Name POST '/command' $Command
+    Wait-Until -What "$Name command $($Command.name)" -TimeoutSec 180 -Condition {
+        $state = Invoke-Node $Name GET "/command/$($queued.id)"
+        if ($state.status -eq 'failed') { throw "$Name command $($Command.name) failed: $($state.message)" }
+        $state.status -eq 'completed'
+    } | Out-Null
+}
+
+function Invoke-ArrCommand {
+    param([string] $App, [hashtable] $Command)
+    $queued = Invoke-Arr $App POST '/command' $Command
+    Wait-Until -What "$App command $($Command.name)" -TimeoutSec 180 -Condition { (Invoke-Arr $App GET "/command/$($queued.id)").status -eq 'completed' } | Out-Null
+}
+
+function Start-Node {
+    param([string] $Name)
+
+    $node = $nodes[$Name]
+    $env:Nodearr__Server__Port = $node.Port
+    $env:Nodearr__Auth__ApiKey = $node.Key
+    $env:Nodearr__Auth__Method = 'External'
+    $env:Nodearr__Log__AnalyticsEnabled = 'false'
+    $env:Nodearr__Transport__BinaryPath = $TransportBin
+    $env:Nodearr__Transport__Relay = 'disabled'
+    $env:Nodearr__Transport__DisablePortMapping = 'true'
+
+    $process = Start-Process dotnet -ArgumentList "`"$dll`"", '-nobrowser', "-data=`"$($node.Data)`"" -PassThru -WindowStyle Hidden `
+        -RedirectStandardOutput (Join-Path $run "$Name.out.log") -RedirectStandardError (Join-Path $run "$Name.err.log")
+    $process.Id | Set-Content (Join-Path $run "$Name.pid")
+
+    Wait-Until -What "node $Name and its transport" -TimeoutSec 90 -Condition {
+        try { (Invoke-Node $Name GET '/nodes/identity').transportRunning } catch { $false }
+    } | Out-Null
+}
+
+function Add-Application {
+    param([string] $Node, [string] $Implementation, [string] $Url, [string] $ApiKey, [string] $SyncLevel)
+
+    $definition = Invoke-Node $Node GET '/applications/schema' | Where-Object implementation -eq $Implementation
+    foreach ($pair in @{ nodearrUrl = "http://host.docker.internal:$($nodes[$Node].Port)"; baseUrl = $Url; apiKey = $ApiKey }.GetEnumerator()) {
+        ($definition.fields | Where-Object name -eq $pair.Key) | Add-Member -NotePropertyName value -NotePropertyValue $pair.Value -Force
+    }
+    $definition | Add-Member -Force -NotePropertyMembers @{ name = $Implementation; syncLevel = $SyncLevel }
+    return (Invoke-Node $Node POST '/applications' $definition).id
+}
+
+# What B currently holds of A's catalog, once B has fetched the version A now offers.
+function Get-Seen {
+    param([int] $ExpectedCount)
+
+    return Wait-Until -What "B to hold $ExpectedCount of A's files" -TimeoutSec 45 -Condition {
+        $items = @((Invoke-Node B GET '/catalog/peers/items?pageSize=200').records)
+        # Wrapped, because an empty list on its own would read as "not yet".
+        if ($items.Count -eq $ExpectedCount) { @{ Items = $items } }
+    }
+}
+
+$results = [System.Collections.Generic.List[object]]::new()
+
+function Assert-That {
+    param([string] $Name, [bool] $Passed, $Evidence)
+    $results.Add([ordered]@{ check = $Name; passed = $Passed; evidence = $Evidence })
+    Write-Host ("[{0}] {1}" -f ($Passed ? 'PASS' : 'FAIL'), $Name) -ForegroundColor ($Passed ? 'Green' : 'Red')
+    if (-not $Passed) { Write-Host ("       " + ($Evidence | ConvertTo-Json -Depth 6 -Compress)) -ForegroundColor DarkGray }
+}
+
+function New-Media {
+    param([string] $Path, [int] $Seconds, [string] $Source, [string] $VideoArgs)
+    if (Test-Path $Path) { return }
+    $encode = $VideoArgs -split ' '
+    ffmpeg -hide_banner -loglevel error -y -f lavfi -i $Source -f lavfi -i 'sine=frequency=440:sample_rate=48000' -t $Seconds `
+        -c:v libx264 -preset ultrafast -pix_fmt yuv420p @encode -c:a aac -b:a 64k $Path
+    if ($LASTEXITCODE -ne 0) { throw 'ffmpeg failed' }
+}
+
+# --- Fresh state -------------------------------------------------------------------------------
+
+New-Item -ItemType Directory -Force $run, $peerLibrary | Out-Null
+'A', 'B' | ForEach-Object { Stop-Node $_ }
+
+# Throwaway keys for this run, kept so the instances can be poked at afterwards with -KeepRunning.
+@{ A = $nodes.A.Key; B = $nodes.B.Key } | ConvertTo-Json | Set-Content (Join-Path $run 'node-keys.json')
+
+@("SONARR_API_KEY=$($arr.sonarr.Key)", "RADARR_API_KEY=$($arr.radarr.Key)", "PROWLARR_API_KEY=$(New-Key)",
+  "LIBRARY_DIR=$($library -replace '\\', '/')", "DOWNLOADS_DIR=$($downloads -replace '\\', '/')") | Set-Content $envFile
+
+$tvMedia = Join-Path $peerLibrary 'episode-720p.mkv'
+$movieMedia = Join-Path $peerLibrary 'movie-720p.mkv'
+New-Media $tvMedia 120 'testsrc2=size=1280x720:rate=24,noise=alls=30:allf=t' '-b:v 1400k -maxrate 1800k -bufsize 3600k'
+New-Media $movieMedia 660 'smptebars=size=1280x720:rate=5' '-crf 30'
+
+Invoke-Compose down -v 2>&1 | Out-Null
+foreach ($dir in $nodes.A.Data, $nodes.B.Data, $downloads, $library) { if (Test-Path $dir) { Remove-Item $dir -Recurse -Force } }
+New-Item -ItemType Directory -Force $nodes.A.Data, $nodes.B.Data, (Join-Path $downloads 'complete'), (Join-Path $library 'tv'), (Join-Path $library 'movies') | Out-Null
+
+try {
+    Start-Node A
+    Start-Node B
+    Invoke-Compose up -d sonarr radarr 2>&1 | Out-Null
+    foreach ($app in 'sonarr', 'radarr') {
+        Wait-Until -What "$app API" -TimeoutSec 180 -Condition { try { Invoke-Arr $app GET '/system/status' } catch { $null } } | Out-Null
+    }
+
+    # --- Catalogs --------------------------------------------------------------------------------
+
+    # A registers itself in both apps. B only reads Sonarr and leaves A's registration alone.
+    Add-Application A Sonarr 'http://127.0.0.1:18989' $arr.sonarr.Key 'fullSync' | Out-Null
+    Add-Application A Radarr 'http://127.0.0.1:17878' $arr.radarr.Key 'fullSync' | Out-Null
+    foreach ($app in 'sonarr', 'radarr') {
+        Wait-Until -What "A's indexer in $app" -Condition { Invoke-Arr $app GET '/indexer' | Where-Object name -eq 'Nodearr' } | Out-Null
+    }
+
+    docker exec nodearr-s5-sonarr-1 chown abc:abc /tv | Out-Null
+    docker exec nodearr-s5-radarr-1 chown abc:abc /movies | Out-Null
+
+    Invoke-Arr sonarr POST '/rootfolder' @{ path = '/tv' } | Out-Null
+    $series = (Invoke-Arr sonarr GET '/series/lookup?term=tvdb:75669')[0]
+    $series | Add-Member -Force -NotePropertyMembers @{
+        qualityProfileId = 1; rootFolderPath = '/tv'; monitored = $true; seasonFolder = $true
+        addOptions = @{ monitor = 'all'; searchForMissingEpisodes = $false; searchForCutoffUnmetEpisodes = $false }
+    }
+    $series = Invoke-Arr sonarr POST '/series' $series
+    $episodes = Wait-Until -What 'Sonarr episode list' -Condition {
+        $all = @(Invoke-Arr sonarr GET "/episode?seriesId=$($series.id)" | Where-Object { $_.seasonNumber -eq 1 -and $_.episodeNumber -le 2 })
+        if ($all.Count -eq 2) { $all | Sort-Object episodeNumber }
+    }
+
+    Invoke-Arr radarr POST '/rootfolder' @{ path = '/movies' } | Out-Null
+    $movie = (Invoke-Arr radarr GET '/movie/lookup?term=tmdb:10331')[0]
+    $movie | Add-Member -Force -NotePropertyMembers @{ qualityProfileId = 1; rootFolderPath = '/movies'; monitored = $true; minimumAvailability = 'released'; addOptions = @{ searchForMovie = $false } }
+    $movie = Invoke-Arr radarr POST '/movie' $movie
+
+    $published = [datetime]::UtcNow.Date.AddDays(-2)
+    [ordered]@{
+        completeDirLocal = (Join-Path $downloads 'complete'); completeDirReported = '/downloads/complete'; transferSeconds = 2
+        candidates = @(
+            [ordered]@{ id = 'tv-e1'; kind = 'tv'; category = 5040; tvdbId = 75669; season = 1; episode = 1; title = 'Pingu.S01E01.720p.WEB-DL.AAC2.0.H.264-NODEARR'; sourcePath = $tvMedia; publishedAt = $published.AddMinutes(1).ToString('o') }
+            [ordered]@{ id = 'tv-e2'; kind = 'tv'; category = 5040; tvdbId = 75669; season = 1; episode = 2; title = 'Pingu.S01E02.720p.WEB-DL.AAC2.0.H.264-NODEARR'; sourcePath = $tvMedia; publishedAt = $published.AddMinutes(2).ToString('o') }
+            [ordered]@{ id = 'movie-1'; kind = 'movie'; category = 2040; tmdbId = 10331; imdbId = $movie.imdbId; title = 'Night.of.the.Living.Dead.1968.720p.WEB-DL.AAC2.0.H.264-NODEARR'; sourcePath = $movieMedia; publishedAt = $published.AddHours(1).ToString('o') }
+        )
+    } | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $nodes.A.Data 'arr-contract-spike.json')
+
+    Invoke-ArrCommand sonarr @{ name = 'EpisodeSearch'; episodeIds = @($episodes[0].id) }
+    Invoke-ArrCommand sonarr @{ name = 'EpisodeSearch'; episodeIds = @($episodes[1].id) }
+    Invoke-ArrCommand radarr @{ name = 'MoviesSearch'; movieIds = @($movie.id) }
+    Wait-Until -What 'Sonarr to import two episodes' -TimeoutSec 240 -EverySec 3 -Condition {
+        Invoke-Arr sonarr POST '/command' @{ name = 'RefreshMonitoredDownloads' } | Out-Null
+        @(Invoke-Arr sonarr GET "/episode?seriesId=$($series.id)" | Where-Object hasFile).Count -eq 2
+    } | Out-Null
+    Wait-Until -What 'Radarr to import the movie' -TimeoutSec 240 -EverySec 3 -Condition {
+        Invoke-Arr radarr POST '/command' @{ name = 'RefreshMonitoredDownloads' } | Out-Null
+        (Invoke-Arr radarr GET "/movie/$($movie.id)").hasFile
+    } | Out-Null
+
+    # A's catalog: two Pingu episodes and one movie.
+    Invoke-NodeCommand A @{ name = 'CatalogRefresh' }
+
+    # Then episode 2 is deleted in Sonarr, and only B refreshes. A still offers it. B no longer has it.
+    $episodeTwoFile = Invoke-Arr sonarr GET "/episodefile?seriesId=$($series.id)" | Where-Object { $_.relativePath -like '*S01E02*' } | Select-Object -First 1
+    Invoke-Arr sonarr DELETE "/episodefile/$($episodeTwoFile.id)" | Out-Null
+    Add-Application B Sonarr 'http://127.0.0.1:18989' $arr.sonarr.Key 'addOnly' | Out-Null
+    Invoke-NodeCommand B @{ name = 'CatalogRefresh' }
+
+    $titles = Invoke-Node A GET '/sharing/titles'
+    $pingu = $titles | Where-Object title -eq 'Pingu'
+    $night = $titles | Where-Object title -eq 'Night of the Living Dead'
+    Assert-That 'A lists the series and movie it can share' ($pingu.files -eq 2 -and $night.files -eq 1 -and @($titles).Count -eq 2) @{ titles = @($titles | ForEach-Object { "$($_.title): $($_.files)" }) }
+
+    # --- Pairing: nothing is shared by default ---------------------------------------------------
+
+    $invite = Invoke-Node A POST '/nodes/invites' @{ validHours = 1; label = 's5' }
+    Invoke-Node B POST '/nodes/invites/redeem' @{ code = $invite.code } | Out-Null
+    $bOnA = Invoke-Node A GET '/nodes/peers' | Select-Object -First 1
+    $aOnB = Invoke-Node B GET '/nodes/peers' | Select-Object -First 1
+
+    $synced = Wait-Until -What "B's first sync with A" -TimeoutSec 45 -Condition {
+        $summary = Invoke-Node B GET '/catalog/peers' | Where-Object peerId -eq $aOnB.id
+        if ($summary.catalogSyncedAt) { $summary }
+    }
+    Assert-That 'A newly trusted peer is offered nothing' (
+        -not $bOnA.shareAll -and ($synced.notInLibrary + $synced.missing + $synced.upgrade + $synced.have) -eq 0 -and -not $synced.catalogError -and
+        (Invoke-Node B GET '/catalog/peers/items?pageSize=50').totalRecords -eq 0
+    ) @{ summary = $synced }
+
+    # --- Share everything except Hidden ----------------------------------------------------------
+
+    Invoke-Node A PUT "/nodes/peers/$($bOnA.id)/shareall" @{ shareAll = $true } | Out-Null
+    $seen = (Get-Seen 3).Items
+    $summary = Invoke-Node B GET '/catalog/peers' | Where-Object peerId -eq $aOnB.id
+    $byTitle = @{}
+    foreach ($item in $seen) { $byTitle[$item.releaseTitle] = $item }
+    Assert-That 'With "share everything", the peer is told about every file, promptly and without asking again' (
+        $seen.Count -eq 3 -and $summary.have -eq 1 -and $summary.missing -eq 1 -and $summary.notInLibrary -eq 1
+    ) @{ summary = $summary; items = @($seen | ForEach-Object { "$($_.releaseTitle) -> $($_.localStatus)" }) }
+
+    $episodeOne = $seen | Where-Object { $_.mediaKind -eq 'tv' -and (@($_.episodeNumbers) -join ',') -eq '1' }
+    $episodeTwo = $seen | Where-Object { $_.mediaKind -eq 'tv' -and (@($_.episodeNumbers) -join ',') -eq '2' }
+    $theMovie = $seen | Where-Object mediaKind -eq 'movie'
+    Assert-That 'The peer compares what it is offered with its own catalog' (
+        $episodeOne.localStatus -eq 'have' -and $episodeTwo.localStatus -eq 'missing' -and $theMovie.localStatus -eq 'notInLibrary' -and
+        $episodeOne.title -eq 'Pingu' -and $episodeOne.tvdbId -eq 75669 -and $theMovie.tmdbId -eq 10331 -and $theMovie.quality -eq 'WEBDL-720p'
+    ) @{ episode1 = $episodeOne.localStatus; episode2 = $episodeTwo.localStatus; movie = $theMovie.localStatus }
+
+    $raw = (Invoke-WebRequest "http://127.0.0.1:$($nodes.B.Port)/api/v5/catalog/peers/items?pageSize=200" -Headers @{ 'X-Api-Key' = $nodes.B.Key }).Content
+    Assert-That 'What the peer receives says nothing about where the files are' (
+        $raw -notmatch '/tv/' -and $raw -notmatch '/movies/' -and $raw -notmatch 'Season 1' -and $raw -notmatch '"path"'
+    ) @{ bytes = $raw.Length }
+
+    # --- Hidden ----------------------------------------------------------------------------------
+
+    $hidden = Invoke-Node A GET '/sharing/lists' | Where-Object isHidden
+    Invoke-Node A PUT "/sharing/lists/$($hidden.id)" @{ items = @(@{ mediaKind = 'tv'; applicationId = $pingu.applicationId; arrId = $pingu.arrId }); peerIds = @() } | Out-Null
+    $seen = (Get-Seen 1).Items
+    Assert-That 'Hiding a series removes it from what a "share everything" peer is offered' ($seen[0].mediaKind -eq 'movie') @{ items = @($seen | ForEach-Object releaseTitle) }
+
+    # --- Share lists -----------------------------------------------------------------------------
+
+    Invoke-Node A PUT "/nodes/peers/$($bOnA.id)/shareall" @{ shareAll = $false } | Out-Null
+    Get-Seen 0 | Out-Null
+    Invoke-Node A PUT "/sharing/lists/$($hidden.id)" @{ items = @(); peerIds = @() } | Out-Null
+
+    $list = Invoke-Node A POST '/sharing/lists' @{ name = 'Kids'; items = @(@{ mediaKind = 'tv'; applicationId = $pingu.applicationId; arrId = $pingu.arrId }); peerIds = @() }
+    Start-Sleep -Seconds 3
+    $beforeAssign = (Invoke-Node B GET '/catalog/peers/items?pageSize=50').totalRecords
+    Invoke-Node A PUT "/sharing/lists/$($list.id)" @{ name = 'Kids'; items = $list.items; peerIds = @($bOnA.id) } | Out-Null
+    $seen = (Get-Seen 2).Items
+    Assert-That 'A share list offers only its titles, and only once the peer is put on it' (
+        $beforeAssign -eq 0 -and @($seen | Where-Object mediaKind -eq 'tv').Count -eq 2
+    ) @{ beforeAssign = $beforeAssign; items = @($seen | ForEach-Object releaseTitle) }
+
+    Invoke-Node A DELETE "/sharing/lists/$($list.id)" | Out-Null
+    Get-Seen 0 | Out-Null
+    Assert-That 'Deleting the list takes its titles away from the peer' $true @{ }
+
+    # --- Trust ends ------------------------------------------------------------------------------
+
+    Invoke-Node A PUT "/nodes/peers/$($bOnA.id)/shareall" @{ shareAll = $true } | Out-Null
+    Get-Seen 3 | Out-Null
+    Invoke-Node A POST "/nodes/peers/$($bOnA.id)/revoke" | Out-Null
+    $after = Wait-Until -What "B to drop A's catalog" -TimeoutSec 30 -Condition {
+        $left = Invoke-Node B GET '/catalog/peers/items?pageSize=50'
+        if ($left.totalRecords -eq 0) { @{ Items = 0; Summaries = @(Invoke-Node B GET '/catalog/peers').Count } }
+    }
+    $direct = Invoke-Node B POST '/command' @{ name = 'PeerCatalogSync' }
+    Start-Sleep -Seconds 3
+    Assert-That 'When trust is revoked the peer loses the catalog and cannot fetch it again' (
+        $after.Items -eq 0 -and $after.Summaries -eq 0 -and (Invoke-Node B GET '/catalog/peers/items?pageSize=50').totalRecords -eq 0
+    ) $after
+
+    $tasks = @((Invoke-Node A GET '/system/task').taskName)
+    Assert-That 'The peer catalog sync is scheduled' ($tasks -contains 'PeerCatalogSync') @{ tasks = $tasks }
+}
+catch {
+    Write-Host "Stopped: $_" -ForegroundColor Red
+    $results.Add([ordered]@{ check = 'Script ran to the end'; passed = $false; evidence = "$_" })
+}
+finally {
+    $failed = @($results | Where-Object { -not $_.passed })
+    [ordered]@{ ranAt = (Get-Date).ToUniversalTime().ToString('o'); passed = ($failed.Count -eq 0 -and $results.Count -gt 0); checks = $results } |
+        ConvertTo-Json -Depth 12 | Set-Content (Join-Path $run 'results.json')
+
+    if (-not $KeepRunning) {
+        'A', 'B' | ForEach-Object { Stop-Node $_ }
+        Invoke-Compose down -v 2>&1 | Out-Null
+    }
+}
+
+Write-Host "`n$($results.Count - $failed.Count) of $($results.Count) checks passed. Details: $(Join-Path $run 'results.json')"
+if ($failed.Count -gt 0) { exit 1 }

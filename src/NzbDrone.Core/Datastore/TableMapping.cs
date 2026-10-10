@@ -33,6 +33,7 @@ using NzbDrone.Core.Nodes;
 using NzbDrone.Core.Notifications;
 using NzbDrone.Core.Organizer;
 using NzbDrone.Core.Parser.Model;
+using NzbDrone.Core.PeerCatalog;
 using NzbDrone.Core.Profiles;
 using NzbDrone.Core.Profiles.Delay;
 using NzbDrone.Core.Profiles.Qualities;
@@ -40,6 +41,7 @@ using NzbDrone.Core.Profiles.Releases;
 using NzbDrone.Core.Qualities;
 using NzbDrone.Core.RemotePathMappings;
 using NzbDrone.Core.RootFolders;
+using NzbDrone.Core.Sharing;
 using NzbDrone.Core.Tags;
 using NzbDrone.Core.ThingiProvider;
 using NzbDrone.Core.Tv;
@@ -127,6 +129,11 @@ namespace NzbDrone.Core.Datastore
 
             Mapper.Entity<Peer>("Peers").RegisterModel();
             Mapper.Entity<PeerInvite>("PeerInvites").RegisterModel();
+
+            Mapper.Entity<ShareList>("ShareLists").RegisterModel();
+            Mapper.Entity<ShareListItem>("ShareListItems").RegisterModel();
+            Mapper.Entity<ShareListPeer>("ShareListPeers").RegisterModel();
+            Mapper.Entity<PeerCatalogItem>("PeerCatalogItems").RegisterModel();
 
             Mapper.Entity<SceneMapping>("SceneMappings").RegisterModel();
 

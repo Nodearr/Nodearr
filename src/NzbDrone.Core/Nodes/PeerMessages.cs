@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Text.Json;
+using NzbDrone.Core.Sharing;
 
 namespace NzbDrone.Core.Nodes
 {
@@ -8,6 +9,8 @@ namespace NzbDrone.Core.Nodes
         public const string Pair = "pair";
         public const string Ping = "ping";
         public const string Revoke = "revoke";
+        public const string Catalog = "catalog";
+        public const string CatalogChanged = "catalogChanged";
     }
 
     // What one node says to another on the control channel. The transport has already verified
@@ -26,6 +29,12 @@ namespace NzbDrone.Core.Nodes
 
         // Pairing only.
         public string InviteSecret { get; set; }
+
+        // Catalog only: the version the asker already holds, the page it wants, and for pages after
+        // the first, the version that page must belong to.
+        public string CatalogKnownVersion { get; set; }
+        public int CatalogPage { get; set; }
+        public string CatalogVersion { get; set; }
 
         public byte[] ToBytes()
         {
@@ -52,6 +61,12 @@ namespace NzbDrone.Core.Nodes
         public bool Ok { get; set; }
         public string Error { get; set; }
         public string Name { get; set; }
+
+        // Catalog only.
+        public string CatalogVersion { get; set; }
+        public bool CatalogUnchanged { get; set; }
+        public int CatalogTotalPages { get; set; }
+        public List<OfferItem> CatalogItems { get; set; }
 
         public byte[] ToBytes()
         {

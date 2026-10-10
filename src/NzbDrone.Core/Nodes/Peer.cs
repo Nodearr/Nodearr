@@ -37,6 +37,14 @@ namespace NzbDrone.Core.Nodes
         public DateTime? LastSeen { get; set; }
         public string LastError { get; set; }
 
+        // Offer this node everything in the local catalog except what is on the Hidden list.
+        public bool ShareAll { get; set; }
+
+        // The last catalog snapshot received from this node.
+        public string CatalogVersion { get; set; }
+        public DateTime? CatalogSyncedAt { get; set; }
+        public string CatalogError { get; set; }
+
         public NodeAddress ToAddress()
         {
             return new NodeAddress
@@ -73,6 +81,9 @@ namespace NzbDrone.Core.Nodes
         public DateTime Expires { get; set; }
         public DateTime? RedeemedAt { get; set; }
         public string RedeemedByNodeId { get; set; }
+
+        // Whoever redeems this invite is offered everything except the Hidden list straight away.
+        public bool ShareAll { get; set; }
     }
 
     // Raised so later slices can react: a blocked or revoked peer must lose its cached catalog and
@@ -87,5 +98,15 @@ namespace NzbDrone.Core.Nodes
 
         public Peer Peer { get; }
         public PeerState PreviousState { get; }
+    }
+
+    public class PeerDeletedEvent : IEvent
+    {
+        public PeerDeletedEvent(int peerId)
+        {
+            PeerId = peerId;
+        }
+
+        public int PeerId { get; }
     }
 }

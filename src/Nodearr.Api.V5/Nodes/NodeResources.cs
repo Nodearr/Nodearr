@@ -34,6 +34,7 @@ public class PeerResource
     public DateTime StateChanged { get; set; }
     public DateTime? LastSeen { get; set; }
     public string? LastError { get; set; }
+    public bool ShareAll { get; set; }
 
     public static PeerResource FromModel(Peer peer)
     {
@@ -47,7 +48,8 @@ public class PeerResource
             Added = peer.Added,
             StateChanged = peer.StateChanged,
             LastSeen = peer.LastSeen,
-            LastError = peer.LastError
+            LastError = peer.LastError,
+            ShareAll = peer.ShareAll
         };
     }
 }
@@ -60,6 +62,8 @@ public class InviteResource
     public DateTime Expires { get; set; }
     public DateTime? RedeemedAt { get; set; }
     public string? RedeemedByNodeId { get; set; }
+
+    public bool ShareAll { get; set; }
 
     // Present only in the answer to creating the invite.
     public string? Code { get; set; }
@@ -74,6 +78,7 @@ public class InviteResource
             Expires = invite.Expires,
             RedeemedAt = invite.RedeemedAt,
             RedeemedByNodeId = invite.RedeemedByNodeId,
+            ShareAll = invite.ShareAll,
             Code = code
         };
     }
@@ -83,6 +88,14 @@ public class CreateInviteResource
 {
     public int ValidHours { get; set; } = 24;
     public string? Label { get; set; }
+
+    // Offer whoever redeems the invite everything except the Hidden list.
+    public bool ShareAll { get; set; }
+}
+
+public class ShareAllResource
+{
+    public bool ShareAll { get; set; }
 }
 
 public class RedeemInviteResource
