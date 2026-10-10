@@ -42,10 +42,12 @@ Completion means a real Sonarr/Radarr import of a verified, permitted peer trans
 - **S1: done, go.** Nine of nine scenarios pass against Sonarr 4.0.20, Radarr 6.4.4 and Prowlarr 2.6.5. ADR 0010. Branch `v1/s1-s2-spikes`.
 - **S2: passes on one machine, gate still open.** Seven of seven scenarios pass, including against n0's public relays. The cross-NAT run on two machines has not been done. ADRs 0011 and 0012 are Proposed until it has. The owner chose to proceed with S3 on the assumption that it will pass.
 - **S3: done.** Fourteen of fourteen acceptance checks pass (`acceptance/Run-S3CatalogImport.ps1`). Branch `v1/s3-catalog-import`.
+- **S4: done.** Eleven of eleven acceptance checks pass between two real instances on one machine (`acceptance/Run-S4Pairing.ps1`). ADR 0013. Branch `v1/s4-identity-trust`.
 
 Owner decisions made after the plan was written:
 
 - The default port is 6633.
+- Port mapping (UPnP, NAT-PMP, PCP) is on by default, with a setting to turn it off.
 - When the catalog is empty, the indexer answers ID-less queries with a stand-in item so the Arr apps accept it (ADR 0010, amendments).
 
 What S3 left for later slices:
@@ -54,3 +56,11 @@ What S3 left for later slices:
 - Quality profiles are imported but nothing shows or uses them yet.
 - Deleting an application in Nodearr does not remove Nodearr's indexer and download client from the Arr app.
 - Sonarr import makes two requests per series. It has not been tried on a large library.
+
+What S4 left for later slices:
+
+- Blocking and revoking raise an event, but there is no peer catalog to purge (S5) or transfer to cancel (S7) yet.
+- Relay mode, relay URL and port mapping are environment variables, with no settings page (S8).
+- The transport sidecar is built separately with cargo and is not yet part of a package or image (S8).
+- The node's display name is the machine name.
+- Pairing has only been run on one machine with relays off.

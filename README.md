@@ -2,7 +2,7 @@
 
 Nodearr is a self-hosted, Servarr-compatible, trusted peer-to-peer media availability and transfer service. It runs next to your existing Sonarr and Radarr, lets a small private group of trusted peers see who has an acceptable copy of something, and retrieves verified files directly from them while the normal Arr import workflow stays in place.
 
-**Status: pre-alpha.** Nodearr can connect to Sonarr and Radarr, register itself in them as an indexer and download client, and import their libraries into a local catalog. No peer features work yet. The V1 plan is in [docs/plans/v1-implementation-plan.md](docs/plans/v1-implementation-plan.md).
+**Status: pre-alpha.** Nodearr can connect to Sonarr and Radarr, register itself in them as an indexer and download client, and import their libraries into a local catalog. Two nodes can pair with an invite, and block or revoke each other. They do not exchange catalogs or files yet. The V1 plan is in [docs/plans/v1-implementation-plan.md](docs/plans/v1-implementation-plan.md).
 
 ## Prerequisites
 
@@ -26,6 +26,20 @@ dotnet build src/Nodearr.sln
 ```
 
 Warnings are errors, including NuGet vulnerability audit findings, so a newly published advisory against a dependency fails the build until the package is updated.
+
+## Peer transport
+
+Peer features need the `nodearr-transport` sidecar, a small Rust program in `transport/`. Nodearr starts it itself. Build it with Rust 1.91 or newer and put the binary next to Nodearr:
+
+```sh
+cargo build --release --manifest-path transport/Cargo.toml
+```
+
+```sh
+cp transport/target/release/nodearr-transport _output/net10.0/
+```
+
+Or leave it where it is and point `Nodearr__Transport__BinaryPath` at it. Without the sidecar Nodearr still runs, and System > Status reports that the peer transport is not running.
 
 ## Run
 
@@ -53,7 +67,7 @@ Send the key as an `X-Api-Key` header or an `apikey` query parameter. It is gene
 
 ## Acceptance tests
 
-`acceptance/Run-S3CatalogImport.ps1` runs Nodearr against real Sonarr and Radarr containers and checks registration and catalog import end to end. It needs PowerShell 7, Docker and ffmpeg. See [acceptance/README.md](acceptance/README.md).
+The scripts in `acceptance/` run a built Nodearr from the outside and check whole slices of behaviour: registration and catalog import against real Sonarr and Radarr containers, and pairing, blocking and revoking between two Nodearr instances. See [acceptance/README.md](acceptance/README.md).
 
 ## Documentation
 

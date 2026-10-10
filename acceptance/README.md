@@ -1,14 +1,20 @@
 # Acceptance tests
 
-Scripts that run a built Nodearr against real Arr applications in containers and check a whole slice of behaviour from the outside, through the HTTP APIs.
+Scripts that run a built Nodearr and check a whole slice of behaviour from the outside, through the HTTP APIs.
 
-They need PowerShell 7, Docker and ffmpeg, and a built Nodearr:
+They need PowerShell 7 and a built Nodearr:
 
 ```sh
 dotnet build src/Nodearr.sln
 ```
 
-Each script starts from nothing, takes a few minutes, prints one line per check and exits non-zero if any check fails. Everything it creates goes in `.run/`, which git ignores, and in its own Docker Compose project.
+Each script starts from nothing, takes a few minutes, prints one line per check and exits non-zero if any check fails. Everything it creates goes in `.run/`, which git ignores.
+
+The S3 script also needs Docker and ffmpeg. The S4 script needs neither, but needs the transport sidecar built:
+
+```sh
+cargo build --release --manifest-path transport/Cargo.toml
+```
 
 ## S3: registration and catalog import
 
@@ -32,3 +38,22 @@ Options:
 
 - `-KeepRunning` leaves Nodearr and the containers up, so you can open `http://localhost:6633/catalog/local`.
 - `-Down` stops everything and deletes `.run/`.
+
+## S4: identity, invites, trust and blocking
+
+```sh
+pwsh acceptance/Run-S4Pairing.ps1
+```
+
+Starts two Nodearr instances on this machine, A on port 6633 and B on port 6634, each with its own data folder and transport sidecar, and checks:
+
+- Each node gets its own identity, kept in a key file.
+- Redeeming an invite makes both nodes trust each other, and the invite works only once.
+- A blocked node is refused when it connects, cannot pair again with a new invite, and cannot be deleted while blocked.
+- Unblocking does not restore trust. Pairing again does, without duplicating the node.
+- A restart keeps identity and trust, leaves no orphan sidecar, and the peer finds the node again.
+- Revoking ends trust on both sides.
+
+The sidecars run with relays and port mapping off and use local addresses, so nothing leaves the machine. Pass `-TransportBin` if the sidecar binary is not in `transport/target/release` or `$CARGO_TARGET_DIR/release`.
+
+`-KeepRunning` leaves both instances up so you can open `http://localhost:6633/nodes/trusted` and `http://localhost:6634/nodes/invites`.
