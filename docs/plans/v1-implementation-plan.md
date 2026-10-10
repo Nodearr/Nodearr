@@ -43,6 +43,7 @@ Completion means a real Sonarr/Radarr import of a verified, permitted peer trans
 - **S2: passes on one machine, gate still open.** Seven of seven scenarios pass, including against n0's public relays. The cross-NAT run on two machines has not been done. ADRs 0011 and 0012 are Proposed until it has. The owner chose to proceed with S3 on the assumption that it will pass.
 - **S3: done.** Fourteen of fourteen acceptance checks pass (`acceptance/Run-S3CatalogImport.ps1`). Branch `v1/s3-catalog-import`.
 - **S4: done.** Eleven of eleven acceptance checks pass between two real instances on one machine (`acceptance/Run-S4Pairing.ps1`). ADR 0013. Branch `v1/s4-identity-trust`.
+- **S5: done.** Ten of ten acceptance checks pass between two real instances with real Arr catalogs (`acceptance/Run-S5Sharing.ps1`). ADR 0014. Branch `v1/s5-sharing-catalog-exchange`.
 
 Owner decisions made after the plan was written:
 
@@ -64,3 +65,9 @@ What S4 left for later slices:
 - The transport sidecar is built separately with cargo and is not yet part of a package or image (S8).
 - The node's display name is the machine name.
 - Pairing has only been run on one machine with relays off.
+
+What S5 left for later slices:
+
+- Sharing is by whole series or movie. There is no per-season or per-file control.
+- Peer catalog rows are not yet indexer results (S6), and a transfer request is not yet checked against the sharing rule (S7).
+- An offer is rebuilt from the whole local catalog on each request. It has not been tried on a large library.

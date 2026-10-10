@@ -57,3 +57,20 @@ Starts two Nodearr instances on this machine, A on port 6633 and B on port 6634,
 The sidecars run with relays and port mapping off and use local addresses, so nothing leaves the machine. Pass `-TransportBin` if the sidecar binary is not in `transport/target/release` or `$CARGO_TARGET_DIR/release`.
 
 `-KeepRunning` leaves both instances up so you can open `http://localhost:6633/nodes/trusted` and `http://localhost:6634/nodes/invites`.
+
+## S5: sharing and catalog exchange
+
+```sh
+pwsh acceptance/Run-S5Sharing.ps1
+```
+
+Needs Docker and ffmpeg, like S3, and the transport sidecar, like S4. Node A imports a real catalog from Sonarr and Radarr containers. Node B imports from the same Sonarr only. The two pair, and the script reads what B holds after each change on A:
+
+- A newly trusted peer is offered nothing.
+- "Share everything" offers every file, and B hears about it without being asked to sync.
+- B marks each file as have, missing or not in library against its own catalog.
+- Nothing B receives says where a file is stored.
+- Hiding a series removes it. A share list offers only its titles, and only to the peers on it.
+- Revoking trust empties B's copy, and B cannot fetch it again.
+
+`-KeepRunning` leaves both instances and the containers up. Open `http://localhost:6633/catalog/sharing` on A and `http://localhost:6634/catalog/peers` on B.
