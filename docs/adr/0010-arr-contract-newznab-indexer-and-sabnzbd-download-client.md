@@ -121,3 +121,8 @@ These came out of the spike and were not known beforehand.
 - S6: guidance for Prowlarr users on pinning the synced indexer and on RSS (finding 6).
 - S7: idempotent `addfile`, real job persistence, and failure messages written for the Arr history (finding 9).
 - Replace the stub in `src/Nodearr.Http/ArrContractSpike/` with the real implementation. It is not production code: jobs are in memory and candidates come from a JSON file.
+
+## Amendments
+
+- 2026-10-10, finding 1 resolved in S3 (owner's suggestion): when a query has no IDs and no text and would return nothing, Nodearr answers with one stand-in item per requested category family, titled "Nodearr connection test, not a release". The title matches no series or movie, so the Arr apps ignore it outside the connection test, and its link cannot be grabbed. With this, Sonarr 4.0.20 and Radarr 6.4.4 both saved Nodearr's indexer while the catalog was completely empty (`acceptance/Run-S3CatalogImport.ps1`). S6 still decides what an ID-less query returns once there are real candidates.
+- 2026-10-10, finding 7 implemented in S3: adding an application in Nodearr creates the download client and the indexer in the Arr app and sets the indexer's `downloadClientId` to that client.

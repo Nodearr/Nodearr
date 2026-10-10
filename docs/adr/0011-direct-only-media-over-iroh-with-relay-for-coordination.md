@@ -61,9 +61,9 @@ Strict mode gives the stronger guarantee and cannot meet the goal of working wit
 
 ## Risks and open questions
 
-1. **Cross-NAT is unproven.** Every result here is from one machine. The plan's pass criteria include a cross-NAT transfer and a relay-only failure between the owner's PC and a friend's. `spikes/iroh-direct/README.md` has the commands.
+1. **Cross-NAT is unproven.** Every result here is from one machine. The plan's pass criteria include a cross-NAT transfer and a relay-only failure between two machines on different networks. `spikes/iroh-direct/README.md` has the commands. The owner plans a first run with a laptop on a 5G hotspot. That is carrier-grade NAT, the hardest case: a pass there is strong evidence, and a `NoDirectRoute` there says little about two home networks.
 2. **The rule is enforced above the transport.** Iroh 1.3.0 uses multipath QUIC and keeps the relay path as a backup. If the direct path dies while data is in flight, QUIC can retransmit already-written data over the relay before the application reacts. The spike resets the stream when the selected path changes, which discards queued data, but this was not exercised: it needs a firewall rule or a second network to break a direct path mid-transfer. S8's "block mid-transfer" test must measure it against a self-hosted relay. If the leak is not zero, the options to investigate are a smaller send window and Iroh's `path_selector` hook, which is gated behind the `unstable-custom-transports` feature and outside its semver guarantees.
-3. **Iroh maps a port on the user's router by default.** With the default `portmapper` feature, the endpoints in the spike advertised a public address even against a localhost relay, which means it came from UPnP, NAT-PMP or PCP on the router. This helps direct connectivity and matches the "no manual port forwarding" goal, but it changes router state without asking. Owner decision: keep it on by default, or make it a setting.
+3. **Iroh maps a port on the user's router by default.** With the default `portmapper` feature, the endpoints in the spike advertised a public address even against a localhost relay, which means it came from UPnP, NAT-PMP or PCP on the router. This helps direct connectivity and matches the "no manual port forwarding" goal, but it changes router state without asking. Recommendation, pending the owner's confirmation: on by default with a setting to turn it off. Nodearr has no relay fallback, so a peer pair without a direct path cannot transfer at all, and a port mapping is what rescues pairs where hole punching alone fails. It does nothing behind carrier-grade NAT, such as a mobile hotspot.
 4. **Windows only.** The spike ran on Windows 11. The target for V1 is Docker on Linux, where host networking and UDP behave differently (S8).
 5. **n0's relays are a dependency Nodearr does not control.** Their availability and terms are outside the project. The self-hosted relay worked with no code changes, which keeps the user-configured relay option in the plan cheap.
 
@@ -86,4 +86,4 @@ Strict mode gives the stronger guarantee and cannot meet the goal of working wit
 - Run the cross-NAT scenarios on two machines and record the results here.
 - S7: carry the gating rule and the typed failures into the real transfer provider.
 - S8: measure relayed bytes when the direct path is blocked mid-transfer.
-- Decide the port-mapping default (risk 3).
+- Confirm the port-mapping default (risk 3).

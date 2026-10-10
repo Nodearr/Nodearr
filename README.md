@@ -2,7 +2,7 @@
 
 Nodearr is a self-hosted, Servarr-compatible, trusted peer-to-peer media availability and transfer service. It runs next to your existing Sonarr and Radarr, lets a small private group of trusted peers see who has an acceptable copy of something, and retrieves verified files directly from them while the normal Arr import workflow stays in place.
 
-**Status: pre-alpha.** The repository is a Sonarr-derived host and UI shell with the Nodearr navigation and an early Arr Apps settings page. No peer features work yet. The V1 plan is in [docs/plans/v1-implementation-plan.md](docs/plans/v1-implementation-plan.md).
+**Status: pre-alpha.** Nodearr can connect to Sonarr and Radarr, register itself in them as an indexer and download client, and import their libraries into a local catalog. No peer features work yet. The V1 plan is in [docs/plans/v1-implementation-plan.md](docs/plans/v1-implementation-plan.md).
 
 ## Prerequisites
 
@@ -37,7 +37,7 @@ dotnet run --project src/NzbDrone.Console/Nodearr.Console.csproj -- -nobrowser -
 
 - `-data=` sets where `config.xml`, `nodearr.db` and logs are kept. Without it Nodearr uses `%ProgramData%\Nodearr` on Windows and `~/.config/Nodearr` elsewhere.
 - `-nobrowser` stops it opening a browser on start.
-- The UI is at `http://localhost:8989`. This is also Sonarr's default port, so change `Port` in `config.xml` if Sonarr runs on the same host.
+- The UI is at `http://localhost:6633`. Change `Port` in `config.xml` to use another port.
 
 ## API
 
@@ -50,6 +50,10 @@ GET /api/v3/system/status     API key required
 ```
 
 Send the key as an `X-Api-Key` header or an `apikey` query parameter. It is generated on first run and stored as `ApiKey` in `config.xml`.
+
+## Acceptance tests
+
+`acceptance/Run-S3CatalogImport.ps1` runs Nodearr against real Sonarr and Radarr containers and checks registration and catalog import end to end. It needs PowerShell 7, Docker and ffmpeg. See [acceptance/README.md](acceptance/README.md).
 
 ## Documentation
 

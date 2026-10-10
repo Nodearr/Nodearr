@@ -35,3 +35,22 @@ Written 2026-10-10. Read this after the handoff context: docs/overview-end-to-en
 Order: S0, then S1 and S2 together as go/no-go gates, then S3 through S8 in sequence. If either spike disproves its approach, stop and revisit with the owner.
 
 Completion means a real Sonarr/Radarr import of a verified, permitted peer transfer between two deployed instances.
+
+## Status (updated 2026-10-10)
+
+- **S0: done.** Branch `v1/s0-baseline`.
+- **S1: done, go.** Nine of nine scenarios pass against Sonarr 4.0.20, Radarr 6.4.4 and Prowlarr 2.6.5. ADR 0010. Branch `v1/s1-s2-spikes`.
+- **S2: passes on one machine, gate still open.** Seven of seven scenarios pass, including against n0's public relays. The cross-NAT run on two machines has not been done. ADRs 0011 and 0012 are Proposed until it has. The owner chose to proceed with S3 on the assumption that it will pass.
+- **S3: done.** Fourteen of fourteen acceptance checks pass (`acceptance/Run-S3CatalogImport.ps1`). Branch `v1/s3-catalog-import`.
+
+Owner decisions made after the plan was written:
+
+- The default port is 6633.
+- When the catalog is empty, the indexer answers ID-less queries with a stand-in item so the Arr apps accept it (ADR 0010, amendments).
+
+What S3 left for later slices:
+
+- The endpoints Nodearr registers in the Arr apps are still the S1 stubs. The real indexer is S6 and the real download client is S7. The download folder the stub reports is fixed at `/downloads/complete`.
+- Quality profiles are imported but nothing shows or uses them yet.
+- Deleting an application in Nodearr does not remove Nodearr's indexer and download client from the Arr app.
+- Sonarr import makes two requests per series. It has not been tried on a large library.

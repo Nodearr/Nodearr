@@ -21,11 +21,11 @@ These are the items that need attention. Everything else in this document can wa
 | --- | --- | --- |
 | Cover image resizing (SixLabors.ImageSharp 3.1.12) | Five advisories published 2026-10-07 made every project fail restore, because warnings are errors. The only patched release is 4.1.2 or later, and 4.x runs a license-key check during Release builds. | Done in S0: the resizer and the package were removed. Covers are still downloaded, and both `MediaCoverController` and `MediaCoverMapper` already fall back to the full-size image when a resized one is missing. |
 | Microsoft.OpenApi 2.4.1 (via Swashbuckle 10.1.7) | A high-severity advisory failed restore in the same way. | Done in S0: Swashbuckle bumped to 10.2.3, which depends on the patched Microsoft.OpenApi 2.7.5. |
-| Default port 8989 | It is Sonarr's default port. Nodearr and Sonarr collide on one host, which is exactly the layout in S1 (pinned Sonarr container) and S8 (host networking). | Owner decision: choose a Nodearr default port. Until then set `Port` in `config.xml`. |
+| Default port 8989 | It is Sonarr's default port, so Nodearr and Sonarr collided on one host. | Done in S3: the default is 6633, which spells NODE on a phone keypad. |
 | Renamed cloud endpoints | The rename turned Sonarr's service hosts into `services.nodearr.com`, `skyhook.nodearr.com`, `sentry.nodearr.com` and `download.nodearr.com`. None of them resolve today. On every start `ServerSideNotificationService` logs "Failed to retrieve notifications" and `SystemTimeCheck` logs "Unable to verify system time". Sentry crash reporting is still registered with Sonarr's DSN keys against the renamed host, and analytics defaults to enabled. The project owner holds `nodearr.com`, so nothing can answer on those names unless the project sets it up. | Owner decision before any release: turn off Sentry, analytics, the update check, server-side notifications, the system time check and scene mapping updates, or host replacements for the ones worth keeping. |
-| Always-failing health checks | A fresh install shows two errors and two warnings on System > Status: `IndexerRssCheck`, `IndexerSearchCheck`, `DownloadClientCheck` and `UpdateCheck`. They describe Sonarr's need for indexers and download clients, which Nodearr does not have. | Remove or replace these checks when Nodearr's own health checks arrive (S3 onward). |
-| TV scheduled tasks | `RssSync` (15 min), `RefreshSeries` (12 h), `ImportListSync` (5 min), `UpdateSceneMapping` (3 h), `RefreshMonitoredDownloads` (1 min) and `ApplicationUpdateCheck` (6 h) are all scheduled. They do nothing useful with an empty library, and some call the dead cloud hosts. | Unschedule them when S3 adds Nodearr's catalog refresh task. |
-| Table names `Series`, `Episodes`, `EpisodeFiles` | The 223 inherited migrations create Sonarr's library tables. S3 needs its own normalized series, episode, episode-file and movie tables. | S3 decision: give the catalog tables their own prefix so they cannot be confused with, or bound to, Sonarr's models. |
+| Always-failing health checks | A fresh install shows two errors and two warnings on System > Status: `IndexerRssCheck`, `IndexerSearchCheck`, `DownloadClientCheck` and `UpdateCheck`. They describe Sonarr's need for indexers and download clients, which Nodearr does not have. | Done in S3 for `IndexerRssCheck`, `IndexerSearchCheck` and `DownloadClientCheck`, which are removed. `UpdateCheck` remains and fails on development builds only. |
+| TV scheduled tasks | `RssSync` (15 min), `RefreshSeries` (12 h), `ImportListSync` (5 min), `UpdateSceneMapping` (3 h), `RefreshMonitoredDownloads` (1 min) and `ApplicationUpdateCheck` (6 h) are all scheduled. They do nothing useful with an empty library, and some call the dead cloud hosts. | Done in S3: all six are unscheduled. `CatalogRefresh` and `ApplicationIndexerSync` run every 6 hours instead. |
+| Table names `Series`, `Episodes`, `EpisodeFiles` | The 223 inherited migrations create Sonarr's library tables. S3 needs its own normalized series, episode, episode-file and movie tables. | Done in S3: Nodearr's tables are `CatalogSeries`, `CatalogEpisodes`, `CatalogEpisodeFiles`, `CatalogMovies`, `CatalogMovieFiles` and `CatalogQualityProfiles`. Sonarr's tables are left in place, unused. |
 | Copyright string | `src/Directory.Build.props` stamps assemblies with `Copyright 2014-<year> nodearr.com`, which no longer credits Sonarr. | Owner decision on wording. See [NOTICE.md](../../NOTICE.md). |
 
 ## Host and infrastructure
@@ -103,14 +103,14 @@ Read from `GET /api/v5/system/task` on a fresh install.
 | Backup | 7 days | Keep |
 | MessagingCleanup | 5 min | Keep |
 | CleanUpRecycleBin | 24 h | Unused |
-| RefreshMonitoredDownloads | 1 min | In the way |
-| RssSync | 15 min | In the way |
-| RefreshSeries | 12 h | In the way |
-| ImportListSync | 5 min | In the way |
-| UpdateSceneMapping | 3 h | In the way |
-| ApplicationUpdateCheck | 6 h | In the way |
-
-`ApplicationIndexerSyncCommand` from the Applications port exists but is not scheduled.
+| RefreshMonitoredDownloads | 1 min | Unscheduled in S3 |
+| RssSync | 15 min | Unscheduled in S3 |
+| RefreshSeries | 12 h | Unscheduled in S3 |
+| ImportListSync | 5 min | Unscheduled in S3 |
+| UpdateSceneMapping | 3 h | Unscheduled in S3 |
+| ApplicationUpdateCheck | 6 h | Unscheduled in S3 |
+| CatalogRefresh | 6 h | Added in S3 |
+| ApplicationIndexerSync | 6 h | Added in S3 |
 
 ## Health checks
 
@@ -119,18 +119,18 @@ Read from `GET /api/v5/system/task` on a fresh install.
 | ApiKeyValidationCheck, AppDataLocationCheck, MountCheck, ProxyCheck, PackageGlobalMessageCheck | Keep |
 | SystemTimeCheck | In the way. Calls a renamed host. |
 | UpdateCheck | In the way. Fails on a development build because the UI folder is not writable. |
-| IndexerRssCheck, IndexerSearchCheck, DownloadClientCheck | In the way. Always fail in Nodearr. |
+| IndexerRssCheck, IndexerSearchCheck, DownloadClientCheck | Removed in S3. They always failed in Nodearr. |
 | IndexerStatusCheck, IndexerLongTermStatusCheck, IndexerDownloadClientCheck, IndexerJackettAllCheck, DownloadClientStatusCheck, DownloadClientRootFolderCheck, DownloadClientSortingCheck, DownloadClientRemovesCompletedDownloadsCheck, ImportListStatusCheck, ImportListRootFolderCheck, ImportMechanismCheck, NotificationStatusCheck, RecyclingBinCheck, RemotePathMappingCheck, RemovedSeriesCheck, RootFolderCheck | Unused. Silent while their features are unconfigured. |
 
 ## Database
 
-Migrations 1 to 230 are Sonarr's and create its whole schema. Migration 231 adds `Applications`, `ApplicationIndexerMapping` and `ApplicationStatus`.
+Migrations 1 to 230 are Sonarr's and create its whole schema. Migration 231 adds `Applications` and `ApplicationStatus`. Migration 232 adds the `Catalog*` tables and drops the unused `ApplicationIndexerMapping`.
 
 | Tables | Disposition |
 | --- | --- |
 | `Config`, `ScheduledTasks`, `Commands`, `Users`, `Tags`, `CustomFilters`, `Logs`, `UpdateHistory` | Keep |
-| `Applications`, `ApplicationIndexerMapping`, `ApplicationStatus` | Reshape in S3 |
-| `RemotePathMappings` | Reshape in S3 |
+| `Applications`, `ApplicationStatus`, `Catalog*` | Nodearr's own, as of S3 |
+| `RemotePathMappings` | Reused in S3 as Arr-path to Nodearr-path mappings, keyed by the Arr app's host |
 | `Series`, `Episodes`, `EpisodeFiles`, `SceneMappings`, `RootFolders`, `NamingConfig`, `MetadataFiles`, `SubtitleFiles`, `ExtraFiles`, `Metadata`, `ImportLists`, `ImportListItems`, `ImportListStatus`, `ImportListExclusions` | Unused. The names collide with what S3 needs (in the way). |
 | `Indexers`, `IndexerStatus`, `DownloadClients`, `DownloadClientStatus`, `History`, `DownloadHistory`, `Blocklist`, `PendingReleases`, `QualityDefinitions`, `QualityProfiles`, `CustomFormats`, `ReleaseProfiles`, `DelayProfiles`, `Notifications`, `NotificationStatus` | Unused |
 
