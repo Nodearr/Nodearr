@@ -5,12 +5,19 @@ import getQueryPath from 'Utilities/Fetch/getQueryPath';
 
 export type PeerState = 'pending' | 'trusted' | 'blocked' | 'revoked';
 
+export type ConnectionPath = 'unknown' | 'direct' | 'relay';
+
 export interface NodeIdentity {
   transportRunning: boolean;
   nodeId?: string;
   name?: string;
   relayUrl?: string;
   ipAddresses: string[];
+  // What the transport has worked out about this node's network. Absent until known.
+  udp?: boolean;
+  mappingVaries?: boolean;
+  publicAddress?: string;
+  captivePortal?: boolean;
 }
 
 export interface Peer {
@@ -23,6 +30,9 @@ export interface Peer {
   stateChanged: string;
   lastSeen?: string;
   lastError?: string;
+  connectionPath: ConnectionPath;
+  connectionAddress?: string;
+  connectionChecked?: string;
   shareAll: boolean;
 }
 

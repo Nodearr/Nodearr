@@ -19,6 +19,10 @@
   font-family: var(--monoSpaceFontFamily);
 }
 
+.network {
+  margin-top: 10px;
+}
+
 .muted {
   color: var(--helpTextColor);
   font-size: 12px;

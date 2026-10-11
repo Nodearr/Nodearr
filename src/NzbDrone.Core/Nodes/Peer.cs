@@ -37,6 +37,12 @@ namespace NzbDrone.Core.Nodes
         public DateTime? LastSeen { get; set; }
         public string LastError { get; set; }
 
+        // What the last connection check found: whether a direct path to this node exists, which
+        // is what a file transfer needs.
+        public ConnectionPath ConnectionPath { get; set; }
+        public string ConnectionAddress { get; set; }
+        public DateTime? ConnectionChecked { get; set; }
+
         // Offer this node everything in the local catalog except what is on the Hidden list.
         public bool ShareAll { get; set; }
 
@@ -98,6 +104,17 @@ namespace NzbDrone.Core.Nodes
 
         public Peer Peer { get; }
         public PeerState PreviousState { get; }
+    }
+
+    // Raised after a connection check, whatever it found.
+    public class PeerConnectionCheckedEvent : IEvent
+    {
+        public PeerConnectionCheckedEvent(Peer peer)
+        {
+            Peer = peer;
+        }
+
+        public Peer Peer { get; }
     }
 
     public class PeerDeletedEvent : IEvent

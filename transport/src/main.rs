@@ -39,7 +39,7 @@ use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use clap::{Parser, ValueEnum};
 use iroh::{
     endpoint::{presets, Connection, ConnectionError, PortmapperConfig, RecvStream, SendStream, VarInt},
-    Endpoint, EndpointAddr, EndpointId, RelayMap, RelayMode, RelayUrl, SecretKey, TransportAddr,
+    Endpoint, EndpointAddr, EndpointId, RelayMap, RelayMode, RelayUrl, SecretKey, TransportAddr, Watcher,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -160,6 +160,8 @@ async fn main() -> Result<()> {
 
     let router = Router::new()
         .route("/v1/identity", get(identity))
+        .route("/v1/network", get(network))
+        .route("/v1/probe", post(probe))
         .route("/v1/blocked", put(set_blocked))
         .route("/v1/request", post(send_request))
         .route("/v1/incoming", get(next_incoming))
@@ -368,6 +370,70 @@ async fn identity(State(app): State<Arc<App>>) -> Json<serde_json::Value> {
         "node_id": app.endpoint.id().to_string(),
         "relay_url": addr.relay_urls().next().map(|u| u.to_string()),
         "ip_addrs": addr.ip_addrs().map(|a| a.to_string()).collect::<Vec<_>>(),
+    }))
+}
+
+/// What kind of network this node is on, as far as iroh has worked out. Everything is absent
+/// until its first report is in, and when relays are off, because the report needs them.
+async fn network(State(app): State<Arc<App>>) -> Json<serde_json::Value> {
+    let addr = app.endpoint.addr();
+    let report = app.endpoint.net_report().get();
+
+    Json(json!({
+        "relay_url": addr.relay_urls().next().map(|u| u.to_string()),
+        "ip_addrs": addr.ip_addrs().map(|a| a.to_string()).collect::<Vec<_>>(),
+        "udp": report.as_ref().map(|r| r.has_udp()),
+        // True on a network that gives a different public port for each destination. Two nodes
+        // can rarely find a direct path through one of those without a forwarded port.
+        "mapping_varies": report.as_ref().and_then(|r| r.mapping_varies_by_dest()),
+        "public_address": report.as_ref().and_then(|r| r.global_v4).map(|a| a.to_string()),
+        "captive_portal": report.as_ref().and_then(|r| r.captive_portal),
+    }))
+}
+
+#[derive(Deserialize)]
+struct ProbeBody {
+    node_id: String,
+    relay_url: Option<String>,
+    #[serde(default)]
+    ip_addrs: Vec<String>,
+    /// How long to give a direct path to appear once the nodes are connected.
+    wait_ms: Option<u64>,
+}
+
+/// Connects to a peer and says what path the connection settled on. Files only ever move over a
+/// direct path, so this answers "would a transfer work" without moving one.
+async fn probe(State(app): State<Arc<App>>, Json(body): Json<ProbeBody>) -> Json<serde_json::Value> {
+    let failed = |kind: &str, message: String| Json(json!({ "error": { "kind": kind, "message": message } }));
+
+    let target = match parse_address(&body.node_id, body.relay_url.as_deref(), &body.ip_addrs) {
+        Ok(target) => target,
+        Err(message) => return failed("BadRequest", message),
+    };
+
+    let conn = match tokio::time::timeout(Duration::from_secs(20), app.endpoint.connect(target, CONTROL_ALPN)).await {
+        Ok(Ok(conn)) => conn,
+        Ok(Err(err)) => return failed("NoRoute", format!("{err:#}")),
+        Err(_) => return failed("NoRoute", "timed out connecting".into()),
+    };
+
+    let started = std::time::Instant::now();
+    let mut paths = transfer::PathMonitor::spawn(&conn);
+    let direct = paths.wait_direct(Duration::from_millis(body.wait_ms.unwrap_or(10_000).min(60_000))).await;
+
+    if let Some(ConnectionError::ApplicationClosed(close)) = conn.close_reason() {
+        if close.error_code.into_inner() as u32 == CODE_BLOCKED {
+            return failed("Blocked", "the peer has blocked this node".into());
+        }
+    }
+
+    let selected = transfer::selected_path(&conn);
+    conn.close(VarInt::from_u32(CODE_DONE), b"done");
+
+    Json(json!({
+        "path": match (direct, &selected) { (true, _) => "direct", (false, Some(_)) => "relay", (false, None) => "none" },
+        "remote": selected.map(|(_, remote)| remote),
+        "waited_ms": started.elapsed().as_millis() as u64,
     }))
 }
 

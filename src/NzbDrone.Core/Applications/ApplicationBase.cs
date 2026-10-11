@@ -144,6 +144,43 @@ namespace NzbDrone.Core.Applications
                 force);
         }
 
+        public FolderVisibility LookForFolder(string folder, string marker)
+        {
+            var nodearrHost = new Uri(Settings.NodearrUrl.TrimEnd('/') + "/").Host;
+            var normalized = WithForwardSlashes(folder);
+            var asTheAppSeesIt = folder;
+
+            // The app's own remote path mappings say where it finds this download client's folders.
+            foreach (var mapping in _proxy.GetArray(Settings, "/remotepathmapping").OfType<JObject>())
+            {
+                var remote = mapping.Value<string>("remotePath");
+                var local = mapping.Value<string>("localPath");
+
+                if (!string.Equals(mapping.Value<string>("host"), nodearrHost, StringComparison.OrdinalIgnoreCase) || remote.IsNullOrWhiteSpace() || local.IsNullOrWhiteSpace())
+                {
+                    continue;
+                }
+
+                if (normalized.StartsWith(WithForwardSlashes(remote), StringComparison.OrdinalIgnoreCase))
+                {
+                    asTheAppSeesIt = WithForwardSlashes(local) + normalized[WithForwardSlashes(remote).Length..];
+
+                    break;
+                }
+            }
+
+            var listing = _proxy.Get<JObject>(Settings, $"/filesystem?path={Uri.EscapeDataString(asTheAppSeesIt)}&includeFiles=false&allowFoldersWithoutTrailingSlashes=true");
+            var found = listing["directories"]?.OfType<JObject>().Any(d => d.Value<string>("name") == marker) ?? false;
+
+            return new FolderVisibility { Found = found, LookedAt = asTheAppSeesIt };
+        }
+
+        // One spelling for a folder, whichever system wrote it down.
+        private static string WithForwardSlashes(string path)
+        {
+            return path.Replace('\\', '/').TrimEnd('/') + "/";
+        }
+
         private JObject EnsureProvider(string what, string resource, string implementation, Dictionary<string, JToken> fields, Dictionary<string, JToken> properties, bool force)
         {
             bool IsOurs(JObject provider) => provider.Value<string>("implementation") == implementation && provider.Value<string>("name") == RemoteName;

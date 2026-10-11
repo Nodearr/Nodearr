@@ -53,13 +53,24 @@ function HealthItemLink(props: HealthItemLinkProps) {
           to="/serieseditor"
         />
       );
-    case 'UpdateCheck':
+    case 'LibraryReadableCheck':
+    case 'ApplicationDownloadFolderCheck':
       return (
         <IconButton
-          name={icons.UPDATE}
-          title={translate('Updates')}
-          aria-label={translate('Updates')}
-          to="/system/updates"
+          name={icons.SETTINGS}
+          title={translate('Settings')}
+          aria-label={translate('Settings')}
+          to="/settings/applications"
+        />
+      );
+    case 'PeerTransportCheck':
+    case 'PeerNetworkCheck':
+      return (
+        <IconButton
+          name={icons.SETTINGS}
+          title={translate('TrustedNodes')}
+          aria-label={translate('TrustedNodes')}
+          to="/nodes/trusted"
         />
       );
     default:

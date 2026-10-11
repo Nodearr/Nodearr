@@ -19,9 +19,7 @@ function MoreInfo() {
 
         <DescriptionListItemTitle>{translate('Wiki')}</DescriptionListItemTitle>
         <DescriptionListItemDescription>
-          <Link to="https://wiki.nodearr.com/">
-            wiki.nodearr.com/
-          </Link>
+          <Link to="https://wiki.nodearr.com/">wiki.nodearr.com/</Link>
         </DescriptionListItemDescription>
 
         <DescriptionListItemTitle>

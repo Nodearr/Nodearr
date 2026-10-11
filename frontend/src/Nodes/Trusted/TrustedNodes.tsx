@@ -14,7 +14,9 @@ import TableRow from 'Components/Table/TableRow';
 import { kinds } from 'Helpers/Props';
 import translate from 'Utilities/String/translate';
 import {
+  ConnectionPath,
   getErrorMessage,
+  NodeIdentity,
   Peer,
   PeerAction,
   PeerState,
@@ -27,6 +29,11 @@ import styles from '../Nodes.css';
 const COLUMNS: Column[] = [
   { name: 'name', label: () => translate('Name'), isVisible: true },
   { name: 'state', label: () => translate('Status'), isVisible: true },
+  {
+    name: 'connection',
+    label: () => translate('PeerConnection'),
+    isVisible: true,
+  },
   { name: 'lastSeen', label: () => translate('PeerLastSeen'), isVisible: true },
   { name: 'actions', label: '', isVisible: true },
 ];
@@ -63,6 +70,47 @@ const ACTION_LABELS: Record<PeerAction, string> = {
   revoke: 'PeerRevoke',
   delete: 'Delete',
 };
+
+const CONNECTION_KINDS: Record<
+  ConnectionPath,
+  'default' | 'success' | 'warning'
+> = {
+  unknown: 'default',
+  direct: 'success',
+  relay: 'warning',
+};
+
+const CONNECTION_LABELS: Record<ConnectionPath, string> = {
+  unknown: 'PeerConnectionNotChecked',
+  direct: 'PeerConnectionDirect',
+  relay: 'PeerConnectionRelay',
+};
+
+// What this node's network means for reaching other nodes, in one sentence.
+function describeNetwork(identity: NodeIdentity, hasDirectPeer: boolean) {
+  // A direct connection to another node is proof, whatever else was worked out.
+  if (hasDirectPeer) {
+    return { text: translate('PeerNetworkProvenDirect'), isProblem: false };
+  }
+
+  if (identity.captivePortal) {
+    return { text: translate('PeerNetworkCaptivePortal'), isProblem: true };
+  }
+
+  if (identity.udp === false) {
+    return { text: translate('PeerNetworkNoUdp'), isProblem: true };
+  }
+
+  if (identity.mappingVaries) {
+    return { text: translate('PeerNetworkVaryingPort'), isProblem: true };
+  }
+
+  if (identity.udp && identity.mappingVaries === false) {
+    return { text: translate('PeerNetworkGood'), isProblem: false };
+  }
+
+  return { text: translate('PeerNetworkUnknown'), isProblem: false };
+}
 
 interface PeerRowProps {
   peer: Peer;
@@ -126,6 +174,33 @@ function PeerRow({ peer, isBusy, onAction }: PeerRowProps) {
         ) : null}
       </TableRowCell>
 
+      <TableRowCell>
+        {peer.state === 'trusted' ? (
+          <>
+            <Label
+              kind={CONNECTION_KINDS[peer.connectionPath]}
+              title={
+                peer.connectionPath === 'direct'
+                  ? translate('PeerConnectionDirectHelpText')
+                  : undefined
+              }
+            >
+              {translate(CONNECTION_LABELS[peer.connectionPath])}
+            </Label>
+
+            {peer.connectionAddress ? (
+              <div className={styles.nodeId}>{peer.connectionAddress}</div>
+            ) : null}
+
+            {peer.connectionPath === 'relay' ? (
+              <div className={styles.error}>
+                {translate('PeerConnectionRelayHelpText')}
+              </div>
+            ) : null}
+          </>
+        ) : null}
+      </TableRowCell>
+
       {peer.lastSeen ? (
         <RelativeDateCell date={peer.lastSeen} />
       ) : (
@@ -159,6 +234,10 @@ function TrustedNodes() {
     [mutate]
   );
 
+  const hasDirectPeer = peers.some(
+    (peer) => peer.state === 'trusted' && peer.connectionPath === 'direct'
+  );
+
   return (
     <PageContent title={translate('TrustedNodes')}>
       <PageContentBody>
@@ -172,6 +251,35 @@ function TrustedNodes() {
               <>
                 <div className={styles.muted}>{translate('NodeId')}</div>
                 <div className={styles.nodeId}>{identity.nodeId}</div>
+
+                <div className={styles.network}>
+                  <div className={styles.muted}>{translate('PeerNetwork')}</div>
+                  <div
+                    className={
+                      describeNetwork(identity, hasDirectPeer).isProblem
+                        ? styles.error
+                        : undefined
+                    }
+                  >
+                    {describeNetwork(identity, hasDirectPeer).text}
+                  </div>
+
+                  {identity.publicAddress ? (
+                    <div className={styles.muted}>
+                      {translate('PeerNetworkPublicAddress')}:{' '}
+                      <span className={styles.nodeId}>
+                        {identity.publicAddress}
+                      </span>
+                    </div>
+                  ) : null}
+
+                  {identity.relayUrl ? (
+                    <div className={styles.muted}>
+                      {translate('PeerRelay')}:{' '}
+                      <span className={styles.nodeId}>{identity.relayUrl}</span>
+                    </div>
+                  ) : null}
+                </div>
               </>
             ) : (
               <Alert kind={kinds.DANGER}>

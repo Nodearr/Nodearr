@@ -197,12 +197,12 @@ async fn read_json<T: for<'de> Deserialize<'de>>(recv: &mut RecvStream) -> Resul
 // ---------------------------------------------------------------------------------------------
 
 /// Follows whether a connection's selected path is a direct IP path right now.
-struct PathMonitor {
+pub(crate) struct PathMonitor {
     direct: watch::Receiver<bool>,
 }
 
 impl PathMonitor {
-    fn spawn(conn: &Connection) -> Self {
+    pub(crate) fn spawn(conn: &Connection) -> Self {
         let (tx, rx) = watch::channel(is_direct(conn));
         let conn = conn.clone();
 
@@ -225,7 +225,7 @@ impl PathMonitor {
         *self.direct.borrow()
     }
 
-    async fn wait_direct(&mut self, timeout: Duration) -> bool {
+    pub(crate) async fn wait_direct(&mut self, timeout: Duration) -> bool {
         tokio::time::timeout(timeout, self.direct.wait_for(|direct| *direct)).await.map(|r| r.is_ok()).unwrap_or(false)
     }
 
@@ -237,6 +237,18 @@ impl PathMonitor {
 
 fn is_direct(conn: &Connection) -> bool {
     conn.paths().iter().find(|p| p.is_selected()).map(|p| p.is_ip()).unwrap_or(false)
+}
+
+/// The path a connection is using right now: whether it is direct, and the address at the far end.
+pub(crate) fn selected_path(conn: &Connection) -> Option<(bool, String)> {
+    conn.paths().iter().find(|p| p.is_selected()).map(|p| {
+        let remote = match p.remote_addr() {
+            iroh::TransportAddr::Ip(ip) => ip.to_string(),
+            iroh::TransportAddr::Relay(url) => url.to_string(),
+            other => format!("{other:?}"),
+        };
+        (p.is_ip(), remote)
+    })
 }
 
 fn code_name(code: u64) -> &'static str {

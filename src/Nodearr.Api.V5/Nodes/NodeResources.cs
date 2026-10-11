@@ -1,4 +1,5 @@
 using NzbDrone.Core.Nodes;
+using NzbDrone.Core.Nodes.Transport;
 
 namespace Nodearr.Api.V5.Nodes;
 
@@ -10,6 +11,12 @@ public class NodeIdentityResource
     public string? RelayUrl { get; set; }
     public List<string> IpAddresses { get; set; } = new();
 
+    // What the transport has worked out about this node's network. Each is absent until known.
+    public bool? Udp { get; set; }
+    public bool? MappingVaries { get; set; }
+    public string? PublicAddress { get; set; }
+    public bool? CaptivePortal { get; set; }
+
     public static NodeIdentityResource FromModel(NodeIdentity identity)
     {
         return new NodeIdentityResource
@@ -18,7 +25,11 @@ public class NodeIdentityResource
             NodeId = identity.NodeId,
             Name = identity.Name,
             RelayUrl = identity.RelayUrl,
-            IpAddresses = identity.IpAddresses
+            IpAddresses = identity.IpAddresses,
+            Udp = identity.Network?.Udp,
+            MappingVaries = identity.Network?.MappingVaries,
+            PublicAddress = identity.Network?.PublicAddress,
+            CaptivePortal = identity.Network?.CaptivePortal
         };
     }
 }
@@ -34,6 +45,9 @@ public class PeerResource
     public DateTime StateChanged { get; set; }
     public DateTime? LastSeen { get; set; }
     public string? LastError { get; set; }
+    public ConnectionPath ConnectionPath { get; set; }
+    public string? ConnectionAddress { get; set; }
+    public DateTime? ConnectionChecked { get; set; }
     public bool ShareAll { get; set; }
 
     public static PeerResource FromModel(Peer peer)
@@ -49,6 +63,9 @@ public class PeerResource
             StateChanged = peer.StateChanged,
             LastSeen = peer.LastSeen,
             LastError = peer.LastError,
+            ConnectionPath = peer.ConnectionPath,
+            ConnectionAddress = peer.ConnectionAddress,
+            ConnectionChecked = peer.ConnectionChecked,
             ShareAll = peer.ShareAll
         };
     }

@@ -29,6 +29,9 @@ namespace NzbDrone.Core.Nodes
         public string Name { get; set; }
         public string RelayUrl { get; set; }
         public List<string> IpAddresses { get; set; } = new();
+
+        // What is known about the network this node is on. Null while the transport is not running.
+        public NetworkStatus Network { get; set; }
     }
 
     public class CreatedInvite
@@ -60,6 +63,9 @@ namespace NzbDrone.Core.Nodes
     public class PeerService : IPeerService, IHandle<ApplicationStartedEvent>, IHandleAsync<PeerTransportStateChangedEvent>
     {
         private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(20);
+
+        // How long a connection check gives the two nodes to find a direct path to each other.
+        private static readonly TimeSpan DirectPathWait = TimeSpan.FromSeconds(10);
 
         private readonly IPeerRepository _peers;
         private readonly IPeerInviteRepository _invites;
@@ -119,7 +125,8 @@ namespace NzbDrone.Core.Nodes
                 NodeId = address.NodeId,
                 Name = LocalName,
                 RelayUrl = address.RelayUrl,
-                IpAddresses = address.IpAddresses
+                IpAddresses = address.IpAddresses,
+                Network = _transport.GetNetworkStatus()
             };
         }
 
@@ -281,13 +288,27 @@ namespace NzbDrone.Core.Nodes
                 peer.Name = reply.Name.IsNotNullOrWhiteSpace() ? reply.Name : peer.Name;
                 peer.LastSeen = DateTime.UtcNow;
                 peer.LastError = null;
+
+                // The answer says the nodes can talk. Whether a file could move is a second
+                // question: that needs a direct path, and the answer may have come through a relay.
+                var probe = _transport.Probe(peer.ToAddress(), DirectPathWait);
+
+                peer.ConnectionPath = probe.Path;
+                peer.ConnectionAddress = probe.RemoteAddress;
             }
             catch (TransportException ex)
             {
                 peer.LastError = $"{ex.Failure}: {ex.Message}";
+                peer.ConnectionPath = ConnectionPath.Unknown;
+                peer.ConnectionAddress = null;
             }
 
-            return SaveContact(peer);
+            peer.ConnectionChecked = DateTime.UtcNow;
+            SaveContact(peer);
+            _peers.SetFields(peer, p => p.ConnectionPath, p => p.ConnectionAddress, p => p.ConnectionChecked);
+            _eventAggregator.PublishEvent(new PeerConnectionCheckedEvent(peer));
+
+            return peer;
         }
 
         public Peer Block(int id)

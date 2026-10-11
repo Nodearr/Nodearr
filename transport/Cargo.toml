@@ -9,7 +9,8 @@ description = "Nodearr's peer transport sidecar: iroh endpoints behind a loopbac
 
 [dependencies]
 # Pinned exactly. Relay and path behaviour were measured against this release (ADR 0011).
-iroh = "=1.3.0"
+# The net report says what kind of network this is. It is an unstable API, which the exact pin allows for.
+iroh = { version = "=1.3.0", features = ["unstable-net-report"] }
 anyhow = "1"
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "query", "tokio"] }
 base64 = "0.22"

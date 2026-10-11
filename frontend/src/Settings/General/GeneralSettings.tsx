@@ -14,7 +14,6 @@ import { useIsWindowsService } from 'System/Status/useSystemStatus';
 import { useRestart } from 'System/useSystem';
 import { InputChanged } from 'typings/inputs';
 import translate from 'Utilities/String/translate';
-import AnalyticSettings from './AnalyticSettings';
 import BackupSettings from './BackupSettings';
 import HostSettings from './HostSettings';
 import LoggingSettings from './LoggingSettings';
@@ -165,11 +164,6 @@ function GeneralSettings() {
             <LoggingSettings
               logLevel={settings.logLevel}
               logSizeLimit={settings.logSizeLimit}
-              onInputChange={handleInputChange}
-            />
-
-            <AnalyticSettings
-              analyticsEnabled={settings.analyticsEnabled}
               onInputChange={handleInputChange}
             />
 

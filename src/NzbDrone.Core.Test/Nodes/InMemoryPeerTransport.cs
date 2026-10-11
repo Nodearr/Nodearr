@@ -74,6 +74,31 @@ namespace NzbDrone.Core.Test.Nodes
             return target._handler?.Invoke(_nodeId, body) ?? throw new TransportException(TransportFailure.NotAuthorized, "refused");
         }
 
+        // Every route on this network is a direct one, unless a test says otherwise.
+        public ConnectionPath PathToOthers { get; set; } = ConnectionPath.Direct;
+
+        public ConnectionProbe Probe(NodeAddress peer, TimeSpan waitForDirect)
+        {
+            var target = _network.Find(peer.NodeId);
+
+            if (target is not { IsRunning: true })
+            {
+                throw new TransportException(TransportFailure.NoRoute, "no route");
+            }
+
+            if (target._blocked.Contains(_nodeId))
+            {
+                throw new TransportException(TransportFailure.Blocked, "blocked");
+            }
+
+            return new ConnectionProbe { Path = PathToOthers, RemoteAddress = PathToOthers == ConnectionPath.Direct ? "127.0.0.1:1" : "memory://relay" };
+        }
+
+        public NetworkStatus GetNetworkStatus()
+        {
+            return new NetworkStatus { RelayUrl = "memory://relay", IpAddresses = new List<string> { "127.0.0.1:1" }, Udp = true, MappingVaries = false };
+        }
+
         public void SetBlocked(IEnumerable<string> nodeIds)
         {
             _blocked = nodeIds.ToHashSet();

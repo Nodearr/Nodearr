@@ -6,7 +6,6 @@ using NLog.Config;
 using NLog.Targets;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Extensions;
-using NzbDrone.Common.Instrumentation.Sentry;
 
 namespace NzbDrone.Common.Instrumentation
 {
@@ -45,7 +44,7 @@ namespace NzbDrone.Common.Instrumentation
                 RegisterDebugger();
             }
 
-            RegisterSentry(updateApp, appFolderInfo);
+            RegisterSentry(updateApp);
 
             if (updateApp)
             {
@@ -66,40 +65,13 @@ namespace NzbDrone.Common.Instrumentation
             LogManager.ReconfigExistingLoggers();
         }
 
-        private static void RegisterSentry(bool updateClient, IAppFolderInfo appFolderInfo)
+        // Nodearr has no error reporting service. The code this came from sent errors to a Sentry
+        // server, and did so in development builds whatever the setting said. No such target is
+        // registered here, so nothing is sent anywhere. The rules stay, because the order of the
+        // other targets' rules is built around them.
+        private static void RegisterSentry(bool updateClient)
         {
-            string dsn;
-
-            if (updateClient)
-            {
-                dsn = RuntimeInfo.IsProduction
-                    ? "https://80777986b95f44a1a90d1eb2f3af1e36@sentry.nodearr.com/11"
-                    : "https://6168f0946aba4e60ac23e469ac08eac5@sentry.nodearr.com/9";
-            }
-            else
-            {
-                dsn = RuntimeInfo.IsProduction
-                    ? "https://e2adcbe52caf46aeaebb6b1dcdfe10a1@sentry.nodearr.com/8"
-                    : "https://4ee3580e01d8407c96a7430fbc953512@sentry.nodearr.com/10";
-            }
-
-            Target target;
-            try
-            {
-                target = new SentryTarget(dsn, appFolderInfo)
-                {
-                    Name = "sentryTarget",
-                    Layout = "${message}"
-                };
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Failed to load dependency, may need an OS update: " + ex.ToString());
-                LogManager.GetLogger(nameof(NzbDroneLogger)).Debug(ex, "Failed to load dependency, may need an OS update");
-
-                // We still need the logging rules, so use a null target.
-                target = new NullTarget();
-            }
+            Target target = new NullTarget();
 
             var loggingRule = new LoggingRule("*", updateClient ? LogLevel.Trace : LogLevel.Warn, target);
             LogManager.Configuration.AddTarget("sentryTarget", target);

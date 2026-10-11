@@ -126,6 +126,69 @@ namespace NzbDrone.Core.Nodes.Transport
             return Convert.FromBase64String(response.Body);
         }
 
+        public ConnectionProbe Probe(NodeAddress peer, TimeSpan waitForDirect)
+        {
+            var client = RequireClient();
+            var request = new ProbeBody
+            {
+                NodeId = peer.NodeId,
+                RelayUrl = peer.RelayUrl,
+                IpAddrs = peer.IpAddresses ?? new List<string>(),
+                WaitMs = (long)waitForDirect.TotalMilliseconds
+            };
+
+            ProbeResponse response;
+
+            try
+            {
+                using var http = client.PostAsJsonAsync("/v1/probe", request, JsonOptions).GetAwaiter().GetResult();
+
+                http.EnsureSuccessStatusCode();
+                response = http.Content.ReadFromJsonAsync<ProbeResponse>(JsonOptions).GetAwaiter().GetResult();
+            }
+            catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
+            {
+                throw new TransportException(TransportFailure.Unavailable, "The peer transport is not responding: " + ex.Message);
+            }
+
+            if (response.Error != null)
+            {
+                var failure = Enum.TryParse<TransportFailure>(response.Error.Kind, out var parsed) ? parsed : TransportFailure.Failed;
+
+                throw new TransportException(failure, response.Error.Message);
+            }
+
+            return new ConnectionProbe
+            {
+                Path = response.Path switch { "direct" => ConnectionPath.Direct, "relay" => ConnectionPath.Relay, _ => ConnectionPath.Unknown },
+                RemoteAddress = response.Remote
+            };
+        }
+
+        public NetworkStatus GetNetworkStatus()
+        {
+            var client = RequireClient();
+
+            try
+            {
+                var network = client.GetFromJsonAsync<NetworkResponse>("/v1/network", JsonOptions).GetAwaiter().GetResult();
+
+                return new NetworkStatus
+                {
+                    RelayUrl = network.RelayUrl,
+                    IpAddresses = network.IpAddrs ?? new List<string>(),
+                    Udp = network.Udp,
+                    MappingVaries = network.MappingVaries,
+                    PublicAddress = network.PublicAddress,
+                    CaptivePortal = network.CaptivePortal
+                };
+            }
+            catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
+            {
+                throw new TransportException(TransportFailure.Unavailable, "The peer transport is not responding: " + ex.Message);
+            }
+        }
+
         public void SetBlocked(IEnumerable<string> nodeIds)
         {
             lock (_lock)
@@ -504,6 +567,31 @@ namespace NzbDrone.Core.Nodes.Transport
             public List<string> IpAddrs { get; set; }
             public string Body { get; set; }
             public long TimeoutMs { get; set; }
+        }
+
+        private class ProbeBody
+        {
+            public string NodeId { get; set; }
+            public string RelayUrl { get; set; }
+            public List<string> IpAddrs { get; set; }
+            public long WaitMs { get; set; }
+        }
+
+        private class ProbeResponse
+        {
+            public string Path { get; set; }
+            public string Remote { get; set; }
+            public RequestError Error { get; set; }
+        }
+
+        private class NetworkResponse
+        {
+            public string RelayUrl { get; set; }
+            public List<string> IpAddrs { get; set; }
+            public bool? Udp { get; set; }
+            public bool? MappingVaries { get; set; }
+            public string PublicAddress { get; set; }
+            public bool? CaptivePortal { get; set; }
         }
 
         private class RequestResponse

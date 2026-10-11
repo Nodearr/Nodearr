@@ -219,6 +219,40 @@ namespace NzbDrone.Core.Test.Nodes
         }
 
         [Test]
+        public void a_connection_check_should_say_when_the_nodes_reach_each_other_directly()
+        {
+            GivenPaired(_alice, _bob);
+
+            var peer = _bob.Service.Ping(_bob.PeerFor(_alice).Id);
+
+            peer.Should().Match<Peer>(p => p.ConnectionPath == ConnectionPath.Direct && p.ConnectionAddress == "127.0.0.1:1" && p.ConnectionChecked != null);
+        }
+
+        [Test]
+        public void a_connection_check_should_say_when_only_a_relay_joins_the_nodes()
+        {
+            GivenPaired(_alice, _bob);
+            _bob.Transport.PathToOthers = ConnectionPath.Relay;
+
+            var peer = _bob.Service.Ping(_bob.PeerFor(_alice).Id);
+
+            // The node answered, so there is nothing wrong to report. A file still could not move.
+            peer.Should().Match<Peer>(p => p.LastError == null && p.ConnectionPath == ConnectionPath.Relay && p.ConnectionAddress == "memory://relay");
+        }
+
+        [Test]
+        public void a_connection_check_that_fails_should_forget_the_path_it_knew()
+        {
+            GivenPaired(_alice, _bob);
+            _bob.Service.Ping(_bob.PeerFor(_alice).Id);
+            _alice.Transport.IsRunning = false;
+
+            var peer = _bob.Service.Ping(_bob.PeerFor(_alice).Id);
+
+            peer.Should().Match<Peer>(p => p.LastError.StartsWith("NoRoute") && p.ConnectionPath == ConnectionPath.Unknown && p.ConnectionAddress == null && p.ConnectionChecked != null);
+        }
+
+        [Test]
         public void a_blocked_node_should_be_refused_before_its_message_is_read()
         {
             GivenPaired(_alice, _bob);

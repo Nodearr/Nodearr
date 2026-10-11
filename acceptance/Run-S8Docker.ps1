@@ -67,9 +67,9 @@ if ($Down) {
     return
 }
 
-$keys = @{ A = New-Key; B = New-Key; sonarrA = New-Key; radarrA = New-Key; sonarrB = New-Key; radarrB = New-Key }
+$keys = @{ A = New-Key; B = New-Key; C = New-Key; sonarrA = New-Key; radarrA = New-Key; sonarrB = New-Key; radarrB = New-Key }
 $keys | ConvertTo-Json | Set-Content (Join-Path $run 'keys.json')
-@("NODEARR_A_API_KEY=$($keys.A)", "NODEARR_B_API_KEY=$($keys.B)",
+@("NODEARR_A_API_KEY=$($keys.A)", "NODEARR_B_API_KEY=$($keys.B)", "NODEARR_C_API_KEY=$($keys.C)",
   "SONARR_A_API_KEY=$($keys.sonarrA)", "RADARR_A_API_KEY=$($keys.radarrA)",
   "SONARR_B_API_KEY=$($keys.sonarrB)", "RADARR_B_API_KEY=$($keys.radarrB)") | Set-Content $envFile
 
@@ -77,6 +77,9 @@ $keys | ConvertTo-Json | Set-Content (Join-Path $run 'keys.json')
 $nodes = @{
     A = @{ Url = 'http://127.0.0.1:6633'; Key = $keys.A; Inside = 'http://nodearr-a:6633'; Container = 'nodearr-s8-nodearr-a-1' }
     B = @{ Url = 'http://127.0.0.1:6634'; Key = $keys.B; Inside = 'http://nodearr-b:6633'; Container = 'nodearr-s8-nodearr-b-1' }
+
+    # Set up wrongly on purpose. See the compose file.
+    C = @{ Url = 'http://127.0.0.1:6635'; Key = $keys.C; Inside = 'http://nodearr-c:6633'; Container = 'nodearr-s8-nodearr-c-1' }
 }
 $arr = @{
     sonarrA = @{ Url = 'http://127.0.0.1:18989'; Key = $keys.sonarrA; Inside = 'http://sonarr-a:8989'; Container = 'nodearr-s8-sonarr-a-1' }
@@ -133,18 +136,33 @@ function Wait-Node {
 }
 
 function Add-Application {
-    param([string] $Node, [string] $Implementation, [string] $App)
+    param([string] $Node, [string] $Implementation, [string] $App, [string] $SyncLevel = 'fullSync')
 
     $definition = Invoke-Node $Node GET '/applications/schema' | Where-Object implementation -eq $Implementation
     foreach ($pair in @{ nodearrUrl = $nodes[$Node].Inside; baseUrl = $arr[$App].Inside; apiKey = $arr[$App].Key }.GetEnumerator()) {
         ($definition.fields | Where-Object name -eq $pair.Key) | Add-Member -NotePropertyName value -NotePropertyValue $pair.Value -Force
     }
-    $definition | Add-Member -Force -NotePropertyMembers @{ name = $Implementation; syncLevel = 'fullSync' }
+    $definition | Add-Member -Force -NotePropertyMembers @{ name = $Implementation; syncLevel = $SyncLevel }
     return (Invoke-Node $Node POST '/applications' $definition).id
 }
 
 # Node B's transfers. Empty, not an error, while B cannot be reached for a moment, which
 # happens when its container is replaced or its networks change.
+# The health messages a node shows on System > Status, keyed by the check they come from.
+function Get-Health {
+    param([string] $Name)
+    $health = @{}
+    foreach ($item in @(Invoke-Node $Name GET '/health')) { $health[$item.source] = $item.message }
+    return $health
+}
+
+# Asks one node to check its connection to its first peer, and returns what it found.
+function Test-Connection-To-Peer {
+    param([string] $Name)
+    $peer = Invoke-Node $Name GET '/nodes/peers' | Select-Object -First 1
+    return Invoke-Node $Name POST "/nodes/peers/$($peer.id)/ping"
+}
+
 function Get-Transfers {
     try { return @(Invoke-Node B GET '/transfers') } catch { return @() }
 }
@@ -331,6 +349,27 @@ try {
         $bOnA.state -eq 'trusted' -and $aOnB.state -eq 'trusted' -and $bOnA.name -eq 'Ryan' -and $aOnB.name -eq 'John'
     ) @{ aSees = "$($bOnA.name) $($bOnA.state)"; bSees = "$($aOnB.name) $($aOnB.state)" }
 
+    $checked = Test-Connection-To-Peer B
+    Assert-That 'A connection check says the two nodes reach each other directly' (
+        $checked.connectionPath -eq 'direct' -and $checked.connectionAddress -and -not $checked.lastError
+    ) @{ path = $checked.connectionPath; address = $checked.connectionAddress; error = $checked.lastError }
+
+    # --- A node set up wrongly is told so ----------------------------------------------------------
+
+    Test-Connection-To-Peer A | Out-Null
+    $goodHealth = Wait-Until -What "A's health checks to settle" -TimeoutSec 30 -Condition { Start-Sleep -Seconds 8; @{ Health = (Get-Health A) } }
+    Wait-Node C | Out-Null
+    Add-Application C Sonarr sonarrA 'addOnly' | Out-Null
+    Invoke-NodeCommand C @{ name = 'CatalogRefresh' }
+    $badHealth = Wait-Until -What 'the misconfigured node to be warned' -TimeoutSec 90 -EverySec 3 -Condition {
+        $health = Get-Health C
+        if ($health.LibraryReadableCheck -and $health.ApplicationDownloadFolderCheck) { $health }
+    }
+    Assert-That 'A node that cannot read the library, or whose Sonarr cannot see its downloads, is told so. A node set up properly shows no warnings at all.' (
+        $goodHealth.Health.Count -eq 0 -and
+        $badHealth.LibraryReadableCheck -match '/tv/' -and $badHealth.ApplicationDownloadFolderCheck -match '/downloads/complete'
+    ) @{ goodNodeWarnings = @($goodHealth.Health.Values); library = $badHealth.LibraryReadableCheck; downloads = $badHealth.ApplicationDownloadFolderCheck }
+
     # --- 2. The full flow ------------------------------------------------------------------------
 
     Search-Episode 0
@@ -445,6 +484,11 @@ try {
     docker network disconnect $directNetwork $nodes.B.Container | Out-Null
     Start-Sleep -Seconds 3
 
+    # Node B's published port drops for a moment when its networks change.
+    $relayOnly = Wait-Until -What 'node B to answer after its network changed' -TimeoutSec 60 -EverySec 2 -Condition {
+        try { Test-Connection-To-Peer B } catch { $null }
+    }
+
     Search-Episode 4
     $unroutable = Wait-Failed $null 180
     $relayAfter = Get-RelayBytes
@@ -453,13 +497,14 @@ try {
     $relayed = $relayAfter - $relayBefore
     Assert-That 'With only a relay between the nodes the transfer fails as NoDirectRoute, and no file data goes through the relay' (
         $unroutable.failure -eq 'noDirectRoute' -and $unroutable.bytesDone -eq 0 -and $unroutable.attempts -eq 3 -and $leftBehind.Count -eq 0 -and
-        $relayed -gt 0 -and $relayed -lt 1MB -and $unroutableMessage -match 'NoDirectRoute'
-    ) @{ failure = $unroutable.failure; attempts = $unroutable.attempts; bytesDone = $unroutable.bytesDone; fileSize = $tvSize; bytesThroughRelay = $relayed; sonarrSays = $unroutableMessage }
+        $relayed -gt 0 -and $relayed -lt 1MB -and $unroutableMessage -match 'NoDirectRoute' -and
+        $relayOnly.connectionPath -eq 'relay' -and -not $relayOnly.lastError
+    ) @{ connectionCheckSaid = $relayOnly.connectionPath; failure = $unroutable.failure; attempts = $unroutable.attempts; bytesDone = $unroutable.bytesDone; fileSize = $tvSize; bytesThroughRelay = $relayed; sonarrSays = $unroutableMessage }
 
     Get-Transfers | ForEach-Object { Remove-Transfer $_.downloadId }
     docker network connect $directNetwork $nodes.B.Container | Out-Null
     Wait-Until -What 'the nodes to reach each other again' -TimeoutSec 60 -EverySec 3 -Condition {
-        try { (Invoke-Node B POST "/nodes/peers/$($aOnB.id)/ping").lastError -eq $null } catch { $false }
+        try { (Test-Connection-To-Peer B).connectionPath -eq 'direct' } catch { $false }
     } | Out-Null
 
     # --- 7. The sender blocks the receiver in the middle of a transfer ---------------------------
@@ -476,6 +521,18 @@ try {
     Assert-That 'When John blocks Ryan mid-transfer the transfer is cut, Sonarr is told, and Ryan is offered nothing more' (
         $blocked.failure -in 'revoked', 'blocked' -and $blocked.bytesDone -lt $blocked.size -and $blockedMessage -match 'Revoked|Blocked' -and $afterBlock.Items -eq 0
     ) @{ failure = $blocked.failure; bytesDone = $blocked.bytesDone; size = $blocked.size; sonarrSays = $blockedMessage; catalogItemsLeft = $afterBlock.Items }
+
+    # --- 8. It contacts nothing it was not told to -----------------------------------------------
+
+    # Node C has logged every request it made since it started, minutes ago. It was told about
+    # one thing: John's Sonarr.
+    $log = (docker exec $nodes.C.Container sh -c 'cat /config/logs/*.txt') -join "`n"
+    $outbound = @([regex]::Matches($log, '(?m)\|HttpClient\|Req: \[\w+\] https?://([^/:\s]+)') | ForEach-Object { $_.Groups[1].Value.ToLowerInvariant() })
+    $hosts = @($outbound | Sort-Object -Unique)
+    $unexpected = @($hosts | Where-Object { $_ -ne 'sonarr-a' })
+    Assert-That 'Left alone for minutes, a node makes no request to anything but the Sonarr it was given' (
+        $outbound.Count -gt 0 -and $unexpected.Count -eq 0
+    ) @{ requestsMade = $outbound.Count; hostsContacted = $hosts; unexpected = $unexpected }
 }
 catch {
     Write-Host "Stopped: $_" -ForegroundColor Red

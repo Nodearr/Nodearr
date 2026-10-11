@@ -11,6 +11,7 @@ interface CssExports {
   'identity': string;
   'identityName': string;
   'muted': string;
+  'network': string;
   'nodeId': string;
 }
 export const cssExports: CssExports;
