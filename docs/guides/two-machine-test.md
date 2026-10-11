@@ -43,12 +43,16 @@ On both sides, in Nodearr at `http://localhost:6633`:
 
 1. **Settings > Applications.** Add Sonarr and Radarr. Nodearr adds itself to each as an indexer and a download client.
 2. **Catalog > Local.** Refresh. Your files should be listed and readable.
+3. **System > Status.** There should be no warnings. Two matter here. One says Nodearr cannot read the library, which means the other person's transfers would be refused. The other says Sonarr or Radarr cannot see Nodearr's download folder, which means nothing would ever be imported. Fix either before going on.
+4. **Nodes > Trusted Nodes.** The box at the top says what Nodearr has worked out about your network. If it says the network uses a different public port for every destination, expect to need a forwarded port.
 
 Then pair:
 
-3. The side with the file: **Nodes > Invites**, tick "share everything", create an invite, and send the code to the other side by any means.
-4. The other side: **Nodes > Invites**, paste the code and redeem it.
-5. Both sides: **Nodes > Trusted Nodes** shows the other as trusted. Press "Check connection".
+5. The side with the file: **Nodes > Invites**, tick "share everything", create an invite, and send the code to the other side by any means.
+6. The other side: **Nodes > Invites**, paste the code and redeem it.
+7. Both sides: **Nodes > Trusted Nodes** shows the other as trusted. Press "Check connection". It takes up to ten seconds, and then the Connection column says one of two things:
+   - **Direct.** A transfer will work. Go on.
+   - **Relay only.** The nodes can talk and a transfer would fail as `NoDirectRoute`. There is no need to try one to find out. Forward UDP 6633 on a router you control, to the machine running Nodearr, and check again.
 
 ## Run it
 
@@ -67,17 +71,18 @@ For each pair of networks you try:
 | Networks | For example: home fibre to phone hotspot |
 | How each Nodearr is networked | Host network, or published ports |
 | Was UDP 6633 forwarded on either router? | |
-| "Check connection" worked? | |
+| What each side's network box said | |
+| "Check connection" said | Direct, relay only, or an error |
 | The transfer | Completed, or failed with which name |
 | If it completed | Size and how long it took |
 
 The outcomes mean:
 
 - **Completed.** The two nodes found a direct route. The file was verified before Sonarr or Radarr saw it.
-- **NoDirectRoute.** The nodes could talk through a relay and could not reach each other directly. Nothing of the file was sent. This is Nodearr working as designed on a network that does not allow a direct route. Phone networks and some café networks are like this. Try forwarding UDP 6633 on the side that has a router you control, then try again.
+- **NoDirectRoute.** The nodes could talk through a relay and could not reach each other directly. Nothing of the file was sent. This is Nodearr working as designed on a network that does not allow a direct route. Phone networks and some café networks are like this. "Check connection" will have said "Relay only" beforehand. Try forwarding UDP 6633 on the side that has a router you control, then check again.
 - **PeerUnreachable.** The nodes could not talk at all. Check that both are running and that "Check connection" works.
 
-One completed transfer between two home networks, with no port forwarded, is the result that matters most. A `NoDirectRoute` on a phone hotspot is worth recording and is not a failure of the test.
+One "Direct" and one completed transfer between two home networks, with no port forwarded, is the result that matters most. A `NoDirectRoute` on a phone hotspot is worth recording and is not a failure of the test.
 
 ## Things worth trying once it works
 

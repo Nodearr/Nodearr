@@ -95,7 +95,15 @@ What S8 left:
 - **The two-machine run.** It is the plan's last acceptance item and the open gate on ADR 0011 and ADR 0012. Until it is done, "files only travel over a direct connection" is proven between containers and on one machine, and not between two homes.
 - No image is published, and only linux/amd64 has been built.
 - The transport options are environment variables, with no settings page.
-- The inherited update check and error reporting still point at nodearr.com hosts that do not exist yet.
+- ~~The inherited update check and error reporting still point at nodearr.com hosts that do not exist yet.~~ Removed afterwards, see below.
+
+## After the plan (2026-10-11)
+
+Three things were added before the two-machine run, to make it worth running. ADR 0018. Branch `v1/s9-diagnostics`.
+
+- "Check connection" says whether two nodes reach each other directly or only through a relay, and the Nodes page says what is known about the local network.
+- System > Status warns when Nodearr cannot read the library, and when Sonarr or Radarr cannot see Nodearr's download folder.
+- The inherited update check, time check, notifications, error reporting and analytics are gone. A node contacts only what it is pointed at.
 
 ## Where V1 stands
 

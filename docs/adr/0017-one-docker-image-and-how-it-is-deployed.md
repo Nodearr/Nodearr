@@ -73,7 +73,10 @@ A node's name, as other nodes see it, is set with `Nodearr__Transport__NodeName`
 - **No image is published.** It has to be built from the repository, which takes several minutes the first time.
 - **Only linux/amd64 has been built.** The sidecar and the application should build for arm64, and that has not been tried.
 - **Settings are environment variables.** Relay, port, port mapping, node name, download folder and limits have no page in the UI.
-- **The inherited update check and error reporting are still in the code**, pointing at nodearr.com hosts that do not exist yet. They fail quietly. They should be removed or made real before anyone else runs this.
+
+## Amendments
+
+- 2026-10-11 (ADR 0018): the inherited update check, error reporting and analytics were removed. A container now contacts only what it is pointed at.
 
 ## Follow-up work
 

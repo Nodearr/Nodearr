@@ -148,8 +148,11 @@ It runs `acceptance/docker-compose.s8.yml`: two complete deployments, John's and
 - One byte of a file is changed on John's side after its hash was fixed. The transfer fails verification and nothing reaches Sonarr.
 - The direct network is unplugged. The transfer fails as `NoDirectRoute`, and the relay's counters show that no file data went through it.
 - John blocks Ryan in the middle of a transfer. It is cut.
+- A connection check says "direct" between the two, and "relay" once the direct network is unplugged.
+- A third Nodearr, set up wrongly on purpose, is warned that it cannot read the library and that Sonarr cannot see its downloads. The two set up properly show no warnings.
+- That third node logs every request it makes for the whole run. All of them are to the one Sonarr it was given.
 
-`-KeepRunning` leaves it all up: John's Nodearr at `http://localhost:6633` and Ryan's at `http://localhost:6634`. By then John has blocked Ryan. `-Down` removes everything.
+`-KeepRunning` leaves it all up: John's Nodearr at `http://localhost:6633`, Ryan's at `http://localhost:6634` and the wrongly set up one at `http://localhost:6635`. By then John has blocked Ryan. `-Down` removes everything.
 
 ## Between two machines
 
