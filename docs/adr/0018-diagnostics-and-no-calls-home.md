@@ -76,11 +76,24 @@ Two inherited paths remain that only run when someone uses the feature behind th
 
 ## Follow-up work
 
-- Use the connection check automatically after pairing, so the answer is there without asking.
-- Show the same path information on a transfer that failed.
+- ~~Use the connection check automatically after pairing, so the answer is there without asking.~~ Done, see the amendments.
+- ~~Show the same path information on a transfer that failed.~~ Done, see the amendments.
 
 ## Amendments
 
 - 2026-10-11: **"Relay only" raises a warning, and the warning names the firewall.** A trusted node that the last connection check reached only through a relay is now a warning on System > Status, by name. It is raised whatever else is known about the network, and a direct connection to some other node does not hide it. It goes when a later check finds a direct route, or trust ends. The message, and the text beside "Relay only" on Nodes > Trusted Nodes, say to check each machine's firewall for incoming UDP before forwarding a port.
 
   The reason: Windows had been blocking incoming traffic to the transport on the development machine for most of a day, and nothing noticed. Both host acceptance suites passed in that time, because both of their nodes run on the one machine. From another machine that node would have been "Relay only", with a message that pointed only at the router. Nodearr cannot tell a blocked firewall from a router that needs a port forwarded. It can name both, the cheaper one first. The two-machine guide has a section on it.
+
+- 2026-10-11: **connections are checked without anyone asking.** Until now a node's route was looked at when someone pressed "Check connection" and when the transport started, and at no other time. So the relay-only warning above could be out of date in either direction, and a node that had just paired showed nothing. The same check now also runs:
+
+  - a few seconds after two nodes pair, on both sides. The wait is there because the other side finishes pairing a moment later, and asked sooner it would refuse to answer.
+  - every 15 minutes, for every trusted node. It is a scheduled task like the others, listed on System > Tasks.
+  - when a transfer attempt fails as `NoDirectRoute`, `DirectPathLost` or `PeerUnreachable`, at most once every 45 seconds for the same node.
+  - when a file arrives from a node the last check did not call direct. A file only ever arrives over a direct route, so the check was wrong or old.
+
+  The Trusted Nodes page is told when a check ends, and fetches the list again.
+
+- 2026-10-11: **a transfer that found no direct route says what is known about the route.** After the name and the sentence that were there before, a `NoDirectRoute` or `DirectPathLost` failure now adds two more. The first is what the last connection check found, and how long before the failure: a direct route, only a relay, nothing at all, or that no check was made. Since a failed attempt causes a check, by the time a transfer gives up the check is a fresh one. The second is where this node's own network points: at this node's router when the network gives a different public port to every destination, at this machine's firewall when UDP was not seen getting out, and otherwise at both firewalls and then the other node's router. The whole text goes to the Arr app with the failure, so it is in Sonarr's and Radarr's history too.
+
+  It can only speak for this side. Nothing here can see the other node's network, and a firewall that blocks incoming UDP on this machine does not show from this machine either. The wording says "as far as it can tell" for that reason.

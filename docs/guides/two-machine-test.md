@@ -63,7 +63,7 @@ Then pair:
 
 6. The side with the file: **Nodes > Invites**, tick "share everything", create an invite, and send the code to the other side by any means.
 7. The other side: **Nodes > Invites**, paste the code and redeem it.
-8. Both sides: **Nodes > Trusted Nodes** shows the other as trusted. Press "Check connection". It takes up to ten seconds, and then the Connection column says one of two things:
+8. Both sides: **Nodes > Trusted Nodes** shows the other as trusted. Within a few seconds of pairing the Connection column fills in by itself. "Check connection" asks again at any time, and takes up to ten seconds. The column says one of two things:
    - **Direct.** A transfer will work. Go on.
    - **Relay only.** The nodes can talk and a transfer would fail as `NoDirectRoute`. There is no need to try one to find out. System > Status now carries a warning that names the other node. Go back to the firewall section above, on both machines. If both firewalls let Nodearr in, forward UDP 6633 on a router you control, to the machine running Nodearr. Check again after each change.
 
@@ -93,7 +93,7 @@ For each pair of networks you try:
 The outcomes mean:
 
 - **Completed.** The two nodes found a direct route. The file was verified before Sonarr or Radarr saw it.
-- **NoDirectRoute.** The nodes could talk through a relay and could not reach each other directly. Nothing of the file was sent. This is Nodearr working as designed on a network that does not allow a direct route. Phone networks and some café networks are like this. "Check connection" will have said "Relay only" beforehand. It is also what a firewall blocking Nodearr on either machine looks like, so rule that out first. Then try forwarding UDP 6633 on the side that has a router you control, and check again.
+- **NoDirectRoute.** The nodes could talk through a relay and could not reach each other directly. Nothing of the file was sent. The message, in Nodearr and in Sonarr's or Radarr's history, goes on to say what the last connection check found and which side to look at first. Write that down too. This is Nodearr working as designed on a network that does not allow a direct route. Phone networks and some café networks are like this. "Check connection" will have said "Relay only" beforehand. It is also what a firewall blocking Nodearr on either machine looks like, so rule that out first. Then try forwarding UDP 6633 on the side that has a router you control, and check again.
 - **PeerUnreachable.** The nodes could not talk at all. Check that both are running and that "Check connection" works.
 
 One "Direct" and one completed transfer between two home networks, with no port forwarded, is the result that matters most. A `NoDirectRoute` on a phone hotspot is worth recording and is not a failure of the test.

@@ -29,6 +29,7 @@ Checks, against pinned Sonarr and Radarr containers:
 - Path mappings make the Arr apps' paths readable by Nodearr.
 - A file deleted in Sonarr is marked missing on the next refresh and removed by a purge.
 - Syncing again creates no duplicates, the scheduled jobs are the right ones, and deleting an application removes its catalog.
+- Deleting an application also takes Nodearr out of that Arr app, as indexer and download client, and leaves the other app as it was. An application whose Arr app has been stopped can still be deleted, without a long wait.
 
 Nodearr runs on the host on port 6633. The containers come from `spikes/arr-contract/docker-compose.yml` with `docker-compose.library.yml` layered on top, which puts the Arr libraries on the host so Nodearr can read them. They publish on 127.0.0.1 only, on ports 18989 and 17878.
 
@@ -49,6 +50,7 @@ Starts two Nodearr instances on this machine, A on port 6633 and B on port 6634,
 
 - Each node gets its own identity, kept in a key file.
 - Redeeming an invite makes both nodes trust each other, and the invite works only once.
+- A few seconds after pairing, each node has checked the connection to the other without being asked.
 - A blocked node is refused when it connects, cannot pair again with a new invite, and cannot be deleted while blocked.
 - Unblocking does not restore trust. Pairing again does, without duplicating the node.
 - A restart keeps identity and trust, leaves no orphan sidecar, and the peer finds the node again.
@@ -137,7 +139,7 @@ pwsh acceptance/Run-S7Transfers.ps1 -Down
 pwsh acceptance/Run-S8Docker.ps1
 ```
 
-Needs Docker and ffmpeg, and nothing else: no .NET, Node or Rust on the host. The first run builds the Nodearr image and a small relay image used only by this test, which takes ten minutes or so. Later runs take about eight. Add `-SkipBuild` to reuse the images.
+Needs Docker and ffmpeg, and nothing else: no .NET, Node or Rust on the host. The first run builds the Nodearr image and a small relay image used only by this test, which takes ten minutes or so. Later runs take about five. Add `-SkipBuild` to reuse the images.
 
 It runs `acceptance/docker-compose.s8.yml`: two complete deployments, John's and Ryan's, each a Nodearr container with its own Sonarr and Radarr, one shared `/downloads` volume and its libraries mounted read-only. The two sides reach each other over one network that stands in for a direct route, and a relay that stands in for a public one.
 
@@ -147,7 +149,7 @@ It runs `acceptance/docker-compose.s8.yml`: two complete deployments, John's and
 - Ryan's Nodearr container is replaced in the middle of a transfer. The new one is the same node and carries on.
 - John hides a series while Ryan's node is frozen and cannot hear of it. Ryan's node then uses a ticket it already held, and John's node refuses.
 - One byte of a file is changed on John's side after its hash was fixed. The transfer fails verification and nothing reaches Sonarr.
-- The direct network is unplugged. The transfer fails as `NoDirectRoute`, and the relay's counters show that no file data went through it. While only the relay is left, System > Status warns that there is no direct route, names the other node and says to check the firewall. The warning goes once the route is direct again.
+- The direct network is unplugged. The transfer fails as `NoDirectRoute`, and the relay's counters show that no file data went through it. While only the relay is left, System > Status warns that there is no direct route, names the other node and says to check the firewall. The warning goes once the route is direct again. The failed transfer has the connection checked again unasked, and what Sonarr records says that the check found only a relay and where to look.
 - John blocks Ryan in the middle of a transfer. It is cut.
 - A connection check says "direct" between the two, and "relay" once the direct network is unplugged.
 - A third Nodearr, set up wrongly on purpose, is warned that it cannot read the library and that Sonarr cannot see its downloads. The two set up properly show no warnings.
