@@ -131,7 +131,6 @@ Nodearr reports paths as it sees them. When the Arr app sees the download folder
 - **Hashing is on demand.** The plan called for hashing in the background as well. Here the first request for a file pays for hashing it, and the receiver waits. BLAKE3 is fast, but a very large file on a slow disk will take a while to start.
 - **Checking permission rebuilds the peer's whole offer** for each request. Fine for now. A large library will want a direct check.
 - **Unsharing does not stop a transfer already under way.** Ending trust does.
-- **Uploads are not shown.** The Transfers page lists what this node is fetching, not what it is sending.
 - **A failed verification is not tried again**, though a file that changed while it was being sent would pass the second time.
 - **No speed limit setting in the UI.** There is an upload limit option, used by the acceptance script.
 - **Whole-file hash.** A resumed transfer has to read back what it already holds.
@@ -139,4 +138,9 @@ Nodearr reports paths as it sees them. When the Arr app sees the download folder
 ## Follow-up work
 
 - S8: package the sidecar, the image and the shared `/downloads` layout, and run all of this between two machines on different networks, including a transfer with no direct route.
-- Later: background hashing, uploads on the Transfers page, limits in settings.
+- Later: background hashing.
+
+## Amendments
+
+- 2026-10-11: **uploads are shown.** The sidecar keeps a record of each file it sends, from the moment Nodearr allows it: who to, which file, how far along, and how it ended. Nodearr reads that once a second, and the Transfers page has a "Sending" section beside "Receiving", updated live. An upload ends as sent, stopped (the other side went away or cancelled), cut because trust ended, or failed for want of a direct route. A request that was refused never becomes an upload and is not listed. It is logged. The list is kept in memory: it holds the last hundred finished uploads and starts empty when Nodearr starts. Nothing is decided here. Whether a node may have a file is settled before the upload begins.
+- 2026-10-11 (ADR 0019): the upload limit and the download folder have a settings page.

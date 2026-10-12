@@ -109,6 +109,7 @@ Needs the same as S6, and takes about five minutes. Node A's uploads are slowed 
 - The same ticket twice gives one transfer. Deleting it from the queue leaves nothing behind.
 - Node B is killed in the middle and started again. The transfer carries on from what had arrived.
 - Node A revokes trust in the middle. The transfer stops, and Sonarr records why and blocklists the release.
+- Node A, the one sending, shows each upload while it leaves and lists how each ended: sent, stopped by the other side, or cut when trust ended.
 
 ### Trying it by hand
 
@@ -119,7 +120,7 @@ pwsh acceptance/Run-S7Transfers.ps1 -SetupOnly
 This builds the same environment, pairs the nodes, shares everything, and stops there with nothing grabbed. `acceptance/.run/s7/ready.txt` appears when it is ready, with the addresses. Then:
 
 1. Open node B's Sonarr at `http://localhost:28989`, go to Pingu, and search for one of the first three episodes of season 1. Use the interactive search to see Nodearr's result before grabbing it.
-2. Watch it arrive at `http://localhost:6634/activity/transfers`.
+2. Watch it arrive at `http://localhost:6634/activity/transfers`, under Receiving. The same page on node A, `http://localhost:6633/activity/transfers`, shows it leaving, under Sending.
 3. Sonarr imports it within a minute. The episode then shows as downloaded.
 
 Node B's Radarr at `http://localhost:27878` has one movie to try the same with. Node A is at `http://localhost:6633`: Catalog > Sharing decides what B is offered, and Nodes > Trusted Nodes can revoke B.

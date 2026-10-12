@@ -61,7 +61,7 @@ On the side that is missing the file:
 
 1. **Catalog > Peer Catalog** lists what the other side offers, with the file marked missing.
 2. In Sonarr or Radarr, search for it. A result from the indexer "Nodearr" appears. Grab it.
-3. Watch **Activity > Transfers** in Nodearr.
+3. Watch **Activity > Transfers** in Nodearr. It shows under Receiving on this side, and under Sending on the other side.
 
 ## What to write down
 

@@ -86,7 +86,7 @@ What S7 left for later slices:
 
 - Everything has run with both nodes on one machine. Two machines on different networks, and a transfer with no direct route, are S8.
 - Files are hashed when first asked for, not in the background.
-- Uploads are not shown on the Transfers page. The upload limit and the download folder are options with no settings page.
+- ~~Uploads are not shown on the Transfers page. The upload limit and the download folder are options with no settings page.~~ Both done afterwards, see below.
 - Unsharing a title does not stop a transfer of it that is already under way. Ending trust does.
 - The sidecar is still built separately with cargo.
 
@@ -107,6 +107,7 @@ Three things were added before the two-machine run, to make it worth running. AD
 
 Then a settings page. ADR 0019. Branch `v1/s10-node-settings`.
 
+- The Transfers page shows what this node is sending as well as what it is fetching, live, and how each upload ended. Branch `v1/s11-uploads`.
 - Settings > Node holds the node's name, relay, UDP port, port mapping, wait for a direct route, download folder and upload limit. Bad values are refused field by field. A setting given in the environment is shown and cannot be changed. A change that needs it restarts the transport and nothing else, and the node keeps its identity and its trust (`acceptance/Run-NodeSettings.ps1`).
 
 ## Where V1 stands
