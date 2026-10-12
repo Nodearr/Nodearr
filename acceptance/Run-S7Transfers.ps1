@@ -348,6 +348,13 @@ try {
         $slot.nzo_id -eq $moving.downloadId -and $slot.status -eq 'Downloading'
     ) @{ transfer = @{ title = $moving.title; size = $moving.size; bytesDone = $moving.bytesDone; peer = $moving.peerName }; slot = $slot }
 
+    $sending = Wait-Until -What 'A to show the upload' -TimeoutSec 30 -EverySec 0.5 -Condition {
+        @(Invoke-Node A GET '/transfers/uploads') | Where-Object { $_.state -eq 'sending' -and $_.bytesSent -gt 0 } | Select-Object -First 1
+    }
+    Assert-That 'The node sending the file shows it leaving: what, to whom and how far along' (
+        $sending.title -eq "$($episodeNames[0]).mkv" -and $sending.peerName -and $sending.size -eq (Get-Item $tvMedia).Length -and $sending.bytesSent -lt $sending.size
+    ) @{ title = $sending.title; to = $sending.peerName; bytesSent = $sending.bytesSent; size = $sending.size }
+
     $incomplete = Join-Path $downloadsB "incomplete/$($moving.downloadId)"
     $appearedEarly = Test-Path (Join-Path $downloadsB "complete/tv/$($episodeNames[0])")
     Assert-That 'While it arrives the file is under incomplete, and nothing is under complete' (
@@ -473,6 +480,16 @@ try {
     Assert-That 'Sonarr records the failure with Nodearr''s reason, blocklists the release, and imports nothing' (
         $sonarrFailure.Message -match 'Revoked' -and $sonarrFailure.Blocklisted -ge 1 -and -not $sonarrFailure.EpisodeHasFile
     ) $sonarrFailure
+
+    # --- 6. What the sending node saw of all that ---------------------------------------------------
+
+    $uploads = @(Invoke-Node A GET '/transfers/uploads')
+    $ended = { param([string] $name, [string] $state, [string] $failure) @($uploads | Where-Object { $_.title -eq "$name.mkv" -and $_.state -eq $state -and (-not $failure -or $_.failure -eq $failure) }).Count }
+    Assert-That 'Afterwards the sending node lists each upload and how it ended: sent, stopped by the other side, or cut when trust ended' (
+        (& $ended $episodeNames[0] 'completed') -eq 1 -and (& $ended $movieName 'completed') -eq 1 -and
+        (& $ended $episodeNames[1] 'completed') -eq 1 -and (& $ended $episodeNames[1] 'failed' 'Stopped') -ge 2 -and
+        (& $ended $episodeNames[2] 'failed' 'Revoked') -eq 1 -and @($uploads | Where-Object { $_.state -in 'sending', 'preparing' }).Count -eq 0
+    ) @{ uploads = @($uploads | ForEach-Object { "$($_.title -replace '\.720p.*', '') -> $($_.state) $($_.failure) $($_.bytesSent)/$($_.size)" }) }
 }
 catch {
     Write-Host "Stopped: $_" -ForegroundColor Red

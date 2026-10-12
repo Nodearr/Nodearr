@@ -1,5 +1,6 @@
 import React, { useCallback } from 'react';
 import Alert from 'Components/Alert';
+import FieldSet from 'Components/FieldSet';
 import Label from 'Components/Label';
 import Button from 'Components/Link/Button';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
@@ -20,8 +21,11 @@ import {
   Transfer,
   TransferAction,
   TransferState,
+  Upload,
+  UploadState,
   useTransferAction,
   useTransfers,
+  useUploads,
 } from './useTransfers';
 import styles from './Transfers.css';
 
@@ -51,6 +55,73 @@ const STATE_LABELS: Record<TransferState, string> = {
   completed: 'TransferCompleted',
   failed: 'TransferFailed',
 };
+
+const UPLOAD_COLUMNS: Column[] = [
+  { name: 'title', label: () => translate('Title'), isVisible: true },
+  { name: 'peerName', label: () => translate('UploadSentTo'), isVisible: true },
+  { name: 'state', label: () => translate('Status'), isVisible: true },
+  { name: 'progress', label: () => translate('Progress'), isVisible: true },
+  { name: 'size', label: () => translate('Size'), isVisible: true },
+  { name: 'started', label: () => translate('UploadStarted'), isVisible: true },
+];
+
+const UPLOAD_KINDS: Record<
+  UploadState,
+  'default' | 'info' | 'success' | 'danger'
+> = {
+  preparing: 'default',
+  sending: 'info',
+  completed: 'success',
+  failed: 'danger',
+};
+
+const UPLOAD_LABELS: Record<UploadState, string> = {
+  preparing: 'UploadPreparing',
+  sending: 'UploadSending',
+  completed: 'UploadCompleted',
+  failed: 'UploadFailed',
+};
+
+function UploadRow({ upload }: { upload: Upload }) {
+  const { state, size, bytesSent } = upload;
+  const percent = size > 0 ? Math.min(100, (bytesSent / size) * 100) : 0;
+
+  return (
+    <TableRow>
+      <TableRowCell className={styles.title}>
+        {upload.title}
+
+        {state === 'failed' && upload.failure ? (
+          <div className={styles.error}>
+            {upload.failure}
+            {upload.failureMessage ? `: ${upload.failureMessage}` : ''}
+          </div>
+        ) : null}
+      </TableRowCell>
+
+      <TableRowCell>{upload.peerName}</TableRowCell>
+
+      <TableRowCell>
+        <Label kind={UPLOAD_KINDS[state]}>
+          {translate(UPLOAD_LABELS[state])}
+        </Label>
+      </TableRowCell>
+
+      <TableRowCell className={styles.progress}>
+        <ProgressBar
+          progress={state === 'completed' ? 100 : percent}
+          kind={state === 'failed' ? kinds.DANGER : kinds.PRIMARY}
+          showText={true}
+          title={`${formatBytes(bytesSent)} / ${formatBytes(size)}`}
+        />
+      </TableRowCell>
+
+      <TableRowCell>{formatBytes(size)}</TableRowCell>
+
+      <RelativeDateCell date={upload.started} />
+    </TableRow>
+  );
+}
 
 interface TransferRowProps {
   transfer: Transfer;
@@ -134,6 +205,7 @@ function TransferRow({ transfer, isBusy, onAction }: TransferRowProps) {
 
 function Transfers() {
   const { data: transfers = [], isLoading, error } = useTransfers();
+  const { data: uploads = [], error: uploadsError } = useUploads();
   const { mutate, isPending, error: actionError } = useTransferAction();
 
   const handleAction = useCallback(
@@ -150,32 +222,54 @@ function Transfers() {
 
         {isLoading ? <LoadingIndicator /> : null}
 
-        {error ? (
-          <Alert kind={kinds.DANGER}>{translate('TransfersLoadError')}</Alert>
-        ) : null}
+        <FieldSet legend={translate('TransfersReceiving')}>
+          {error ? (
+            <Alert kind={kinds.DANGER}>{translate('TransfersLoadError')}</Alert>
+          ) : null}
 
-        {actionError ? (
-          <Alert kind={kinds.DANGER}>{getErrorMessage(actionError)}</Alert>
-        ) : null}
+          {actionError ? (
+            <Alert kind={kinds.DANGER}>{getErrorMessage(actionError)}</Alert>
+          ) : null}
 
-        {!isLoading && !error && transfers.length === 0 ? (
-          <Alert kind={kinds.INFO}>{translate('TransfersEmpty')}</Alert>
-        ) : null}
+          {!isLoading && !error && transfers.length === 0 ? (
+            <div className={styles.muted}>{translate('TransfersEmpty')}</div>
+          ) : null}
 
-        {transfers.length > 0 ? (
-          <Table columns={COLUMNS} canModifyColumns={false}>
-            <TableBody>
-              {transfers.map((transfer) => (
-                <TransferRow
-                  key={transfer.downloadId}
-                  transfer={transfer}
-                  isBusy={isPending}
-                  onAction={handleAction}
-                />
-              ))}
-            </TableBody>
-          </Table>
-        ) : null}
+          {transfers.length > 0 ? (
+            <Table columns={COLUMNS} canModifyColumns={false}>
+              <TableBody>
+                {transfers.map((transfer) => (
+                  <TransferRow
+                    key={transfer.downloadId}
+                    transfer={transfer}
+                    isBusy={isPending}
+                    onAction={handleAction}
+                  />
+                ))}
+              </TableBody>
+            </Table>
+          ) : null}
+        </FieldSet>
+
+        <FieldSet legend={translate('TransfersSending')}>
+          {uploadsError ? (
+            <Alert kind={kinds.DANGER}>{translate('UploadsLoadError')}</Alert>
+          ) : null}
+
+          {!uploadsError && uploads.length === 0 ? (
+            <div className={styles.muted}>{translate('UploadsEmpty')}</div>
+          ) : null}
+
+          {uploads.length > 0 ? (
+            <Table columns={UPLOAD_COLUMNS} canModifyColumns={false}>
+              <TableBody>
+                {uploads.map((upload) => (
+                  <UploadRow key={upload.id} upload={upload} />
+                ))}
+              </TableBody>
+            </Table>
+          ) : null}
+        </FieldSet>
       </PageContentBody>
     </PageContent>
   );

@@ -13,15 +13,17 @@ namespace NzbDrone.Core.Transfers
         private static readonly TimeSpan Interval = TimeSpan.FromSeconds(1);
 
         private readonly ITransferService _transfers;
+        private readonly IUploadTracker _uploads;
         private readonly Logger _logger;
         private readonly CancellationTokenSource _shutdown = new();
         private readonly object _lock = new();
 
         private Thread _thread;
 
-        public TransferRunner(ITransferService transfers, Logger logger)
+        public TransferRunner(ITransferService transfers, IUploadTracker uploads, Logger logger)
         {
             _transfers = transfers;
+            _uploads = uploads;
             _logger = logger;
         }
 
@@ -55,6 +57,15 @@ namespace NzbDrone.Core.Transfers
                 catch (Exception ex)
                 {
                     _logger.Error(ex, "Unable to move transfers on");
+                }
+
+                try
+                {
+                    _uploads.Tick();
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error(ex, "Unable to follow uploads");
                 }
             }
         }

@@ -335,6 +335,7 @@ function SignalRListener() {
 
     if (name === 'transfers') {
       queryClient.invalidateQueries({ queryKey: ['/transfers'] });
+      queryClient.invalidateQueries({ queryKey: ['/transfers/uploads'] });
       return;
     }
 

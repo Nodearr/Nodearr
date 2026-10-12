@@ -33,16 +33,32 @@ public class TransferResource : RestResource
     public DateTime? Ended { get; set; }
 }
 
+public class UploadResource
+{
+    public string? Id { get; set; }
+    public string? Title { get; set; }
+    public string? PeerName { get; set; }
+    public UploadState State { get; set; }
+    public string? Failure { get; set; }
+    public string? FailureMessage { get; set; }
+    public long Size { get; set; }
+    public long BytesSent { get; set; }
+    public DateTime Started { get; set; }
+    public DateTime? Ended { get; set; }
+}
+
 [V5ApiController("transfers")]
 public class TransferController : Controller, IHandle<TransfersChangedEvent>
 {
     private readonly ITransferService _transfers;
+    private readonly IUploadTracker _uploads;
     private readonly IPeerRepository _peers;
     private readonly IBroadcastSignalRMessage _broadcaster;
 
-    public TransferController(ITransferService transfers, IPeerRepository peers, IBroadcastSignalRMessage broadcaster)
+    public TransferController(ITransferService transfers, IUploadTracker uploads, IPeerRepository peers, IBroadcastSignalRMessage broadcaster)
     {
         _transfers = transfers;
+        _uploads = uploads;
         _peers = peers;
         _broadcaster = broadcaster;
     }
@@ -73,6 +89,26 @@ public class TransferController : Controller, IHandle<TransfersChangedEvent>
             Added = job.Added,
             Started = job.Started,
             Ended = job.Ended
+        }));
+    }
+
+    // What this node is sending to other nodes, and what it has sent since it started.
+    [HttpGet("uploads")]
+    [Produces("application/json")]
+    public Ok<List<UploadResource>> GetUploads()
+    {
+        return TypedResults.Ok(_uploads.All().ConvertAll(upload => new UploadResource
+        {
+            Id = upload.Id,
+            Title = upload.Title,
+            PeerName = upload.PeerName,
+            State = upload.State,
+            Failure = upload.Failure,
+            FailureMessage = upload.FailureMessage,
+            Size = upload.Size,
+            BytesSent = upload.BytesSent,
+            Started = upload.Started,
+            Ended = upload.Ended
         }));
     }
 

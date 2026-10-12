@@ -26,13 +26,36 @@ export interface Transfer {
   ended?: string;
 }
 
+export type UploadState = 'preparing' | 'sending' | 'completed' | 'failed';
+
+// One file this node is sending, or has sent, to another node.
+export interface Upload {
+  id: string;
+  title: string;
+  peerName?: string;
+  state: UploadState;
+  failure?: string;
+  failureMessage?: string;
+  size: number;
+  bytesSent: number;
+  started: string;
+  ended?: string;
+}
+
 export const TRANSFERS_PATH = '/transfers';
+export const UPLOADS_PATH = '/transfers/uploads';
 
 // The list is fetched again whenever the server says a transfer moved on (see SignalRListener).
 // The slow poll is only there in case that message is missed.
 export const useTransfers = () =>
   useApiQuery<Transfer[]>({
     path: TRANSFERS_PATH,
+    queryOptions: { refetchInterval: 15000 },
+  });
+
+export const useUploads = () =>
+  useApiQuery<Upload[]>({
+    path: UPLOADS_PATH,
     queryOptions: { refetchInterval: 15000 },
   });
 

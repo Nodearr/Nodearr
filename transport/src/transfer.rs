@@ -16,7 +16,7 @@ use std::{
         atomic::{AtomicU64, Ordering},
         Arc, Mutex,
     },
-    time::{Duration, SystemTime},
+    time::{Duration, Instant, SystemTime},
 };
 
 use anyhow::{anyhow, bail, Result};
@@ -82,6 +82,28 @@ pub struct DownloadState {
     pub failure: Option<Failure>,
 }
 
+/// One file this node is sending, or has just sent, to another node.
+#[derive(Serialize, Clone)]
+pub struct UploadState {
+    pub id: String,
+    pub remote_node_id: String,
+    /// The name the other node asked for the file by.
+    pub file: String,
+    /// Where the file is on this machine.
+    pub path: String,
+    /// preparing (working out the hash), sending, completed or failed.
+    pub state: &'static str,
+    /// How much of the file the other node has, counting what it already held when it asked.
+    pub bytes_sent: u64,
+    pub size: u64,
+    pub failure: Option<Failure>,
+    #[serde(skip)]
+    finished: Option<Instant>,
+}
+
+/// How long a finished upload stays in the list, so that whoever is watching sees how it ended.
+const UPLOAD_HISTORY: Duration = Duration::from_secs(300);
+
 struct Download {
     state: Arc<Mutex<DownloadState>>,
     abort: AbortHandle,
@@ -99,6 +121,7 @@ pub struct Transfers {
     upload_limit: u64,
     downloads: Mutex<HashMap<String, Download>>,
     uploads: Mutex<HashMap<u64, (EndpointId, Connection)>>,
+    upload_states: Mutex<HashMap<u64, UploadState>>,
     next_upload: AtomicU64,
     hashes: Mutex<HashMap<PathBuf, CachedHash>>,
 }
@@ -110,7 +133,9 @@ impl Transfers {
             upload_limit,
             downloads: Mutex::new(HashMap::new()),
             uploads: Mutex::new(HashMap::new()),
-            next_upload: AtomicU64::new(1),
+            upload_states: Mutex::new(HashMap::new()),
+            // Starts from the clock, so that an upload after a restart is not mistaken for one before it.
+            next_upload: AtomicU64::new(SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(1)),
             hashes: Mutex::new(HashMap::new()),
         }
     }
@@ -130,12 +155,43 @@ impl Transfers {
         }
     }
 
+    /// What this node is sending, and what it finished sending in the last few minutes.
+    pub fn list_uploads(&self) -> Vec<UploadState> {
+        let mut states = self.upload_states.lock().unwrap();
+        states.retain(|_, upload| upload.finished.map(|at| at.elapsed() < UPLOAD_HISTORY).unwrap_or(true));
+
+        let mut list: Vec<UploadState> = states.values().cloned().collect();
+        list.sort_by(|a, b| a.id.cmp(&b.id));
+        list
+    }
+
+    fn upload_update(&self, id: u64, change: impl FnOnce(&mut UploadState)) {
+        if let Some(upload) = self.upload_states.lock().unwrap().get_mut(&id) {
+            change(upload);
+            if matches!(upload.state, "completed" | "failed") && upload.finished.is_none() {
+                upload.finished = Some(Instant::now());
+            }
+        }
+    }
+
+    fn upload_failed(&self, id: u64, kind: &'static str, message: impl Into<String>) {
+        let message = message.into();
+        self.upload_update(id, |upload| {
+            // The first reason given is the real one. What follows is the connection coming apart.
+            if upload.failure.is_none() {
+                upload.state = "failed";
+                upload.failure = Some(Failure { kind, message });
+            }
+        });
+    }
+
     /// Cuts every upload to a node. Used when Nodearr stops trusting it part way through.
     pub fn disconnect(&self, node: EndpointId) -> usize {
         let uploads = self.uploads.lock().unwrap();
         let mut closed = 0;
-        for (remote, conn) in uploads.values() {
+        for (id, (remote, conn)) in uploads.iter() {
             if *remote == node {
+                self.upload_failed(*id, "Revoked", "trust in this node ended");
                 conn.close(VarInt::from_u32(CODE_REVOKED), b"Revoked");
                 closed += 1;
             }
@@ -284,13 +340,15 @@ pub async fn serve(transfers: Arc<Transfers>, conn: Connection, queue: mpsc::Sen
 
     // Registered before anything is sent, so a node that stops being trusted can be cut off.
     transfers.uploads.lock().unwrap().insert(upload, (remote, conn.clone()));
-    if let Err(err) = send_file(&transfers, &conn, remote, &queue).await {
+    if let Err(err) = send_file(&transfers, &conn, remote, upload, &queue).await {
         tracing::debug!("upload to {remote} ended: {err:#}");
+        // Anything not already explained: the other node went away, or cancelled.
+        transfers.upload_failed(upload, "Stopped", format!("{err:#}"));
     }
     transfers.uploads.lock().unwrap().remove(&upload);
 }
 
-async fn send_file(transfers: &Transfers, conn: &Connection, remote: EndpointId, queue: &mpsc::Sender<Incoming>) -> Result<()> {
+async fn send_file(transfers: &Transfers, conn: &Connection, remote: EndpointId, upload: u64, queue: &mpsc::Sender<Incoming>) -> Result<()> {
     let mut paths = PathMonitor::spawn(conn);
     let (mut send, mut recv) = conn.accept_bi().await.map_err(|e| anyhow!("accept_bi: {e}"))?;
     let request: FileRequest = read_json(&mut recv).await?;
@@ -319,10 +377,27 @@ async fn send_file(transfers: &Transfers, conn: &Connection, remote: EndpointId,
         }
     };
 
+    // From here on it is an upload worth showing. A request that was refused never was one.
+    transfers.upload_states.lock().unwrap().insert(
+        upload,
+        UploadState {
+            id: upload.to_string(),
+            remote_node_id: remote.to_string(),
+            file: request.file.clone(),
+            path: path.display().to_string(),
+            state: "preparing",
+            bytes_sent: 0,
+            size: 0,
+            failure: None,
+            finished: None,
+        },
+    );
+
     // The hash is fixed before any data moves.
     let (size, blake3) = match transfers.hash(&path).await {
         Ok(hashed) => hashed,
         Err(err) => {
+            transfers.upload_failed(upload, "NotFound", format!("{err:#}"));
             conn.close(VarInt::from_u32(CODE_NOT_FOUND), b"NotFound");
             bail!("cannot read {}: {err:#}", path.display());
         }
@@ -331,6 +406,11 @@ async fn send_file(transfers: &Transfers, conn: &Connection, remote: EndpointId,
     let resume = request.offset > 0 && request.offset <= size && request.if_hash.as_deref() == Some(blake3.as_str());
     let offset = if resume { request.offset } else { 0 };
     write_json(&mut send, &FileHeader { size, blake3, offset }).await?;
+    transfers.upload_update(upload, |u| {
+        u.state = "sending";
+        u.size = size;
+        u.bytes_sent = offset;
+    });
 
     let mut source = tokio::fs::File::open(&path).await?;
     source.seek(std::io::SeekFrom::Start(offset)).await?;
@@ -346,6 +426,7 @@ async fn send_file(transfers: &Transfers, conn: &Connection, remote: EndpointId,
 
         if !paths.is_direct() && !paths.wait_direct(transfers.direct_timeout).await {
             let (code, name): (u32, &[u8]) = if sent == 0 { (CODE_NO_DIRECT_ROUTE, b"NoDirectRoute") } else { (CODE_DIRECT_PATH_LOST, b"DirectPathLost") };
+            transfers.upload_failed(upload, if sent == 0 { "NoDirectRoute" } else { "DirectPathLost" }, format!("no direct path within {}s", transfers.direct_timeout.as_secs()));
             let _ = send.reset(VarInt::from_u32(code));
             conn.close(VarInt::from_u32(code), name);
             bail!("no direct path within {}s", transfers.direct_timeout.as_secs());
@@ -354,6 +435,7 @@ async fn send_file(transfers: &Transfers, conn: &Connection, remote: EndpointId,
         tokio::select! {
             written = send.write_all(&buffer[..read]) => written.map_err(|e| anyhow!("write: {e}"))?,
             _ = paths.lost_direct() => {
+                transfers.upload_failed(upload, "DirectPathLost", "the direct path to the other node went away");
                 // Drop everything queued for this stream so none of it is sent again over a relay.
                 let _ = send.reset(VarInt::from_u32(CODE_DIRECT_PATH_LOST));
                 conn.close(VarInt::from_u32(CODE_DIRECT_PATH_LOST), b"DirectPathLost");
@@ -361,6 +443,7 @@ async fn send_file(transfers: &Transfers, conn: &Connection, remote: EndpointId,
             }
         }
         sent += read as u64;
+        transfers.upload_update(upload, |u| u.bytes_sent = offset + sent);
 
         if transfers.upload_limit > 0 {
             tokio::time::sleep(Duration::from_secs_f64(read as f64 / transfers.upload_limit as f64)).await;
@@ -369,8 +452,18 @@ async fn send_file(transfers: &Transfers, conn: &Connection, remote: EndpointId,
 
     send.finish().map_err(|e| anyhow!("finish: {e}"))?;
     // The receiver answers with one byte once it has checked the hash.
-    let _ = tokio::time::timeout(Duration::from_secs(120), recv.read_to_end(1)).await;
+    let verdict = tokio::time::timeout(Duration::from_secs(120), recv.read_to_end(1)).await;
     conn.close(VarInt::from_u32(CODE_DONE), b"done");
+
+    match verdict {
+        Ok(Ok(answer)) if answer == [0] => {
+            transfers.upload_failed(upload, "VerificationFailed", "the other node said what arrived did not match the hash");
+        }
+        _ => transfers.upload_update(upload, |u| {
+            u.state = "completed";
+            u.bytes_sent = size;
+        }),
+    }
     Ok(())
 }
 

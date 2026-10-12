@@ -168,6 +168,7 @@ async fn main() -> Result<()> {
         .route("/v1/incoming/{id}", post(answer_incoming))
         .route("/v1/transfers", get(list_transfers).post(start_transfer))
         .route("/v1/transfers/{id}", delete(cancel_transfer))
+        .route("/v1/uploads", get(list_uploads))
         .route("/v1/disconnect", post(disconnect))
         .layer(middleware::from_fn_with_state(app.clone(), require_token))
         .with_state(app.clone());
@@ -600,6 +601,10 @@ async fn start_transfer(State(app): State<Arc<App>>, Json(body): Json<StartTrans
 
 async fn list_transfers(State(app): State<Arc<App>>) -> Json<Vec<transfer::DownloadState>> {
     Json(app.transfers.list())
+}
+
+async fn list_uploads(State(app): State<Arc<App>>) -> Json<Vec<transfer::UploadState>> {
+    Json(app.transfers.list_uploads())
 }
 
 async fn cancel_transfer(State(app): State<Arc<App>>, UrlPath(id): UrlPath<String>) -> StatusCode {

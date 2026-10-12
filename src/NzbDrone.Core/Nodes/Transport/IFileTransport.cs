@@ -42,6 +42,22 @@ namespace NzbDrone.Core.Nodes.Transport
         public string FailureMessage { get; set; }
     }
 
+    // One file this node is sending to another node, as the transport reports it.
+    public class FileUploadProgress
+    {
+        public string Id { get; set; }
+        public string RemoteNodeId { get; set; }
+
+        // The name the other node asked for the file by, and where the file is here.
+        public string File { get; set; }
+        public string Path { get; set; }
+        public Transfers.UploadState State { get; set; }
+        public long BytesSent { get; set; }
+        public long Size { get; set; }
+        public string FailureKind { get; set; }
+        public string FailureMessage { get; set; }
+    }
+
     // What this node answers when another node asks for a file.
     public class FileGrant
     {
@@ -64,6 +80,9 @@ namespace NzbDrone.Core.Nodes.Transport
     {
         void Start(FileTransferRequest request);
         List<FileTransferProgress> List();
+
+        // What this node is sending now, and what it finished sending in the last few minutes.
+        List<FileUploadProgress> ListUploads();
 
         // Stops a transfer and forgets it. What it wrote stays where it is.
         void Cancel(string id);

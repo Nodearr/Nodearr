@@ -264,6 +264,33 @@ namespace NzbDrone.Core.Nodes.Transport
             }
         }
 
+        public List<FileUploadProgress> ListUploads()
+        {
+            var client = RequireClient();
+
+            try
+            {
+                var states = client.GetFromJsonAsync<List<UploadStateBody>>("/v1/uploads", JsonOptions).GetAwaiter().GetResult();
+
+                return states.ConvertAll(s => new FileUploadProgress
+                {
+                    Id = s.Id,
+                    RemoteNodeId = s.RemoteNodeId,
+                    File = s.File,
+                    Path = s.Path,
+                    State = Enum.TryParse<Transfers.UploadState>(s.State, true, out var state) ? state : Transfers.UploadState.Failed,
+                    BytesSent = s.BytesSent,
+                    Size = s.Size,
+                    FailureKind = s.Failure?.Kind,
+                    FailureMessage = s.Failure?.Message
+                });
+            }
+            catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
+            {
+                throw new TransportException(TransportFailure.Unavailable, "The peer transport is not responding: " + ex.Message);
+            }
+        }
+
         public void Cancel(string id)
         {
             // 404 is fine: the transport had already forgotten it.
@@ -675,6 +702,18 @@ namespace NzbDrone.Core.Nodes.Transport
             public long BytesDone { get; set; }
             public long Size { get; set; }
             public string Blake3 { get; set; }
+            public TransferFailureBody Failure { get; set; }
+        }
+
+        private class UploadStateBody
+        {
+            public string Id { get; set; }
+            public string RemoteNodeId { get; set; }
+            public string File { get; set; }
+            public string Path { get; set; }
+            public string State { get; set; }
+            public long BytesSent { get; set; }
+            public long Size { get; set; }
             public TransferFailureBody Failure { get; set; }
         }
 
