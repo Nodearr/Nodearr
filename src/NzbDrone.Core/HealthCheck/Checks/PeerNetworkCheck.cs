@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using System.Linq;
+using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Localization;
 using NzbDrone.Core.Nodes;
 using NzbDrone.Core.Nodes.Transport;
@@ -35,9 +37,30 @@ namespace NzbDrone.Core.HealthCheck.Checks
                 return new HealthCheck(GetType());
             }
 
+            var trusted = _peers.All().Where(p => p.State == PeerState.Trusted).ToList();
+
+            // The last connection check reached these nodes through a relay and no other way.
+            // Transfers with them are certain to fail, whatever else is known about the network.
+            // The message names the firewall first: a machine that blocks incoming UDP looks
+            // exactly like this, and nothing run on that machine alone can tell.
+            var relayOnly = trusted.Where(p => p.ConnectionPath == ConnectionPath.Relay)
+                                   .Select(p => p.Name.IsNotNullOrWhiteSpace() ? p.Name : p.NodeId)
+                                   .ToList();
+
+            if (relayOnly.Any())
+            {
+                return new HealthCheck(GetType(),
+                    HealthCheckResult.Warning,
+                    HealthCheckReason.PeerRelayOnly,
+                    _localizationService.GetLocalizedString("PeerRelayOnlyMessage", new Dictionary<string, object>
+                    {
+                        { "peerNames", string.Join(", ", relayOnly) }
+                    }));
+            }
+
             // A direct connection to another node is proof that this network lets one through,
             // whatever the transport's own look at the network concluded.
-            if (_peers.All().Any(p => p.State == PeerState.Trusted && p.ConnectionPath == ConnectionPath.Direct))
+            if (trusted.Any(p => p.ConnectionPath == ConnectionPath.Direct))
             {
                 return new HealthCheck(GetType());
             }

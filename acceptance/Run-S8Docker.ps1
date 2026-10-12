@@ -506,6 +506,9 @@ try {
     $relayOnly = Wait-Until -What 'node B to answer after its network changed' -TimeoutSec 60 -EverySec 2 -Condition {
         try { Test-Connection-To-Peer B } catch { $null }
     }
+    $relayWarning = Wait-Until -What 'node B to warn that it has no direct route' -TimeoutSec 30 -EverySec 2 -Condition {
+        try { (Get-Health B).PeerNetworkCheck } catch { $null }
+    }
 
     Search-Episode 4
     $unroutable = Wait-Failed $null 180
@@ -524,6 +527,12 @@ try {
     Wait-Until -What 'the nodes to reach each other again' -TimeoutSec 60 -EverySec 3 -Condition {
         try { (Test-Connection-To-Peer B).connectionPath -eq 'direct' } catch { $false }
     } | Out-Null
+    $warningGone = Wait-Until -What 'the warning to clear once the route is direct again' -TimeoutSec 30 -EverySec 2 -Condition {
+        try { -not (Get-Health B).PeerNetworkCheck } catch { $false }
+    }
+    Assert-That 'While only a relay is left the node warns on System > Status, names the other node and the firewall, and stops warning once the route is direct' (
+        $relayWarning -match 'No direct route to' -and $relayWarning -match 'firewall' -and $relayWarning -match 'NoDirectRoute' -and $warningGone
+    ) @{ warning = $relayWarning; clearedAfterDirect = [bool]$warningGone }
 
     # --- 7. The sender blocks the receiver in the middle of a transfer ---------------------------
 

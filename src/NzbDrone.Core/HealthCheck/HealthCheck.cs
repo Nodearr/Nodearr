@@ -91,6 +91,7 @@ namespace NzbDrone.Core.HealthCheck
         Package,
         PeerNetworkNoUdp,
         PeerNetworkVaryingPort,
+        PeerRelayOnly,
         PeerTransportNotRunning,
         ProxyBadRequest,
         ProxyFailed,

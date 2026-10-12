@@ -19,6 +19,10 @@ namespace NzbDrone.Core.Test.HealthCheck.Checks
                   .Setup(s => s.GetLocalizedString(It.IsAny<string>()))
                   .Returns("Some Warning Message");
 
+            Mocker.GetMock<ILocalizationService>()
+                  .Setup(s => s.GetLocalizedString(It.IsAny<string>(), It.IsAny<Dictionary<string, object>>()))
+                  .Returns((string key, Dictionary<string, object> tokens) => $"{key}: {tokens["peerNames"]}");
+
             GivenPeers();
         }
 
@@ -68,14 +72,44 @@ namespace NzbDrone.Core.Test.HealthCheck.Checks
         }
 
         [Test]
-        public void should_not_be_reassured_by_a_relayed_connection_or_a_node_that_is_no_longer_trusted()
+        public void should_not_be_reassured_by_a_node_that_is_unchecked_or_no_longer_trusted()
         {
             GivenNetwork(false, null);
             GivenPeers(
-                new Peer { State = PeerState.Trusted, ConnectionPath = ConnectionPath.Relay },
+                new Peer { State = PeerState.Trusted, ConnectionPath = ConnectionPath.Unknown },
                 new Peer { State = PeerState.Revoked, ConnectionPath = ConnectionPath.Direct });
 
             Subject.Check().ShouldBeNotice();
+        }
+
+        [Test]
+        public void should_warn_and_name_the_node_when_it_was_reached_only_through_a_relay()
+        {
+            GivenNetwork(true, false);
+            GivenPeers(new Peer { NodeId = "bob", Name = "Bob", State = PeerState.Trusted, ConnectionPath = ConnectionPath.Relay });
+
+            Subject.Check().ShouldBeWarning("PeerRelayOnlyMessage: Bob");
+        }
+
+        [Test]
+        public void should_still_warn_about_a_relayed_node_when_another_is_reached_directly()
+        {
+            GivenNetwork(true, false);
+            GivenPeers(
+                new Peer { NodeId = "alice", Name = "Alice", State = PeerState.Trusted, ConnectionPath = ConnectionPath.Direct },
+                new Peer { NodeId = "bob", Name = "Bob", State = PeerState.Trusted, ConnectionPath = ConnectionPath.Relay },
+                new Peer { NodeId = "carol", State = PeerState.Trusted, ConnectionPath = ConnectionPath.Relay });
+
+            Subject.Check().ShouldBeWarning("PeerRelayOnlyMessage: Bob, carol");
+        }
+
+        [Test]
+        public void should_not_warn_about_a_relayed_node_that_is_no_longer_trusted()
+        {
+            GivenNetwork(true, false);
+            GivenPeers(new Peer { NodeId = "bob", Name = "Bob", State = PeerState.Revoked, ConnectionPath = ConnectionPath.Relay });
+
+            Subject.Check().ShouldBeOk();
         }
 
         [Test]
