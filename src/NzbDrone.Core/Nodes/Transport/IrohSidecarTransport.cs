@@ -352,12 +352,22 @@ namespace NzbDrone.Core.Nodes.Transport
                     delay = TimeSpan.FromSeconds(2);
                     Pump();
                 }
-                catch (Exception ex) when (!_shutdown.IsCancellationRequested)
+                catch (Exception ex)
                 {
-                    if (!_restarting)
+                    // Stopping Nodearr cancels the wait for the next message, which arrives here as
+                    // an exception. It has to be caught like any other: one that leaves this thread
+                    // takes the whole process with it, and a restart from the settings page is a
+                    // stop followed by a start in the same process.
+                    if (!_shutdown.IsCancellationRequested && !_restarting)
                     {
                         _logger.Warn(ex, "The peer transport stopped unexpectedly");
                     }
+                }
+
+                if (_shutdown.IsCancellationRequested)
+                {
+                    // The sidecar was stopped by the shutdown itself. Nothing is left to tidy or tell.
+                    return;
                 }
 
                 Stop();
