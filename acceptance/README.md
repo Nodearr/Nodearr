@@ -154,6 +154,22 @@ It runs `acceptance/docker-compose.s8.yml`: two complete deployments, John's and
 
 `-KeepRunning` leaves it all up: John's Nodearr at `http://localhost:6633`, Ryan's at `http://localhost:6634` and the wrongly set up one at `http://localhost:6635`. By then John has blocked Ryan. `-Down` removes everything.
 
+## Node settings
+
+```sh
+pwsh acceptance/Run-NodeSettings.ps1
+```
+
+Needs only the transport sidecar, and takes about two minutes. Two real nodes on this machine, as in S4. It changes one node's settings through the API, the way the page does, and checks what the running node then does:
+
+- Bad values are refused together, each named, and nothing is changed. A port another program holds is refused.
+- A setting fixed in the environment stays as it is.
+- A new name reaches a trusted node. A new port, upload limit and wait restart the transport, which comes back as the same node, and the trusted node reaches it at the new port without pairing again.
+- A new download folder is created and is what Sonarr and Radarr are then told.
+- Everything survives a restart of Nodearr.
+
+`-KeepRunning` leaves both up. Open `http://localhost:6633/settings/node`.
+
 ## Between two machines
 
 `docs/guides/two-machine-test.md`. No script can do this one.

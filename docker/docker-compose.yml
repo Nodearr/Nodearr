@@ -22,8 +22,10 @@ services:
       PUID: "1000"
       PGID: "1000"
       TZ: Etc/UTC
-      # What other nodes see this one called.
-      Nodearr__Transport__NodeName: "My Nodearr"
+      # Anything else is set in the UI, under Settings > Node: this node's name, the relay,
+      # the upload limit. A setting given here as Nodearr__Transport__... is fixed, and the
+      # page shows it as such. The image fixes two: the download folder, /downloads, and the
+      # UDP port, 6633, because the mounts and ports of this file are built around them.
     volumes:
       - ./config/nodearr:/config
       - ./downloads:/downloads

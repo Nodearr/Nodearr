@@ -77,6 +77,7 @@ A node's name, as other nodes see it, is set with `Nodearr__Transport__NodeName`
 ## Amendments
 
 - 2026-10-11 (ADR 0018): the inherited update check, error reporting and analytics were removed. A container now contacts only what it is pointed at.
+- 2026-10-11 (ADR 0019): the settings have a page, Settings > Node. What the image and the compose file give in the environment stays fixed, and the page shows it. A node's name is now set there, not in the compose file.
 
 ## Follow-up work
 

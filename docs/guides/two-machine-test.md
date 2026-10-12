@@ -45,12 +45,13 @@ On both sides, in Nodearr at `http://localhost:6633`:
 2. **Catalog > Local.** Refresh. Your files should be listed and readable.
 3. **System > Status.** There should be no warnings. Two matter here. One says Nodearr cannot read the library, which means the other person's transfers would be refused. The other says Sonarr or Radarr cannot see Nodearr's download folder, which means nothing would ever be imported. Fix either before going on.
 4. **Nodes > Trusted Nodes.** The box at the top says what Nodearr has worked out about your network. If it says the network uses a different public port for every destination, expect to need a forwarded port.
+5. **Settings > Node.** Give the node a name the other person will recognise. In the Docker image the UDP port is fixed at 6633, which is the port to forward if it comes to that.
 
 Then pair:
 
-5. The side with the file: **Nodes > Invites**, tick "share everything", create an invite, and send the code to the other side by any means.
-6. The other side: **Nodes > Invites**, paste the code and redeem it.
-7. Both sides: **Nodes > Trusted Nodes** shows the other as trusted. Press "Check connection". It takes up to ten seconds, and then the Connection column says one of two things:
+6. The side with the file: **Nodes > Invites**, tick "share everything", create an invite, and send the code to the other side by any means.
+7. The other side: **Nodes > Invites**, paste the code and redeem it.
+8. Both sides: **Nodes > Trusted Nodes** shows the other as trusted. Press "Check connection". It takes up to ten seconds, and then the Connection column says one of two things:
    - **Direct.** A transfer will work. Go on.
    - **Relay only.** The nodes can talk and a transfer would fail as `NoDirectRoute`. There is no need to try one to find out. Forward UDP 6633 on a router you control, to the machine running Nodearr, and check again.
 

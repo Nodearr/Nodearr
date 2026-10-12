@@ -94,7 +94,7 @@ What S8 left:
 
 - **The two-machine run.** It is the plan's last acceptance item and the open gate on ADR 0011 and ADR 0012. Until it is done, "files only travel over a direct connection" is proven between containers and on one machine, and not between two homes.
 - No image is published, and only linux/amd64 has been built.
-- The transport options are environment variables, with no settings page.
+- ~~The transport options are environment variables, with no settings page.~~ Done afterwards, see below.
 - ~~The inherited update check and error reporting still point at nodearr.com hosts that do not exist yet.~~ Removed afterwards, see below.
 
 ## After the plan (2026-10-11)
@@ -104,6 +104,10 @@ Three things were added before the two-machine run, to make it worth running. AD
 - "Check connection" says whether two nodes reach each other directly or only through a relay, and the Nodes page says what is known about the local network.
 - System > Status warns when Nodearr cannot read the library, and when Sonarr or Radarr cannot see Nodearr's download folder.
 - The inherited update check, time check, notifications, error reporting and analytics are gone. A node contacts only what it is pointed at.
+
+Then a settings page. ADR 0019. Branch `v1/s10-node-settings`.
+
+- Settings > Node holds the node's name, relay, UDP port, port mapping, wait for a direct route, download folder and upload limit. Bad values are refused field by field. A setting given in the environment is shown and cannot be changed. A change that needs it restarts the transport and nothing else, and the node keeps its identity and its trust (`acceptance/Run-NodeSettings.ps1`).
 
 ## Where V1 stands
 
