@@ -33,13 +33,6 @@ export const shortcuts = {
     },
   },
 
-  focusSeriesSearchInput: {
-    key: 's',
-    get name() {
-      return translate('KeyboardShortcutsFocusSearchBox');
-    },
-  },
-
   saveSettings: {
     key: 'mod+s',
     get name() {

@@ -7,7 +7,6 @@ import { icons } from 'Helpers/Props';
 import translate from 'Utilities/String/translate';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import PageHeaderActionsMenu from './PageHeaderActionsMenu';
-import SeriesSearchInput from './SeriesSearchInput';
 import styles from './PageHeader.css';
 
 function PageHeader() {
@@ -59,8 +58,6 @@ function PageHeader() {
           onPress={handleSidebarToggle}
         />
       </div>
-
-      <SeriesSearchInput />
 
       <div className={styles.right}>
         <PageHeaderActionsMenu
