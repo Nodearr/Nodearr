@@ -37,6 +37,7 @@ public class PeerCatalogItemResource
     public int SeasonNumber { get; set; }
     public List<int> EpisodeNumbers { get; set; } = new();
     public string? EpisodeTitles { get; set; }
+    public List<string> AirDates { get; set; } = new();
     public string? ReleaseTitle { get; set; }
     public string? Quality { get; set; }
     public int Resolution { get; set; }
@@ -122,6 +123,7 @@ public class PeerCatalogController : Controller
             SeasonNumber = item.SeasonNumber,
             EpisodeNumbers = item.GetEpisodeNumbers(),
             EpisodeTitles = item.EpisodeTitles,
+            AirDates = item.GetAirDates(),
             ReleaseTitle = item.ReleaseTitle,
             Quality = item.Quality,
             Resolution = item.Resolution,

@@ -54,7 +54,7 @@ namespace NzbDrone.Core.Test.Sharing
 
             // Pingu: one single-episode file and one file that holds episodes 4 and 5.
             episodes.Insert(new CatalogEpisode { ApplicationId = 1, ArrId = 101, ArrSeriesId = 10, SeasonNumber = 1, EpisodeNumber = 1, Title = "Hello, Pingu", ArrEpisodeFileId = 501 });
-            episodes.Insert(new CatalogEpisode { ApplicationId = 1, ArrId = 104, ArrSeriesId = 10, SeasonNumber = 1, EpisodeNumber = 4, Title = "The New Arrival", ArrEpisodeFileId = 502 });
+            episodes.Insert(new CatalogEpisode { ApplicationId = 1, ArrId = 104, ArrSeriesId = 10, SeasonNumber = 1, EpisodeNumber = 4, Title = "The New Arrival", AirDate = "1986-06-18", ArrEpisodeFileId = 502 });
             episodes.Insert(new CatalogEpisode { ApplicationId = 1, ArrId = 105, ArrSeriesId = 10, SeasonNumber = 1, EpisodeNumber = 5, Title = "Pingu Goes Fishing", ArrEpisodeFileId = 502 });
             episodes.Insert(new CatalogEpisode { ApplicationId = 1, ArrId = 201, ArrSeriesId = 11, SeasonNumber = 1, EpisodeNumber = 1, Title = "Magic Xylophone", ArrEpisodeFileId = 601 });
 
@@ -221,6 +221,9 @@ namespace NzbDrone.Core.Test.Sharing
 
             item.EpisodeNumbers.Should().Equal(4, 5);
             item.EpisodeTitles.Should().Equal("The New Arrival", "Pingu Goes Fishing");
+
+            // The day each episode aired, where the Arr app knows it. One of the two has none here.
+            item.AirDates.Should().Equal("1986-06-18");
         }
 
         [Test]

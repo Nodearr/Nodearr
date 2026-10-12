@@ -46,6 +46,9 @@ namespace NzbDrone.Core.Catalog
         public int EpisodeNumber { get; set; }
         public int? AbsoluteEpisodeNumber { get; set; }
         public string Title { get; set; }
+
+        // The day it aired where it aired, as yyyy-MM-dd.
+        public string AirDate { get; set; }
         public DateTime? AirDateUtc { get; set; }
         public bool Monitored { get; set; }
 

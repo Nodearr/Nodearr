@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Xml.Linq;
@@ -80,7 +81,12 @@ namespace Nodearr.Http.Newznab
             };
 
             var result = _candidates.Search(query);
-            var items = result.Items.Select(i => NewznabFeed.Item(i, Link(i.CandidateId))).ToList();
+            var items = result.Items.Select(i =>
+            {
+                var airDate = result.AirDates.GetValueOrDefault(i.CandidateId);
+
+                return NewznabFeed.Item(i, Link(i.CandidateId, airDate), airDate);
+            }).ToList();
             var total = result.Total;
 
             if (total == 0 && query.IsBrowse)
@@ -101,7 +107,12 @@ namespace Nodearr.Http.Newznab
                 return Xml(NewznabFeed.Error(300, "No such item"));
             }
 
-            return File(Document(NewznabFeed.Ticket(item)), "application/x-nzb", item.ReleaseTitle + ".nzb");
+            // Set by Link for an episode that was found by the day it aired.
+            var airDate = Request.Query["airdate"].ToString();
+
+            airDate = item.GetAirDates().Contains(airDate) ? airDate : null;
+
+            return File(Document(NewznabFeed.Ticket(item, airDate)), "application/x-nzb", NewznabFeed.TitleFor(item, airDate) + ".nzb");
         }
 
         private int Number(string name)
@@ -109,9 +120,11 @@ namespace Nodearr.Http.Newznab
             return int.TryParse(Request.Query[name], out var value) ? value : 0;
         }
 
-        private string Link(string candidateId)
+        private string Link(string candidateId, string airDate)
         {
-            return $"{BaseUrl()}/newznab/api?t=get&id={Uri.EscapeDataString(candidateId)}&apikey={_configFileProvider.ApiKey}";
+            var day = airDate == null ? string.Empty : $"&airdate={Uri.EscapeDataString(airDate)}";
+
+            return $"{BaseUrl()}/newznab/api?t=get&id={Uri.EscapeDataString(candidateId)}{day}&apikey={_configFileProvider.ApiKey}";
         }
 
         // The address the Arr app used to get here, so the link it is handed is one it can reach.

@@ -161,6 +161,10 @@ namespace NzbDrone.Core.Applications
         public int EpisodeNumber { get; set; }
         public int? AbsoluteEpisodeNumber { get; set; }
         public string Title { get; set; }
+
+        // The day it aired where it aired, as yyyy-MM-dd. Sonarr searches for daily shows by this,
+        // and it is not always the day in AirDateUtc.
+        public string AirDate { get; set; }
         public DateTime? AirDateUtc { get; set; }
         public bool Monitored { get; set; }
         public int EpisodeFileId { get; set; }
@@ -175,6 +179,7 @@ namespace NzbDrone.Core.Applications
                 EpisodeNumber = EpisodeNumber,
                 AbsoluteEpisodeNumber = AbsoluteEpisodeNumber,
                 Title = Title,
+                AirDate = AirDate,
                 AirDateUtc = AirDateUtc?.ToUniversalTime(),
                 Monitored = Monitored,
                 ArrEpisodeFileId = EpisodeFileId

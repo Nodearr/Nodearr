@@ -16,6 +16,7 @@ namespace NzbDrone.Core.Test.PeerIndexer
     {
         private const int PinguTvdbId = 75669;
         private const int NightTmdbId = 10331;
+        private const int DailyTvdbId = 71256;
 
         private Peer _alice;
         private Peer _bob;
@@ -145,10 +146,118 @@ namespace NzbDrone.Core.Test.PeerIndexer
             result.Total.Should().Be(0);
         }
 
-        [Test]
-        public void a_daily_search_should_find_nothing()
+        // A show Sonarr may ask for by day: season 29 runs across two years.
+        private void GivenDailyShow()
         {
+            GivenAired(_alice, "d-0517", 29, "45", "2024-05-17");
+            GivenAired(_alice, "d-1231", 29, "120,121", "2024-12-30,2024-12-31");
+            GivenAired(_alice, "d-0102", 29, "122", "2025-01-02");
+            GivenAired(_mallory, "m-0517", 29, "45", "2024-05-17");
+        }
+
+        private void GivenAired(Peer peer, string id, int season, string episodes, string airDates)
+        {
+            Db.Insert(new PeerCatalogItem
+            {
+                PeerId = peer.Id, RemoteId = id, CandidateId = id, MediaKind = MediaKind.Tv, TvdbId = DailyTvdbId,
+                Title = "The Daily Show", SeasonNumber = season, EpisodeNumbers = episodes, AirDates = airDates, Resolution = 720,
+                ReleaseTitle = $"The.Daily.Show.S{season:00}E{episodes.Split(',')[0].PadLeft(2, '0')}.720p.WEB-DL", DateAdded = DateTime.UtcNow.AddDays(-1)
+            });
+        }
+
+        private static CandidateQuery Daily(int? season = null, string episode = null)
+        {
+            return new CandidateQuery { IncludeMovies = false, TvdbId = DailyTvdbId, Season = season, Episode = episode };
+        }
+
+        [TestCase(2024, "05/17", "2024-05-17")]
+        [TestCase(1990, "01/02", "1990-01-02")]
+        [TestCase(2024, "13/40", null)]
+        [TestCase(2024, "5", null)]
+        [TestCase(1, "2", null)]
+        [TestCase(null, "05/17", null)]
+        [TestCase(2024, null, null)]
+        public void a_query_should_be_by_day_only_when_it_is_a_year_and_a_month_and_day(int? season, string episode, string expected)
+        {
+            new CandidateQuery { Season = season, Episode = episode }.AirDate.Should().Be(expected);
+        }
+
+        [Test]
+        public void a_search_by_day_should_find_the_episode_that_aired_that_day_and_say_so()
+        {
+            GivenDailyShow();
+
+            var result = Subject.Search(Daily(2024, "05/17"));
+
+            result.Items.Select(i => i.CandidateId).Should().Equal("d-0517");
+            result.AirDates.Should().Equal(new Dictionary<string, string> { { "d-0517", "2024-05-17" } });
+        }
+
+        [Test]
+        public void a_search_by_day_should_find_a_file_that_holds_that_day_among_others()
+        {
+            GivenDailyShow();
+
+            var result = Subject.Search(Daily(2024, "12/31"));
+
+            // The day asked for, not the first day in the file. Sonarr checks the title against it.
+            result.AirDates.Should().Equal(new Dictionary<string, string> { { "d-1231", "2024-12-31" } });
+        }
+
+        [Test]
+        public void a_search_by_day_should_find_nothing_when_nothing_aired_that_day()
+        {
+            GivenDailyShow();
+
+            Found(Daily(2024, "05/18")).Should().BeEmpty();
+        }
+
+        [Test]
+        public void a_search_by_day_should_not_find_a_file_whose_days_the_peer_did_not_give()
+        {
+            // Pingu's files carry no air dates, as from a node that does not send them yet.
             Found(Tv(2026, "10/10")).Should().BeEmpty();
+        }
+
+        [Test]
+        public void a_search_for_a_year_should_find_what_aired_in_it()
+        {
+            GivenDailyShow();
+
+            var result = Subject.Search(Daily(2024));
+
+            result.Items.Select(i => i.CandidateId).Should().Equal("d-0517", "d-1231");
+            result.AirDates.Should().Equal(new Dictionary<string, string> { { "d-0517", "2024-05-17" }, { "d-1231", "2024-12-30" } });
+        }
+
+        [Test]
+        public void a_season_that_really_is_numbered_by_year_should_be_found_by_number()
+        {
+            GivenAired(_alice, "y-1", 2024, "1", "2024-03-01");
+
+            var result = Subject.Search(Daily(2024));
+
+            result.Items.Select(i => i.CandidateId).Should().Equal("y-1");
+            result.AirDates.Should().BeEmpty();
+        }
+
+        [Test]
+        public void a_search_by_number_should_still_find_a_show_that_others_search_by_day()
+        {
+            GivenDailyShow();
+
+            var result = Subject.Search(Daily(29, "45"));
+
+            result.Items.Select(i => i.CandidateId).Should().Equal("d-0517");
+            result.AirDates.Should().BeEmpty();
+        }
+
+        [Test]
+        public void an_episode_that_is_neither_a_number_nor_a_day_should_find_nothing()
+        {
+            GivenDailyShow();
+
+            Found(Daily(29, "abc")).Should().BeEmpty();
         }
 
         [Test]

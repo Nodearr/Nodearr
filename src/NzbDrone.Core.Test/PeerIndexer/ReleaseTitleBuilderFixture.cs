@@ -157,5 +157,63 @@ namespace NzbDrone.Core.Test.PeerIndexer
             item.SceneName = "notld-1080p";
             ReleaseTitleBuilder.For(item).Should().Be("Night.of.the.Living.Dead.1968.1080p.BluRay");
         }
+
+        private static PeerCatalogItem DailyEpisode(string sceneName = null)
+        {
+            return new PeerCatalogItem
+            {
+                MediaKind = MediaKind.Tv, Title = "The Daily Show", SeasonNumber = 29, EpisodeNumbers = "45", AirDates = "2024-05-17",
+                Quality = "WEBDL-720p", SceneName = sceneName
+            };
+        }
+
+        [Test]
+        public void a_title_asked_for_by_day_should_be_written_with_the_day_and_read_back_as_that_day()
+        {
+            var title = ReleaseTitleBuilder.For(DailyEpisode(), "2024-05-17");
+
+            title.Should().Be("The.Daily.Show.2024.05.17.720p.WEB-DL");
+
+            var parsed = Parser.Parser.ParseTitle(title);
+
+            parsed.IsDaily.Should().BeTrue();
+            parsed.AirDate.Should().Be("2024-05-17");
+            parsed.SeriesTitle.Should().Be("The Daily Show");
+        }
+
+        [Test]
+        public void the_same_file_asked_for_by_number_should_be_written_with_its_number()
+        {
+            var parsed = Parser.Parser.ParseTitle(ReleaseTitleBuilder.For(DailyEpisode()));
+
+            parsed.IsDaily.Should().BeFalse();
+            parsed.SeasonNumber.Should().Be(29);
+            parsed.EpisodeNumbers.Should().Equal(45);
+        }
+
+        [Test]
+        public void a_scene_name_written_by_day_should_be_kept_only_for_a_search_for_that_day()
+        {
+            const string sceneName = "The.Daily.Show.2024.05.17.Some.Guest.1080p.WEB.h264-GROUP";
+
+            var item = DailyEpisode(sceneName);
+
+            ReleaseTitleBuilder.For(item, "2024-05-17").Should().Be(sceneName);
+
+            // Sonarr turns down a title with a day in it when it asked by number.
+            ReleaseTitleBuilder.For(item).Should().Be("The.Daily.Show.S29E45.720p.WEB-DL");
+
+            // And one with the wrong day when it asked by day.
+            ReleaseTitleBuilder.For(item, "2024-05-18").Should().Be("The.Daily.Show.2024.05.18.720p.WEB-DL");
+        }
+
+        [Test]
+        public void a_scene_name_written_by_number_should_not_be_used_for_a_search_by_day()
+        {
+            var item = DailyEpisode("The.Daily.Show.S29E45.1080p.WEB.h264-GROUP");
+
+            ReleaseTitleBuilder.For(item).Should().Be("The.Daily.Show.S29E45.1080p.WEB.h264-GROUP");
+            ReleaseTitleBuilder.For(item, "2024-05-17").Should().Be("The.Daily.Show.2024.05.17.720p.WEB-DL");
+        }
     }
 }

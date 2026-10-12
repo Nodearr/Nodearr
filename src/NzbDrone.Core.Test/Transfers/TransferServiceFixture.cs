@@ -97,6 +97,60 @@ namespace NzbDrone.Core.Test.Transfers
             job.DownloadId.Should().StartWith("SABnzbd_nzo_");
         }
 
+        private void GivenAiredCandidate()
+        {
+            Mocker.GetMock<ICandidateService>()
+                  .Setup(c => c.Find("candidate-daily"))
+                  .Returns(new PeerCatalogItem
+                  {
+                      PeerId = _alice.Id, CandidateId = "candidate-daily", RemoteId = "e-1-900", MediaKind = MediaKind.Tv, Title = "The Daily Show",
+                      SeasonNumber = 29, EpisodeNumbers = "45", AirDates = "2024-05-17", Quality = "WEBDL-720p",
+                      ReleaseTitle = "The.Daily.Show.S29E45.720p.WEB-DL", Extension = ".mkv", Size = 1000
+                  });
+        }
+
+        [Test]
+        public void a_ticket_found_by_day_should_be_fetched_under_a_title_with_that_day()
+        {
+            GivenAiredCandidate();
+
+            var job = Subject.Add("candidate-daily", "tv", "2024-05-17");
+
+            job.Title.Should().Be("The.Daily.Show.2024.05.17.720p.WEB-DL");
+            job.AirDate.Should().Be("2024-05-17");
+            _folders.IncompleteFile(job).Should().EndWith("The.Daily.Show.2024.05.17.720p.WEB-DL.mkv");
+        }
+
+        [TestCase(null)]
+        [TestCase("2024-05-18")]
+        [TestCase("..\\..\\somewhere")]
+        public void a_ticket_with_no_day_or_one_the_file_does_not_have_should_keep_the_title_by_number(string airDate)
+        {
+            GivenAiredCandidate();
+
+            var job = Subject.Add("candidate-daily", "tv", airDate);
+
+            job.Title.Should().Be("The.Daily.Show.S29E45.720p.WEB-DL");
+            job.AirDate.Should().BeNull();
+        }
+
+        [Test]
+        public void trying_again_should_keep_the_day_a_transfer_was_asked_for_by()
+        {
+            GivenAiredCandidate();
+
+            var job = Subject.Add("candidate-daily", "tv", "2024-05-17");
+
+            Subject.Tick();
+            GivenTransport(job, FileTransferState.Failed, 0, "VerificationFailed");
+            Subject.Tick();
+
+            var again = Subject.Retry(job.DownloadId);
+
+            again.Title.Should().Be("The.Daily.Show.2024.05.17.720p.WEB-DL");
+            again.AirDate.Should().Be("2024-05-17");
+        }
+
         [Test]
         public void the_same_ticket_twice_should_be_one_transfer()
         {

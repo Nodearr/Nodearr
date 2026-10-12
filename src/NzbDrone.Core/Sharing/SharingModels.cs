@@ -70,6 +70,10 @@ namespace NzbDrone.Core.Sharing
         public List<int> EpisodeNumbers { get; set; } = new();
         public List<string> EpisodeTitles { get; set; } = new();
 
+        // The day each episode aired, as yyyy-MM-dd, where the Arr app knows it. Sonarr asks for
+        // daily shows by day and not by number.
+        public List<string> AirDates { get; set; } = new();
+
         // The name the release had when the Arr app grabbed it, when the Arr app kept one.
         public string SceneName { get; set; }
         public string Edition { get; set; }

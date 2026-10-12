@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using NzbDrone.Common.Messaging;
 using NzbDrone.Core.Datastore;
@@ -44,6 +45,9 @@ namespace NzbDrone.Core.PeerCatalog
         public int SeasonNumber { get; set; }
         public string EpisodeNumbers { get; set; }
         public string EpisodeTitles { get; set; }
+
+        // The day each episode aired, as yyyy-MM-dd, comma separated. Empty when the peer did not say.
+        public string AirDates { get; set; }
         public string SceneName { get; set; }
         public string Edition { get; set; }
         public string Extension { get; set; }
@@ -69,6 +73,19 @@ namespace NzbDrone.Core.PeerCatalog
             return (EpisodeNumbers ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToList();
         }
 
+        public List<string> GetAirDates()
+        {
+            return (AirDates ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries).ToList();
+        }
+
+        // A date from another node ends up in a release title and a folder name, so only a real
+        // date in the one expected spelling is kept.
+        private static bool IsAirDate(string value)
+        {
+            return value is { Length: 10 } &&
+                   DateTime.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _);
+        }
+
         public static PeerCatalogItem FromOffer(int peerId, OfferItem offer)
         {
             return new PeerCatalogItem
@@ -84,6 +101,7 @@ namespace NzbDrone.Core.PeerCatalog
                 SeasonNumber = offer.SeasonNumber,
                 EpisodeNumbers = string.Join(",", offer.EpisodeNumbers ?? new List<int>()),
                 EpisodeTitles = string.Join(" + ", offer.EpisodeTitles ?? new List<string>()),
+                AirDates = string.Join(",", (offer.AirDates ?? new List<string>()).Where(IsAirDate)),
                 SceneName = offer.SceneName,
                 Edition = offer.Edition,
                 Extension = offer.Extension,

@@ -394,6 +394,40 @@ try {
         "$filmLanded" -match $movieHash -and $film.movieFile.size -eq (Get-Item $movieMedia).Length
     ) @{ path = $film.movieFile.path; hashMatches = ("$filmLanded" -match $movieHash) }
 
+    # --- 2b. The first episode again, asked for by the day it aired --------------------------------
+
+    # B's Sonarr is told the series is a daily one, which makes it search by day and not by
+    # number, and turn down any result that is not titled by day. A's Sonarr still calls it
+    # standard. The episode's file is deleted on B first, so there is something to fetch.
+    $airDate = (Invoke-Arr sonarrB GET "/episode/$($episodesB[0].id)").airDate
+    $firstFileId = (Invoke-Arr sonarrB GET "/episode/$($episodesB[0].id)").episodeFileId
+    Invoke-Arr sonarrB DELETE "/episodefile/$firstFileId" | Out-Null
+    $asDaily = Invoke-Arr sonarrB GET "/series/$($series.sonarrB.id)"
+    $asDaily.seriesType = 'daily'
+    Invoke-Arr sonarrB PUT "/series/$($series.sonarrB.id)" $asDaily | Out-Null
+
+    $offeredByDay = @(Invoke-Arr sonarrB GET "/release?episodeId=$($episodesB[0].id)" | Where-Object indexer -eq 'Nodearr')[0]
+    Invoke-Arr sonarrB POST '/command' @{ name = 'EpisodeSearch'; episodeIds = @($episodesB[0].id) } | Out-Null
+    $byDay = Wait-Transferring 1
+    $importedByDay = Wait-Until -What "B's Sonarr to import the episode it asked for by day" -TimeoutSec 180 -EverySec 2 -Condition {
+        Invoke-Arr sonarrB POST '/command' @{ name = 'RefreshMonitoredDownloads' } | Out-Null
+        $episode = Invoke-Arr sonarrB GET "/episode/$($episodesB[0].id)"
+        if ($episode.hasFile -and $episode.episodeFileId -ne $firstFileId) { $episode }
+    }
+    $fileByDay = Invoke-Arr sonarrB GET "/episodefile/$($importedByDay.episodeFileId)"
+    $landedByDay = docker exec nodearr-s7-sonarr-b-1 sha256sum $fileByDay.path
+    $grabbedByDay = Get-History sonarrB "/history/series?seriesId=$($series.sonarrB.id)" | Where-Object { $_.eventType -eq 'grabbed' -and $_.downloadId -eq $byDay.downloadId } | Select-Object -First 1
+    $dayInTitle = 'Pingu.' + ($airDate -replace '-', '.') + '.'
+    Assert-That 'A Sonarr that calls the series daily asks by the day the episode aired, is answered with a title by day, and imports the file' (
+        $airDate -and $offeredByDay.approved -and $offeredByDay.title.StartsWith($dayInTitle) -and $byDay.title -eq $offeredByDay.title -and
+        $grabbedByDay.sourceTitle -eq $offeredByDay.title -and "$landedByDay" -match $tvHash
+    ) @{ airDate = $airDate; offered = $offeredByDay.title; approved = $offeredByDay.approved; rejections = @($offeredByDay.rejections); transfer = $byDay.title; grabbed = $grabbedByDay.sourceTitle; hashMatches = ("$landedByDay" -match $tvHash) }
+
+    $asStandard = Invoke-Arr sonarrB GET "/series/$($series.sonarrB.id)"
+    $asStandard.seriesType = 'standard'
+    Invoke-Arr sonarrB PUT "/series/$($series.sonarrB.id)" $asStandard | Out-Null
+    Wait-Until -What 'the finished download to be cleared' -TimeoutSec 60 -Condition { (Get-Transfers).Count -eq 0 } | Out-Null
+
     # --- 3. The same ticket twice, and cancelling --------------------------------------------------
 
     $release = @(Invoke-Arr sonarrB GET "/release?episodeId=$($episodesB[1].id)" | Where-Object indexer -eq 'Nodearr')[0]
@@ -483,10 +517,11 @@ try {
 
     # --- 6. What the sending node saw of all that ---------------------------------------------------
 
+    # The first episode was sent twice: once asked for by number, once by day.
     $uploads = @(Invoke-Node A GET '/transfers/uploads')
     $ended = { param([string] $name, [string] $state, [string] $failure) @($uploads | Where-Object { $_.title -eq "$name.mkv" -and $_.state -eq $state -and (-not $failure -or $_.failure -eq $failure) }).Count }
     Assert-That 'Afterwards the sending node lists each upload and how it ended: sent, stopped by the other side, or cut when trust ended' (
-        (& $ended $episodeNames[0] 'completed') -eq 1 -and (& $ended $movieName 'completed') -eq 1 -and
+        (& $ended $episodeNames[0] 'completed') -eq 2 -and (& $ended $movieName 'completed') -eq 1 -and
         (& $ended $episodeNames[1] 'completed') -eq 1 -and (& $ended $episodeNames[1] 'failed' 'Stopped') -ge 2 -and
         (& $ended $episodeNames[2] 'failed' 'Revoked') -eq 1 -and @($uploads | Where-Object { $_.state -in 'sending', 'preparing' }).Count -eq 0
     ) @{ uploads = @($uploads | ForEach-Object { "$($_.title -replace '\.720p.*', '') -> $($_.state) $($_.failure) $($_.bytesSent)/$($_.size)" }) }

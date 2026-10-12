@@ -41,14 +41,23 @@ namespace NzbDrone.Core.PeerIndexer
 
         public static string For(PeerCatalogItem item)
         {
+            return For(item, null);
+        }
+
+        // Sonarr asks for an episode either by its number or, for a series it calls daily, by the
+        // day it aired, and it turns down a title written the other way. So the title is written
+        // the way it was asked for: with the season and episode when airDate is null, and with
+        // that day (yyyy-MM-dd) when it is not.
+        public static string For(PeerCatalogItem item, string airDate)
+        {
             var sceneName = (item.SceneName ?? string.Empty).Trim();
 
-            return IsUsable(sceneName, item) ? sceneName : Build(item);
+            return IsUsable(sceneName, item, airDate) ? sceneName : Build(item, airDate);
         }
 
         // The name the release had when the peer's Arr app grabbed it is the best title there is,
         // as long as an Arr app can still make sense of it.
-        private static bool IsUsable(string sceneName, PeerCatalogItem item)
+        private static bool IsUsable(string sceneName, PeerCatalogItem item, string airDate)
         {
             if (sceneName.Length == 0 || sceneName.Length > MaxLength || sceneName.Any(c => char.IsControl(c) || c == '/' || c == '\\'))
             {
@@ -63,7 +72,15 @@ namespace NzbDrone.Core.PeerIndexer
 
             try
             {
-                return Parser.Parser.ParseTitle(sceneName) != null;
+                var parsed = Parser.Parser.ParseTitle(sceneName);
+
+                if (parsed == null)
+                {
+                    return false;
+                }
+
+                // A release named by day is no use to a search by number, and the other way round.
+                return airDate == null ? !parsed.IsDaily : parsed.IsDaily && parsed.AirDate == airDate;
             }
             catch (Exception)
             {
@@ -72,6 +89,11 @@ namespace NzbDrone.Core.PeerIndexer
         }
 
         public static string Build(PeerCatalogItem item)
+        {
+            return Build(item, null);
+        }
+
+        public static string Build(PeerCatalogItem item, string airDate)
         {
             var parts = new List<string> { CleanTitle(item.Title) };
 
@@ -83,6 +105,10 @@ namespace NzbDrone.Core.PeerIndexer
                 }
 
                 parts.AddRange(Tokens(item.Edition));
+            }
+            else if (airDate != null)
+            {
+                parts.Add(airDate.Replace('-', '.'));
             }
             else
             {

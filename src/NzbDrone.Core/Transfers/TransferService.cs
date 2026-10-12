@@ -15,6 +15,9 @@ namespace NzbDrone.Core.Transfers
         // Starts fetching what a ticket names. Returns null when no trusted node offers it any more.
         TransferJob Add(string candidateId, string category);
 
+        // The same, for a ticket that was found by the day the episode aired.
+        TransferJob Add(string candidateId, string category, string airDate);
+
         // Tries a failed transfer again, as a new one. Returns null when that cannot be done.
         TransferJob Retry(string downloadId);
         bool Remove(string downloadId, bool deleteFiles);
@@ -75,6 +78,11 @@ namespace NzbDrone.Core.Transfers
 
         public TransferJob Add(string candidateId, string category)
         {
+            return Add(candidateId, category, null);
+        }
+
+        public TransferJob Add(string candidateId, string category, string airDate)
+        {
             lock (_sync)
             {
                 // An Arr app that sends the same ticket twice gets the same download back.
@@ -93,6 +101,9 @@ namespace NzbDrone.Core.Transfers
                     return null;
                 }
 
+                // Only a day the file really has an episode for changes the title.
+                airDate = airDate != null && candidate.GetAirDates().Contains(airDate) ? airDate : null;
+
                 var job = _jobs.Insert(new TransferJob
                 {
                     DownloadId = "SABnzbd_nzo_" + Guid.NewGuid().ToString("N")[..12],
@@ -101,7 +112,8 @@ namespace NzbDrone.Core.Transfers
                     PeerNodeId = peer.NodeId,
                     RemoteId = candidate.RemoteId,
                     MediaKind = candidate.MediaKind,
-                    Title = candidate.ReleaseTitle,
+                    Title = airDate == null ? candidate.ReleaseTitle : ReleaseTitleBuilder.For(candidate, airDate),
+                    AirDate = airDate,
                     Extension = candidate.Extension,
                     Category = category,
                     Size = candidate.Size,
@@ -127,7 +139,7 @@ namespace NzbDrone.Core.Transfers
                     return null;
                 }
 
-                var again = Add(failed.CandidateId, failed.Category);
+                var again = Add(failed.CandidateId, failed.Category, failed.AirDate);
 
                 if (again != null)
                 {

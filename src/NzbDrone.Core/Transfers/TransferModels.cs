@@ -59,6 +59,10 @@ namespace NzbDrone.Core.Transfers
 
         // The release title, which names the folder and the file the Arr app imports.
         public string Title { get; set; }
+
+        // Set when the Arr app asked for the episode by the day it aired. The title is then
+        // written with that day, which is the only title Sonarr accepts for such a search.
+        public string AirDate { get; set; }
         public string Extension { get; set; }
 
         // The Arr app's download category, such as tv or movies.

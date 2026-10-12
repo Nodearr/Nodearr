@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Datastore;
@@ -27,6 +28,13 @@ namespace NzbDrone.Core.PeerIndexer
         public int Offset { get; set; }
         public int Limit { get; set; } = CandidateService.MaxLimit;
 
+        // Sonarr asks for an episode of a daily show by the day it aired: the year as the season
+        // and "MM/dd" as the episode. This is that day as yyyy-MM-dd, or null for any other query.
+        public string AirDate =>
+            Season.HasValue && DateTime.TryParseExact($"{Season.Value:0000}/{Episode}", "yyyy/MM/dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var day)
+                ? day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+                : null;
+
         public bool HasIds => TvdbId > 0 || TmdbId > 0 || ImdbId.IsNotNullOrWhiteSpace() || HasUnknownIds;
 
         // No IDs and no text: the Arr app's connection test, or its RSS sync.
@@ -37,6 +45,10 @@ namespace NzbDrone.Core.PeerIndexer
     {
         public int Total { get; set; }
         public List<PeerCatalogItem> Items { get; set; } = new();
+
+        // For the items that were found by the day an episode aired: the candidate and that day.
+        // Their titles have to be written with the day. See ReleaseTitleBuilder.
+        public Dictionary<string, string> AirDates { get; set; } = new();
     }
 
     public interface ICandidateService
@@ -52,6 +64,9 @@ namespace NzbDrone.Core.PeerIndexer
         public const int MaxLimit = 100;
 
         private const int MaxWords = 8;
+
+        // No season number is this high, and nothing was broadcast before it.
+        private const int FirstYear = 1900;
 
         private readonly IPeerCatalogRepository _items;
         private readonly IPeerRepository _peers;
@@ -81,16 +96,38 @@ namespace NzbDrone.Core.PeerIndexer
 
             var found = query.HasIds ? ByIds(query, kinds) : ByText(query.Text, kinds);
 
+            var airDates = new Dictionary<string, string>();
+
             var matches = found
                 .Where(i => trusted.Contains(i.PeerId) && i.CandidateId != null)
-                .Where(i => MatchesEpisode(i, query))
+                .Where(i =>
+                {
+                    if (!MatchesEpisode(i, query, out var airDate))
+                    {
+                        return false;
+                    }
+
+                    if (airDate != null)
+                    {
+                        airDates[i.CandidateId] = airDate;
+                    }
+
+                    return true;
+                })
                 .OrderBy(i => i.SeasonNumber)
                 .ThenBy(i => i.GetEpisodeNumbers().FirstOrDefault())
                 .ThenByDescending(i => i.Resolution)
                 .ThenBy(i => i.CandidateId, StringComparer.Ordinal)
                 .ToList();
 
-            return new CandidateResult { Total = matches.Count, Items = matches.Skip(offset).Take(limit).ToList() };
+            var page = matches.Skip(offset).Take(limit).ToList();
+
+            return new CandidateResult
+            {
+                Total = matches.Count,
+                Items = page,
+                AirDates = page.Where(i => airDates.ContainsKey(i.CandidateId)).ToDictionary(i => i.CandidateId, i => airDates[i.CandidateId])
+            };
         }
 
         public PeerCatalogItem Find(string candidateId)
@@ -184,26 +221,49 @@ namespace NzbDrone.Core.PeerIndexer
             return new CandidateResult { Total = page.TotalRecords, Items = page.Records.Where(i => i.CandidateId != null).ToList() };
         }
 
-        private static bool MatchesEpisode(PeerCatalogItem item, CandidateQuery query)
+        // Sonarr asks in one of two ways, and which one depends on how the series is set up in
+        // the Sonarr that is asking, not in the peer's. By number: a season, or a season and an
+        // episode. By day, for a series it calls daily: a year, or a year and a day. A file found
+        // by day comes back with that day in airDate.
+        private static bool MatchesEpisode(PeerCatalogItem item, CandidateQuery query, out string airDate)
         {
+            airDate = null;
+
             if (item.MediaKind != MediaKind.Tv)
             {
                 return true;
             }
 
-            if (query.Season.HasValue && item.SeasonNumber != query.Season.Value)
+            var day = query.AirDate;
+
+            if (day != null)
             {
-                return false;
+                airDate = item.GetAirDates().Contains(day) ? day : null;
+
+                return airDate != null;
             }
 
-            if (query.Episode.IsNullOrWhiteSpace())
+            if (query.Episode.IsNotNullOrWhiteSpace())
+            {
+                return (!query.Season.HasValue || item.SeasonNumber == query.Season.Value) &&
+                       int.TryParse(query.Episode, out var episode) && item.GetEpisodeNumbers().Contains(episode);
+            }
+
+            if (!query.Season.HasValue || item.SeasonNumber == query.Season.Value)
             {
                 return true;
             }
 
-            // Anything that is not a number is a date, which is how the Arr apps ask for daily
-            // shows. Peers are not told air dates, so those match nothing.
-            return int.TryParse(query.Episode, out var episode) && item.GetEpisodeNumbers().Contains(episode);
+            // A season that is a year, with no episode, is a whole year of a daily show. A series
+            // whose seasons really are numbered by year was matched by number just above.
+            if (query.Season.Value >= FirstYear)
+            {
+                var year = query.Season.Value.ToString("0000", CultureInfo.InvariantCulture) + "-";
+
+                airDate = item.GetAirDates().FirstOrDefault(d => d.StartsWith(year, StringComparison.Ordinal));
+            }
+
+            return airDate != null;
         }
 
         // Peers send IMDb IDs as their Arr app holds them, "tt" and all. Radarr asks without it.

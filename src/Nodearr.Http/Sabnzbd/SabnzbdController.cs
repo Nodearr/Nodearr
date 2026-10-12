@@ -141,12 +141,16 @@ namespace Nodearr.Http.Sabnzbd
             }
 
             string candidateId;
+            string airDate;
 
             try
             {
                 using var stream = file.OpenReadStream();
 
-                candidateId = NewznabFeed.ReadTicket(XDocument.Load(stream));
+                var ticket = XDocument.Load(stream);
+
+                candidateId = NewznabFeed.ReadTicket(ticket);
+                airDate = NewznabFeed.ReadTicketAirDate(ticket);
             }
             catch (Exception)
             {
@@ -158,7 +162,7 @@ namespace Nodearr.Http.Sabnzbd
                 return Fail("This NZB is not a Nodearr ticket. Nodearr can only download what its own indexer returned.");
             }
 
-            var job = _transfers.Add(candidateId, Request.Query["cat"].ToString());
+            var job = _transfers.Add(candidateId, Request.Query["cat"].ToString(), airDate);
 
             if (job == null)
             {

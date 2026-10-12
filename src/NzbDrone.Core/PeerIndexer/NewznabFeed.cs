@@ -14,6 +14,7 @@ namespace NzbDrone.Core.PeerIndexer
         public const int TvCategory = 5000;
         public const int MovieCategory = 2000;
         public const string CandidateMetaType = "x-nodearr-candidate";
+        public const string AirDateMetaType = "x-nodearr-airdate";
         public const string ConnectionTestTitle = "Nodearr connection test, not a release";
 
         private const string GuidPrefix = "nodearr:";
@@ -62,17 +63,24 @@ namespace NzbDrone.Core.PeerIndexer
 
         public static XElement Item(PeerCatalogItem item, string link)
         {
+            return Item(item, link, null);
+        }
+
+        // airDate is set for an item that was found by the day its episode aired.
+        public static XElement Item(PeerCatalogItem item, string link, string airDate)
+        {
             var isMovie = item.MediaKind == MediaKind.Movie;
             var family = isMovie ? MovieCategory : TvCategory;
             var published = PublishedAt(item).ToString("r");
+            var title = TitleFor(item, airDate);
 
             var element = new XElement("item",
-                new XElement("title", item.ReleaseTitle),
+                new XElement("title", title),
                 new XElement("guid", new XAttribute("isPermaLink", "false"), GuidPrefix + item.CandidateId),
                 new XElement("link", link),
                 new XElement("pubDate", published),
                 new XElement("category", isMovie ? "Movies" : "TV"),
-                new XElement("description", item.ReleaseTitle),
+                new XElement("description", title),
                 new XElement("enclosure", new XAttribute("url", link), new XAttribute("length", item.Size), new XAttribute("type", "application/x-nzb")),
                 Attr("category", family));
 
@@ -146,14 +154,30 @@ namespace NzbDrone.Core.PeerIndexer
         // rest. The Arr apps need an <nzb> root with at least one <file> in it.
         public static XElement Ticket(PeerCatalogItem item)
         {
+            return Ticket(item, null);
+        }
+
+        // airDate is set for a ticket to an episode that was found by the day it aired. The
+        // download is then named with that day too, so Sonarr sees one title from search to import.
+        public static XElement Ticket(PeerCatalogItem item, string airDate)
+        {
+            var title = TitleFor(item, airDate);
+
+            var head = new XElement(Nzb + "head",
+                new XElement(Nzb + "meta", new XAttribute("type", "title"), title),
+                new XElement(Nzb + "meta", new XAttribute("type", CandidateMetaType), item.CandidateId));
+
+            if (airDate != null)
+            {
+                head.Add(new XElement(Nzb + "meta", new XAttribute("type", AirDateMetaType), airDate));
+            }
+
             return new XElement(Nzb + "nzb",
-                new XElement(Nzb + "head",
-                    new XElement(Nzb + "meta", new XAttribute("type", "title"), item.ReleaseTitle),
-                    new XElement(Nzb + "meta", new XAttribute("type", CandidateMetaType), item.CandidateId)),
+                head,
                 new XElement(Nzb + "file",
                     new XAttribute("poster", "nodearr"),
                     new XAttribute("date", new DateTimeOffset(PublishedAt(item)).ToUnixTimeSeconds()),
-                    new XAttribute("subject", item.ReleaseTitle),
+                    new XAttribute("subject", title),
                     new XElement(Nzb + "groups", new XElement(Nzb + "group", "nodearr.transfer")),
                     new XElement(Nzb + "segments",
                         new XElement(Nzb + "segment", new XAttribute("bytes", item.Size), new XAttribute("number", 1), item.CandidateId + "@nodearr"))));
@@ -162,8 +186,25 @@ namespace NzbDrone.Core.PeerIndexer
         // Reads the candidate a ticket names, or null when the document is not one.
         public static string ReadTicket(XDocument nzb)
         {
+            return ReadMeta(nzb, CandidateMetaType);
+        }
+
+        // The day a ticket was found by, or null when it was found by number.
+        public static string ReadTicketAirDate(XDocument nzb)
+        {
+            return ReadMeta(nzb, AirDateMetaType);
+        }
+
+        private static string ReadMeta(XDocument nzb, string type)
+        {
             return nzb.Descendants()
-                .FirstOrDefault(e => e.Name.LocalName == "meta" && (string)e.Attribute("type") == CandidateMetaType)?.Value;
+                .FirstOrDefault(e => e.Name.LocalName == "meta" && (string)e.Attribute("type") == type)?.Value;
+        }
+
+        // The title for an item: the one kept with it, or one written with the day it was found by.
+        public static string TitleFor(PeerCatalogItem item, string airDate)
+        {
+            return airDate != null && item.GetAirDates().Contains(airDate) ? ReleaseTitleBuilder.For(item, airDate) : item.ReleaseTitle;
         }
 
         // The Arr apps tell a release they have blocklisted by its title and this date (ADR 0010,

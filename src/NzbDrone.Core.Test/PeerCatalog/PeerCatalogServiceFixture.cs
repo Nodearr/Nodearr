@@ -94,6 +94,17 @@ namespace NzbDrone.Core.Test.PeerCatalog
         }
 
         [Test]
+        public void should_keep_the_days_a_peer_gives_and_drop_anything_that_is_not_a_day()
+        {
+            _offered[0].AirDates = new List<string> { "2024-05-17", "2024-5-18", "2024-13-45", "../../etc", string.Empty, null, "2024-05-19" };
+
+            Subject.Sync(_alice.Id);
+
+            Stored.Single(i => i.RemoteId == _offered[0].Id).GetAirDates().Should().Equal("2024-05-17", "2024-05-19");
+            Stored.Where(i => i.RemoteId != _offered[0].Id).Should().OnlyContain(i => i.GetAirDates().Count == 0);
+        }
+
+        [Test]
         public void should_keep_one_of_two_files_a_peer_gives_the_same_name()
         {
             _offered.Add(new OfferItem { Id = "e-1-1", Kind = MediaKind.Tv, TvdbId = 75669, Title = "Pingu", SeasonNumber = 1, EpisodeNumbers = new List<int> { 9 } });

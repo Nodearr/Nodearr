@@ -102,6 +102,56 @@ namespace NzbDrone.Core.Test.PeerIndexer
             NewznabFeed.ReadTicket(XDocument.Parse("<nzb><file/></nzb>")).Should().BeNull();
         }
 
+        private static PeerCatalogItem AiredEpisode()
+        {
+            var item = Episode();
+
+            item.AirDates = "1986-06-18,1986-06-25";
+
+            return item;
+        }
+
+        [Test]
+        public void an_item_found_by_day_should_be_titled_with_that_day()
+        {
+            var item = NewznabFeed.Item(AiredEpisode(), "http://nodearr/get", "1986-06-25");
+
+            item.Element("title").Value.Should().Be("Pingu.1986.06.25");
+            item.Element("description").Value.Should().Be("Pingu.1986.06.25");
+
+            // The same file is the same release to the Arr app, however it was asked for.
+            item.Element("guid").Value.Should().Be(NewznabFeed.Item(AiredEpisode(), "http://nodearr/get").Element("guid").Value);
+        }
+
+        [Test]
+        public void an_item_found_by_number_should_keep_its_own_title()
+        {
+            NewznabFeed.Item(AiredEpisode(), "http://nodearr/get").Element("title").Value.Should().Be("Pingu.S01E04E05.720p.WEB-DL");
+        }
+
+        [Test]
+        public void a_ticket_found_by_day_should_carry_the_day()
+        {
+            var nzb = new XDocument(NewznabFeed.Ticket(AiredEpisode(), "1986-06-25"));
+
+            NewznabFeed.ReadTicket(nzb).Should().Be("0123456789abcdef0123456789abcdef");
+            NewznabFeed.ReadTicketAirDate(nzb).Should().Be("1986-06-25");
+            nzb.ToString().Should().Contain("Pingu.1986.06.25").And.NotContain("S01E04");
+        }
+
+        [Test]
+        public void a_ticket_found_by_number_should_carry_no_day()
+        {
+            NewznabFeed.ReadTicketAirDate(new XDocument(NewznabFeed.Ticket(AiredEpisode()))).Should().BeNull();
+        }
+
+        [Test]
+        public void a_day_the_file_has_no_episode_for_should_not_change_the_title()
+        {
+            NewznabFeed.TitleFor(AiredEpisode(), "1999-01-01").Should().Be("Pingu.S01E04E05.720p.WEB-DL");
+            NewznabFeed.TitleFor(Episode(), "1986-06-25").Should().Be("Pingu.S01E04E05.720p.WEB-DL");
+        }
+
         [Test]
         public void tv_and_movie_searches_should_be_by_id_only()
         {

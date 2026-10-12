@@ -237,6 +237,7 @@ namespace NzbDrone.Core.Sharing
                     item.SeasonNumber = file.SeasonNumber;
                     item.EpisodeNumbers = contained.Select(e => e.EpisodeNumber).ToList();
                     item.EpisodeTitles = contained.Select(e => e.Title ?? string.Empty).ToList();
+                    item.AirDates = contained.Select(e => e.AirDate).Where(d => d.IsNotNullOrWhiteSpace()).ToList();
                     offered.Add(item);
                 }
             }
