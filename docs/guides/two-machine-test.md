@@ -98,6 +98,83 @@ The outcomes mean:
 
 One "Direct" and one completed transfer between two home networks, with no port forwarded, is the result that matters most. A `NoDirectRoute` on a phone hotspot is worth recording and is not a failure of the test.
 
+## The easy version: your own machine and a rented one
+
+A small Linux machine from a cloud provider makes a second network in a few minutes, with nobody else needed. These steps are for an EC2 instance. Any provider's Linux machine with a public address works the same way.
+
+Know what it shows before relying on it. A cloud machine has a public address of its own, which makes it the easiest node there is to reach. A direct connection to it shows that your own side works: your router, your firewall, and Nodearr across the real internet. It does not show that two homes can find each other. That takes a second run with both ends behind ordinary routers, such as your machine and a laptop on a phone's hotspot.
+
+These commands have not been run on AWS by whoever wrote this guide. They are the usual ones. This is also the first run of the Linux deployment with the host's own network, so write down anything that does not match.
+
+### 1. Rent the machine
+
+In the EC2 console, launch an instance:
+
+- **Ubuntu Server 24.04**, and **64-bit (x86)**. There is no Arm image of Nodearr yet, so not a Graviton type.
+- **t3.medium**. Nodearr with Sonarr and Radarr wants about 4 GB.
+- **30 GB** of storage.
+- A key pair, saved as a `.pem` file.
+- Under network settings, allow **SSH from My IP** and nothing else.
+
+Note its public address. It is billed by the second, and a stopped instance still pays for its disk.
+
+### 2. Send it the image
+
+On your own machine, from the repository root:
+
+```sh
+docker build -t nodearr .
+docker save nodearr -o nodearr-image.tar
+scp -i key.pem nodearr-image.tar docker/docker-compose.yml ubuntu@ITS-ADDRESS:~
+```
+
+Building on the rented machine is possible and not worth it. The build wants far more memory and time than the test does.
+
+### 3. Start it there
+
+Connect. The `-L` parts bring its web pages to your own machine and nobody else's:
+
+```sh
+ssh -i key.pem -L 16633:localhost:6633 -L 18989:localhost:8989 -L 17878:localhost:7878 ubuntu@ITS-ADDRESS
+```
+
+Then, on the rented machine:
+
+```sh
+sudo apt-get update && sudo apt-get install -y docker.io docker-compose-v2
+sudo docker load -i nodearr-image.tar
+mkdir -p nodearr/tv nodearr/movies && mv docker-compose.yml nodearr/ && cd nodearr
+sed -i "s#/path/to/tv#$PWD/tv#; s#/path/to/movies#$PWD/movies#" docker-compose.yml
+sudo docker compose up -d
+```
+
+Leave `network_mode: host` as it is. While the SSH connection is open, the rented machine's pages are on your own machine at:
+
+- Nodearr: `http://localhost:16633`
+- Sonarr: `http://localhost:18989`
+- Radarr: `http://localhost:17878`
+
+Your own Nodearr is still at `http://localhost:6633`. The different numbers keep the two apart.
+
+### 4. Set it up as the side that wants the file
+
+Receiving is the cheaper way round. Data going into a cloud machine is free, and data coming out is charged after a monthly allowance.
+
+1. In the rented Sonarr: add `/tv` as a root folder, then add a series you have at home. It will have no files.
+2. In the rented Nodearr, **Settings > Applications**, add Sonarr. Nodearr's address is `http://host.docker.internal:6633`. Sonarr's is `http://localhost:8989`. The API key is in Sonarr under Settings > General.
+3. Carry on from "Set it up" above, with your own machine as the side that has the file.
+
+### 5. Run it twice
+
+1. **As it is.** No UDP is allowed in, which is as near as a cloud machine gets to a home with no port forwarded. Press "Check connection" on both sides, then search and grab in the rented Sonarr.
+2. **With the port open.** In the instance's security group add an inbound rule: Custom UDP, port 6633, from My IP. Check the connection again.
+
+Write down both, using the table above.
+
+### 6. Stop paying
+
+Terminate the instance when you are done. Stopping it is not enough to end the charge for its disk.
+
 ## Things worth trying once it works
 
 - Hide the series on the sharing side (**Catalog > Sharing**), and search again on the other side. It should find nothing.

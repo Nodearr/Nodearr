@@ -71,7 +71,7 @@ dotnet run --project src/NzbDrone.Console/Nodearr.Console.csproj -- -nobrowser -
 
 - `-data=` sets where `config.xml`, `nodearr.db` and logs are kept. Without it Nodearr uses `%ProgramData%\Nodearr` on Windows and `~/.config/Nodearr` elsewhere.
 - `-nobrowser` stops it opening a browser on start.
-- The UI is at `http://localhost:6633`. Change `Port` in `config.xml` to use another port.
+- The UI is at `http://localhost:6633`. The port is changed under Settings > General.
 
 ## API
 
