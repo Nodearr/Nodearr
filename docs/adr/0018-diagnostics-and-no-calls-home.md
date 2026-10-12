@@ -78,3 +78,9 @@ Two inherited paths remain that only run when someone uses the feature behind th
 
 - Use the connection check automatically after pairing, so the answer is there without asking.
 - Show the same path information on a transfer that failed.
+
+## Amendments
+
+- 2026-10-11: **"Relay only" raises a warning, and the warning names the firewall.** A trusted node that the last connection check reached only through a relay is now a warning on System > Status, by name. It is raised whatever else is known about the network, and a direct connection to some other node does not hide it. It goes when a later check finds a direct route, or trust ends. The message, and the text beside "Relay only" on Nodes > Trusted Nodes, say to check each machine's firewall for incoming UDP before forwarding a port.
+
+  The reason: Windows had been blocking incoming traffic to the transport on the development machine for most of a day, and nothing noticed. Both host acceptance suites passed in that time, because both of their nodes run on the one machine. From another machine that node would have been "Relay only", with a message that pointed only at the router. Nodearr cannot tell a blocked firewall from a router that needs a port forwarded. It can name both, the cheaper one first. The two-machine guide has a section on it.

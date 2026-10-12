@@ -147,7 +147,7 @@ It runs `acceptance/docker-compose.s8.yml`: two complete deployments, John's and
 - Ryan's Nodearr container is replaced in the middle of a transfer. The new one is the same node and carries on.
 - John hides a series while Ryan's node is frozen and cannot hear of it. Ryan's node then uses a ticket it already held, and John's node refuses.
 - One byte of a file is changed on John's side after its hash was fixed. The transfer fails verification and nothing reaches Sonarr.
-- The direct network is unplugged. The transfer fails as `NoDirectRoute`, and the relay's counters show that no file data went through it.
+- The direct network is unplugged. The transfer fails as `NoDirectRoute`, and the relay's counters show that no file data went through it. While only the relay is left, System > Status warns that there is no direct route, names the other node and says to check the firewall. The warning goes once the route is direct again.
 - John blocks Ryan in the middle of a transfer. It is cut.
 - A connection check says "direct" between the two, and "relay" once the direct network is unplugged.
 - A third Nodearr, set up wrongly on purpose, is warned that it cannot read the library and that Sonarr cannot see its downloads. The two set up properly show no warnings.
