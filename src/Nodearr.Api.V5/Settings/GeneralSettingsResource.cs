@@ -46,6 +46,10 @@ public class GeneralSettingsResource : RestResource
     public string? BackupFolder { get; set; }
     public int BackupInterval { get; set; }
     public int BackupRetention { get; set; }
+
+    // The settings above that are given in the environment Nodearr runs in. They are shown and
+    // cannot be changed here. Not a setting itself, and ignored when sent back.
+    public List<string>? FixedByEnvironment { get; set; }
 }
 
 public static class GeneralSettingsResourceMapper

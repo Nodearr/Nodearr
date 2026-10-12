@@ -26,6 +26,10 @@ services:
       # the upload limit. A setting given here as Nodearr__Transport__... is fixed, and the
       # page shows it as such. The image fixes two: the download folder, /downloads, and the
       # UDP port, 6633, because the mounts and ports of this file are built around them.
+      #
+      # The same goes for Settings > General. The image fixes the port the web page and the API
+      # are served at, 6633, so it cannot be changed in the UI into one that is not published.
+      # To use another with the host's network, set it here:  Nodearr__Server__Port: "7000"
     volumes:
       - ./config/nodearr:/config
       - ./downloads:/downloads

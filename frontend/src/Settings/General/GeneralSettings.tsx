@@ -14,12 +14,9 @@ import { useIsWindowsService } from 'System/Status/useSystemStatus';
 import { useRestart } from 'System/useSystem';
 import { InputChanged } from 'typings/inputs';
 import translate from 'Utilities/String/translate';
-import BackupSettings from './BackupSettings';
 import HostSettings from './HostSettings';
 import LoggingSettings from './LoggingSettings';
-import ProxySettings from './ProxySettings';
 import SecuritySettings from './SecuritySettings';
-import UpdateSettings from './UpdateSettings';
 import { useManageGeneralSettings } from './useGeneralSettings';
 
 const requiresRestartKeys = [
@@ -60,6 +57,17 @@ function GeneralSettings() {
   const [isRestartRequiredModalOpen, setIsRestartRequiredModalOpen] =
     useState(false);
 
+  // Settings given in the environment Nodearr runs in. They are shown and cannot be changed.
+  const fixedNames = (settings?.fixedByEnvironment?.value ?? []).map(
+    (name: string) => name.toLowerCase()
+  );
+
+  const isFixed = useCallback(
+    (name: string) => fixedNames.includes(name.toLowerCase()),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [fixedNames.join(',')]
+  );
+
   const handleInputChange = useCallback(
     (change: InputChanged) => {
       // @ts-expect-error input change events aren't typed
@@ -93,9 +101,11 @@ function GeneralSettings() {
     }
   }, [isSaving, wasSaving, saveError, previousPendingChanges]);
 
+  // The page was loaded with the old key and can ask for nothing more with it. Loading it again
+  // picks up the new one. No restart is needed: the key is checked afresh on every request.
   useEffect(() => {
     if (!isResettingApiKey && wasResettingApiKey) {
-      setIsRestartRequiredModalOpen(true);
+      window.location.reload();
     }
   }, [isResettingApiKey, wasResettingApiKey]);
 
@@ -122,6 +132,12 @@ function GeneralSettings() {
             validationErrors={validationErrors}
             validationWarnings={validationWarnings}
           >
+            {fixedNames.length > 0 ? (
+              <Alert kind={kinds.INFO}>
+                {translate('NodeSettingsSomeFixed')}
+              </Alert>
+            ) : null}
+
             <HostSettings
               bindAddress={settings.bindAddress}
               port={settings.port}
@@ -134,6 +150,7 @@ function GeneralSettings() {
               sslKeyPath={settings.sslKeyPath}
               sslCertPassword={settings.sslCertPassword}
               launchBrowser={settings.launchBrowser}
+              isFixed={isFixed}
               onInputChange={handleInputChange}
             />
 
@@ -146,39 +163,14 @@ function GeneralSettings() {
               apiKey={settings.apiKey}
               certificateValidation={settings.certificateValidation}
               isResettingApiKey={isResettingApiKey}
-              onInputChange={handleInputChange}
-            />
-
-            <ProxySettings
-              proxyEnabled={settings.proxyEnabled}
-              proxyType={settings.proxyType}
-              proxyHostname={settings.proxyHostname}
-              proxyPort={settings.proxyPort}
-              proxyUsername={settings.proxyUsername}
-              proxyPassword={settings.proxyPassword}
-              proxyBypassFilter={settings.proxyBypassFilter}
-              proxyBypassLocalAddresses={settings.proxyBypassLocalAddresses}
+              isFixed={isFixed}
               onInputChange={handleInputChange}
             />
 
             <LoggingSettings
               logLevel={settings.logLevel}
               logSizeLimit={settings.logSizeLimit}
-              onInputChange={handleInputChange}
-            />
-
-            <UpdateSettings
-              branch={settings.branch}
-              updateAutomatically={settings.updateAutomatically}
-              updateMechanism={settings.updateMechanism}
-              updateScriptPath={settings.updateScriptPath}
-              onInputChange={handleInputChange}
-            />
-
-            <BackupSettings
-              backupFolder={settings.backupFolder}
-              backupInterval={settings.backupInterval}
-              backupRetention={settings.backupRetention}
+              isFixed={isFixed}
               onInputChange={handleInputChange}
             />
           </Form>

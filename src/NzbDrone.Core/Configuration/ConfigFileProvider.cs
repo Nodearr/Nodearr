@@ -509,7 +509,14 @@ namespace NzbDrone.Core.Configuration
 
         public void Execute(ResetApiKeyCommand message)
         {
+            // A key given in the environment is the key, whatever is written to the file.
+            if (_authOptions.ApiKey != null)
+            {
+                return;
+            }
+
             SetValue("ApiKey", GenerateApiKey());
+            _eventAggregator.PublishEvent(new ApiKeyResetEvent());
         }
     }
 }

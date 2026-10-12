@@ -12,6 +12,7 @@ import TrustedNodes from 'Nodes/Trusted/TrustedNodes';
 import Settings from 'Settings/Settings';
 import Status from 'System/Status/Status';
 import ApplicationSettings from '../Settings/Applications/ApplicationSettings';
+import GeneralSettings from '../Settings/General/GeneralSettings';
 import NodeSettings from '../Settings/Node/NodeSettings';
 
 export function appRouteElements() {
@@ -55,10 +56,7 @@ export function appRouteElements() {
 
       <Route path="/settings/node" element={<NodeSettings />} />
 
-      <Route
-        path="/settings/general"
-        element={<div>Placeholder for general settings</div>}
-      />
+      <Route path="/settings/general" element={<GeneralSettings />} />
 
       {/*
         System

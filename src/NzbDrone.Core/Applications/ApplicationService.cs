@@ -2,6 +2,7 @@ using System;
 using NLog;
 using NzbDrone.Common.Http;
 using NzbDrone.Core.Catalog;
+using NzbDrone.Core.Configuration.Events;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.ThingiProvider.Events;
@@ -10,6 +11,7 @@ namespace NzbDrone.Core.Applications
 {
     public class ApplicationService : IHandleAsync<ProviderAddedEvent<IApplication>>,
                                       IHandleAsync<ProviderUpdatedEvent<IApplication>>,
+                                      IHandle<ApiKeyResetEvent>,
                                       IExecute<ApplicationIndexerSyncCommand>
     {
         private readonly IApplicationFactory _applicationsFactory;
@@ -36,6 +38,18 @@ namespace NzbDrone.Core.Applications
         public void HandleAsync(ProviderUpdatedEvent<IApplication> message)
         {
             OnSaved((ApplicationDefinition)message.Definition);
+        }
+
+        // Each Arr app holds Nodearr's key, in the indexer and the download client Nodearr added
+        // to it. They are given the new one before the reset is reported as done, so a search or
+        // a grab in between is the only thing that can meet the old key. An app that cannot be
+        // reached is given it at the next sync.
+        public void Handle(ApiKeyResetEvent message)
+        {
+            foreach (var application in _applicationsFactory.SyncEnabled(false))
+            {
+                SyncRegistration(application, true);
+            }
         }
 
         public void Execute(ApplicationIndexerSyncCommand message)

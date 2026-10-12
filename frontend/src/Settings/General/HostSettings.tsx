@@ -5,6 +5,7 @@ import FormInputGroup from 'Components/Form/FormInputGroup';
 import FormLabel from 'Components/Form/FormLabel';
 import { inputTypes, sizes } from 'Helpers/Props';
 import { useShowAdvancedSettings } from 'Settings/advancedSettingsStore';
+import FixedSetting from 'Settings/FixedSetting';
 import { useIsWindowsService } from 'System/Status/useSystemStatus';
 import { InputChanged } from 'typings/inputs';
 import { PendingSection } from 'typings/pending';
@@ -23,6 +24,7 @@ interface HostSettingsProps {
   sslCertPath: PendingSection<GeneralSettingsModel>['sslCertPath'];
   sslCertPassword: PendingSection<GeneralSettingsModel>['sslCertPassword'];
   launchBrowser: PendingSection<GeneralSettingsModel>['launchBrowser'];
+  isFixed: (name: string) => boolean;
   onInputChange: (change: InputChanged) => void;
 }
 
@@ -38,6 +40,7 @@ function HostSettings({
   sslKeyPath,
   sslCertPassword,
   launchBrowser,
+  isFixed,
   onInputChange,
 }: HostSettingsProps) {
   const showAdvancedSettings = useShowAdvancedSettings();
@@ -48,55 +51,71 @@ function HostSettings({
       <FormGroup advancedSettings={showAdvancedSettings} isAdvanced={true}>
         <FormLabel>{translate('BindAddress')}</FormLabel>
 
-        <FormInputGroup
-          type={inputTypes.TEXT}
-          name="bindAddress"
-          helpText={translate('BindAddressHelpText')}
-          helpTextWarning={translate('RestartRequiredHelpTextWarning')}
-          onChange={onInputChange}
-          {...bindAddress}
-        />
+        {isFixed('bindAddress') ? (
+          <FixedSetting value={bindAddress.value} />
+        ) : (
+          <FormInputGroup
+            type={inputTypes.TEXT}
+            name="bindAddress"
+            helpText={translate('BindAddressHelpText')}
+            helpTextWarning={translate('RestartRequiredHelpTextWarning')}
+            onChange={onInputChange}
+            {...bindAddress}
+          />
+        )}
       </FormGroup>
 
       <FormGroup>
         <FormLabel>{translate('PortNumber')}</FormLabel>
 
-        <FormInputGroup
-          type={inputTypes.NUMBER}
-          name="port"
-          min={1}
-          max={65535}
-          autocomplete="off"
-          helpTextWarning={translate('RestartRequiredHelpTextWarning')}
-          onChange={onInputChange}
-          {...port}
-        />
+        {isFixed('port') ? (
+          <FixedSetting value={port.value} />
+        ) : (
+          <FormInputGroup
+            type={inputTypes.NUMBER}
+            name="port"
+            min={1}
+            max={65535}
+            autocomplete="off"
+            helpTextWarning={translate('RestartRequiredHelpTextWarning')}
+            onChange={onInputChange}
+            {...port}
+          />
+        )}
       </FormGroup>
 
       <FormGroup>
         <FormLabel>{translate('UrlBase')}</FormLabel>
 
-        <FormInputGroup
-          type={inputTypes.TEXT}
-          name="urlBase"
-          helpText={translate('UrlBaseHelpText')}
-          helpTextWarning={translate('RestartRequiredHelpTextWarning')}
-          onChange={onInputChange}
-          {...urlBase}
-        />
+        {isFixed('urlBase') ? (
+          <FixedSetting value={urlBase.value || '/'} />
+        ) : (
+          <FormInputGroup
+            type={inputTypes.TEXT}
+            name="urlBase"
+            helpText={translate('UrlBaseHelpText')}
+            helpTextWarning={translate('RestartRequiredHelpTextWarning')}
+            onChange={onInputChange}
+            {...urlBase}
+          />
+        )}
       </FormGroup>
 
       <FormGroup advancedSettings={showAdvancedSettings} isAdvanced={true}>
         <FormLabel>{translate('InstanceName')}</FormLabel>
 
-        <FormInputGroup
-          type={inputTypes.TEXT}
-          name="instanceName"
-          helpText={translate('InstanceNameHelpText')}
-          helpTextWarning={translate('RestartRequiredHelpTextWarning')}
-          onChange={onInputChange}
-          {...instanceName}
-        />
+        {isFixed('instanceName') ? (
+          <FixedSetting value={instanceName.value} />
+        ) : (
+          <FormInputGroup
+            type={inputTypes.TEXT}
+            name="instanceName"
+            helpText={translate('InstanceNameHelpText')}
+            helpTextWarning={translate('RestartRequiredHelpTextWarning')}
+            onChange={onInputChange}
+            {...instanceName}
+          />
+        )}
       </FormGroup>
 
       <FormGroup advancedSettings={showAdvancedSettings} isAdvanced={true}>
@@ -118,28 +137,38 @@ function HostSettings({
       >
         <FormLabel>{translate('EnableSsl')}</FormLabel>
 
-        <FormInputGroup
-          type={inputTypes.CHECK}
-          name="enableSsl"
-          helpText={translate('EnableSslHelpText')}
-          onChange={onInputChange}
-          {...enableSsl}
-        />
+        {isFixed('enableSsl') ? (
+          <FixedSetting
+            value={enableSsl.value ? translate('Yes') : translate('No')}
+          />
+        ) : (
+          <FormInputGroup
+            type={inputTypes.CHECK}
+            name="enableSsl"
+            helpText={translate('EnableSslHelpText')}
+            onChange={onInputChange}
+            {...enableSsl}
+          />
+        )}
       </FormGroup>
 
       {enableSsl.value ? (
         <FormGroup advancedSettings={showAdvancedSettings} isAdvanced={true}>
           <FormLabel>{translate('SslPort')}</FormLabel>
 
-          <FormInputGroup
-            type={inputTypes.NUMBER}
-            name="sslPort"
-            min={1}
-            max={65535}
-            helpTextWarning={translate('RestartRequiredHelpTextWarning')}
-            onChange={onInputChange}
-            {...sslPort}
-          />
+          {isFixed('sslPort') ? (
+            <FixedSetting value={sslPort.value} />
+          ) : (
+            <FormInputGroup
+              type={inputTypes.NUMBER}
+              name="sslPort"
+              min={1}
+              max={65535}
+              helpTextWarning={translate('RestartRequiredHelpTextWarning')}
+              onChange={onInputChange}
+              {...sslPort}
+            />
+          )}
         </FormGroup>
       ) : null}
 
@@ -148,40 +177,52 @@ function HostSettings({
           <FormGroup advancedSettings={showAdvancedSettings} isAdvanced={true}>
             <FormLabel>{translate('SslCertPath')}</FormLabel>
 
-            <FormInputGroup
-              type={inputTypes.TEXT}
-              name="sslCertPath"
-              helpText={translate('SslCertPathHelpText')}
-              helpTextWarning={translate('RestartRequiredHelpTextWarning')}
-              onChange={onInputChange}
-              {...sslCertPath}
-            />
+            {isFixed('sslCertPath') ? (
+              <FixedSetting value={sslCertPath.value} />
+            ) : (
+              <FormInputGroup
+                type={inputTypes.TEXT}
+                name="sslCertPath"
+                helpText={translate('SslCertPathHelpText')}
+                helpTextWarning={translate('RestartRequiredHelpTextWarning')}
+                onChange={onInputChange}
+                {...sslCertPath}
+              />
+            )}
           </FormGroup>
 
           <FormGroup advancedSettings={showAdvancedSettings} isAdvanced={true}>
             <FormLabel>{translate('SslKeyPath')}</FormLabel>
 
-            <FormInputGroup
-              type={inputTypes.TEXT}
-              name="sslKeyPath"
-              helpText={translate('SslKeyPathHelpText')}
-              helpTextWarning={translate('RestartRequiredHelpTextWarning')}
-              onChange={onInputChange}
-              {...sslKeyPath}
-            />
+            {isFixed('sslKeyPath') ? (
+              <FixedSetting value={sslKeyPath.value} />
+            ) : (
+              <FormInputGroup
+                type={inputTypes.TEXT}
+                name="sslKeyPath"
+                helpText={translate('SslKeyPathHelpText')}
+                helpTextWarning={translate('RestartRequiredHelpTextWarning')}
+                onChange={onInputChange}
+                {...sslKeyPath}
+              />
+            )}
           </FormGroup>
 
           <FormGroup advancedSettings={showAdvancedSettings} isAdvanced={true}>
             <FormLabel>{translate('SslCertPassword')}</FormLabel>
 
-            <FormInputGroup
-              type={inputTypes.PASSWORD}
-              name="sslCertPassword"
-              helpText={translate('SslCertPasswordHelpText')}
-              helpTextWarning={translate('RestartRequiredHelpTextWarning')}
-              onChange={onInputChange}
-              {...sslCertPassword}
-            />
+            {isFixed('sslCertPassword') ? (
+              <FixedSetting value="********" />
+            ) : (
+              <FormInputGroup
+                type={inputTypes.PASSWORD}
+                name="sslCertPassword"
+                helpText={translate('SslCertPasswordHelpText')}
+                helpTextWarning={translate('RestartRequiredHelpTextWarning')}
+                onChange={onInputChange}
+                {...sslCertPassword}
+              />
+            )}
           </FormGroup>
         </>
       ) : null}
@@ -190,13 +231,19 @@ function HostSettings({
         <FormGroup size={sizes.MEDIUM}>
           <FormLabel>{translate('OpenBrowserOnStart')}</FormLabel>
 
-          <FormInputGroup
-            type={inputTypes.CHECK}
-            name="launchBrowser"
-            helpText={translate('OpenBrowserOnStartHelpText')}
-            onChange={onInputChange}
-            {...launchBrowser}
-          />
+          {isFixed('launchBrowser') ? (
+            <FixedSetting
+              value={launchBrowser.value ? translate('Yes') : translate('No')}
+            />
+          ) : (
+            <FormInputGroup
+              type={inputTypes.CHECK}
+              name="launchBrowser"
+              helpText={translate('OpenBrowserOnStartHelpText')}
+              onChange={onInputChange}
+              {...launchBrowser}
+            />
+          )}
         </FormGroup>
       )}
     </FieldSet>

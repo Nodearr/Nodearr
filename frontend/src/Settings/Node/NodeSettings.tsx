@@ -1,4 +1,4 @@
-import React, { ReactNode, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import Alert from 'Components/Alert';
 import FieldSet from 'Components/FieldSet';
 import Form from 'Components/Form/Form';
@@ -10,11 +10,11 @@ import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
 import { inputTypes, kinds } from 'Helpers/Props';
+import FixedSetting from 'Settings/FixedSetting';
 import SettingsToolbar from 'Settings/SettingsToolbar';
 import { InputChanged } from 'typings/inputs';
 import translate from 'Utilities/String/translate';
 import { RelayMode, useManageNodeSettings } from './useNodeSettings';
-import styles from './NodeSettings.css';
 
 const relayOptions: EnhancedSelectInputValue<RelayMode>[] = [
   {
@@ -36,18 +36,6 @@ const relayOptions: EnhancedSelectInputValue<RelayMode>[] = [
     },
   },
 ];
-
-// A setting given in the environment cannot be changed here. It is shown, and says so.
-function FixedSetting({ value }: { value: ReactNode }) {
-  return (
-    <div className={styles.fixed}>
-      <div className={styles.fixedValue}>{value}</div>
-      <div className={styles.fixedNote}>
-        {translate('NodeSettingsFixedByEnvironment')}
-      </div>
-    </div>
-  );
-}
 
 function NodeSettings() {
   const {

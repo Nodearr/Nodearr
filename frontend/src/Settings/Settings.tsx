@@ -21,6 +21,13 @@ function Settings() {
           {translate('NodeSettingsShort')}
         </Link>
         <div className={styles.summary}>{translate('NodeSettingsSummary')}</div>
+
+        <Link className={styles.link} to="/settings/general">
+          {translate('General')}
+        </Link>
+        <div className={styles.summary}>
+          {translate('GeneralSettingsSummary')}
+        </div>
       </PageContentBody>
     </PageContent>
   );

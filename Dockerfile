@@ -62,6 +62,8 @@ RUN chmod 0755 /usr/local/bin/nodearr-entrypoint /app/bin/nodearr-transport
 ENV HOME=/config \
     PUID=1000 \
     PGID=1000 \
+    Nodearr__Server__Port=6633 \
+    Nodearr__Server__BindAddress=* \
     Nodearr__Transport__DownloadFolder=/downloads \
     Nodearr__Transport__Port=6633
 

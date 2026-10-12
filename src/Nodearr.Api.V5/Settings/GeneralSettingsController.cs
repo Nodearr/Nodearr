@@ -1,3 +1,4 @@
+using System.Reflection;
 using FluentValidation;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Nodearr.Http;
@@ -15,14 +16,17 @@ namespace Nodearr.Api.V5.Settings;
 public class GeneralSettingsController : SettingsController<GeneralSettingsResource>
 {
     private readonly IUserService _userService;
+    private readonly IEnvironmentFixedSettings _fixed;
 
     public GeneralSettingsController(IConfigFileProvider configFileProvider,
                                 IConfigService configService,
                                 IUserService userService,
-                                IDiskProvider diskProvider)
+                                IDiskProvider diskProvider,
+                                IEnvironmentFixedSettings fixedSettings)
         : base(configFileProvider, configService)
     {
         _userService = userService;
+        _fixed = fixedSettings;
 
         SharedValidator.RuleFor(c => c.BindAddress)
                        .ValidIpAddress()
@@ -98,12 +102,26 @@ public class GeneralSettingsController : SettingsController<GeneralSettingsResou
         resource.Username = user?.Username ?? string.Empty;
         resource.Password = user?.Password ?? string.Empty;
         resource.PasswordConfirmation = string.Empty;
+        resource.FixedByEnvironment = _fixed.General();
 
         return resource;
     }
 
     public override Results<Accepted<GeneralSettingsResource>, NotFound> SaveSettings(GeneralSettingsResource resource)
     {
+        // A setting the environment fixes stays as it is, whatever is sent. Written to the file it
+        // would do nothing now, and would take effect by surprise if the environment ever changed.
+        var current = GetResourceById(resource.Id);
+
+        foreach (var name in _fixed.General())
+        {
+            var property = typeof(GeneralSettingsResource).GetProperty(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.IgnoreCase);
+
+            property?.SetValue(resource, property.GetValue(current));
+        }
+
+        resource.FixedByEnvironment = null;
+
         if (resource.Username.IsNotNullOrWhiteSpace() && resource.Password.IsNotNullOrWhiteSpace())
         {
             _userService.Upsert(resource.Username, resource.Password);

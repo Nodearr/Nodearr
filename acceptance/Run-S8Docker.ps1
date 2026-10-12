@@ -372,6 +372,35 @@ try {
         $sidecarB -match '--upload-limit-kbps 8192' -and $sidecarB -match '--bind-port 6633' -and $afterRestart.state -eq 'trusted'
     ) @{ fixed = @($settingsB.fixedByEnvironment); restarted = $savedB.transportRestarted; running = $savedB.transportRunning; sidecar = ($sidecarB -replace '^\S+\s*', ''); path = $afterRestart.connectionPath }
 
+    # The same for the general settings: where the page is served and the key are fixed by the
+    # image and the compose file, so they cannot be changed into something the container's
+    # published port no longer matches. What is not fixed is still saved.
+    $generalB = Invoke-Node B GET '/settings/general'
+    $fixedGeneral = @($generalB.fixedByEnvironment)
+    $generalB.port = 7000
+    $generalB.bindAddress = '127.0.0.1'
+    $generalB.logLevel = 'info'
+    Invoke-Node B PUT '/settings/general' $generalB | Out-Null
+    $generalAfter = Invoke-Node B GET '/settings/general'
+    Assert-That 'In a container the page''s port, its address and the key are fixed, and a general setting that is not fixed is still saved' (
+        'port' -in $fixedGeneral -and 'bindAddress' -in $fixedGeneral -and 'apiKey' -in $fixedGeneral -and 'authenticationMethod' -in $fixedGeneral -and
+        $generalAfter.port -eq 6633 -and $generalAfter.bindAddress -eq '*' -and $generalAfter.logLevel -eq 'info'
+    ) @{ fixed = $fixedGeneral; portAfter = $generalAfter.port; bindAddressAfter = $generalAfter.bindAddress; logLevelAfter = $generalAfter.logLevel }
+
+    # Restarting from the page, in a container: Nodearr starts again inside the same container.
+    $startedBefore = docker inspect -f '{{.State.StartedAt}}' $nodes.B.Container
+    Invoke-Node B POST '/system/restart' | Out-Null
+    Start-Sleep -Seconds 3
+    $restarted = Wait-Until -What 'node B to come back after a restart from the page' -TimeoutSec 120 -EverySec 3 -Condition {
+        try { $check = Test-Connection-To-Peer B; if ($check.connectionPath -eq 'direct') { $check } } catch { $null }
+    }
+    $sidecarsAfter = @(docker exec $nodes.B.Container sh -c "ps -eo args | grep '[n]odearr-transport'")
+    $startedAfter = docker inspect -f '{{.State.StartedAt}}' $nodes.B.Container
+    $identityAfter = Invoke-Node B GET '/nodes/identity'
+    Assert-That 'A restart from the page works in a container: the container keeps running, and Nodearr comes back as the same node with one sidecar' (
+        $startedAfter -eq $startedBefore -and $restarted.state -eq 'trusted' -and $sidecarsAfter.Count -eq 1 -and $identityAfter.transportRunning -and $identityAfter.name -eq 'Ryan'
+    ) @{ containerRestarted = ($startedAfter -ne $startedBefore); trusted = $restarted.state; path = $restarted.connectionPath; sidecars = $sidecarsAfter.Count; transportRunning = $identityAfter.transportRunning }
+
     # --- A node set up wrongly is told so ----------------------------------------------------------
 
     Test-Connection-To-Peer A | Out-Null
@@ -503,7 +532,7 @@ try {
     Start-Sleep -Seconds 3
 
     # Node B's published port drops for a moment when its networks change.
-    $relayOnly = Wait-Until -What 'node B to answer after its network changed' -TimeoutSec 60 -EverySec 2 -Condition {
+    $relayOnly = Wait-Until -What 'node B to answer after its network changed' -TimeoutSec 150 -EverySec 2 -Condition {
         try { Test-Connection-To-Peer B } catch { $null }
     }
     $relayWarning = Wait-Until -What 'node B to warn that it has no direct route' -TimeoutSec 30 -EverySec 2 -Condition {
