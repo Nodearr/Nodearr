@@ -92,3 +92,17 @@ The name and the download folder are read when they are needed, so they need no 
 
 - Check that a relay answers before saving its address.
 - A download limit, to go with the upload limit.
+
+## Amendments
+
+- 2026-10-11: **Settings > General is a real page, on the same rule.** The sidebar entry led to a placeholder, so after the first-run sign-in set-up there was nowhere to change the password, read or replace the API key, move the page to another port, or turn on debug logging. The page Sonarr had for this was still in the code. It is wired in, cut down to what Nodearr has: where the page is served (address, port, URL base, HTTPS), signing in, the API key, certificate checking, and logging. The proxy, update and backup sections are left out. Updating was removed (ADR 0018), and backups have no page to list or restore them yet.
+
+  - **A setting given in the environment is shown and cannot be changed**, as on Settings > Node. Sent anyway, it is ignored and not written to the file, where it would do nothing now and take effect by surprise if the environment ever changed.
+  - **The Docker image gives the page's port and address** (`Nodearr__Server__Port=6633`, `Nodearr__Server__BindAddress=*`), as it already gave the UDP port. A port changed in the page and not in the container's published ports would leave the page unreachable, with no page to change it back from. With the host's network on Linux, another port is chosen in the compose file, where the rest of the container is set up.
+  - **Resetting the API key gives the new one to Sonarr and Radarr.** They hold it for the indexer and the download client Nodearr added. Every application set to Full Sync is updated before the reset is reported as done. One that cannot be reached is updated at its next sync and shows as failing until then. The key is checked afresh on every request, so the old one stops working at once and no restart is needed. The page loads itself again, because it was holding the old key.
+  - **A key given in the environment cannot be reset**, and the page offers no button for it.
+  - **Port, address, URL base and HTTPS take effect after a restart**, which the page offers. A restart is a stop and a start inside the same process. In a container the container keeps running.
+
+  Restarting from the page crashed Nodearr when this was first tried. The thread that waits on the transport sidecar let the cancellation that stops it escape, and an exception that leaves a thread takes the process with it. An ordinary shutdown had been ending the same way, unnoticed because the process was going anyway. It is caught now.
+
+  Checked by `acceptance/Run-GeneralSettings.ps1`: refusals, a fixed setting, a log level used at once, a port applied by two restarts in a row with the same process, node and single sidecar, signing in by form with a changed password, and a reset key that Sonarr's own tests of the indexer and download client then pass with. `acceptance/Run-S8Docker.ps1` checks the fixed settings and the restart in a container.

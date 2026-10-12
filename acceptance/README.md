@@ -174,6 +174,23 @@ Needs only the transport sidecar, and takes about two minutes. Two real nodes on
 
 `-KeepRunning` leaves both up. Open `http://localhost:6633/settings/node`.
 
+## General settings
+
+```sh
+pwsh acceptance/Run-GeneralSettings.ps1
+```
+
+Needs Docker and the transport sidecar, and takes about three minutes. One real node on this machine, and a Sonarr container for the one check that needs an Arr app. Unlike the other scripts the node is not given its port, key or way of signing in through the environment, because those are what is being changed. It checks, through the API the way the page does:
+
+- The page shows where Nodearr listens, its key, how signing in works, and which settings the environment fixes.
+- Settings that cannot work are refused, each named, and nothing is changed. A setting the environment fixes stays as it is.
+- A new log level is used straight away.
+- A new port waits for a restart. After a restart from the page Nodearr answers on it and nowhere else, as the same process and the same node with one sidecar. A second restart works as well.
+- Signing in by form can be turned on, and a changed password is the only one that works afterwards.
+- Resetting the API key replaces it at once, with no restart, and Sonarr is given the new one: its own tests of the Nodearr indexer and download client pass.
+
+`-KeepRunning` leaves it up at `http://localhost:6633/settings/general`. `-Down` stops it and deletes `.run/general`.
+
 ## Between two machines
 
 `docs/guides/two-machine-test.md`. No script can do this one.

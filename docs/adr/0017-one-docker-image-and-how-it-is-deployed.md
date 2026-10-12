@@ -79,6 +79,8 @@ A node's name, as other nodes see it, is set with `Nodearr__Transport__NodeName`
 - 2026-10-11 (ADR 0018): the inherited update check, error reporting and analytics were removed. A container now contacts only what it is pointed at.
 - 2026-10-11 (ADR 0019): the settings have a page, Settings > Node. What the image and the compose file give in the environment stays fixed, and the page shows it. A node's name is now set there, not in the compose file.
 
+- 2026-10-11 (ADR 0019): the image also fixes the port and address the web page and the API are served at, 6633 on every address, so they cannot be changed in the UI into something the published ports no longer match. A restart asked for in the UI happens inside the running container.
+
 ## Follow-up work
 
 - The two-machine run.
