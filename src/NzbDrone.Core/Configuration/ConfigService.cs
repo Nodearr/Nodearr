@@ -396,6 +396,54 @@ namespace NzbDrone.Core.Configuration
 
         public string CandidateIdSecret => GetValue("CandidateIdSecret", Convert.ToHexString(RandomNumberGenerator.GetBytes(32)), true);
 
+        public string NodeName
+        {
+            get { return GetValue("NodeName", string.Empty); }
+            set { SetValue("NodeName", value ?? string.Empty); }
+        }
+
+        public string TransportRelay
+        {
+            get { return GetValue("TransportRelay", "n0"); }
+            set { SetValue("TransportRelay", value ?? string.Empty); }
+        }
+
+        public string TransportRelayUrl
+        {
+            get { return GetValue("TransportRelayUrl", string.Empty); }
+            set { SetValue("TransportRelayUrl", value ?? string.Empty); }
+        }
+
+        public int TransportPort
+        {
+            get { return GetValueInt("TransportPort", 0); }
+            set { SetValue("TransportPort", value); }
+        }
+
+        public bool TransportPortMapping
+        {
+            get { return GetValueBoolean("TransportPortMapping", true); }
+            set { SetValue("TransportPortMapping", value); }
+        }
+
+        public int TransferDirectTimeout
+        {
+            get { return GetValueInt("TransferDirectTimeout", 20); }
+            set { SetValue("TransferDirectTimeout", value); }
+        }
+
+        public string TransferDownloadFolder
+        {
+            get { return GetValue("TransferDownloadFolder", string.Empty); }
+            set { SetValue("TransferDownloadFolder", value ?? string.Empty); }
+        }
+
+        public int TransferUploadLimit
+        {
+            get { return GetValueInt("TransferUploadLimit", 0); }
+            set { SetValue("TransferUploadLimit", value); }
+        }
+
         public bool ProxyEnabled => GetValueBoolean("ProxyEnabled", false);
 
         public ProxyType ProxyType => GetValueEnum<ProxyType>("ProxyType", ProxyType.Http);

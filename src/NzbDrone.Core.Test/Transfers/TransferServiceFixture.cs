@@ -3,13 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using FluentAssertions;
-using Microsoft.Extensions.Options;
 using Moq;
 using NUnit.Framework;
-using NzbDrone.Common.EnvironmentInfo;
-using NzbDrone.Common.Options;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Nodes;
+using NzbDrone.Core.Nodes.Settings;
 using NzbDrone.Core.Nodes.Transport;
 using NzbDrone.Core.PeerCatalog;
 using NzbDrone.Core.PeerIndexer;
@@ -36,7 +34,8 @@ namespace NzbDrone.Core.Test.Transfers
             Mocker.SetConstant<IPeerRepository>(Mocker.Resolve<PeerRepository>());
             Mocker.SetConstant<ITransferRepository>(Mocker.Resolve<TransferRepository>());
 
-            _folders = new TransferFolders(Mocker.GetMock<IAppFolderInfo>().Object, Options.Create(new TransportOptions { DownloadFolder = TempFolder }));
+            Mocker.GetMock<INodeSettingsProvider>().SetupGet(s => s.DownloadFolder).Returns(TempFolder);
+            _folders = new TransferFolders(Mocker.GetMock<INodeSettingsProvider>().Object);
             Mocker.SetConstant(_folders);
 
             _alice = Mocker.Resolve<IPeerRepository>().Insert(new Peer { NodeId = "alice", Name = "Alice", State = PeerState.Trusted, IpAddresses = "192.0.2.1:4000", Added = DateTime.UtcNow, StateChanged = DateTime.UtcNow });

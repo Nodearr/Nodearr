@@ -5,6 +5,8 @@ using Moq;
 using NUnit.Framework;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Options;
+using NzbDrone.Core.Configuration;
+using NzbDrone.Core.Nodes.Settings;
 using NzbDrone.Core.Test.Framework;
 using NzbDrone.Core.Transfers;
 
@@ -19,7 +21,7 @@ namespace NzbDrone.Core.Test.Transfers
 
             appFolder.SetupGet(a => a.AppDataFolder).Returns(Path.Combine(TempFolder, "data"));
 
-            return new TransferFolders(appFolder.Object, Options.Create(new TransportOptions { DownloadFolder = folder }));
+            return new TransferFolders(new NodeSettingsProvider(new Mock<IConfigService>().Object, appFolder.Object, Options.Create(new TransportOptions { DownloadFolder = folder })));
         }
 
         private static TransferJob Job(string title = "Pingu.S01E01.720p.WEB-DL", string extension = ".mkv", string category = "tv")

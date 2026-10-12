@@ -354,6 +354,24 @@ try {
         $checked.connectionPath -eq 'direct' -and $checked.connectionAddress -and -not $checked.lastError
     ) @{ path = $checked.connectionPath; address = $checked.connectionAddress; error = $checked.lastError }
 
+    # --- Settings in a container --------------------------------------------------------------------
+
+    # What the image and the compose file give in the environment is fixed. The rest is set in
+    # the UI, and changing it restarts the transport without costing the node its trust.
+    $settingsB = Invoke-Node B GET '/settings/node'
+    $settingsB.uploadLimitKbps = 8192
+    $savedB = Invoke-Node B PUT '/settings/node' $settingsB
+    $afterRestart = Wait-Until -What 'the nodes to reach each other after the restart' -TimeoutSec 60 -EverySec 3 -Condition {
+        try { $check = Test-Connection-To-Peer B; if ($check.connectionPath -eq 'direct') { $check } } catch { $null }
+    }
+    $sidecarB = (docker exec $nodes.B.Container sh -c "ps -eo args | grep '[n]odearr-transport'") -join ' '
+    Assert-That 'In a container the mounts and the port are fixed, the rest is set in the UI, and a change keeps the node trusted' (
+        (@($settingsB.fixedByEnvironment) -join ',') -eq 'DirectTimeoutSeconds,DownloadFolder,NodeName,Port,PortMapping,Relay,RelayUrl' -and
+        $settingsB.downloadFolder -eq '/downloads' -and $settingsB.port -eq 6633 -and
+        $savedB.uploadLimitKbps -eq 8192 -and $savedB.transportRestarted -and $savedB.transportRunning -and
+        $sidecarB -match '--upload-limit-kbps 8192' -and $sidecarB -match '--bind-port 6633' -and $afterRestart.state -eq 'trusted'
+    ) @{ fixed = @($settingsB.fixedByEnvironment); restarted = $savedB.transportRestarted; running = $savedB.transportRunning; sidecar = ($sidecarB -replace '^\S+\s*', ''); path = $afterRestart.connectionPath }
+
     # --- A node set up wrongly is told so ----------------------------------------------------------
 
     Test-Connection-To-Peer A | Out-Null

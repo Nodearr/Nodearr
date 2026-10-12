@@ -17,6 +17,7 @@ using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Options;
 using NzbDrone.Core.Lifecycle;
 using NzbDrone.Core.Messaging.Events;
+using NzbDrone.Core.Nodes.Settings;
 
 namespace NzbDrone.Core.Nodes.Transport
 {
@@ -30,6 +31,7 @@ namespace NzbDrone.Core.Nodes.Transport
         private readonly IAppFolderInfo _appFolderInfo;
         private readonly IEventAggregator _eventAggregator;
         private readonly TransportOptions _options;
+        private readonly INodeSettingsProvider _settings;
         private readonly Logger _logger;
         private readonly object _lock = new();
         private readonly CancellationTokenSource _shutdown = new();
@@ -41,12 +43,14 @@ namespace NzbDrone.Core.Nodes.Transport
         private HttpClient _client;
         private NodeAddress _localAddress;
         private Thread _supervisor;
+        private volatile bool _restarting;
 
-        public IrohSidecarTransport(IAppFolderInfo appFolderInfo, IEventAggregator eventAggregator, IOptions<TransportOptions> options, Logger logger)
+        public IrohSidecarTransport(IAppFolderInfo appFolderInfo, IEventAggregator eventAggregator, IOptions<TransportOptions> options, INodeSettingsProvider settings, Logger logger)
         {
             _appFolderInfo = appFolderInfo;
             _eventAggregator = eventAggregator;
             _options = options.Value;
+            _settings = settings;
             _logger = logger;
         }
 
@@ -69,6 +73,13 @@ namespace NzbDrone.Core.Nodes.Transport
         public void Handle(ApplicationShutdownRequested message)
         {
             _shutdown.Cancel();
+            Stop();
+        }
+
+        public void Restart()
+        {
+            // The supervisor sees the process go and starts it again, with the settings as they are now.
+            _restarting = true;
             Stop();
         }
 
@@ -316,11 +327,23 @@ namespace NzbDrone.Core.Nodes.Transport
                 }
                 catch (Exception ex) when (!_shutdown.IsCancellationRequested)
                 {
-                    _logger.Warn(ex, "The peer transport stopped unexpectedly");
+                    if (!_restarting)
+                    {
+                        _logger.Warn(ex, "The peer transport stopped unexpectedly");
+                    }
                 }
 
                 Stop();
                 _eventAggregator.PublishEvent(new PeerTransportStateChangedEvent());
+
+                if (_restarting)
+                {
+                    // Asked for. Start again at once, and do not count it against the transport.
+                    _restarting = false;
+                    delay = TimeSpan.FromSeconds(2);
+
+                    continue;
+                }
 
                 if (_shutdown.Token.WaitHandle.WaitOne(delay))
                 {
@@ -355,36 +378,40 @@ namespace NzbDrone.Core.Nodes.Transport
 
             startInfo.ArgumentList.Add("--data-dir");
             startInfo.ArgumentList.Add(_appFolderInfo.AppDataFolder);
-            startInfo.ArgumentList.Add("--relay");
-            startInfo.ArgumentList.Add(_options.Relay.IsNullOrWhiteSpace() ? "n0" : _options.Relay.ToLowerInvariant());
 
-            if (_options.RelayUrl.IsNotNullOrWhiteSpace())
+            // Read at every start, so a restart is all it takes to apply a change.
+            var settings = _settings.Get();
+
+            startInfo.ArgumentList.Add("--relay");
+            startInfo.ArgumentList.Add(settings.Relay.ToString().ToLowerInvariant());
+
+            if (settings.Relay == RelayMode.Custom && settings.RelayUrl.IsNotNullOrWhiteSpace())
             {
                 startInfo.ArgumentList.Add("--relay-url");
-                startInfo.ArgumentList.Add(_options.RelayUrl);
+                startInfo.ArgumentList.Add(settings.RelayUrl.Trim());
             }
 
-            if (_options.DisablePortMapping == true)
+            if (!settings.PortMapping)
             {
                 startInfo.ArgumentList.Add("--no-port-mapping");
             }
 
-            if (_options.Port is > 0)
+            if (settings.Port > 0)
             {
                 startInfo.ArgumentList.Add("--bind-port");
-                startInfo.ArgumentList.Add(_options.Port.Value.ToString());
+                startInfo.ArgumentList.Add(settings.Port.ToString());
             }
 
-            if (_options.DirectTimeoutSeconds is > 0)
+            if (settings.DirectTimeoutSeconds > 0)
             {
                 startInfo.ArgumentList.Add("--direct-timeout-secs");
-                startInfo.ArgumentList.Add(_options.DirectTimeoutSeconds.Value.ToString());
+                startInfo.ArgumentList.Add(settings.DirectTimeoutSeconds.ToString());
             }
 
-            if (_options.UploadLimitKbps is > 0)
+            if (settings.UploadLimitKbps > 0)
             {
                 startInfo.ArgumentList.Add("--upload-limit-kbps");
-                startInfo.ArgumentList.Add(_options.UploadLimitKbps.Value.ToString());
+                startInfo.ArgumentList.Add(settings.UploadLimitKbps.ToString());
             }
 
             // The token never appears on the command line, where other local users could read it.

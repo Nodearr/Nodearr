@@ -1,10 +1,8 @@
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
-using Microsoft.Extensions.Options;
-using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Extensions;
-using NzbDrone.Common.Options;
+using NzbDrone.Core.Nodes.Settings;
 
 namespace NzbDrone.Core.Transfers
 {
@@ -31,20 +29,21 @@ namespace NzbDrone.Core.Transfers
         // imports the file may be on another system than the one Nodearr runs on.
         private static readonly char[] UnsafeCharacters = { '<', '>', ':', '"', '/', '\\', '|', '?', '*' };
 
-        private readonly string _root;
+        private readonly INodeSettingsProvider _settings;
 
-        public TransferFolders(IAppFolderInfo appFolderInfo, IOptions<TransportOptions> options)
+        public TransferFolders(INodeSettingsProvider settings)
         {
-            _root = options.Value.DownloadFolder.IsNotNullOrWhiteSpace()
-                ? Path.GetFullPath(options.Value.DownloadFolder)
-                : Path.Combine(appFolderInfo.AppDataFolder, "downloads");
+            _settings = settings;
         }
 
-        public string Complete => Path.Combine(_root, "complete");
+        // Asked for each time, because the folder is a setting that can change.
+        private string Root => _settings.DownloadFolder;
+
+        public string Complete => Path.Combine(Root, "complete");
 
         public string IncompleteFolder(TransferJob job)
         {
-            return Path.Combine(_root, "incomplete", SafeName(job.DownloadId));
+            return Path.Combine(Root, "incomplete", SafeName(job.DownloadId));
         }
 
         public string IncompleteFile(TransferJob job)

@@ -12,6 +12,7 @@ import TrustedNodes from 'Nodes/Trusted/TrustedNodes';
 import Settings from 'Settings/Settings';
 import Status from 'System/Status/Status';
 import ApplicationSettings from '../Settings/Applications/ApplicationSettings';
+import NodeSettings from '../Settings/Node/NodeSettings';
 
 export function appRouteElements() {
   return (
@@ -51,6 +52,8 @@ export function appRouteElements() {
       <Route path="/settings" element={<Settings />} />
 
       <Route path="/settings/apps" element={<ApplicationSettings />} />
+
+      <Route path="/settings/node" element={<NodeSettings />} />
 
       <Route
         path="/settings/general"

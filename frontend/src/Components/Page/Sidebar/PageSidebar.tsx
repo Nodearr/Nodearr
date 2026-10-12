@@ -103,6 +103,10 @@ const LINKS: SidebarItem[] = [
         to: '/settings/apps',
       },
       {
+        title: () => translate('NodeSettingsShort'),
+        to: '/settings/node',
+      },
+      {
         title: () => translate('General'),
         to: '/settings/general',
       },

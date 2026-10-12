@@ -93,6 +93,10 @@ namespace NzbDrone.Core.Nodes.Transport
     public interface IPeerTransport
     {
         bool IsRunning { get; }
+
+        // Stops the transport and starts it again, so that it takes settings that changed. The
+        // node keeps its identity. Transfers under way stop and are picked up again.
+        void Restart();
         NodeAddress GetLocalAddress();
         byte[] Request(NodeAddress peer, byte[] body, TimeSpan timeout);
 

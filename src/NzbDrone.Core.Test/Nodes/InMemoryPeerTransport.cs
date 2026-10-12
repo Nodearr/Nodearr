@@ -41,6 +41,13 @@ namespace NzbDrone.Core.Test.Nodes
 
         public bool IsRunning { get; set; } = true;
 
+        public int Restarts { get; private set; }
+
+        public void Restart()
+        {
+            Restarts++;
+        }
+
         // How many messages reached this node's handler, so a test can tell "refused at the door"
         // from "let in and refused".
         public int Delivered { get; private set; }
