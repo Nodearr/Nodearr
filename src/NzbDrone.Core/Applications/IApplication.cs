@@ -17,6 +17,9 @@ namespace NzbDrone.Core.Applications
         // Makes sure the Arr app has Nodearr as a download client and as an indexer pinned to it.
         void SyncRegistration(bool force);
 
+        // Takes Nodearr back out of the Arr app: the indexer, and the download client it is pinned to.
+        void RemoveRegistration();
+
         ApplicationCatalog FetchCatalog();
 
         // Asks the Arr app whether it can see a marker folder that was just made inside one of

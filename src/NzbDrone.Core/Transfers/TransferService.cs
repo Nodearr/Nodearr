@@ -49,6 +49,7 @@ namespace NzbDrone.Core.Transfers
         private readonly IPeerRepository _peers;
         private readonly IFileTransport _transport;
         private readonly ITransferFolders _folders;
+        private readonly IRouteDiagnosis _routes;
         private readonly IEventAggregator _eventAggregator;
         private readonly Logger _logger;
         private readonly object _sync = new();
@@ -58,6 +59,7 @@ namespace NzbDrone.Core.Transfers
                                IPeerRepository peers,
                                IFileTransport transport,
                                ITransferFolders folders,
+                               IRouteDiagnosis routes,
                                IEventAggregator eventAggregator,
                                Logger logger)
         {
@@ -66,6 +68,7 @@ namespace NzbDrone.Core.Transfers
             _peers = peers;
             _transport = transport;
             _folders = folders;
+            _routes = routes;
             _eventAggregator = eventAggregator;
             _logger = logger;
         }
@@ -356,12 +359,16 @@ namespace NzbDrone.Core.Transfers
                 case FileTransferState.Completed:
                     Forget(job);
                     Complete(job);
+                    AttemptEnded(job, job.State == TransferState.Completed ? TransferFailure.None : job.Failure);
 
                     return true;
 
                 case FileTransferState.Failed:
+                    var failure = TransferFailureText.FromTransport(progress.FailureKind);
+
                     Forget(job);
-                    Failed(job, TransferFailureText.FromTransport(progress.FailureKind), progress.FailureMessage);
+                    Failed(job, failure, progress.FailureMessage);
+                    AttemptEnded(job, failure);
 
                     return true;
 
@@ -417,7 +424,7 @@ namespace NzbDrone.Core.Transfers
                 job.State = TransferState.Queued;
                 job.NextAttempt = DateTime.UtcNow.Add(RetryDelay);
                 job.Failure = failure;
-                job.FailureMessage = TransferFailureText.For(failure, detail);
+                job.FailureMessage = Explain(job, failure, detail);
                 _jobs.Update(job);
 
                 return;
@@ -432,11 +439,32 @@ namespace NzbDrone.Core.Transfers
 
             job.State = TransferState.Failed;
             job.Failure = failure;
-            job.FailureMessage = TransferFailureText.For(failure, detail);
+            job.FailureMessage = Explain(job, failure, detail);
             job.NextAttempt = null;
             job.Ended = DateTime.UtcNow;
             _jobs.Update(job);
             _logger.Warn("Transfer {0} failed: {1}", job.DownloadId, job.FailureMessage);
+        }
+
+        // A transfer that failed for want of a direct route also says what is known about the
+        // route. The same text reaches the Arr app's history.
+        private string Explain(TransferJob job, TransferFailure failure, string detail)
+        {
+            if (failure is not (TransferFailure.NoDirectRoute or TransferFailure.DirectPathLost))
+            {
+                return TransferFailureText.For(failure, detail);
+            }
+
+            var peer = _peers.Find(job.PeerId);
+
+            return TransferFailureText.For(failure, peer == null ? null : _routes.Describe(peer));
+        }
+
+        // Lets the connection to the other node be looked at again when an attempt says something
+        // about it. See PeerConnectionUpkeep.
+        private void AttemptEnded(TransferJob job, TransferFailure failure)
+        {
+            _eventAggregator.PublishEvent(new TransferAttemptEndedEvent(job.PeerId, failure));
         }
 
         private void Forget(TransferJob job)

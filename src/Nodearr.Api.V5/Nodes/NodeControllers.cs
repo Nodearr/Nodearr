@@ -3,9 +3,12 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Nodearr.Http;
 using Nodearr.Http.REST;
+using NzbDrone.Core.Datastore.Events;
+using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Nodes;
 using NzbDrone.Core.Nodes.Transport;
 using NzbDrone.Core.Sharing;
+using NzbDrone.SignalR;
 
 namespace Nodearr.Api.V5.Nodes;
 
@@ -44,15 +47,47 @@ public class NodeIdentityController : NodeControllerBase
 }
 
 [V5ApiController("nodes/peers")]
-public class PeerController : NodeControllerBase
+public class PeerController : NodeControllerBase, IHandle<PeerConnectionCheckedEvent>, IHandle<PeerStateChangedEvent>
 {
     private readonly IPeerService _peerService;
     private readonly ISharingService _sharingService;
+    private readonly IBroadcastSignalRMessage _broadcaster;
 
-    public PeerController(IPeerService peerService, ISharingService sharingService)
+    public PeerController(IPeerService peerService, ISharingService sharingService, IBroadcastSignalRMessage broadcaster)
     {
         _peerService = peerService;
         _sharingService = sharingService;
+        _broadcaster = broadcaster;
+    }
+
+    // Connections are checked without anyone asking, and nodes pair from the other side. Open
+    // pages are told to fetch the list again.
+    [NonAction]
+    public void Handle(PeerConnectionCheckedEvent message)
+    {
+        TellPages();
+    }
+
+    [NonAction]
+    public void Handle(PeerStateChangedEvent message)
+    {
+        TellPages();
+    }
+
+    private void TellPages()
+    {
+        if (!_broadcaster.IsConnected)
+        {
+            return;
+        }
+
+        _broadcaster.BroadcastMessage(new SignalRMessage
+        {
+            Name = "nodes",
+            Body = new ResourceChangeMessage<PeerResource>(ModelAction.Sync),
+            Action = ModelAction.Sync,
+            Version = 5
+        });
     }
 
     [HttpPut("{id:int}/shareall")]

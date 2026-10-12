@@ -238,6 +238,70 @@ namespace NzbDrone.Core.Test.Transfers
             Stored(job).FailureMessage.Should().StartWith("Nodearr transfer failed: NoDirectRoute.").And.Contain("never sends files through a relay");
         }
 
+        [TestCase("NoDirectRoute")]
+        [TestCase("DirectPathLost")]
+        public void a_transfer_with_no_direct_route_should_say_what_is_known_about_the_route(string kind)
+        {
+            Mocker.GetMock<IRouteDiagnosis>()
+                  .Setup(r => r.Describe(It.Is<Peer>(p => p.NodeId == "alice")))
+                  .Returns("A connection check just before this reached Alice only through a relay.");
+
+            var job = GivenDownloading();
+
+            GivenTransport(job, FileTransferState.Failed, 0, kind);
+            Subject.Tick();
+
+            // Said while it waits to try again, and it would be said again if it failed for good.
+            Stored(job).State.Should().Be(TransferState.Queued);
+            Stored(job).FailureMessage.Should().StartWith($"Nodearr transfer failed: {kind}.").And.EndWith("reached Alice only through a relay.");
+        }
+
+        [Test]
+        public void a_failure_that_is_not_about_the_route_should_not_talk_about_the_route()
+        {
+            var job = GivenDownloading();
+
+            GivenTransport(job, FileTransferState.Failed, 0, "VerificationFailed");
+            Subject.Tick();
+
+            Mocker.GetMock<IRouteDiagnosis>().Verify(r => r.Describe(It.IsAny<Peer>()), Times.Never());
+        }
+
+        [Test]
+        public void each_attempt_that_ends_should_be_announced_with_how_it_ended()
+        {
+            var ended = new List<TransferFailure>();
+
+            Mocker.GetMock<IEventAggregator>()
+                  .Setup(e => e.PublishEvent(It.IsAny<TransferAttemptEndedEvent>()))
+                  .Callback<TransferAttemptEndedEvent>(e =>
+                  {
+                      e.PeerId.Should().Be(_alice.Id);
+                      ended.Add(e.Failure);
+                  });
+
+            var job = GivenDownloading();
+
+            GivenTransport(job, FileTransferState.Receiving, 400);
+            Subject.Tick();
+            ended.Should().BeEmpty();
+
+            GivenTransport(job, FileTransferState.Failed, 400, "NoDirectRoute");
+            Subject.Tick();
+
+            var waiting = Stored(job);
+
+            waiting.NextAttempt = DateTime.UtcNow.AddSeconds(-1);
+            Db.Update(waiting);
+            _progress.Clear();
+            Subject.Tick();
+
+            GivenTransport(job, FileTransferState.Completed, 1000);
+            Subject.Tick();
+
+            ended.Should().Equal(TransferFailure.NoDirectRoute, TransferFailure.None);
+        }
+
         [TestCase("NotAuthorized", TransferFailure.NotAuthorized)]
         [TestCase("Revoked", TransferFailure.Revoked)]
         [TestCase("Blocked", TransferFailure.Blocked)]

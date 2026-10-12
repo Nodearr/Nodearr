@@ -88,6 +88,20 @@ namespace NzbDrone.Core.Transfers
     {
     }
 
+    // Raised each time an attempt to fetch a file ends, however it ended. A failure of None means
+    // the file arrived, which it can only have done over a direct route.
+    public class TransferAttemptEndedEvent : IEvent
+    {
+        public TransferAttemptEndedEvent(int peerId, TransferFailure failure)
+        {
+            PeerId = peerId;
+            Failure = failure;
+        }
+
+        public int PeerId { get; }
+        public TransferFailure Failure { get; }
+    }
+
     public static class TransferFailureText
     {
         private static readonly Dictionary<TransferFailure, string> Explanations = new()
@@ -109,7 +123,8 @@ namespace NzbDrone.Core.Transfers
         {
             var text = Explanations.TryGetValue(failure, out var explanation) ? explanation : "The transfer did not finish.";
 
-            if (failure is TransferFailure.DiskError or TransferFailure.Failed && !string.IsNullOrWhiteSpace(detail))
+            // For a route that failed the detail is what Nodearr knows about the route. See RouteDiagnosis.
+            if (failure is TransferFailure.DiskError or TransferFailure.Failed or TransferFailure.NoDirectRoute or TransferFailure.DirectPathLost && !string.IsNullOrWhiteSpace(detail))
             {
                 text += " " + detail.Trim();
             }

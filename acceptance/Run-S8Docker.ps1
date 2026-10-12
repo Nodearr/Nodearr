@@ -510,8 +510,19 @@ try {
         try { (Get-Health B).PeerNetworkCheck } catch { $null }
     }
 
+    $askedAt = [datetime]$relayOnly.connectionChecked
+
     Search-Episode 4
     $unroutable = Wait-Failed $null 180
+
+    # The check a failed attempt asks for runs on its own and takes up to ten seconds.
+    $afterFailure = $null
+    $giveUp = (Get-Date).AddSeconds(40)
+    do {
+        $afterFailure = Invoke-Node B GET '/nodes/peers' | Select-Object -First 1
+        if (([datetime]$afterFailure.connectionChecked) -gt $askedAt) { break }
+        Start-Sleep -Seconds 2
+    } while ((Get-Date) -lt $giveUp)
     $relayAfter = Get-RelayBytes
     $unroutableMessage = Wait-SonarrFailure $unroutable.downloadId
     $leftBehind = @(Get-FilesUnder $nodes.B.Container '/downloads/complete') + @(Get-FilesUnder $nodes.B.Container '/downloads/incomplete')
@@ -521,6 +532,11 @@ try {
         $relayed -gt 0 -and $relayed -lt 1MB -and $unroutableMessage -match 'NoDirectRoute' -and
         $relayOnly.connectionPath -eq 'relay' -and -not $relayOnly.lastError
     ) @{ connectionCheckSaid = $relayOnly.connectionPath; failure = $unroutable.failure; attempts = $unroutable.attempts; bytesDone = $unroutable.bytesDone; fileSize = $tvSize; bytesThroughRelay = $relayed; sonarrSays = $unroutableMessage }
+
+    Assert-That 'The failed transfer has the connection checked again unasked, and tells Sonarr what the check found and where to look' (
+        ([datetime]$afterFailure.connectionChecked) -gt $askedAt -and $afterFailure.connectionPath -eq 'relay' -and
+        $unroutableMessage -match 'reached John only through a relay' -and $unroutableMessage -match 'firewall'
+    ) @{ checkedWhenAsked = $askedAt.ToString('o'); checkedAfterFailure = ([datetime]$afterFailure.connectionChecked).ToString('o'); pathAfterFailure = $afterFailure.connectionPath; sonarrSays = $unroutableMessage }
 
     Get-Transfers | ForEach-Object { Remove-Transfer $_.downloadId }
     docker network connect $directNetwork $nodes.B.Container | Out-Null

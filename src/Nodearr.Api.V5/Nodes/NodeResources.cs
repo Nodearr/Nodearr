@@ -1,3 +1,4 @@
+using Nodearr.Http.REST;
 using NzbDrone.Core.Nodes;
 using NzbDrone.Core.Nodes.Transport;
 
@@ -34,9 +35,8 @@ public class NodeIdentityResource
     }
 }
 
-public class PeerResource
+public class PeerResource : RestResource
 {
-    public int Id { get; set; }
     public string? NodeId { get; set; }
     public string? Name { get; set; }
     public PeerState State { get; set; }

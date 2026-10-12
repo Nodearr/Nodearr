@@ -14,6 +14,7 @@ using NzbDrone.Core.Lifecycle;
 using NzbDrone.Core.MediaFiles.Commands;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
+using NzbDrone.Core.Nodes;
 using NzbDrone.Core.PeerCatalog;
 
 namespace NzbDrone.Core.Jobs
@@ -85,6 +86,12 @@ namespace NzbDrone.Core.Jobs
                     {
                         Interval = 60,
                         TypeName = typeof(PeerCatalogSyncCommand).FullName
+                    },
+
+                    new ScheduledTask
+                    {
+                        Interval = 15,
+                        TypeName = typeof(CheckPeerConnectionsCommand).FullName
                     },
 
                     new ScheduledTask

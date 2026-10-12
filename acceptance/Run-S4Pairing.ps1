@@ -166,6 +166,16 @@ try {
         $again.Failed -and $again.Status -eq 400 -and $stored.redeemedByNodeId -eq $idB.nodeId -and -not $stored.code -and $invite.code -like 'nodearr-invite:*'
     ) @{ secondRedeem = $again; stored = $stored }
 
+    # Nobody has asked for a connection check yet.
+    $unasked = Wait-Until -What 'both nodes to check their connection after pairing' -TimeoutSec 40 -Condition {
+        $a = Get-Peer A $idB.nodeId
+        $b = Get-Peer B $idA.nodeId
+        if ($a.connectionChecked -and $b.connectionChecked) { @{ A = $a; B = $b } }
+    }
+    Assert-That 'After pairing each node checks the connection without being asked, and finds it direct' (
+        $unasked.A.connectionPath -eq 'direct' -and $unasked.B.connectionPath -eq 'direct' -and -not $unasked.A.lastError -and -not $unasked.B.lastError
+    ) @{ aFound = $unasked.A.connectionPath; bFound = $unasked.B.connectionPath; aError = $unasked.A.lastError; bError = $unasked.B.lastError }
+
     $pingB = Invoke-Api B POST "/nodes/peers/$($aOnB.id)/ping"
     $pingA = Invoke-Api A POST "/nodes/peers/$($bOnA.id)/ping"
     Assert-That 'Trusted nodes reach each other in both directions' (

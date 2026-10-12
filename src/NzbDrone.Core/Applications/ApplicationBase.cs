@@ -144,6 +144,28 @@ namespace NzbDrone.Core.Applications
                 force);
         }
 
+        public void RemoveRegistration()
+        {
+            // The indexer goes first. It points at the download client.
+            RemoveProvider("indexer", "/indexer", "Newznab");
+            RemoveProvider("download client", "/downloadclient", "Sabnzbd");
+        }
+
+        private void RemoveProvider(string what, string resource, string implementation)
+        {
+            foreach (var ours in _proxy.GetArray(Settings, resource).OfType<JObject>().Where(p => IsOurs(p, implementation)).ToList())
+            {
+                _logger.Info("Removing Nodearr as {0} from {1}", what, Definition.Name);
+                _proxy.Delete(Settings, $"{resource}/{ours.Value<int>("id")}");
+            }
+        }
+
+        // What Nodearr adds to an Arr app is known by its kind and its name, and by nothing else.
+        private static bool IsOurs(JObject provider, string implementation)
+        {
+            return provider.Value<string>("implementation") == implementation && provider.Value<string>("name") == RemoteName;
+        }
+
         public FolderVisibility LookForFolder(string folder, string marker)
         {
             var nodearrHost = new Uri(Settings.NodearrUrl.TrimEnd('/') + "/").Host;
@@ -183,11 +205,9 @@ namespace NzbDrone.Core.Applications
 
         private JObject EnsureProvider(string what, string resource, string implementation, Dictionary<string, JToken> fields, Dictionary<string, JToken> properties, bool force)
         {
-            bool IsOurs(JObject provider) => provider.Value<string>("implementation") == implementation && provider.Value<string>("name") == RemoteName;
-
             try
             {
-                var existing = _proxy.GetArray(Settings, resource).OfType<JObject>().FirstOrDefault(IsOurs);
+                var existing = _proxy.GetArray(Settings, resource).OfType<JObject>().FirstOrDefault(p => IsOurs(p, implementation));
 
                 if (existing == null)
                 {

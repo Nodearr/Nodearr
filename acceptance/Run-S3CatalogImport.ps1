@@ -345,8 +345,8 @@ Assert-That 'Syncing again leaves exactly one Nodearr indexer and one download c
 
 $tasks = @((Invoke-Api nodearr GET '/system/task').taskName)
 $unwanted = @($tasks | Where-Object { $_ -in 'RssSync', 'RefreshSeries', 'ImportListSync', 'UpdateSceneMapping', 'RefreshMonitoredDownloads', 'ApplicationUpdateCheck' })
-Assert-That 'The catalog refresh and application sync are scheduled, and the inherited TV jobs are not' (
-    ($tasks -contains 'CatalogRefresh') -and ($tasks -contains 'ApplicationIndexerSync') -and $unwanted.Count -eq 0
+Assert-That 'The catalog refresh, application sync and connection checks are scheduled, and the inherited TV jobs are not' (
+    ($tasks -contains 'CatalogRefresh') -and ($tasks -contains 'ApplicationIndexerSync') -and ($tasks -contains 'CheckPeerConnections') -and $unwanted.Count -eq 0
 ) @{ tasks = $tasks }
 
 Invoke-Api nodearr DELETE "/applications/$($applicationIds.radarr)" | Out-Null
@@ -355,6 +355,24 @@ $afterRemoval = Wait-Until -What 'Radarr catalog removal' -TimeoutSec 30 -Condit
     if (-not ($left | Where-Object implementation -eq 'Radarr')) { @{ MovieFiles = (Invoke-Api nodearr GET '/catalog/local/moviefile?pageSize=50').totalRecords } }
 }
 Assert-That 'Deleting an application removes its catalog' ($afterRemoval.MovieFiles -eq 0) $afterRemoval
+
+$leftBehind = [ordered]@{
+    radarrIndexers = @(Invoke-Api radarr GET '/indexer' | Where-Object name -eq 'Nodearr').Count
+    radarrClients = @(Invoke-Api radarr GET '/downloadclient' | Where-Object name -eq 'Nodearr').Count
+    sonarrIndexers = @(Invoke-Api sonarr GET '/indexer' | Where-Object name -eq 'Nodearr').Count
+    sonarrClients = @(Invoke-Api sonarr GET '/downloadclient' | Where-Object name -eq 'Nodearr').Count
+}
+Assert-That 'Deleting an application takes Nodearr out of that app, as indexer and download client, and leaves the other app alone' (
+    $leftBehind.radarrIndexers -eq 0 -and $leftBehind.radarrClients -eq 0 -and $leftBehind.sonarrIndexers -eq 1 -and $leftBehind.sonarrClients -eq 1
+) $leftBehind
+
+# An application whose Arr app has gone can still be deleted.
+Invoke-Compose stop sonarr 2>&1 | Out-Null
+$deleteTook = Measure-Command { Invoke-Api nodearr DELETE "/applications/$($applicationIds.sonarr)" | Out-Null }
+$remaining = @(Invoke-Api nodearr GET '/applications' | Where-Object { $_ })
+Assert-That 'An application whose Arr app cannot be reached is still deleted, without a long wait' (
+    $remaining.Count -eq 0 -and $deleteTook.TotalSeconds -lt 25
+) @{ applicationsLeft = $remaining.Count; seconds = [math]::Round($deleteTook.TotalSeconds, 1) }
 
 # --- Report ------------------------------------------------------------------------------------
 
