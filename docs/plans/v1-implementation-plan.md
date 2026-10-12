@@ -78,7 +78,7 @@ What S5 left for later slices:
 What S6 left for later slices:
 
 - A grab reaches Nodearr's download client, which is still the S1 stub and refuses it with a plain reason. Transfers are S7.
-- Daily shows are not found, because peers are not told air dates. Series with scene numbering can be misnumbered when a file has no release name.
+- ~~Daily shows are not found, because peers are not told air dates.~~ Done afterwards, see below. Series with scene numbering can be misnumbered when a file has no release name.
 - Nodearr-side profile filtering (decision 2, "UI-only") was not built. The peer catalog page shows the title the Arr apps will see, and the Arr apps do the judging.
 - The S1 spike harness no longer runs on later branches, because the indexer half of the stub is gone. The acceptance scripts now fill their test libraries by having the Arr apps import files directly.
 
@@ -110,6 +110,8 @@ Then a settings page. ADR 0019. Branch `v1/s10-node-settings`.
 - The Transfers page shows what this node is sending as well as what it is fetching, live, and how each upload ended. Branch `v1/s11-uploads`.
 - A trusted node reached only through a relay is a warning on System > Status, and it says to check each machine's firewall before forwarding a port. The two-machine guide has a firewall section. Found because Windows blocked the transport on the development machine and every same-machine test still passed.
 - Connections are checked without anyone asking: after pairing, every 15 minutes, when a transfer finds no route, and when a file arrives over a route the last check did not call direct. A transfer that finds no direct route says what the last check found and which side to look at, in Nodearr and in the Arr app's history. Deleting an application takes Nodearr back out of the Arr app. Branch `v1/s13-connection-upkeep`.
+- Daily shows are found. The day each episode aired travels in the offer, a query by day is matched by day, and the title is written the way Sonarr asked. Checked with a real Sonarr set to daily. Branch `v1/s14-links-and-daily-shows`.
+- Links to pages that do not exist are gone from every page the app leads to: the "More Info" block on System > Status, the donate button in the header, three wiki links, and the wiki addresses the API handed out. Inherited pages that no route leads to still hold theirs.
 - Settings > Node holds the node's name, relay, UDP port, port mapping, wait for a direct route, download folder and upload limit. Bad values are refused field by field. A setting given in the environment is shown and cannot be changed. A change that needs it restarts the transport and nothing else, and the node keeps its identity and its trust (`acceptance/Run-NodeSettings.ps1`).
 
 ## Where V1 stands

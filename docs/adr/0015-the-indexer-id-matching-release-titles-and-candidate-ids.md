@@ -89,7 +89,7 @@ Nodearr registers its Sonarr indexer with an anime category and with "anime stan
 
 ### Negative / trade-offs
 
-- **Daily shows are not found.** Sonarr asks for them by air date, and peers are not told air dates.
+- ~~**Daily shows are not found.** Sonarr asks for them by air date, and peers are not told air dates.~~ They are now, see the amendments.
 - **Series with scene numbering can be misnumbered** when the file has no release name, because the built title uses TVDB numbering and Sonarr reads indexer titles as scene numbering for such series.
 - **A built title cannot say PROPER or REPACK**, and says only what the peer's Arr app recorded. Custom formats that look for other words in a release name will not match it.
 - **Radarr's quality names are not unit tested.** Radarr's parser is not in this code base. The common ones are covered by the acceptance run.
@@ -112,4 +112,19 @@ Adding the Arr app to Nodearr directly avoids all three.
 
 - S7: the download client reads the candidate ID from the ticket and starts a transfer. Until then a grab is refused with a plain reason.
 - S7: the sending node checks every transfer request against its sharing rule (ADR 0014).
-- Later: air dates in the offer for daily shows, scene numbers for series that use them, and revision (PROPER, REPACK).
+- Later: ~~air dates in the offer for daily shows,~~ scene numbers for series that use them, and revision (PROPER, REPACK).
+
+## Amendments
+
+- 2026-10-11: **daily shows are found.** Sonarr asks for an episode in one of two ways. For most series it sends a season and an episode number. For a series its owner has marked as daily it sends the year as the season and the month and day as the episode, and it turns down any result whose title is not written with that day. Which way it asks depends on how the series is set up in the Sonarr that is asking. The node that has the file may have it set up the other way, and Nodearr on either side cannot see the other's setting.
+
+  So:
+
+  - **The day each episode aired travels with the file.** A node reads it from its Sonarr and puts it in the offer, beside the episode numbers (ADR 0014). The receiving node keeps only values that are a real date, since the day ends up in a release title and a folder name.
+  - **A query by day is matched by day.** A year with a month and day finds the file that holds the episode aired on that day. A year alone finds everything aired in that year. A series whose seasons really are numbered by year is still matched by number first.
+  - **The title is written the way it was asked for.** Found by number, a file has the title it always had. Found by day, it is titled with the day, as in `Pingu.1990.03.07.720p.WEB-DL`. The file's own release name is used only when it is written the same way as the question, and with the same day. One consequence for searches by number: a release name written by day is no longer passed through, because Sonarr would turn it down as the wrong season.
+  - **The same title lasts from search to import.** The link in a result found by day carries the day, the ticket carries it, and the transfer is named with it. The GUID does not change with the title, so a file is one release to the Arr app however it was asked for.
+
+  Checked with a real Sonarr 4.0.20: the receiving side's Sonarr is switched to daily for a series the sending side's Sonarr calls standard, searches, is answered with a title by day, grabs, and imports the file (`acceptance/Run-S7Transfers.ps1`).
+
+  What this does not cover: a node running an older Nodearr sends no days, so its files are found by number only. After upgrading, a node's days are filled in at its next catalog refresh. Two episodes of one series that aired on the same day cannot be told apart by Sonarr itself. Scene numbering is still open.

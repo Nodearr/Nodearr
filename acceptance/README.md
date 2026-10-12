@@ -111,6 +111,7 @@ Needs the same as S6, and takes about five minutes. Node A's uploads are slowed 
 - The same ticket twice gives one transfer. Deleting it from the queue leaves nothing behind.
 - Node B is killed in the middle and started again. The transfer carries on from what had arrived.
 - Node A revokes trust in the middle. The transfer stops, and Sonarr records why and blocklists the release.
+- B's Sonarr is switched to call the series daily, while A's still calls it standard. It then asks by the day the episode aired, is answered with a title written by day, and imports the file.
 - Node A, the one sending, shows each upload while it leaves and lists how each ended: sent, stopped by the other side, or cut when trust ended.
 
 ### Trying it by hand

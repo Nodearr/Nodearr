@@ -98,6 +98,8 @@ The marks are worked out again whenever the local catalog is refreshed.
 
 - 2026-10-10, S7 (ADR 0016): an offered file carries its extension, such as `.mkv`, and still nothing else of its name. Every request for a file is checked against the sharing rule when it arrives, so the follow-up below is done.
 
+- 2026-10-11 (ADR 0015): an offered episode file carries the day each of its episodes aired, where the Arr app knows it. Sonarr searches for daily shows by day. Nothing else is added, and nothing of the path is sent still.
+
 ## Follow-up work
 
 - S6: turn peer catalog rows into indexer results, with the opaque file identifier inside a signed GUID.
