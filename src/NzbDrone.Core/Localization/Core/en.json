@@ -1281,7 +1281,7 @@
   "ManualGrab": "Manual Grab",
   "ManualImport": "Manual Import",
   "ManualImportItemsLoadError": "Unable to load manual import items",
-  "MappedNetworkDrivesWindowsService": "Mapped network drives are not available when running as a Windows Service, see the [FAQ]({url}) for more information.",
+  "MappedNetworkDrivesWindowsServiceHelpText": "Mapped network drives are not available when running as a Windows Service. Type the full network path instead, such as \\\\server\\share.",
   "Mapping": "Mapping",
   "MarkAsFailed": "Mark as Failed",
   "MarkAsFailedConfirmation": "Are you sure you want to mark '{sourceTitle}' as failed?",

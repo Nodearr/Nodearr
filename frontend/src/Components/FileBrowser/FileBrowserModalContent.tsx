@@ -3,7 +3,6 @@ import Alert from 'Components/Alert';
 import { PathInputInternal } from 'Components/Form/PathInput';
 import Button from 'Components/Link/Button';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
-import InlineMarkdown from 'Components/Markdown/InlineMarkdown';
 import ModalBody from 'Components/Modal/ModalBody';
 import ModalContent from 'Components/Modal/ModalContent';
 import ModalFooter from 'Components/Modal/ModalFooter';
@@ -107,11 +106,7 @@ function FileBrowserModalContent({
       >
         {isWindowsService ? (
           <Alert className={styles.mappedDrivesWarning} kind={kinds.WARNING}>
-            <InlineMarkdown
-              data={translate('MappedNetworkDrivesWindowsService', {
-                url: 'https://wiki.servarr.com/nodearr/faq#why-cant-nodearr-see-my-files-on-a-remote-server',
-              })}
-            />
+            {translate('MappedNetworkDrivesWindowsServiceHelpText')}
           </Alert>
         ) : null}
 

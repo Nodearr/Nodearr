@@ -18,7 +18,6 @@ export interface AddApplicationSelection {
 interface AddApplicationItemProps {
   implementation: string;
   implementationName: string;
-  infoLink: string;
   presets?: Application[];
   onApplicationSelect(selection: AddApplicationSelection): void;
 }
@@ -26,7 +25,6 @@ interface AddApplicationItemProps {
 function AddApplicationItem({
   implementation,
   implementationName,
-  infoLink,
   presets = [],
   onApplicationSelect,
 }: AddApplicationItemProps) {
@@ -71,10 +69,6 @@ function AddApplicationItem({
               </Menu>
             </span>
           ) : null}
-
-          <Button to={infoLink} size={sizes.SMALL}>
-            {translate('MoreInfo')}
-          </Button>
         </div>
       </div>
     </div>

@@ -88,7 +88,6 @@ export default function AuthenticationRequiredModalContent() {
                     ? translate('AuthenticationMethodHelpTextWarning')
                     : undefined
                 }
-                helpLink="https://wiki.servarr.com/nodearr/faq#forced-authentication"
                 onChange={onInputChange}
                 {...authenticationMethod}
               />

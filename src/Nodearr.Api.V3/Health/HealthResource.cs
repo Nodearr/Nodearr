@@ -28,7 +28,9 @@ namespace Nodearr.Api.V3.Health
                 Source = model.Source.Name,
                 Type = model.Type,
                 Message = model.Message,
-                WikiUrl = model.WikiUrl.FullUri
+
+                // There is no wiki to point at.
+                WikiUrl = null
             };
         }
 
