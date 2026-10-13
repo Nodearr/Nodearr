@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed. The S2 spike passed every scenario that can be run on one machine on 2026-10-10. The cross-NAT run between two machines on different networks is still outstanding, and this ADR should not be marked Accepted until it passes.
+Proposed. The S2 spike passed every scenario that can be run on one machine on 2026-10-10. The first run between two machines on different networks was made on 2026-10-12 and behaved as designed (see "Runs between two machines" at the end). One side of it was a cloud machine with a public address, so the run that decides this ADR is still outstanding: two nodes that are both behind ordinary home routers, with no port forwarded on either.
 
 ## Context
 
@@ -87,3 +87,26 @@ Strict mode gives the stronger guarantee and cannot meet the goal of working wit
 - S7: carry the gating rule and the typed failures into the real transfer provider.
 - S8: measure relayed bytes when the direct path is blocked mid-transfer.
 - S8: a settings page for the port-mapping switch (risk 3).
+
+## Runs between two machines
+
+### 2026-10-12: a home network and a cloud machine
+
+Made by the project's owner with `docker/two-machine-test.py`.
+
+- **Sending side:** a Windows PC at home, behind an ordinary router, with Nodearr in Docker Desktop on a bridge network with published ports. No port was forwarded on the router at any point.
+- **Receiving side:** an EC2 instance, Linux, with Nodearr on the host's network.
+- **Coordination:** n0's public relays, the default.
+
+| Run | The cloud machine's firewall | Connection check | Transfer |
+| --- | --- | --- | --- |
+| 1 | No UDP allowed in | Relay only | Failed as `NoDirectRoute` after three attempts, with no bytes of the file moved |
+| 2 | UDP 6633 allowed in from the home address | Direct | Completed and imported by Radarr: 87 MB in 32 seconds, search and import included |
+
+What this shows:
+
+- **The rule holds across the real internet.** With only a relay between the nodes they paired, exchanged catalogs and answered a connection check, and no file data moved. The failure reached Radarr with its name and with what the connection check had found.
+- **A home router needed no port opened** when the other side could be reached. The home side's own outgoing packets made the opening its replies came back through.
+- **The outcome of run 1 was predicted, and the cause is Docker Desktop, not the router.** Nodearr run straight on that PC sees one stable public port. The same Nodearr in Docker Desktop is given a different public port for every destination. The cloud machine learned the port the relay saw, which was not the port the PC used towards the cloud machine, so neither side's packets were let in by the other.
+
+What it does not show: two nodes behind home routers reaching each other with nothing forwarded. That needs both sides to keep one public port, which rules out Docker Desktop on either side for that run.

@@ -98,82 +98,105 @@ The outcomes mean:
 
 One "Direct" and one completed transfer between two home networks, with no port forwarded, is the result that matters most. A `NoDirectRoute` on a phone hotspot is worth recording and is not a failure of the test.
 
-## The easy version: your own machine and a rented one
+## The easy version: one script on each machine
 
-A small Linux machine from a cloud provider makes a second network in a few minutes, with nobody else needed. These steps are for an EC2 instance. Any provider's Linux machine with a public address works the same way.
+`docker/two-machine-test.py` does the whole test as commands. On each machine it starts Nodearr and Radarr, adds Night of the Living Dead (a film in the public domain), and tells Nodearr about Radarr. The sending side makes a test video and imports it. The receiving side pairs, checks the connection, has Radarr search and grab, and prints what to write down. Nothing is clicked, and nobody is asked to sign in.
 
-Know what it shows before relying on it. A cloud machine has a public address of its own, which makes it the easiest node there is to reach. A direct connection to it shows that your own side works: your router, your firewall, and Nodearr across the real internet. It does not show that two homes can find each other. That takes a second run with both ends behind ordinary routers, such as your machine and a laptop on a phone's hotspot.
+It needs Docker with the compose plugin, the `nodearr` image and Python 3. Everything it makes lives in Docker volumes and in `~/nodearr-test`, and `down` removes all of it.
 
-These commands have not been run on AWS by whoever wrote this guide. They are the usual ones. This is also the first run of the Linux deployment with the host's own network, so write down anything that does not match.
+The second machine can be a friend's, a laptop on a phone's hotspot, or a small Linux machine rented by the hour. The steps below are for the rented one, on EC2. Know what that shows before relying on it. A cloud machine has a public address of its own, which makes it the easiest node there is to reach. A direct connection to it shows that your own side works. It does not show that two homes can find each other, which takes a run with both ends behind ordinary routers.
 
-### 1. Rent the machine
+### 1. Your own machine: the sending side
+
+From the repository root:
+
+```sh
+docker build -t nodearr .
+python3 docker/two-machine-test.py send
+```
+
+It ends by printing an invite code, the command for the other machine, and the SHA-256 of the file. Keep that window.
+
+### 2. Rent the other machine
 
 In the EC2 console, launch an instance:
 
 - **Ubuntu Server 24.04**, and **64-bit (x86)**. There is no Arm image of Nodearr yet, so not a Graviton type.
-- **t3.medium**. Nodearr with Sonarr and Radarr wants about 4 GB.
-- **30 GB** of storage.
+- **t3.medium**, with **30 GB** of storage.
 - A key pair, saved as a `.pem` file.
 - Under network settings, allow **SSH from My IP** and nothing else.
 
-Note its public address. It is billed by the second, and a stopped instance still pays for its disk.
+It is billed by the second, and a stopped instance still pays for its disk.
 
-### 2. Send it the image
-
-On your own machine, from the repository root:
+### 3. Send it the image and the script
 
 ```sh
-docker build -t nodearr .
 docker save nodearr -o nodearr-image.tar
-scp -i key.pem nodearr-image.tar docker/docker-compose.yml ubuntu@ITS-ADDRESS:~
+scp -i KEY.pem nodearr-image.tar docker/two-machine-test.py ubuntu@ITS-ADDRESS:~
 ```
 
-Building on the rented machine is possible and not worth it. The build wants far more memory and time than the test does.
+Two things catch people who run these from WSL on Windows:
 
-### 3. Start it there
+- **The key has to live on the Linux side.** `chmod` does nothing to a file under `/mnt/c` or another Windows drive, so SSH goes on refusing the key as too open. Copy it to `~/.ssh/` and `chmod 600` it there.
+- **`ssh` may not be Linux's.** Some set-ups, 1Password's among them, make `ssh` in WSL mean Windows' `ssh.exe`, which cannot see `~/.ssh/`. It then says the key file does not exist, right after `ls` has shown it. Use `/usr/bin/ssh`.
 
-Connect. The `-L` parts bring its web pages to your own machine and nobody else's:
+### 4. The rented machine: the receiving side
 
 ```sh
-ssh -i key.pem -L 16633:localhost:6633 -L 18989:localhost:8989 -L 17878:localhost:7878 ubuntu@ITS-ADDRESS
+ssh -i KEY.pem ubuntu@ITS-ADDRESS
 ```
 
-Then, on the rented machine:
+Then, there:
 
 ```sh
 sudo apt-get update && sudo apt-get install -y docker.io docker-compose-v2
 sudo docker load -i nodearr-image.tar
-mkdir -p nodearr/tv nodearr/movies && mv docker-compose.yml nodearr/ && cd nodearr
-sed -i "s#/path/to/tv#$PWD/tv#; s#/path/to/movies#$PWD/movies#" docker-compose.yml
-sudo docker compose up -d
+python3 two-machine-test.py receive 'THE-CODE'
 ```
 
-Leave `network_mode: host` as it is. While the SSH connection is open, the rented machine's pages are on your own machine at:
+It ends with a block headed "What to write down": how the two nodes are connected, whether the film arrived, how long it took, and its SHA-256, which should be the one the sending side printed.
 
-- Nodearr: `http://localhost:16633`
-- Sonarr: `http://localhost:18989`
-- Radarr: `http://localhost:17878`
+### 5. The second run, with the port open
 
-Your own Nodearr is still at `http://localhost:6633`. The different numbers keep the two apart.
+The first run is with no UDP allowed in, which is as near as a cloud machine gets to a home with no port forwarded. For the second, add an inbound rule to the instance's security group: **Custom UDP, port 6633, from My IP**. Then, on the rented machine:
 
-### 4. Set it up as the side that wants the file
+```sh
+python3 two-machine-test.py fetch
+```
 
-Receiving is the cheaper way round. Data going into a cloud machine is free, and data coming out is charged after a monthly allowance.
+`fetch` checks the connection again, removes the film and fetches it again.
 
-1. In the rented Sonarr: add `/tv` as a root folder, then add a series you have at home. It will have no files.
-2. In the rented Nodearr, **Settings > Applications**, add Sonarr. Nodearr's address is `http://host.docker.internal:6633`. Sonarr's is `http://localhost:8989`. The API key is in Sonarr under Settings > General.
-3. Carry on from "Set it up" above, with your own machine as the side that has the file.
+### 6. Looking at the pages
 
-### 5. Run it twice
+There is no need to, but to see them, connect with:
 
-1. **As it is.** No UDP is allowed in, which is as near as a cloud machine gets to a home with no port forwarded. Press "Check connection" on both sides, then search and grab in the rented Sonarr.
-2. **With the port open.** In the instance's security group add an inbound rule: Custom UDP, port 6633, from My IP. Check the connection again.
+```sh
+ssh -i KEY.pem -L 16633:localhost:6633 -L 17878:localhost:7878 ubuntu@ITS-ADDRESS
+```
 
-Write down both, using the table above.
+The rented machine's Nodearr is then at `http://localhost:16633` and its Radarr at `http://localhost:17878`, on your own machine and nobody else's. Your own are at `http://localhost:6633` and `http://localhost:7878`. While that connection is open its ports are taken, and the scripts in `acceptance/` use one of them, so do not run those at the same time.
 
-### 6. Stop paying
+The pages ask nobody to sign in. That is only safe because both are bound to the machine itself. Never allow TCP 6633 or 7878 in.
 
-Terminate the instance when you are done. Stopping it is not enough to end the charge for its disk.
+### 7. Clear up
+
+On each machine:
+
+```sh
+python3 two-machine-test.py down
+```
+
+Then terminate the instance. Stopping it does not end the charge for its disk.
+
+### What to expect from Docker Desktop
+
+On Windows and macOS, Docker Desktop puts its own address translation between Nodearr and your router, and it gives a different public port to every destination. Measured on one Windows machine: Nodearr run straight on Windows saw one stable public port, and the same Nodearr in Docker Desktop saw a different one each time. Nodearr reports this on Nodes > Trusted Nodes and on System > Status.
+
+So a node in Docker Desktop is hard to reach directly unless the other side can be reached first. Against a cloud machine, expect "Relay only" on the first run and "Direct" once UDP 6633 is allowed in there. Between two homes, the Docker Desktop side wants UDP 6633 forwarded on its router, or the other side does. Linux with the host's network has none of this.
+
+### What has and has not been run
+
+The script was run end to end on one machine with both sides, on a bridge network and on the host's network inside Docker's own Linux environment: paired, direct, transferred, imported, same SHA-256. It has not been run on AWS by whoever wrote this, and the two sides there shared a direct route that two real networks will not.
 
 ## Things worth trying once it works
 
