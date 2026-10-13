@@ -308,6 +308,20 @@ try {
         $right.SignedIn -and $right.Cookie -and -not $wrong.SignedIn -and (Get-Settings).authenticationMethod -eq 'forms'
     ) @{ mismatchRefused = (Get-Refused $mismatch); pageStatus = [int]$page.StatusCode; pageSentTo = "$($page.Headers.Location)"; rightPassword = $right; wrongPassword = $wrong }
 
+    # What a browser is sent to. Checking that signing in works is not checking that there is a
+    # page to sign in on: for a while there was none, and a fresh install led straight to a 404.
+    $signInPage = Invoke-WebRequest 'http://127.0.0.1:6633/login?returnUrl=%2F' -SkipHttpErrorCheck
+    $logo = Invoke-WebRequest 'http://127.0.0.1:6633/Content/Images/logo.svg' -SkipHttpErrorCheck
+    $followed = Invoke-WebRequest 'http://127.0.0.1:6633/' -SkipHttpErrorCheck
+    $withReturn = Invoke-WebRequest 'http://127.0.0.1:6633/login?returnUrl=%2Fsettings%2Fgeneral' -Method Post -Body @{ username = 'owner'; password = $first } `
+        -MaximumRedirection 0 -SkipHttpErrorCheck -ErrorAction SilentlyContinue
+    Assert-That 'The page a browser is sent to exists: a sign-in form that needs nothing from behind the sign-in, and goes back to where the browser was headed' (
+        $signInPage.StatusCode -eq 200 -and "$($signInPage.Headers['Content-Type'])" -match 'text/html' -and
+        $signInPage.Content -match 'method="POST"' -and $signInPage.Content -match 'name="username"' -and $signInPage.Content -match 'name="password"' -and
+        $logo.StatusCode -eq 200 -and $followed.StatusCode -eq 200 -and $followed.Content -match 'name="password"' -and
+        $withReturn.StatusCode -eq 302 -and "$($withReturn.Headers.Location)" -eq '/settings/general'
+    ) @{ pageStatus = [int]$signInPage.StatusCode; isForm = ($signInPage.Content -match 'name="password"'); logoStatus = [int]$logo.StatusCode; rootEndsAt = [int]$followed.StatusCode; afterSigningIn = "$($withReturn.Headers.Location)" }
+
     Set-Settings @{ password = $second; passwordConfirmation = $second } | Out-Null
     $old = Get-SignInResult 'owner' $first
     $new = Get-SignInResult 'owner' $second

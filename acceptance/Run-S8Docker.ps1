@@ -290,6 +290,11 @@ try {
     $downloadsWritable = $LASTEXITCODE -eq 0
     Assert-That 'Nodearr can write to /downloads and cannot write to the libraries' ($downloadsWritable -and -not $libraryWritable) @{ downloadsWritable = $downloadsWritable; libraryWritable = $libraryWritable }
 
+    $signIn = Invoke-WebRequest "$($nodes.A.Url)/login" -SkipHttpErrorCheck
+    Assert-That 'The image carries the sign-in page' (
+        $signIn.StatusCode -eq 200 -and $signIn.Content -match 'name="password"'
+    ) @{ status = [int]$signIn.StatusCode }
+
     # --- Each node registers itself in its own Arr apps, by container name -----------------------
 
     Add-Application A Sonarr sonarrA | Out-Null
