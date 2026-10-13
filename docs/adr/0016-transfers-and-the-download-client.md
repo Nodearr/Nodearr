@@ -4,7 +4,7 @@
 
 Accepted. Built and checked in S7 on 2026-10-10.
 
-The direct-only rule this builds on (ADR 0011) is still Proposed, because the two-machine run across different networks has not been done. Everything here was run with both nodes on one machine.
+The direct-only rule this builds on (ADR 0011) was accepted on 2026-10-13, after runs between two machines on different networks. Everything in this ADR's own evidence was run with both nodes on one machine.
 
 ## Context
 

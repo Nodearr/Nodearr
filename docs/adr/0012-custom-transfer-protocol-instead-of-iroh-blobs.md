@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed, together with ADR 0011. The protocol was built into the sidecar in S7 (ADR 0016) and carries real imports between two nodes on one machine.
+Accepted on 2026-10-13, together with ADR 0011. The protocol was built into the sidecar in S7 (ADR 0016) and carries real imports between two nodes on one machine, and between two machines on different networks (ADR 0011, "Runs between two machines").
 
 ## Context
 

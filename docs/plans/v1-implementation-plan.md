@@ -40,7 +40,7 @@ Completion means a real Sonarr/Radarr import of a verified, permitted peer trans
 
 - **S0: done.** Branch `v1/s0-baseline`.
 - **S1: done, go.** Nine of nine scenarios pass against Sonarr 4.0.20, Radarr 6.4.4 and Prowlarr 2.6.5. ADR 0010. Branch `v1/s1-s2-spikes`.
-- **S2: passes on one machine, gate still open.** Seven of seven scenarios pass, including against n0's public relays. The cross-NAT run on two machines has not been done. ADRs 0011 and 0012 are Proposed until it has. The owner chose to proceed with S3 on the assumption that it will pass.
+- **S2: passes on one machine, and the gate has since closed.** Seven of seven scenarios pass, including against n0's public relays. The owner chose to proceed with S3 on the assumption that the run across two networks would pass. It was made on 2026-10-12 and 2026-10-13, and ADRs 0011 and 0012 were accepted on it.
 - **S3: done.** Fourteen of fourteen acceptance checks pass (`acceptance/Run-S3CatalogImport.ps1`). Branch `v1/s3-catalog-import`.
 - **S4: done.** Eleven of eleven acceptance checks pass between two real instances on one machine (`acceptance/Run-S4Pairing.ps1`). ADR 0013. Branch `v1/s4-identity-trust`.
 - **S5: done.** Ten of ten acceptance checks pass between two real instances with real Arr catalogs (`acceptance/Run-S5Sharing.ps1`). ADR 0014. Branch `v1/s5-sharing-catalog-exchange`.
@@ -92,7 +92,7 @@ What S7 left for later slices:
 
 What S8 left:
 
-- **The two-machine run.** It is the plan's last acceptance item and the open gate on ADR 0011 and ADR 0012. Until it is done, "files only travel over a direct connection" is proven between containers and on one machine, and not between two homes.
+- ~~**The two-machine run.** It is the plan's last acceptance item and the open gate on ADR 0011 and ADR 0012.~~ Done on 2026-10-13 between a home network and a cloud machine with nothing opened on either side. A run between two home routers has still not been made.
 - No image is published, and only linux/amd64 has been built.
 - ~~The transport options are environment variables, with no settings page.~~ Done afterwards, see below.
 - ~~The inherited update check and error reporting still point at nodearr.com hosts that do not exist yet.~~ Removed afterwards, see below.
@@ -118,4 +118,8 @@ Then a settings page. ADR 0019. Branch `v1/s10-node-settings`.
 
 ## Where V1 stands
 
-The plan's definition of done is "a real Sonarr/Radarr import of a verified, permitted peer transfer between two deployed instances". That has been met between two deployed instances on one machine, many times over, with the failure cases checked. On 2026-10-12 it was met between two machines on different networks: a PC at home and a rented cloud machine, with no port forwarded on the home router (ADR 0011, "Runs between two machines"). The cloud machine had to allow UDP in for the connection to be direct, because the home side ran in Docker Desktop. A run between two homes with nothing forwarded on either side has not been made yet.
+The plan's definition of done is "a real Sonarr/Radarr import of a verified, permitted peer transfer between two deployed instances". That has been met between two deployed instances on one machine, many times over, with the failure cases checked. On 2026-10-12 it was met between two machines on different networks: a PC at home and a rented cloud machine, with no port forwarded on the home router (ADR 0011, "Runs between two machines"). The cloud machine had to allow UDP in for the connection to be direct, because the home side ran in Docker Desktop.
+
+On 2026-10-13 the same two machines connected directly and moved a file with nothing opened on either side: no port forwarded at home, and no UDP allowed in at the cloud machine. The home side ran Nodearr straight on Windows that time. ADR 0011 and ADR 0012 were accepted on it. That is V1's definition of done, met.
+
+What has not been tried is two home routers, and a node in Docker Desktop on Windows or macOS remains hard to reach directly without a forwarded port.

@@ -2,7 +2,11 @@
 
 ## Status
 
-Proposed. The S2 spike passed every scenario that can be run on one machine on 2026-10-10. The first run between two machines on different networks was made on 2026-10-12 and behaved as designed (see "Runs between two machines" at the end). One side of it was a cloud machine with a public address, so the run that decides this ADR is still outstanding: two nodes that are both behind ordinary home routers, with no port forwarded on either.
+Accepted on 2026-10-13.
+
+The S2 spike passed every scenario that can be run on one machine on 2026-10-10. Runs between two machines on different networks followed on 2026-10-12 and 2026-10-13 (see "Runs between two machines" at the end). In the last of them a PC behind a home router and a cloud machine that allowed no UDP in connected directly and moved a file, with nothing opened on either side, and where only a relay was available no file data moved.
+
+What that acceptance does not cover is said there too. The far side was a cloud firewall, not a second home router, and a node in Docker Desktop is a harder case than the same node run on the machine itself.
 
 ## Context
 
@@ -111,4 +115,26 @@ What this shows:
 
 What it does not show: two nodes behind home routers reaching each other with nothing forwarded. That needs both sides to keep one public port, which rules out Docker Desktop on either side for that run.
 
-The next run to make is the same two machines with the cloud machine allowing no UDP in and the PC running Nodearr outside Docker (`two-machine-test.py send --native`). A stable public port on the PC should let both firewalls be opened from the inside. If that connects directly, nothing was opened on either side.
+### 2026-10-13: the same two machines, with nothing opened on either side
+
+The same PC and the same cloud machine. This time Nodearr ran straight on the PC and not in Docker Desktop (`two-machine-test.py send --native`), where it reports one stable public port.
+
+| Run | The cloud machine's firewall | Connection check | Transfer |
+| --- | --- | --- | --- |
+| 3 | UDP 6633 allowed in when the nodes connected, and the rule removed part way through the transfer | Direct | Completed and imported |
+| 4 | No UDP allowed in at all. A new receiving node, newly paired, on a UDP port that had never had a rule or carried traffic | Direct | Completed and imported by Radarr: 87 MB in 32 seconds, search and import included |
+
+Run 3 shows only that a connection already made is not cut when the rule goes. A firewall of this kind goes on allowing a flow it has seen, so it says nothing about making one. It is listed so that nobody takes it for more.
+
+Run 4 is the one that counts. Neither side accepted traffic it had not asked for: no port was forwarded on the home router, and the cloud machine's firewall let in nothing but replies. Each node learned the other's public address through the relay, both sent, and each firewall let the other's packets in as answers to its own. The file moved directly, and Radarr imported it.
+
+What this shows, with the runs above it:
+
+- **Files move directly between two networks with nothing opened on either**, when each side keeps one public port for its traffic. Most home routers do.
+- **Where that fails, nothing of the file moves and the failure says so.** Run 1 is that case.
+- **How Nodearr is run matters as much as the router.** The same PC, router and far side gave "Relay only" from Docker Desktop and "Direct" from Windows itself.
+
+What it still does not show:
+
+- **Two home routers.** The far side had a public address of its own, translated one to one, behind a firewall that tracks connections. A second home router adds its own translation of ports. That is expected to work for a router that keeps one public port, by the same mechanism, and has not been run.
+- **Networks that give a different public port to every destination**: some mobile and carrier networks, and Docker Desktop. Two such sides cannot connect directly, and one such side needs the other to be reachable. Nodearr reports this before a transfer is tried.

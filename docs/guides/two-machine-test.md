@@ -208,13 +208,15 @@ If the transport was built somewhere else, add `--transport-bin PATH`. Windows m
 
 Everything after that is the same: the code it prints goes to `receive` on the other machine, and `fetch`, `status` and `down` work as before. `receive --native` works too. A side is one or the other. To change, run `down` first.
 
-This is the run worth making against a cloud machine that allows no UDP in. If the two connect directly, they did it with nothing opened on either side, which is what two homes would have to do.
+This is the run worth making against a cloud machine that allows no UDP in. If the two connect directly, they did it with nothing opened on either side, which is what two homes would have to do. It has been made once, and they did (ADR 0011).
+
+To make that run clean, start the receiving side fresh on a UDP port it has not used: `down`, then `receive CODE --udp-port 6644`. A firewall goes on allowing a connection it has already seen, so a rule removed while two nodes are connected proves nothing.
 
 ### What has and has not been run
 
 The script was run end to end on one machine with both sides: on a bridge network, on the host's network inside Docker's own Linux environment, and with `--native` on Windows for either side and for both. Each time it paired, connected directly, transferred and imported, with the same SHA-256 at both ends. `fetch` was run several times in a row, and a receiving side was given a second sending side's code.
 
-Between two machines it has been run once, by the project's owner: a Windows PC in Docker Desktop and an EC2 instance. `--native` has not been run between two machines yet.
+Between two machines it has been run by the project's owner, between a Windows PC and an EC2 instance: with the PC's Nodearr in Docker Desktop, and with `--native`. The results are in ADR 0011. It has not been run between two home networks.
 
 ## Things worth trying once it works
 
