@@ -194,6 +194,8 @@ On Windows and macOS, Docker Desktop puts its own address translation between No
 
 So a node in Docker Desktop is hard to reach directly unless the other side can be reached first. Against a cloud machine, expect "Relay only" on the first run and "Direct" once UDP 6633 is allowed in there. That is what the first run between two machines found (ADR 0011). Between two homes, the Docker Desktop side wants UDP 6633 forwarded on its router, or the other side does. Linux with the host's network has none of this.
 
+Docker Desktop's own "Enable host networking" setting does not change this. It was tried on Docker Desktop 4.91 for Windows on 2026-10-13: with it on, the transport in a container on the host's network still reported a different public address for every destination. It also stopped Nodearr's transport from staying up in that container at all, for a reason not yet found, so leave `network_mode: host` to Linux.
+
 ### Without Docker Desktop in the way: `--native`
 
 To see what the machine's own network allows, run Nodearr straight on it and only Radarr in a container. This needs a build of the repository, not the image. On Windows, from PowerShell in the repository root, not from WSL:
