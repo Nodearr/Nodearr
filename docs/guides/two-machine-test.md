@@ -190,7 +190,7 @@ Then terminate the instance. Stopping it does not end the charge for its disk.
 
 ### What to expect from Docker Desktop
 
-On Windows and macOS, Docker Desktop puts its own address translation between Nodearr and your router, and it gives a different public port to every destination. Measured on one Windows machine: Nodearr run straight on Windows saw one stable public port, and the same Nodearr in Docker Desktop saw a different one each time. Nodearr reports this on Nodes > Trusted Nodes and on System > Status.
+On Windows and macOS, Docker Desktop puts its own address translation between Nodearr and your router, and it gives a different public port to every destination. Measured on one Windows machine: Nodearr run straight on Windows saw one stable public port, and the same Nodearr in Docker Desktop saw a different one each time. Nodearr reports this on Nodes > Trusted Nodes and on System > Status, and says there that it is Docker Desktop and not the router.
 
 So a node in Docker Desktop is hard to reach directly unless the other side can be reached first. Against a cloud machine, expect "Relay only" on the first run and "Direct" once UDP 6633 is allowed in there. That is what the first run between two machines found (ADR 0011). Between two homes, the Docker Desktop side wants UDP 6633 forwarded on its router, or the other side does. Linux with the host's network has none of this.
 
