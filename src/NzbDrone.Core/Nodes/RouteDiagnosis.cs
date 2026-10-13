@@ -18,10 +18,12 @@ namespace NzbDrone.Core.Nodes
     public class RouteDiagnosis : IRouteDiagnosis
     {
         private readonly IPeerTransport _transport;
+        private readonly IContainerEnvironment _container;
 
-        public RouteDiagnosis(IPeerTransport transport)
+        public RouteDiagnosis(IPeerTransport transport, IContainerEnvironment container)
         {
             _transport = transport;
+            _container = container;
         }
 
         public string Describe(Peer peer)
@@ -56,7 +58,11 @@ namespace NzbDrone.Core.Nodes
                 // Not running. Nothing is known about this side.
             }
 
-            if (network?.MappingVaries == true)
+            if (network?.MappingVaries == true && _container.IsDockerDesktop)
+            {
+                sentences.Add("This node is in a container on Docker Desktop, which gives it a different public port for every destination whatever the router does, so forward the UDP port on this node's router or run Nodearr outside Docker.");
+            }
+            else if (network?.MappingVaries == true)
             {
                 sentences.Add("This node's network gives a different public port to every destination, which usually means forwarding the UDP port on this node's router.");
             }

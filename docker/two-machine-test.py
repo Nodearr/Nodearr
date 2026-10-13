@@ -627,6 +627,9 @@ def network_summary(identity):
     if identity.get('udp') is False:
         return 'could not confirm that UDP gets out'
 
+    if identity.get('mappingVaries') and identity.get('dockerDesktop'):
+        return 'a different public port for every destination, which is Docker Desktop and not the router (forward the UDP port, or use --native)'
+
     if identity.get('mappingVaries'):
         return 'a different public port for every destination (direct connections usually need a forwarded port)'
 

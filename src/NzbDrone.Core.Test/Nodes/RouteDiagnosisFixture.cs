@@ -81,6 +81,23 @@ namespace NzbDrone.Core.Test.Nodes
         }
 
         [Test]
+        public void in_docker_desktop_a_port_for_every_destination_should_be_put_down_to_docker()
+        {
+            Mocker.GetMock<IContainerEnvironment>().SetupGet(c => c.IsDockerDesktop).Returns(true);
+            GivenNetwork(true, true);
+
+            Subject.Describe(_john).Should().Contain("in a container on Docker Desktop").And.Contain("run Nodearr outside Docker");
+        }
+
+        [Test]
+        public void in_docker_desktop_a_network_that_looks_fine_should_be_described_as_any_other()
+        {
+            Mocker.GetMock<IContainerEnvironment>().SetupGet(c => c.IsDockerDesktop).Returns(true);
+
+            Subject.Describe(_john).Should().NotContain("Docker Desktop");
+        }
+
+        [Test]
         public void udp_not_seen_getting_out_should_point_at_this_machines_firewall()
         {
             GivenNetwork(false, null);

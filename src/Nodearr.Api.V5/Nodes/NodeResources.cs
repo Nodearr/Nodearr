@@ -18,6 +18,9 @@ public class NodeIdentityResource
     public string? PublicAddress { get; set; }
     public bool? CaptivePortal { get; set; }
 
+    // In a container on Docker Desktop, where a varying public port is Docker's doing.
+    public bool DockerDesktop { get; set; }
+
     public static NodeIdentityResource FromModel(NodeIdentity identity)
     {
         return new NodeIdentityResource
@@ -30,7 +33,8 @@ public class NodeIdentityResource
             Udp = identity.Network?.Udp,
             MappingVaries = identity.Network?.MappingVaries,
             PublicAddress = identity.Network?.PublicAddress,
-            CaptivePortal = identity.Network?.CaptivePortal
+            CaptivePortal = identity.Network?.CaptivePortal,
+            DockerDesktop = identity.DockerDesktop
         };
     }
 }

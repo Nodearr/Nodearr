@@ -18,6 +18,8 @@ export interface NodeIdentity {
   mappingVaries?: boolean;
   publicAddress?: string;
   captivePortal?: boolean;
+  // In a container on Docker Desktop, where a varying public port is Docker's doing.
+  dockerDesktop?: boolean;
 }
 
 export interface Peer {

@@ -15,12 +15,14 @@ namespace NzbDrone.Core.HealthCheck.Checks
     {
         private readonly IPeerTransport _transport;
         private readonly IPeerRepository _peers;
+        private readonly IContainerEnvironment _container;
 
-        public PeerNetworkCheck(IPeerTransport transport, IPeerRepository peers, ILocalizationService localizationService)
+        public PeerNetworkCheck(IPeerTransport transport, IPeerRepository peers, IContainerEnvironment container, ILocalizationService localizationService)
             : base(localizationService)
         {
             _transport = transport;
             _peers = peers;
+            _container = container;
         }
 
         public override HealthCheck Check()
@@ -77,10 +79,13 @@ namespace NzbDrone.Core.HealthCheck.Checks
 
             if (network.MappingVaries == true)
             {
+                // In a container on Docker Desktop this is Docker's doing and not the router's, and
+                // what helps is different. Only said when it has been measured, so a set-up of
+                // Docker Desktop that keeps one port is left alone.
                 return new HealthCheck(GetType(),
                     HealthCheckResult.Notice,
                     HealthCheckReason.PeerNetworkVaryingPort,
-                    _localizationService.GetLocalizedString("PeerNetworkVaryingPortMessage"));
+                    _localizationService.GetLocalizedString(_container.IsDockerDesktop ? "PeerNetworkVaryingPortDockerDesktopMessage" : "PeerNetworkVaryingPortMessage"));
             }
 
             return new HealthCheck(GetType());

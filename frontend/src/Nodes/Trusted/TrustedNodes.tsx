@@ -102,7 +102,14 @@ function describeNetwork(identity: NodeIdentity, hasDirectPeer: boolean) {
   }
 
   if (identity.mappingVaries) {
-    return { text: translate('PeerNetworkVaryingPort'), isProblem: true };
+    return {
+      text: translate(
+        identity.dockerDesktop
+          ? 'PeerNetworkVaryingPortDockerDesktop'
+          : 'PeerNetworkVaryingPort'
+      ),
+      isProblem: true,
+    };
   }
 
   if (identity.udp && identity.mappingVaries === false) {

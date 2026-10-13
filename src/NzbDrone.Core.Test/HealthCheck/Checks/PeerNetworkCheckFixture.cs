@@ -121,6 +121,27 @@ namespace NzbDrone.Core.Test.HealthCheck.Checks
         }
 
         [Test]
+        public void should_blame_docker_desktop_and_not_the_router_when_that_is_where_it_runs()
+        {
+            Mocker.GetMock<ILocalizationService>()
+                  .Setup(s => s.GetLocalizedString(It.IsAny<string>()))
+                  .Returns((string key) => key);
+            Mocker.GetMock<IContainerEnvironment>().SetupGet(c => c.IsDockerDesktop).Returns(true);
+            GivenNetwork(true, true);
+
+            Subject.Check().ShouldBeNotice("PeerNetworkVaryingPortDockerDesktopMessage");
+        }
+
+        [Test]
+        public void should_not_mention_docker_desktop_when_the_port_stays_the_same_there()
+        {
+            Mocker.GetMock<IContainerEnvironment>().SetupGet(c => c.IsDockerDesktop).Returns(true);
+            GivenNetwork(true, false);
+
+            Subject.Check().ShouldBeOk();
+        }
+
+        [Test]
         public void should_be_ok_when_the_transport_is_not_running_because_another_check_says_so()
         {
             Mocker.GetMock<IPeerTransport>()

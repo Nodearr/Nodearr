@@ -31,6 +31,9 @@ namespace NzbDrone.Core.Nodes
 
         // What is known about the network this node is on. Null while the transport is not running.
         public NetworkStatus Network { get; set; }
+
+        // In a container on Docker Desktop, which changes what a varying public port means.
+        public bool DockerDesktop { get; set; }
     }
 
     public class CreatedInvite
@@ -73,9 +76,11 @@ namespace NzbDrone.Core.Nodes
         private readonly IEventAggregator _eventAggregator;
         private readonly Logger _logger;
         private readonly INodeSettingsProvider _settings;
+        private readonly IContainerEnvironment _container;
 
-        public PeerService(IPeerRepository peers, IPeerInviteRepository invites, IPeerTransport transport, IOfferExchange offerExchange, IEventAggregator eventAggregator, Logger logger, INodeSettingsProvider settings = null)
+        public PeerService(IPeerRepository peers, IPeerInviteRepository invites, IPeerTransport transport, IOfferExchange offerExchange, IEventAggregator eventAggregator, Logger logger, INodeSettingsProvider settings = null, IContainerEnvironment container = null)
         {
+            _container = container;
             _peers = peers;
             _invites = invites;
             _transport = transport;
@@ -113,7 +118,7 @@ namespace NzbDrone.Core.Nodes
         {
             if (!_transport.IsRunning)
             {
-                return new NodeIdentity { Name = LocalName };
+                return new NodeIdentity { Name = LocalName, DockerDesktop = _container?.IsDockerDesktop ?? false };
             }
 
             var address = _transport.GetLocalAddress();
@@ -125,7 +130,8 @@ namespace NzbDrone.Core.Nodes
                 Name = LocalName,
                 RelayUrl = address.RelayUrl,
                 IpAddresses = address.IpAddresses,
-                Network = _transport.GetNetworkStatus()
+                Network = _transport.GetNetworkStatus(),
+                DockerDesktop = _container?.IsDockerDesktop ?? false
             };
         }
 
