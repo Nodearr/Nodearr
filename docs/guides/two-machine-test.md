@@ -192,11 +192,29 @@ Then terminate the instance. Stopping it does not end the charge for its disk.
 
 On Windows and macOS, Docker Desktop puts its own address translation between Nodearr and your router, and it gives a different public port to every destination. Measured on one Windows machine: Nodearr run straight on Windows saw one stable public port, and the same Nodearr in Docker Desktop saw a different one each time. Nodearr reports this on Nodes > Trusted Nodes and on System > Status.
 
-So a node in Docker Desktop is hard to reach directly unless the other side can be reached first. Against a cloud machine, expect "Relay only" on the first run and "Direct" once UDP 6633 is allowed in there. Between two homes, the Docker Desktop side wants UDP 6633 forwarded on its router, or the other side does. Linux with the host's network has none of this.
+So a node in Docker Desktop is hard to reach directly unless the other side can be reached first. Against a cloud machine, expect "Relay only" on the first run and "Direct" once UDP 6633 is allowed in there. That is what the first run between two machines found (ADR 0011). Between two homes, the Docker Desktop side wants UDP 6633 forwarded on its router, or the other side does. Linux with the host's network has none of this.
+
+### Without Docker Desktop in the way: `--native`
+
+To see what the machine's own network allows, run Nodearr straight on it and only Radarr in a container. This needs a build of the repository, not the image. On Windows, from PowerShell in the repository root, not from WSL:
+
+```sh
+dotnet build src/Nodearr.sln
+cargo build --release --manifest-path transport/Cargo.toml
+python docker	wo-machine-test.py send --native
+```
+
+If the transport was built somewhere else, add `--transport-bin PATH`. Windows may ask whether to let `nodearr-transport` through its firewall the first time. Say yes.
+
+Everything after that is the same: the code it prints goes to `receive` on the other machine, and `fetch`, `status` and `down` work as before. `receive --native` works too. A side is one or the other. To change, run `down` first.
+
+This is the run worth making against a cloud machine that allows no UDP in. If the two connect directly, they did it with nothing opened on either side, which is what two homes would have to do.
 
 ### What has and has not been run
 
-The script was run end to end on one machine with both sides, on a bridge network and on the host's network inside Docker's own Linux environment: paired, direct, transferred, imported, same SHA-256. It has not been run on AWS by whoever wrote this, and the two sides there shared a direct route that two real networks will not.
+The script was run end to end on one machine with both sides: on a bridge network, on the host's network inside Docker's own Linux environment, and with `--native` on Windows for either side and for both. Each time it paired, connected directly, transferred and imported, with the same SHA-256 at both ends. `fetch` was run several times in a row, and a receiving side was given a second sending side's code.
+
+Between two machines it has been run once, by the project's owner: a Windows PC in Docker Desktop and an EC2 instance. `--native` has not been run between two machines yet.
 
 ## Things worth trying once it works
 

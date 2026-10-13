@@ -110,3 +110,5 @@ What this shows:
 - **The outcome of run 1 was predicted, and the cause is Docker Desktop, not the router.** Nodearr run straight on that PC sees one stable public port. The same Nodearr in Docker Desktop is given a different public port for every destination. The cloud machine learned the port the relay saw, which was not the port the PC used towards the cloud machine, so neither side's packets were let in by the other.
 
 What it does not show: two nodes behind home routers reaching each other with nothing forwarded. That needs both sides to keep one public port, which rules out Docker Desktop on either side for that run.
+
+The next run to make is the same two machines with the cloud machine allowing no UDP in and the PC running Nodearr outside Docker (`two-machine-test.py send --native`). A stable public port on the PC should let both firewalls be opened from the inside. If that connects directly, nothing was opened on either side.
