@@ -45,6 +45,9 @@ public class PeerCatalogItemResource
     public string? Languages { get; set; }
     public string? ReleaseGroup { get; set; }
     public DateTime? DateAdded { get; set; }
+
+    // The file's BLAKE3 hash, where the node worked it out. The same hash from two nodes is the same file.
+    public string? Blake3 { get; set; }
 }
 
 [V5ApiController("catalog/peers")]
@@ -130,7 +133,8 @@ public class PeerCatalogController : Controller
             Size = item.Size,
             Languages = item.Languages,
             ReleaseGroup = item.ReleaseGroup,
-            DateAdded = item.DateAdded
+            DateAdded = item.DateAdded,
+            Blake3 = item.Blake3
         }));
     }
 }

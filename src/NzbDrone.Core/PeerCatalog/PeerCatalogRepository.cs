@@ -13,6 +13,9 @@ namespace NzbDrone.Core.PeerCatalog
         PeerCatalogItem FindByCandidateId(string candidateId);
         List<PeerCatalogItem> FindByMediaIds(MediaKind kind, int tvdbId, int tmdbId, string imdbId);
         List<PeerCatalogItem> FindByText(string word);
+
+        // Every peer's copy of the file with this hash.
+        List<PeerCatalogItem> FindByBlake3(string blake3);
         void DeleteForPeer(int peerId);
         void DeleteForPeer(int peerId, IEnumerable<string> remoteIds);
 
@@ -64,6 +67,11 @@ namespace NzbDrone.Core.PeerCatalog
         public List<PeerCatalogItem> FindByText(string word)
         {
             return Query(i => i.ReleaseTitle.Contains(word) || i.Title.Contains(word));
+        }
+
+        public List<PeerCatalogItem> FindByBlake3(string blake3)
+        {
+            return blake3 == null ? new List<PeerCatalogItem>() : Query(i => i.Blake3 == blake3);
         }
 
         public void DeleteForPeer(int peerId)

@@ -42,6 +42,9 @@ namespace NzbDrone.Core.Test.Transfers
 
             GivenCandidate("candidate-1", "e-1-501", Title);
 
+            // No other node has the file unless a test says so.
+            Mocker.GetMock<ICandidateService>().Setup(c => c.Copies(It.IsAny<string>())).Returns(new List<PeerCatalogItem>());
+
             _progress = new List<FileTransferProgress>();
             _started = new List<FileTransferRequest>();
 
@@ -565,6 +568,168 @@ namespace NzbDrone.Core.Test.Transfers
             Subject.Tick();
 
             Mocker.GetMock<IEventAggregator>().Verify(e => e.PublishEvent(It.IsAny<TransfersChangedEvent>()), Times.Exactly(2));
+        }
+
+        // --- Identical copies on other nodes -----------------------------------------------------
+
+        private Peer GivenPeer(string name, ConnectionPath path = ConnectionPath.Unknown, PeerState state = PeerState.Trusted)
+        {
+            return Mocker.Resolve<IPeerRepository>().Insert(new Peer { NodeId = name.ToLowerInvariant(), Name = name, State = state, ConnectionPath = path, Added = DateTime.UtcNow, StateChanged = DateTime.UtcNow });
+        }
+
+        // Alice's file, and the same bytes on other nodes. The transport reports its hash as hash-1.
+        private void GivenCopies(params (Peer Peer, long Size)[] others)
+        {
+            var copies = new List<PeerCatalogItem> { new() { PeerId = _alice.Id, CandidateId = "candidate-1", RemoteId = "e-1-501", Size = 1000, Blake3 = "hash-1" } };
+
+            copies.AddRange(others.Select(o => new PeerCatalogItem { PeerId = o.Peer.Id, CandidateId = "candidate-" + o.Peer.NodeId, RemoteId = "e-7-" + o.Peer.Id, Size = o.Size, Blake3 = "hash-1" }));
+
+            Mocker.GetMock<ICandidateService>().Setup(c => c.Copies("hash-1")).Returns(copies);
+        }
+
+        private TransferJob FailFromAlice(string kind)
+        {
+            var job = GivenDownloading();
+
+            GivenTransport(job, FileTransferState.Receiving, 400);
+            Subject.Tick();
+            GivenTransport(job, FileTransferState.Failed, 400, kind);
+            Subject.Tick();
+
+            return Stored(job);
+        }
+
+        [TestCase("NoDirectRoute")]
+        [TestCase("PeerUnreachable")]
+        [TestCase("ConnectionLost")]
+        [TestCase("NotAuthorized")]
+        [TestCase("NotFound")]
+        public void a_node_that_fails_should_be_left_at_once_for_another_with_the_same_file(string kind)
+        {
+            var bob = GivenPeer("Bob");
+            GivenCopies((bob, 1000));
+
+            var moved = FailFromAlice(kind);
+
+            // Moved, and started from Bob in the same pass: its first attempt, not Alice's fourth.
+            moved.Should().Match<TransferJob>(j => j.PeerId == bob.Id && j.PeerNodeId == "bob" && j.RemoteId == "e-7-" + bob.Id && j.State == TransferState.Downloading && j.Attempts == 1);
+            moved.FailureMessage.Should().EndWith("Carrying on from Bob, which has the same file.");
+            moved.TriedPeerIds.Should().Be($"{_alice.Id}");
+
+            // What arrived from Alice is the start of the same file, so Bob carries on from it.
+            File.Exists(_folders.IncompleteFile(moved)).Should().BeTrue();
+            _started.Last().Should().Match<FileTransferRequest>(r => r.Peer.NodeId == "bob" && r.File == "e-7-" + bob.Id && r.ExpectedHash == "hash-1");
+        }
+
+        [Test]
+        public void trust_ending_with_one_node_should_move_its_transfers_to_another_with_the_same_file()
+        {
+            var bob = GivenPeer("Bob");
+            GivenCopies((bob, 1000));
+
+            var job = GivenDownloading();
+            GivenTransport(job, FileTransferState.Receiving, 400);
+            Subject.Tick();
+
+            _alice.State = PeerState.Revoked;
+            Mocker.Resolve<IPeerRepository>().Update(_alice);
+            Subject.Handle(new PeerStateChangedEvent(_alice, PeerState.Trusted));
+
+            Stored(job).Should().Match<TransferJob>(j => j.PeerId == bob.Id && j.State == TransferState.Queued);
+        }
+
+        [Test]
+        public void with_no_other_copy_a_failure_should_end_as_before()
+        {
+            GivenCopies();
+
+            FailFromAlice("NotAuthorized").Should().Match<TransferJob>(j => j.State == TransferState.Failed && j.Failure == TransferFailure.NotAuthorized && j.PeerId == _alice.Id);
+        }
+
+        [Test]
+        public void a_node_once_left_should_not_be_gone_back_to()
+        {
+            var bob = GivenPeer("Bob");
+            GivenCopies((bob, 1000));
+
+            var job = FailFromAlice("NoDirectRoute");
+
+            GivenTransport(job, FileTransferState.Failed, 400, "NotFound");
+            Subject.Tick();
+
+            Stored(job).Should().Match<TransferJob>(j => j.State == TransferState.Failed && j.Failure == TransferFailure.NotFound && j.PeerId == bob.Id);
+        }
+
+        [Test]
+        public void a_file_that_did_not_match_its_hash_should_be_tried_again_from_the_same_node()
+        {
+            var bob = GivenPeer("Bob");
+            GivenCopies((bob, 1000));
+
+            FailFromAlice("VerificationFailed").Should().Match<TransferJob>(j => j.PeerId == _alice.Id && j.State == TransferState.Queued && j.Failure == TransferFailure.VerificationFailed);
+        }
+
+        [Test]
+        public void a_copy_of_another_size_should_not_be_taken_for_the_same_file()
+        {
+            var bob = GivenPeer("Bob");
+            GivenCopies((bob, 999));
+
+            FailFromAlice("NotAuthorized").State.Should().Be(TransferState.Failed);
+        }
+
+        [Test]
+        public void a_node_last_reached_directly_should_be_tried_first()
+        {
+            var bob = GivenPeer("Bob", ConnectionPath.Relay);
+            var carol = GivenPeer("Carol", ConnectionPath.Direct);
+            GivenCopies((bob, 1000), (carol, 1000));
+
+            FailFromAlice("NoDirectRoute").PeerId.Should().Be(carol.Id);
+        }
+
+        [Test]
+        public void a_node_that_is_not_trusted_should_not_be_moved_to()
+        {
+            var mallory = GivenPeer("Mallory", state: PeerState.Revoked);
+            GivenCopies((mallory, 1000));
+
+            FailFromAlice("NotAuthorized").State.Should().Be(TransferState.Failed);
+        }
+
+        [Test]
+        public void the_attempt_that_failed_should_be_put_down_to_the_node_it_was_with()
+        {
+            var bob = GivenPeer("Bob");
+            GivenCopies((bob, 1000));
+            var ended = new List<int>();
+
+            Mocker.GetMock<IEventAggregator>()
+                  .Setup(e => e.PublishEvent(It.IsAny<TransferAttemptEndedEvent>()))
+                  .Callback<TransferAttemptEndedEvent>(e => ended.Add(e.PeerId));
+
+            FailFromAlice("NoDirectRoute");
+
+            ended.Should().Equal(_alice.Id);
+        }
+
+        [Test]
+        public void a_transfer_should_know_the_hash_it_was_offered_with_before_anything_arrives()
+        {
+            var bob = GivenPeer("Bob");
+            GivenCopies((bob, 1000));
+            Mocker.GetMock<ICandidateService>()
+                  .Setup(c => c.Find("candidate-1"))
+                  .Returns(new PeerCatalogItem { PeerId = _alice.Id, CandidateId = "candidate-1", RemoteId = "e-1-501", MediaKind = MediaKind.Tv, ReleaseTitle = Title, Extension = ".mkv", Size = 1000, Blake3 = "hash-1" });
+
+            var job = Subject.Add("candidate-1", "tv");
+            Subject.Tick();
+
+            // Alice could not be reached at all, so no hash was ever said for this transfer.
+            _progress.Add(new FileTransferProgress { Id = job.DownloadId, State = FileTransferState.Failed, FailureKind = "NoRoute", FailureMessage = "detail" });
+            Subject.Tick();
+
+            Stored(job).Should().Match<TransferJob>(j => j.Blake3 == "hash-1" && j.Hash == null && j.PeerId == bob.Id);
         }
     }
 }

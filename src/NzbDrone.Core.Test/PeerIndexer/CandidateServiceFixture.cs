@@ -22,6 +22,9 @@ namespace NzbDrone.Core.Test.PeerIndexer
         // TVDB's 2x01 is the scene's 3x05.
         private const int ScenedTvdbId = 81797;
 
+        // A series that Alice, Bob and Mallory hold the very same file of.
+        private const int CopiedTvdbId = 362472;
+
         private Peer _alice;
         private Peer _bob;
         private Peer _mallory;
@@ -354,6 +357,81 @@ namespace NzbDrone.Core.Test.PeerIndexer
             Subject.Find("m-e1").Should().BeNull();
             Subject.Find("made-up").Should().BeNull();
             Subject.Find(null).Should().BeNull();
+        }
+
+        private void GivenCopy(Peer peer, string candidateId, int episode, string blake3)
+        {
+            Db.Insert(new PeerCatalogItem
+            {
+                PeerId = peer.Id, RemoteId = candidateId, CandidateId = candidateId, MediaKind = MediaKind.Tv, TvdbId = CopiedTvdbId, Title = "Copied",
+                SeasonNumber = 1, EpisodeNumbers = $"{episode}", Resolution = 1080, Size = 5000, Blake3 = blake3, ReleaseTitle = $"Copied.S01E0{episode}.1080p", DateAdded = DateTime.UtcNow
+            });
+        }
+
+        private static CandidateQuery Copied(string episode = null)
+        {
+            return new CandidateQuery { IncludeMovies = false, TvdbId = CopiedTvdbId, Season = 1, Episode = episode };
+        }
+
+        [Test]
+        public void the_same_file_from_two_nodes_should_be_one_result()
+        {
+            GivenCopy(_bob, "c-bob", 1, new string('a', 64));
+            GivenCopy(_alice, "c-alice", 1, new string('a', 64));
+
+            var result = Subject.Search(Copied("1"));
+
+            // Always the same one of the two, so its GUID holds still.
+            result.Items.Select(i => i.CandidateId).Should().Equal("c-alice");
+            result.Total.Should().Be(1);
+        }
+
+        [Test]
+        public void different_files_of_the_same_episode_should_each_be_a_result()
+        {
+            GivenCopy(_alice, "c-alice", 1, new string('a', 64));
+            GivenCopy(_bob, "c-bob", 1, new string('b', 64));
+
+            Found(Copied("1")).Should().BeEquivalentTo("c-alice", "c-bob");
+        }
+
+        [Test]
+        public void a_file_whose_hash_is_not_known_yet_should_stand_alone()
+        {
+            GivenCopy(_alice, "c-alice", 1, new string('a', 64));
+            GivenCopy(_bob, "c-bob", 1, null);
+
+            Found(Copied("1")).Should().BeEquivalentTo("c-alice", "c-bob");
+        }
+
+        [Test]
+        public void a_copy_on_a_node_that_is_not_trusted_should_not_stand_for_the_file()
+        {
+            GivenCopy(_mallory, "c-0-mallory", 1, new string('a', 64));
+            GivenCopy(_bob, "c-bob", 1, new string('a', 64));
+
+            Found(Copied("1")).Should().Equal("c-bob");
+        }
+
+        [Test]
+        public void the_copies_of_a_file_should_be_every_trusted_nodes_and_nobody_elses()
+        {
+            GivenCopy(_alice, "c-alice", 1, new string('a', 64));
+            GivenCopy(_bob, "c-bob", 1, new string('a', 64));
+            GivenCopy(_mallory, "c-mallory", 1, new string('a', 64));
+            GivenCopy(_bob, "c-other", 2, new string('b', 64));
+
+            Subject.Copies(new string('a', 64)).Select(i => i.CandidateId).Should().BeEquivalentTo("c-alice", "c-bob");
+            Subject.Copies(null).Should().BeEmpty();
+        }
+
+        [Test]
+        public void the_newest_list_should_show_copies_on_one_page_once()
+        {
+            GivenCopy(_alice, "c-alice", 1, new string('a', 64));
+            GivenCopy(_bob, "c-bob", 1, new string('a', 64));
+
+            Subject.Search(new CandidateQuery { IncludeMovies = false }).Items.Count(i => i.Blake3 == new string('a', 64)).Should().Be(1);
         }
     }
 }

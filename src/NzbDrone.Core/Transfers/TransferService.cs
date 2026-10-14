@@ -117,6 +117,7 @@ namespace NzbDrone.Core.Transfers
                     Extension = candidate.Extension,
                     Category = category,
                     Size = candidate.Size,
+                    Blake3 = candidate.Blake3,
                     State = TransferState.Queued,
                     Added = DateTime.UtcNow
                 });
@@ -276,7 +277,11 @@ namespace NzbDrone.Core.Transfers
                         Forget(job);
                     }
 
-                    Fail(job, failure, null);
+                    // Another node with the same file is not affected by this one.
+                    if (!SwitchToAnotherCopy(job, failure, null))
+                    {
+                        Fail(job, failure, null);
+                    }
                 }
 
                 nodeId ??= affected.FirstOrDefault()?.PeerNodeId;
@@ -378,9 +383,12 @@ namespace NzbDrone.Core.Transfers
                 case FileTransferState.Failed:
                     var failure = TransferFailureText.FromTransport(progress.FailureKind);
 
+                    // The node this attempt was with, before the transfer can move to another.
+                    var peerId = job.PeerId;
+
                     Forget(job);
                     Failed(job, failure, progress.FailureMessage);
-                    AttemptEnded(job, failure);
+                    _eventAggregator.PublishEvent(new TransferAttemptEndedEvent(peerId, failure));
 
                     return true;
 
@@ -429,6 +437,11 @@ namespace NzbDrone.Core.Transfers
 
         private void Failed(TransferJob job, TransferFailure failure, string detail)
         {
+            if (SwitchToAnotherCopy(job, failure, detail))
+            {
+                return;
+            }
+
             var startsOver = TransferFailureText.StartsOver(failure);
 
             if ((TransferFailureText.IsTransient(failure) || startsOver) && job.Attempts < MaxAttempts)
@@ -453,6 +466,62 @@ namespace NzbDrone.Core.Transfers
             }
 
             Fail(job, failure, detail);
+        }
+
+        // When the node a file was coming from fails it, another trusted node that offers a file
+        // with the same hash has the same bytes. The transfer moves to it at once, and carries on
+        // from what has arrived, since that is the start of the same file. Each node is moved to
+        // once and has its own attempts. A node already directly reachable is tried first.
+        //
+        // A file that did not match its hash is tried again from the same node first, since that
+        // node is the one that must work its hash out again. A disk error here is no node's doing.
+        private bool SwitchToAnotherCopy(TransferJob job, TransferFailure failure, string detail)
+        {
+            var hash = job.Hash ?? job.Blake3;
+
+            if (hash == null || failure is TransferFailure.None or TransferFailure.VerificationFailed or TransferFailure.DiskError)
+            {
+                return false;
+            }
+
+            var tried = job.GetTriedPeerIds();
+            tried.Add(job.PeerId);
+
+            var peers = _peers.All().Where(p => p.State == PeerState.Trusted && !tried.Contains(p.Id)).ToDictionary(p => p.Id);
+            var copy = _candidates.Copies(hash)
+                .Where(c => peers.ContainsKey(c.PeerId) && c.Size == job.Size)
+                .OrderByDescending(c => peers[c.PeerId].ConnectionPath == ConnectionPath.Direct)
+                .ThenBy(c => c.CandidateId, StringComparer.Ordinal)
+                .FirstOrDefault();
+
+            if (copy == null)
+            {
+                return false;
+            }
+
+            var from = _peers.Find(job.PeerId)?.Name ?? "the other node";
+            var to = peers[copy.PeerId];
+
+            // Said of the node that failed, so worked out before the transfer leaves it. The detail
+            // can be the transport's own words, which end without a full stop.
+            var explained = Explain(job, failure, detail).TrimEnd();
+
+            explained = explained.EndsWith('.') ? explained : explained + ".";
+
+            job.TriedPeerIds = string.Join(",", tried.OrderBy(id => id));
+            job.PeerId = to.Id;
+            job.PeerNodeId = to.NodeId;
+            job.RemoteId = copy.RemoteId;
+            job.Attempts = 0;
+            job.State = TransferState.Queued;
+            job.NextAttempt = null;
+            job.Failure = failure;
+            job.FailureMessage = $"{explained} Carrying on from {to.Name}, which has the same file.";
+            _jobs.Update(job);
+
+            _logger.Info("Transfer {0} could not go on from {1} ({2}). Carrying on from {3}, which has the same file.", job.DownloadId, from, failure, to.Name);
+
+            return true;
         }
 
         private void Fail(TransferJob job, TransferFailure failure, string detail)

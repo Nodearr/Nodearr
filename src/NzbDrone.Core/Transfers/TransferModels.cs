@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using NzbDrone.Common.Messaging;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Sharing;
@@ -76,6 +77,13 @@ namespace NzbDrone.Core.Transfers
         // The BLAKE3 hash the sender gave before sending. A later attempt resumes only against it.
         public string Hash { get; set; }
 
+        // The hash the file was offered with, where the node had worked it out. Any trusted node
+        // offering a file with this hash has the same bytes, and can be fetched from instead.
+        public string Blake3 { get; set; }
+
+        // The nodes this transfer moved away from, comma separated. It does not go back to them.
+        public string TriedPeerIds { get; set; }
+
         // Where the finished file is: a folder holding the one file.
         public string OutputPath { get; set; }
         public int Attempts { get; set; }
@@ -85,6 +93,11 @@ namespace NzbDrone.Core.Transfers
         public DateTime? Ended { get; set; }
 
         public bool IsActive => State is TransferState.Queued or TransferState.Downloading;
+
+        public HashSet<int> GetTriedPeerIds()
+        {
+            return (TriedPeerIds ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToHashSet();
+        }
     }
 
     // Raised when any transfer was added, removed, or moved on.

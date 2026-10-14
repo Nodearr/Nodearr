@@ -134,6 +134,20 @@ Add `-UploadLimitKbps 300` to make transfers slow enough to watch. To stop every
 pwsh acceptance/Run-S7Transfers.ps1 -Down
 ```
 
+## Identical copies
+
+```sh
+pwsh acceptance/Run-IdenticalCopies.ps1
+```
+
+Needs the same as S7, and takes about four minutes. Three nodes on this machine: A and C read the same Sonarr library, so they hold the very same episode file, and B has its own Sonarr and trusts both. It checks:
+
+- A and C offer the file with the same hash, and B holds both copies.
+- B's Sonarr is shown the file once, not once for each node.
+- B grabs it. The node it comes from is stopped part way. The transfer carries on from the other node from where it was, not from the start, and Sonarr imports the right file with no failure in its history.
+
+`-KeepRunning` leaves everything up, with A on port 6633, B on 6634 and C on 6635. `-Down` stops it all.
+
 ## S8: the Docker image, deployed twice
 
 ```sh

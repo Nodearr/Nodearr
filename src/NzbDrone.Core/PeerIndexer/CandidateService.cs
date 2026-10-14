@@ -55,6 +55,9 @@ namespace NzbDrone.Core.PeerIndexer
     {
         CandidateResult Search(CandidateQuery query);
         PeerCatalogItem Find(string candidateId);
+
+        // Every trusted node's copy of the file with this hash: the same bytes, wherever they are.
+        List<PeerCatalogItem> Copies(string blake3);
     }
 
     // Answers the Arr apps from what trusted peers currently offer. Media is matched by ID only.
@@ -98,7 +101,7 @@ namespace NzbDrone.Core.PeerIndexer
 
             var airDates = new Dictionary<string, string>();
 
-            var matches = found
+            var matches = OnePerFile(found)
                 .Where(i => trusted.Contains(i.PeerId) && i.CandidateId != null)
                 .Where(i =>
                 {
@@ -218,7 +221,33 @@ namespace NzbDrone.Core.PeerIndexer
 
             var page = _items.GetPaged(spec);
 
-            return new CandidateResult { Total = page.TotalRecords, Items = page.Records.Where(i => i.CandidateId != null).ToList() };
+            // Copies that fall on the same page are shown once. The count is of every copy.
+            return new CandidateResult { Total = page.TotalRecords, Items = OnePerFile(page.Records.Where(i => i.CandidateId != null)).ToList() };
+        }
+
+        public List<PeerCatalogItem> Copies(string blake3)
+        {
+            if (blake3 == null)
+            {
+                return new List<PeerCatalogItem>();
+            }
+
+            var trusted = TrustedPeerIds();
+
+            return _items.FindByBlake3(blake3).Where(i => trusted.Contains(i.PeerId) && i.CandidateId != null).ToList();
+        }
+
+        // The same file offered by several trusted nodes is one release to the Arr app, as one
+        // release is one release however many indexers list it. The copy shown is always the same
+        // one while the same nodes offer it, so its GUID holds still. A transfer of it can carry
+        // on from any of the others. A file whose hash is not known yet stands alone.
+        private IEnumerable<PeerCatalogItem> OnePerFile(IEnumerable<PeerCatalogItem> items)
+        {
+            var trusted = TrustedPeerIds();
+
+            return items
+                .GroupBy(i => i.Blake3 != null && i.CandidateId != null && trusted.Contains(i.PeerId) ? i.Blake3 : $"{i.PeerId}/{i.Id}")
+                .Select(g => g.OrderBy(i => i.CandidateId, StringComparer.Ordinal).First());
         }
 
         // Sonarr asks in one of two ways, and which one depends on how the series is set up in
