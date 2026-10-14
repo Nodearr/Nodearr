@@ -90,7 +90,7 @@ Nodearr registers its Sonarr indexer with an anime category and with "anime stan
 ### Negative / trade-offs
 
 - ~~**Daily shows are not found.** Sonarr asks for them by air date, and peers are not told air dates.~~ They are now, see the amendments.
-- **Series with scene numbering can be misnumbered** when the file has no release name, because the built title uses TVDB numbering and Sonarr reads indexer titles as scene numbering for such series.
+- ~~**Series with scene numbering can be misnumbered** when the file has no release name, because the built title uses TVDB numbering and Sonarr reads indexer titles as scene numbering for such series.~~ Fixed, see the amendments.
 - **A built title cannot say PROPER or REPACK**, and says only what the peer's Arr app recorded. Custom formats that look for other words in a release name will not match it.
 - **Radarr's quality names are not unit tested.** Radarr's parser is not in this code base. The common ones are covered by the acceptance run.
 - **Regenerating the secret changes every GUID.** It lives in the database, so a restored backup keeps them.
@@ -112,7 +112,7 @@ Adding the Arr app to Nodearr directly avoids all three.
 
 - S7: the download client reads the candidate ID from the ticket and starts a transfer. Until then a grab is refused with a plain reason.
 - S7: the sending node checks every transfer request against its sharing rule (ADR 0014).
-- Later: ~~air dates in the offer for daily shows,~~ scene numbers for series that use them, and revision (PROPER, REPACK).
+- Later: ~~air dates in the offer for daily shows,~~ ~~scene numbers for series that use them,~~ and revision (PROPER, REPACK).
 
 ## Amendments
 
@@ -128,3 +128,20 @@ Adding the Arr app to Nodearr directly avoids all three.
   Checked with a real Sonarr 4.0.20: the receiving side's Sonarr is switched to daily for a series the sending side's Sonarr calls standard, searches, is answered with a title by day, grabs, and imports the file (`acceptance/Run-S7Transfers.ps1`).
 
   What this does not cover: a node running an older Nodearr sends no days, so its files are found by number only. After upgrading, a node's days are filled in at its next catalog refresh. Two episodes of one series that aired on the same day cannot be told apart by Sonarr itself. Scene numbering is still open.
+
+- 2026-10-13: **scene numbering.** For some series the scene numbers episodes differently from TVDB, and Sonarr keeps both: its own episodes are TVDB's, and each has a scene season and episode where XEM gives one. American Dad! is one: TVDB's 3x01 is the scene's 2x01. Read from Sonarr's own source and checked against a real Sonarr 4.0.20:
+  - Sonarr searches for such an episode by the scene's numbers, and also by TVDB's.
+  - Sonarr reads the numbers in an indexer's title as the scene's first. A title saying `S03E01` was read as TVDB's 4x01, a different episode. A title saying `S02E01` was read as 3x01, the right one.
+
+  So a built title with TVDB's numbers named the wrong episode. A search turned it down, and with RSS on Sonarr could have grabbed it as that other episode.
+
+  What changed:
+  - Nodearr reads each episode's scene season and episode from Sonarr when it imports the library.
+  - An offered file carries the scene's season and episode numbers, only where they differ from TVDB's. An offer for a library with none is exactly what it was, so its version does not change. A file whose episodes the scene puts in two seasons gets none, since one title cannot say both.
+  - The receiving node keeps them only when they fit the file: a sensible season, and one number for each episode.
+  - A built title uses the scene's numbers when there are any. So do the season and episode attributes in the feed. A release name is still used as it is, since it was named by the scene already.
+  - A search by number matches either numbering. Sonarr sends both, and a file found by the numbering Sonarr did not mean is turned down when Sonarr reads its title.
+
+  Checked by unit tests, and by hand against real Sonarrs: node A's Sonarr held American Dad! 3x01 under a plain name and 3x02 under a release name, and node B's Sonarr searched for each. Both were found and mapped to the right episode. The only rejection was the test file's size.
+
+  A node's files get scene numbers at its next library refresh after upgrading. A node still on an older Nodearr sends none, and its files are titled by TVDB's numbers as before.

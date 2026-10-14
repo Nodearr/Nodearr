@@ -78,7 +78,7 @@ What S5 left for later slices:
 What S6 left for later slices:
 
 - A grab reaches Nodearr's download client, which is still the S1 stub and refuses it with a plain reason. Transfers are S7.
-- ~~Daily shows are not found, because peers are not told air dates.~~ Done afterwards, see below. Series with scene numbering can be misnumbered when a file has no release name.
+- ~~Daily shows are not found, because peers are not told air dates.~~ Done afterwards, see below. ~~Series with scene numbering can be misnumbered when a file has no release name.~~ Fixed afterwards, see below.
 - Nodearr-side profile filtering (decision 2, "UI-only") was not built. The peer catalog page shows the title the Arr apps will see, and the Arr apps do the judging.
 - The S1 spike harness no longer runs on later branches, because the indexer half of the stub is gone. The acceptance scripts now fill their test libraries by having the Arr apps import files directly.
 
@@ -118,6 +118,7 @@ Then a settings page. ADR 0019. Branch `v1/s10-node-settings`.
 - Shared files are hashed in the background, and the hashes are kept, so a request does not wait while a large file is read. The Sharing page shows how far it has got (ADR 0016, amendments). Branch `v1/s24-background-hashing`.
 - A large library was measured: 66,000 files in a real database (ADR 0014, amendments). Building and exchanging the offer, storing a peer's catalog and the indexer were all well under a second, apart from storing a whole new catalog at 6 s. A file request rebuilt the whole offer to check one file, which took 0.65 s. It now checks the file directly, in 7 ms. A hashing pass found each shared file with its own query, which took 5 s. It now takes under 1 s. What remains: a changed offer is sent whole, 36 MB at this size, and Sonarr import, at two requests per series, was not measured against a real Sonarr that large. Branch `v1/s25-large-library`.
 - A file that fails verification is tried again from nothing, and the sending node forgets the hash it sent, so a file that changed without its size or modified time changing costs one attempt and not the release (ADR 0016, amendments). Branch `v1/s26-verification-retry`.
+- Series the scene numbers differently from TVDB are titled and matched by the scene's numbers, which is how Sonarr reads them. Before, a built title named the wrong episode: checked against a real Sonarr with American Dad! (ADR 0015, amendments). Branch `v1/s27-scene-numbers`.
 - Settings > Node holds the node's name, relay, UDP port, port mapping, wait for a direct route, download folder and upload limit. Bad values are refused field by field. A setting given in the environment is shown and cannot be changed. A change that needs it restarts the transport and nothing else, and the node keeps its identity and its trust (`acceptance/Run-NodeSettings.ps1`).
 
 ## Where V1 stands
