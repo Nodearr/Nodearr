@@ -128,7 +128,7 @@ Nodearr reports paths as it sees them. When the Arr app sees the download folder
 
 ### Negative / trade-offs
 
-- **Hashing is on demand.** The plan called for hashing in the background as well. Here the first request for a file pays for hashing it, and the receiver waits. BLAKE3 is fast, but a very large file on a slow disk will take a while to start.
+- ~~**Hashing is on demand.** The plan called for hashing in the background as well. Here the first request for a file pays for hashing it, and the receiver waits. BLAKE3 is fast, but a very large file on a slow disk will take a while to start.~~ Done afterwards, see the amendments.
 - **Checking permission rebuilds the peer's whole offer** for each request. Fine for now. A large library will want a direct check.
 - ~~**Unsharing does not stop a transfer already under way.** Ending trust does.~~ Done afterwards, see the amendments.
 - **A failed verification is not tried again**, though a file that changed while it was being sent would pass the second time.
@@ -138,10 +138,19 @@ Nodearr reports paths as it sees them. When the Arr app sees the download folder
 ## Follow-up work
 
 - S8: package the sidecar, the image and the shared `/downloads` layout, and run all of this between two machines on different networks, including a transfer with no direct route.
-- Later: background hashing.
+- ~~Later: background hashing.~~ Done, see the amendments.
 
 ## Amendments
 
 - 2026-10-11: **uploads are shown.** The sidecar keeps a record of each file it sends, from the moment Nodearr allows it: who to, which file, how far along, and how it ended. Nodearr reads that once a second, and the Transfers page has a "Sending" section beside "Receiving", updated live. An upload ends as sent, stopped (the other side went away or cancelled), cut because trust ended, or failed for want of a direct route. A request that was refused never becomes an upload and is not listed. It is logged. The list is kept in memory: it holds the last hundred finished uploads and starts empty when Nodearr starts. Nothing is decided here. Whether a node may have a file is settled before the upload begins.
 - 2026-10-11 (ADR 0019): the upload limit and the download folder have a settings page.
 - 2026-10-13: **unsharing stops what is already being sent.** Whenever sharing changes, and whenever the library is refreshed from an Arr app, the sending node asks the sharing rule again about every upload under way, including one still being hashed. An upload of a file the receiving node is no longer offered is cut at once with `NotAuthorized`, the same name a refused request gets. The receiving node fails the transfer without trying again, removes what had arrived, and tells the Arr app, which blocklists the release. The sending node lists the upload as failed with `NotAuthorized`. An upload to a node that is no longer trusted is cut too, as `Revoked`, in case ending trust did not reach the transport. Whether the file can still be read is not asked again: the transport already has it open. The sidecar has one more call for this, `POST /v1/uploads/{id}/stop`. Checked by unit tests and by a new step in `acceptance/Run-S7Transfers.ps1`, where node A hides the series while an episode is on its way.
+- 2026-10-13: **files are hashed in the background** (plan decision 3). The sending node works out the hash of every file it offers to at least one trusted node before anyone asks for it, so a request no longer waits while a large file is read.
+  - The sidecar still does the hashing, with the same code as before, through a new call, `POST /v1/hash`. Nodearr asks for one file at a time, newest first.
+  - A hash is kept in Nodearr's database (`FileHashes`) with the file's size and modified time as the sidecar saw them, in nanoseconds. It is kept while the file is shared, and for 30 days after.
+  - Nodearr hands the kept hash back with every grant. The sidecar uses it only while the file's size and modified time still match, and otherwise hashes the file there and then, as before. So a hash survives restarts of Nodearr and of the sidecar, and a file is read again only when it changes.
+  - A request and the background never read the same file at once. Whichever comes second waits for the first and takes its answer.
+  - A file with no hash yet waits while this node is sending anything, so the background reading does not slow an upload. A file already hashed is checked even then, since checking reads nothing.
+  - A pass runs shortly after Nodearr starts, when the library is refreshed, when sharing changes, when a node becomes trusted, and otherwise every six hours, which finds files changed in place. If the sidecar is not running, the pass stops and is tried again a minute later.
+  - The Sharing page has a "Preparing Shared Files" section showing how many shared files are ready, which file is being read, and whether hashing is waiting for an upload. `GET /api/v5/sharing/hashing` gives the same.
+  - What a wrong stored hash would do: the sidecar trusts it while size and modified time match, so a file changed without either changing would be sent with a hash it does not match. The receiver would fail it with `VerificationFailed` and not import it. Nothing wrong reaches a library.
