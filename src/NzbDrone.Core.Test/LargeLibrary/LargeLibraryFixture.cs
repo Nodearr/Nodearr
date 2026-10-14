@@ -145,6 +145,27 @@ namespace NzbDrone.Core.Test.LargeLibrary
 
         private static string Sep => OsInfo.IsWindows ? "\\" : "/";
 
+        private static byte[] Gzip(byte[] data)
+        {
+            using var output = new System.IO.MemoryStream();
+
+            using (var gzip = new System.IO.Compression.GZipStream(output, System.IO.Compression.CompressionLevel.Optimal))
+            {
+                gzip.Write(data);
+            }
+
+            return output.ToArray();
+        }
+
+        private static byte[] Brotli(byte[] data)
+        {
+            var output = new byte[System.IO.Compression.BrotliEncoder.GetMaxCompressedLength(data.Length)];
+
+            System.IO.Compression.BrotliEncoder.TryCompress(data, output, out var written, 4, 22);
+
+            return output[..written];
+        }
+
         [Test]
         public void measure()
         {
@@ -158,19 +179,29 @@ namespace NzbDrone.Core.Test.LargeLibrary
 
             var exchange = Mocker.Resolve<IOfferExchange>();
             var bytes = 0L;
+            var serialized = new List<byte[]>();
             var pages = Time("answer every page of a catalog request, serialized", () =>
             {
                 var first = exchange.Answer(_bob, new PeerMessage { Type = PeerMessageTypes.Catalog });
-                bytes += first.ToBytes().Length;
+                serialized.Add(first.ToBytes());
 
                 for (var page = 1; page < first.CatalogTotalPages; page++)
                 {
-                    bytes += exchange.Answer(_bob, new PeerMessage { Type = PeerMessageTypes.Catalog, CatalogPage = page, CatalogVersion = first.CatalogVersion }).ToBytes().Length;
+                    serialized.Add(exchange.Answer(_bob, new PeerMessage { Type = PeerMessageTypes.Catalog, CatalogPage = page, CatalogVersion = first.CatalogVersion }).ToBytes());
                 }
 
                 return first.CatalogTotalPages;
             });
+            bytes = serialized.Sum(p => (long)p.Length);
             _report.Add($"           {offer.Items.Count:N0} files offered, {pages} pages, {bytes / 1024.0 / 1024.0:N1} MB in all, {bytes / pages / 1024.0:N0} KB a page");
+
+            // What compressing each page on its own would save. Measured only: pages are not compressed.
+            foreach (var (name, compress) in new (string, Func<byte[], byte[]>)[] { ("gzip", Gzip), ("brotli, quality 4", Brotli) })
+            {
+                var watch = Stopwatch.StartNew();
+                var compressed = serialized.Sum(p => (long)compress(p).Length);
+                _report.Add($"{watch.Elapsed.TotalMilliseconds,10:N0} ms  compress every page with {name}: {compressed / 1024.0 / 1024.0:N1} MB, {(double)bytes / compressed:N1} times smaller");
+            }
 
             // Background hashing, once every file has a hash: one pass only checks.
             var hasher = Mocker.Resolve<FileHasher>();
