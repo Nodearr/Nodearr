@@ -160,3 +160,4 @@ Nodearr reports paths as it sees them. When the Arr app sees the download folder
   - The Arr app hears of a failure only if every attempt fails. A file that never matches still ends as `VerificationFailed` and is blocklisted.
   - Checked by unit tests, and by a step in `acceptance/Run-S7Transfers.ps1`: one byte of an episode on node A is changed in place, its modified time set back, and node B grabs it. The first attempt fails verification, the second brings the changed file, and Sonarr imports it with no failure in its history.
   - A trusted node can make the sending node read a file again by claiming a mismatch. That costs reading the file once more, and nothing else.
+- 2026-10-14 (ADR 0014): a kept hash also records which offered file it is for, so an offer can carry the hash without looking for the file on disk.

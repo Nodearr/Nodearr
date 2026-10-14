@@ -60,6 +60,7 @@ Owner decisions made after the plan was written:
   - Nodearr hears of new, upgraded and deleted files from Sonarr and Radarr through a webhook connection, which it adds itself as it adds its indexer and download client. It is never set up by hand.
   - The full import from each Arr app runs every 12 hours, as Sonarr's Refresh Series does.
   - Removals are still pushed to peers at once, so unsharing reaches them in seconds.
+  - The same work puts each file's BLAKE3 hash in the offer, so a node can tell when two peers hold the same bytes: identical copies show as one result in the Arr apps, and a transfer that fails from one peer can carry on from another that holds the same file. Fetching parts from several peers at once is later, and only if identical copies turn out to be common.
 - Release builds will eventually match Sonarr's and Radarr's platforms. Not a focus yet.
 
 What S3 left for later slices:
@@ -128,6 +129,7 @@ Then a settings page. ADR 0019. Branch `v1/s10-node-settings`.
 - A file that fails verification is tried again from nothing, and the sending node forgets the hash it sent, so a file that changed without its size or modified time changing costs one attempt and not the release (ADR 0016, amendments). Branch `v1/s26-verification-retry`.
 - Series the scene numbers differently from TVDB are titled and matched by the scene's numbers, which is how Sonarr reads them. Before, a built title named the wrong episode: checked against a real Sonarr with American Dad! (ADR 0015, amendments). Branch `v1/s27-scene-numbers`.
 - Sharing is by series, season or episode, as Sonarr monitors, on share lists and the Hidden list alike. A file of several episodes is shared only when all of them are (ADR 0014, amendments). Branch `v1/s28-per-episode-sharing`.
+- A node that holds a peer's catalog is sent only what changed. Each offered file carries a fingerprint and, where worked out, its BLAKE3 hash. On 66,000 files one changed episode costs 809 bytes instead of 38 MB (ADR 0014, amendments). Branch `v1/s29-catalog-changes`. Still to come from the same decisions: the Catalog Sync Interval and removals pushed at once, the Sonarr and Radarr webhook, the full import every 12 hours, and identical copies shown once and used to carry on a failed transfer.
 - Settings > Node holds the node's name, relay, UDP port, port mapping, wait for a direct route, download folder and upload limit. Bad values are refused field by field. A setting given in the environment is shown and cannot be changed. A change that needs it restarts the transport and nothing else, and the node keeps its identity and its trust (`acceptance/Run-NodeSettings.ps1`).
 
 ## Where V1 stands

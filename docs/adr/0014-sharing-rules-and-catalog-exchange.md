@@ -115,7 +115,7 @@ The marks are worked out again whenever the local catalog is refreshed.
 
   The rebuild described above is cheap enough, and was left alone. Checking a single request is no longer done by building the whole offer. It reads the file's own rows and asks the same rule, and a test holds it to the same answer as the offer for every file, whatever is shared and whatever state the catalog is in.
 
-  What was not changed: a changed offer is sent whole. At this size that is 36 MB to each trusted node, each time anything shared changes, which with new episodes arriving daily is a few times a day. A page is far under the 4 MB message limit. Sending only what changed, or compressing pages, is the next step if that matters.
+  What was not changed: a changed offer is sent whole (since changed, see the amendment of 2026-10-14 on catalog changes). At this size that is 36 MB to each trusted node, each time anything shared changes, which with new episodes arriving daily is a few times a day. A page is far under the 4 MB message limit. Sending only what changed, or compressing pages, is the next step if that matters.
 
 - 2026-10-14: **sharing by season and by episode, the way Sonarr monitors.** The owner's direction was to work with the Arr ecosystem: in Sonarr a whole series, a season or single episodes can be monitored, so a share list, and the Hidden list, can now hold any of those.
   - A whole series covers every episode, including those that arrive later. A season covers every episode in it, including later ones. An episode covers itself. A movie is always whole.
@@ -124,6 +124,14 @@ The marks are worked out again whenever the local catalog is refreshed.
   - A season or episode under a whole series on the same list adds nothing, and is dropped when the list is saved. Existing lists hold whole series and movies, and mean what they meant.
   - The Sharing page opens a series into its seasons and episodes. The boxes work like Sonarr's monitor toggles: a partly ticked series or season shows as such, and unticking part of something ticked whole keeps the rest ticked one level down. Episodes with no file yet are listed too, and marked.
   - Checked by unit tests, by `acceptance/Run-S5Sharing.ps1`, which now shares one episode, then a season, and hides one episode, then a season, from a list that shares the whole series, and by hand on the page against a real Sonarr's Pingu, 162 episodes in 7 seasons.
+
+- 2026-10-14: **only what changed is sent, and each file carries its hash.** The owner's direction: a changed catalog is sent as its changes, not whole, and each file's hash goes in the offer so a node can tell when two peers hold the same bytes.
+  - Each offered file has a fingerprint, a hash of everything the offer says about it. The catalog's version is a hash of every file's ID and fingerprint, nothing else. A node that kept each file's fingerprint can therefore work out the version of what it holds, and check it against what the peer says. The version used to be a hash of the whole offer. Changing how it is made costs every node one full fetch after upgrading.
+  - An offered file carries its BLAKE3 hash where the sending node has worked it out (ADR 0016, background hashing), and only if the hash was worked out for a file of the size the Arr app reports. The hash is part of the fingerprint, so a file hashed later reaches peers as a change.
+  - The sending node keeps a record for each peer, in its database: the version it last sent and each file's fingerprint. A node that says it can take changes, and holds the version that record names, is sent only the files added or changed since and the IDs of the files removed. The record survives restarts.
+  - The whole catalog is sent instead when the asker is an older node, when the sending node has no record or the asker holds another version, and when more than half of a catalog of more than one page changed, since that is about as large.
+  - The receiving node applies the change, then works out the version of what it holds and counts it. If either does not match what the peer said, it fetches the whole catalog at once. A whole catalog that does not add up is kept, since it is what the peer sent, and the next sync fetches the whole of it again.
+  - Measured with `LargeLibraryFixture`, 66,000 files: one upgraded episode reached the other node as 809 bytes in about a second, where the whole catalog is 38 MB. Checked by a round-trip test of both ends through the bytes they send, and by `acceptance/Run-S5Sharing.ps1`, where hiding a series reaches the peer as two removals and nothing else.
 
 ## Follow-up work
 
