@@ -161,3 +161,12 @@ Nodearr reports paths as it sees them. When the Arr app sees the download folder
   - Checked by unit tests, and by a step in `acceptance/Run-S7Transfers.ps1`: one byte of an episode on node A is changed in place, its modified time set back, and node B grabs it. The first attempt fails verification, the second brings the changed file, and Sonarr imports it with no failure in its history.
   - A trusted node can make the sending node read a file again by claiming a mismatch. That costs reading the file once more, and nothing else.
 - 2026-10-14 (ADR 0014): a kept hash also records which offered file it is for, so an offer can carry the hash without looking for the file on disk.
+- 2026-10-14: **a transfer carries on from another node that has the same file.** A transfer records the hash its file was offered with. When the node it is coming from fails it for a reason another node could avoid, it moves at once to another trusted node that offers a file with the same hash and size:
+  - The reasons are no direct route, a direct path lost, a lost connection, a node that cannot be reached, a file no longer shared or no longer there, trust ended in either direction, or a failure the transport could not name. A file that did not match its hash is tried again from the same node first, since that node must work its hash out again. A disk error here is no node's doing.
+  - What has arrived is kept, and the other node carries on from it, because it is the start of the same bytes. The hash checked at the end is the same.
+  - A node that was reached directly at its last connection check is tried first. Each node is moved to once and has its own three attempts, so a transfer can never go back and forth.
+  - The queue says why, and where it went: "... Carrying on from Bob, which has the same file." The Arr app hears of a failure only when every copy has failed.
+  - An attempt that failed is put down to the node it was with, so the connection checks look at the right node.
+  - Checked by unit tests, and by `acceptance/Run-IdenticalCopies.ps1` with three real nodes: the node B was fetching from was stopped at 4.2 MB, and the transfer carried on from the other node at 4.5 MB, not from the start. Sonarr imported the right file and recorded no failure.
+  - Fetching parts of one file from several nodes at once is not done. The owner left it for when identical copies turn out to be common.
+

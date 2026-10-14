@@ -145,3 +145,12 @@ Adding the Arr app to Nodearr directly avoids all three.
   Checked by unit tests, and by hand against real Sonarrs: node A's Sonarr held American Dad! 3x01 under a plain name and 3x02 under a release name, and node B's Sonarr searched for each. Both were found and mapped to the right episode. The only rejection was the test file's size.
 
   A node's files get scene numbers at its next library refresh after upgrading. A node still on an older Nodearr sends none, and its files are titled by TVDB's numbers as before.
+
+- 2026-10-14: **the same file from several nodes is one result.** Files carry their BLAKE3 hash now (ADR 0014, amendments), so a node can tell when trusted peers hold the very same bytes. They are one release to the Arr app, as one release is one release however many indexers list it.
+  - In a search, copies with the same hash from trusted nodes are shown once. The copy shown is the one with the lowest candidate ID, so it is the same one, with the same GUID, as long as the same nodes offer it.
+  - In the list of the newest, which is paged in the database, copies that fall on the same page are shown once.
+  - A file whose hash its node has not worked out yet stands alone, as before.
+  - A grab of the shown copy can carry on from any of the others (ADR 0016, amendments). So if that file fails in the end, every copy has failed, and the Arr app is right to blocklist it.
+  - The Peer Catalog page and its API show each file's hash, so the owner can see which nodes hold identical copies.
+  - Checked by unit tests and by `acceptance/Run-IdenticalCopies.ps1`: with the same episode on two nodes, B's Sonarr was shown one result and approved it.
+
