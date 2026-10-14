@@ -114,7 +114,8 @@ pub(crate) enum IncomingKind {
 
 pub(crate) enum Reply {
     Body(Vec<u8>),
-    File(PathBuf),
+    /// Where the file is, and its hash if Nodearr already knows it.
+    File(PathBuf, Option<transfer::FileHash>),
     Reject(Option<String>),
 }
 
@@ -170,6 +171,7 @@ async fn main() -> Result<()> {
         .route("/v1/transfers/{id}", delete(cancel_transfer))
         .route("/v1/uploads", get(list_uploads))
         .route("/v1/uploads/{id}/stop", post(stop_upload))
+        .route("/v1/hash", post(hash_file))
         .route("/v1/disconnect", post(disconnect))
         .layer(middleware::from_fn_with_state(app.clone(), require_token))
         .with_state(app.clone());
@@ -546,6 +548,8 @@ struct AnswerBody {
     body: Option<String>,
     /// The answer to a file request: where the file is on this machine.
     path: Option<String>,
+    /// The file's hash, if Nodearr worked it out before. Used only if the file has not changed.
+    hash: Option<transfer::FileHash>,
     #[serde(default)]
     reject: bool,
     /// Why a file request was refused: NotAuthorized, Revoked or NotFound.
@@ -560,7 +564,7 @@ async fn answer_incoming(State(app): State<Arc<App>>, UrlPath(id): UrlPath<u64>,
     let reply_with = if answer.reject {
         Reply::Reject(answer.reason)
     } else if let Some(path) = answer.path {
-        Reply::File(PathBuf::from(path))
+        Reply::File(PathBuf::from(path), answer.hash)
     } else {
         match answer.body.map(|b| BASE64.decode(b)) {
             Some(Ok(body)) => Reply::Body(body),
@@ -613,6 +617,26 @@ async fn cancel_transfer(State(app): State<Arc<App>>, UrlPath(id): UrlPath<Strin
         StatusCode::NO_CONTENT
     } else {
         StatusCode::NOT_FOUND
+    }
+}
+
+#[derive(Deserialize)]
+struct HashBody {
+    path: String,
+    /// What Nodearr was told last time. Answered from this, without reading the file, when the
+    /// file's size and modified time have not changed.
+    known: Option<transfer::FileHash>,
+}
+
+/// Works out a file's hash ahead of any request for it. Nodearr calls this one file at a time.
+async fn hash_file(State(app): State<Arc<App>>, Json(body): Json<HashBody>) -> Response {
+    let path = PathBuf::from(body.path);
+    if let Some(known) = body.known {
+        app.transfers.remember(&path, known);
+    }
+    match app.transfers.hash(&path).await {
+        Ok(hashed) => Json(hashed).into_response(),
+        Err(err) => (StatusCode::NOT_FOUND, format!("{err:#}")).into_response(),
     }
 }
 

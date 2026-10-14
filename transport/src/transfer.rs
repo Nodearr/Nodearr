@@ -109,10 +109,18 @@ struct Download {
     abort: AbortHandle,
 }
 
-struct CachedHash {
-    size: u64,
-    modified: SystemTime,
-    blake3: String,
+/// A file's BLAKE3 hash, and the size and modified time it was worked out for. Nodearr keeps these
+/// and hands them back with a grant, so a file is not read twice for the same version of it.
+#[derive(Serialize, Deserialize, Clone)]
+pub struct FileHash {
+    pub size: u64,
+    /// Nanoseconds since 1970, as this machine's filesystem reports it.
+    pub modified_ns: u64,
+    pub blake3: String,
+}
+
+fn modified_ns(modified: SystemTime) -> u64 {
+    modified.duration_since(SystemTime::UNIX_EPOCH).map(|d| d.as_nanos() as u64).unwrap_or(0)
 }
 
 pub struct Transfers {
@@ -123,7 +131,10 @@ pub struct Transfers {
     uploads: Mutex<HashMap<u64, (EndpointId, Connection)>>,
     upload_states: Mutex<HashMap<u64, UploadState>>,
     next_upload: AtomicU64,
-    hashes: Mutex<HashMap<PathBuf, CachedHash>>,
+    hashes: Mutex<HashMap<PathBuf, FileHash>>,
+    /// One lock for each file being hashed, so that a request and the background pass never read
+    /// the same file at once. The second waits and takes the first one's answer.
+    hashing: Mutex<HashMap<PathBuf, Arc<tokio::sync::Mutex<()>>>>,
 }
 
 impl Transfers {
@@ -137,6 +148,7 @@ impl Transfers {
             // Starts from the clock, so that an upload after a restart is not mistaken for one before it.
             next_upload: AtomicU64::new(SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(1)),
             hashes: Mutex::new(HashMap::new()),
+            hashing: Mutex::new(HashMap::new()),
         }
     }
 
@@ -216,25 +228,47 @@ impl Transfers {
         true
     }
 
+    /// Takes a hash Nodearr kept from before. It is used only while the file's size and modified
+    /// time are still the ones it was worked out for.
+    pub fn remember(&self, path: &Path, known: FileHash) {
+        self.hashes.lock().unwrap().insert(path.to_path_buf(), known);
+    }
+
     /// The size and BLAKE3 hash of a file, worked out once for each version of it.
-    async fn hash(&self, path: &Path) -> Result<(u64, String)> {
+    pub async fn hash(&self, path: &Path) -> Result<FileHash> {
+        let lock = self.hashing.lock().unwrap().entry(path.to_path_buf()).or_default().clone();
+        let result = {
+            let _held = lock.lock().await;
+            self.hash_now(path).await
+        };
+
+        // Nobody else is waiting on this file.
+        let mut hashing = self.hashing.lock().unwrap();
+        if Arc::strong_count(&lock) == 2 {
+            hashing.remove(path);
+        }
+        result
+    }
+
+    async fn hash_now(&self, path: &Path) -> Result<FileHash> {
         let metadata = tokio::fs::metadata(path).await?;
         if !metadata.is_file() {
             bail!("not a file");
         }
         let size = metadata.len();
-        let modified = metadata.modified()?;
+        let modified = modified_ns(metadata.modified()?);
 
         if let Some(cached) = self.hashes.lock().unwrap().get(path) {
-            if cached.size == size && cached.modified == modified {
-                return Ok((size, cached.blake3.clone()));
+            if cached.size == size && cached.modified_ns == modified {
+                return Ok(cached.clone());
             }
         }
 
         let owned = path.to_path_buf();
         let blake3 = tokio::task::spawn_blocking(move || hash_start(&owned, u64::MAX)).await??.finalize().to_hex().to_string();
-        self.hashes.lock().unwrap().insert(path.to_path_buf(), CachedHash { size, modified, blake3: blake3.clone() });
-        Ok((size, blake3))
+        let hashed = FileHash { size, modified_ns: modified, blake3 };
+        self.hashes.lock().unwrap().insert(path.to_path_buf(), hashed.clone());
+        Ok(hashed)
     }
 }
 
@@ -387,7 +421,12 @@ async fn send_file(transfers: &Transfers, conn: &Connection, remote: EndpointId,
         .map_err(|_| anyhow!("shutting down"))?;
 
     let path = match tokio::time::timeout(Duration::from_secs(30), answer).await {
-        Ok(Ok(Reply::File(path))) => path,
+        Ok(Ok(Reply::File(path, known))) => {
+            if let Some(known) = known {
+                transfers.remember(&path, known);
+            }
+            path
+        }
         Ok(Ok(Reply::Reject(reason))) => {
             let (code, name) = refusal(reason.as_deref());
             conn.close(VarInt::from_u32(code), name.as_bytes());
@@ -415,8 +454,8 @@ async fn send_file(transfers: &Transfers, conn: &Connection, remote: EndpointId,
         },
     );
 
-    // The hash is fixed before any data moves.
-    let (size, blake3) = match transfers.hash(&path).await {
+    // The hash is fixed before any data moves. Usually it was worked out in the background already.
+    let FileHash { size, blake3, .. } = match transfers.hash(&path).await {
         Ok(hashed) => hashed,
         Err(err) => {
             transfers.upload_failed(upload, "NotFound", format!("{err:#}"));

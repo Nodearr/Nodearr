@@ -43,6 +43,17 @@ namespace NzbDrone.Core.Test.Transfers
         }
 
         [Test]
+        public void a_grant_should_carry_the_hash_worked_out_in_the_background()
+        {
+            GivenPeer(PeerState.Trusted);
+            GivenOffered(true);
+            GivenLocated(new LocatedFile { LocalPath = "/library/tv/Pingu/e1.mkv", Readable = true });
+            Mocker.GetMock<IFileHasher>().Setup(h => h.Known("/library/tv/Pingu/e1.mkv")).Returns(new HashedFile { Size = 100, ModifiedNs = 5, Blake3 = "abc" });
+
+            Subject.Resolve("bob", File).Hash.Should().Match<HashedFile>(h => h.Blake3 == "abc" && h.Size == 100 && h.ModifiedNs == 5);
+        }
+
+        [Test]
         public void a_node_nobody_knows_should_be_refused_before_anything_is_looked_up()
         {
             Subject.Resolve("stranger", File).Should().Match<FileGrant>(g => g.Path == null && g.Refusal == FileSourceService.NotAuthorized);

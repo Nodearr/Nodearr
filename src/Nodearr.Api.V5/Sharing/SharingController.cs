@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Nodearr.Http;
 using Nodearr.Http.REST;
 using NzbDrone.Core.Sharing;
+using NzbDrone.Core.Transfers;
 
 namespace Nodearr.Api.V5.Sharing;
 
@@ -53,14 +54,42 @@ public class ShareableTitleResource : TitleKeyResource
     public int Files { get; set; }
 }
 
+public class HashingStatusResource
+{
+    public int Shared { get; set; }
+    public int Hashed { get; set; }
+    public string? Current { get; set; }
+    public bool WaitingForUploads { get; set; }
+    public DateTime? LastPass { get; set; }
+}
+
 [V5ApiController("sharing")]
 public class SharingController : Controller
 {
     private readonly ISharingService _sharingService;
+    private readonly IFileHasher _hasher;
 
-    public SharingController(ISharingService sharingService)
+    public SharingController(ISharingService sharingService, IFileHasher hasher)
     {
         _sharingService = sharingService;
+        _hasher = hasher;
+    }
+
+    // How far the background hashing of shared files has got.
+    [HttpGet("hashing")]
+    [Produces("application/json")]
+    public Ok<HashingStatusResource> GetHashing()
+    {
+        var status = _hasher.Status();
+
+        return TypedResults.Ok(new HashingStatusResource
+        {
+            Shared = status.Shared,
+            Hashed = status.Hashed,
+            Current = status.Current,
+            WaitingForUploads = status.WaitingForUploads,
+            LastPass = status.LastPass
+        });
     }
 
     [HttpGet("lists")]

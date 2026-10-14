@@ -297,6 +297,31 @@ namespace NzbDrone.Core.Nodes.Transport
             Send(client => client.DeleteAsync("/v1/transfers/" + Uri.EscapeDataString(id)), allowNotFound: true);
         }
 
+        public HashedFile Hash(string path, HashedFile known)
+        {
+            var client = RequireClient();
+
+            try
+            {
+                using var response = client.PostAsJsonAsync("/v1/hash", new HashBody { Path = path, Known = known }, JsonOptions, _shutdown.Token).GetAwaiter().GetResult();
+
+                if (response.StatusCode == HttpStatusCode.NotFound)
+                {
+                    _logger.Debug("Unable to hash {0}: {1}", path, response.Content.ReadAsStringAsync().GetAwaiter().GetResult());
+
+                    return null;
+                }
+
+                response.EnsureSuccessStatusCode();
+
+                return response.Content.ReadFromJsonAsync<HashedFile>(JsonOptions).GetAwaiter().GetResult();
+            }
+            catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
+            {
+                throw new TransportException(TransportFailure.Unavailable, "The peer transport is not responding: " + ex.Message);
+            }
+        }
+
         public void StopUpload(string id, string reason)
         {
             // 404 is fine: the upload had already ended.
@@ -527,7 +552,7 @@ namespace NzbDrone.Core.Nodes.Transport
                 {
                     var grant = _fileSource?.Invoke(incoming.RemoteNodeId, incoming.File);
 
-                    answer = grant?.Path != null ? new AnswerBody { Path = grant.Path } : new AnswerBody { Reject = true, Reason = grant?.Refusal };
+                    answer = grant?.Path != null ? new AnswerBody { Path = grant.Path, Hash = grant.Hash } : new AnswerBody { Reject = true, Reason = grant?.Refusal };
                 }
                 else
                 {
@@ -694,6 +719,9 @@ namespace NzbDrone.Core.Nodes.Transport
 
             [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
             public string Path { get; set; }
+
+            [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+            public HashedFile Hash { get; set; }
             public bool Reject { get; set; }
 
             [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -737,6 +765,14 @@ namespace NzbDrone.Core.Nodes.Transport
         {
             public string Kind { get; set; }
             public string Message { get; set; }
+        }
+
+        private class HashBody
+        {
+            public string Path { get; set; }
+
+            [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+            public HashedFile Known { get; set; }
         }
 
         private class StopUploadBody

@@ -58,16 +58,31 @@ namespace NzbDrone.Core.Nodes.Transport
         public string FailureMessage { get; set; }
     }
 
+    // A file's BLAKE3 hash, and the version of the file it belongs to, as the transport saw it.
+    public class HashedFile
+    {
+        public long Size { get; set; }
+
+        // Nanoseconds since 1970, as the transport's filesystem reports it. Only the transport
+        // compares it, so it never has to agree with .NET's idea of the time.
+        public long ModifiedNs { get; set; }
+        public string Blake3 { get; set; }
+    }
+
     // What this node answers when another node asks for a file.
     public class FileGrant
     {
         // Where the file is on this machine. Null when the request is refused.
         public string Path { get; set; }
 
+        // The hash worked out earlier, if there is one. The transport uses it only if the file has
+        // not changed since, and otherwise hashes the file before sending.
+        public HashedFile Hash { get; set; }
+
         // NotAuthorized, Revoked or NotFound.
         public string Refusal { get; set; }
 
-        public static FileGrant Allow(string path) => new() { Path = path };
+        public static FileGrant Allow(string path, HashedFile hash = null) => new() { Path = path, Hash = hash };
         public static FileGrant Refuse(string reason) => new() { Refusal = reason };
     }
 
@@ -94,5 +109,10 @@ namespace NzbDrone.Core.Nodes.Transport
         // Cuts every file this node is sending to another node.
         void Disconnect(string nodeId);
         void SetSource(FileSourceHandler handler);
+
+        // Works out a file's hash. Given what it was told last time, the transport answers without
+        // reading the file if the file has not changed. Null when the file cannot be read. This can
+        // take as long as reading the whole file.
+        HashedFile Hash(string path, HashedFile known);
     }
 }

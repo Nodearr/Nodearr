@@ -58,6 +58,14 @@ export interface PeerCatalogItem {
   dateAdded?: string;
 }
 
+export interface HashingStatus {
+  shared: number;
+  hashed: number;
+  current?: string;
+  waitingForUploads: boolean;
+  lastPass?: string;
+}
+
 const LISTS_PATH = '/sharing/lists';
 const TITLES_PATH = '/sharing/titles';
 const PEERS_PATH = '/nodes/peers';
@@ -87,6 +95,12 @@ export const useShareLists = () =>
 
 export const useShareableTitles = () =>
   useApiQuery<ShareableTitle[]>({ path: TITLES_PATH });
+
+export const useHashingStatus = () =>
+  useApiQuery<HashingStatus>({
+    path: '/sharing/hashing',
+    queryOptions: { refetchInterval: 5000 },
+  });
 
 export const usePeerCatalogSummaries = () =>
   useApiQuery<PeerCatalogSummary[]>({ path: '/catalog/peers' });

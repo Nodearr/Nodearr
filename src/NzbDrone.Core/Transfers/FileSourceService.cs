@@ -34,14 +34,16 @@ namespace NzbDrone.Core.Transfers
         private readonly ISharingService _sharing;
         private readonly ICatalogFileLocator _locator;
         private readonly IFileTransport _transport;
+        private readonly IFileHasher _hasher;
         private readonly Logger _logger;
 
-        public FileSourceService(IPeerRepository peers, ISharingService sharing, ICatalogFileLocator locator, IFileTransport transport, Logger logger)
+        public FileSourceService(IPeerRepository peers, ISharingService sharing, ICatalogFileLocator locator, IFileTransport transport, IFileHasher hasher, Logger logger)
         {
             _peers = peers;
             _sharing = sharing;
             _locator = locator;
             _transport = transport;
+            _hasher = hasher;
             _logger = logger;
         }
 
@@ -91,7 +93,7 @@ namespace NzbDrone.Core.Transfers
 
             _logger.Info("Sending {0} to {1}", located.LocalPath, peer.Name);
 
-            return FileGrant.Allow(located.LocalPath);
+            return FileGrant.Allow(located.LocalPath, _hasher.Known(located.LocalPath));
         }
 
         // Only who may have the file is asked again. Whether it can still be read is the

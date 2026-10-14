@@ -17,6 +17,7 @@ import {
   ShareList,
   titleId,
   useDeleteShareList,
+  useHashingStatus,
   useSaveShareList,
   useSetShareAll,
   useShareableTitles,
@@ -79,6 +80,45 @@ function ShareAllRow({ peer }: { peer: Peer }) {
         <div className={styles.error}>{getErrorMessage(error)}</div>
       ) : null}
     </div>
+  );
+}
+
+function Hashing() {
+  const { data } = useHashingStatus();
+
+  if (!data) {
+    return null;
+  }
+
+  return (
+    <FieldSet legend={translate('SharingHashing')}>
+      <p className={styles.muted}>{translate('SharingHashingHelpText')}</p>
+
+      {data.shared === 0 ? (
+        <div className={styles.muted}>
+          {translate('SharingHashingNothingShared')}
+        </div>
+      ) : (
+        <div>
+          {translate('SharingHashingProgress', {
+            hashed: data.hashed,
+            shared: data.shared,
+          })}
+        </div>
+      )}
+
+      {data.waitingForUploads ? (
+        <div className={styles.muted}>
+          {translate('SharingHashingWaitingForUploads')}
+        </div>
+      ) : null}
+
+      {data.current && !data.waitingForUploads ? (
+        <div className={styles.muted}>
+          {translate('SharingHashingCurrent', { path: data.current })}
+        </div>
+      ) : null}
+    </FieldSet>
   );
 }
 
@@ -307,6 +347,8 @@ function Sharing() {
             <ShareAllRow key={peer.id} peer={peer} />
           ))}
         </FieldSet>
+
+        <Hashing />
 
         {lists.map((list) => (
           <ShareListEditor

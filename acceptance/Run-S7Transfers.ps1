@@ -8,7 +8,8 @@
     Node A has a library: its own Sonarr and Radarr hold three Pingu episodes and one movie.
     Node B has its own Sonarr and Radarr, which know the same series and movie and have no files.
     The nodes pair and A shares. The script then presses "search" in B's Sonarr and Radarr and
-    follows each grab to the file landing in B's library. It also cancels a transfer, restarts
+    follows each grab to the file landing in B's library. It checks that A hashed what it shares
+    before anything was asked for. It also cancels a transfer, restarts
     node B in the middle of one, has A unshare the series in the middle of one, and has A end
     trust in the middle of one.
 
@@ -348,6 +349,14 @@ try {
         Get-Content $readyFile | Write-Host
         return
     }
+
+    # --- 0. Hashing ahead of time ------------------------------------------------------------------
+
+    $hashing = Wait-Until -What 'A to hash what it shares' -TimeoutSec 60 -Condition {
+        $status = Invoke-Node A GET '/sharing/hashing'
+        if ($status.shared -eq 4 -and $status.hashed -eq 4 -and $status.lastPass) { $status }
+    }
+    Assert-That 'Before anything is asked for, the sending node has hashed every file it shares' ($null -ne $hashing) $hashing
 
     # --- 1. Sonarr: search, grab, transfer, import -----------------------------------------------
 
