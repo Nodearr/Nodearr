@@ -14,6 +14,22 @@ namespace NzbDrone.Core.Sharing
     // A series or a movie in the local catalog, named the way the catalog keys it.
     public readonly record struct TitleKey(MediaKind Kind, int ApplicationId, int ArrId);
 
+    // What a share list can hold, at the levels Sonarr monitors: a whole series, one season of
+    // it, or one episode. A whole series or season takes in episodes that arrive later. A movie
+    // is always whole. ArrId is the series or the movie.
+    public readonly record struct ShareKey(MediaKind Kind, int ApplicationId, int ArrId, int? SeasonNumber = null, int? EpisodeArrId = null)
+    {
+        public static ShareKey Series(int applicationId, int seriesArrId) => new(MediaKind.Tv, applicationId, seriesArrId);
+        public static ShareKey Season(int applicationId, int seriesArrId, int seasonNumber) => new(MediaKind.Tv, applicationId, seriesArrId, seasonNumber);
+        public static ShareKey Episode(int applicationId, int seriesArrId, int episodeArrId) => new(MediaKind.Tv, applicationId, seriesArrId, null, episodeArrId);
+        public static ShareKey Movie(int applicationId, int movieArrId) => new(MediaKind.Movie, applicationId, movieArrId);
+
+        public bool IsWhole => SeasonNumber == null && EpisodeArrId == null;
+        public TitleKey Title => new(Kind, ApplicationId, ArrId);
+
+        public static implicit operator ShareKey(TitleKey title) => new(title.Kind, title.ApplicationId, title.ArrId);
+    }
+
     // A named set of series and movies offered to chosen peers. The one list with IsHidden set is
     // different: what is on it is offered to nobody, whatever else says otherwise.
     public class ShareList : ModelBase
@@ -29,7 +45,11 @@ namespace NzbDrone.Core.Sharing
         public int ApplicationId { get; set; }
         public int ArrId { get; set; }
 
-        public TitleKey Key => new(MediaKind, ApplicationId, ArrId);
+        // Both null for a whole series or a movie.
+        public int? SeasonNumber { get; set; }
+        public int? EpisodeArrId { get; set; }
+
+        public ShareKey Key => new(MediaKind, ApplicationId, ArrId, SeasonNumber, EpisodeArrId);
     }
 
     public class ShareListPeer : ModelBase
@@ -42,8 +62,23 @@ namespace NzbDrone.Core.Sharing
     public class ShareListDetails
     {
         public ShareList List { get; set; }
-        public List<TitleKey> Items { get; set; } = new();
+        public List<ShareKey> Items { get; set; } = new();
         public List<int> PeerIds { get; set; } = new();
+    }
+
+    // The seasons and episodes of one series, for choosing among them.
+    public class ShareableSeason
+    {
+        public int SeasonNumber { get; set; }
+        public List<ShareableEpisode> Episodes { get; set; } = new();
+    }
+
+    public class ShareableEpisode
+    {
+        public int EpisodeArrId { get; set; }
+        public int EpisodeNumber { get; set; }
+        public string Title { get; set; }
+        public bool HasFile { get; set; }
     }
 
     // One series or movie that can be put on a share list.

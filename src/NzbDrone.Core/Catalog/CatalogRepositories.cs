@@ -77,6 +77,7 @@ namespace NzbDrone.Core.Catalog
     public interface ICatalogEpisodeRepository : ICatalogRepository<CatalogEpisode>
     {
         List<CatalogEpisode> ForFiles(int applicationId, IEnumerable<int> arrEpisodeFileIds);
+        List<CatalogEpisode> ForSeries(int applicationId, int arrSeriesId);
     }
 
     public class CatalogEpisodeRepository : CatalogRepository<CatalogEpisode>, ICatalogEpisodeRepository
@@ -91,6 +92,11 @@ namespace NzbDrone.Core.Catalog
             var ids = arrEpisodeFileIds.Distinct().ToList();
 
             return ids.Count == 0 ? new List<CatalogEpisode>() : Query(x => x.ApplicationId == applicationId && ids.Contains(x.ArrEpisodeFileId));
+        }
+
+        public List<CatalogEpisode> ForSeries(int applicationId, int arrSeriesId)
+        {
+            return Query(x => x.ApplicationId == applicationId && x.ArrSeriesId == arrSeriesId);
         }
     }
 

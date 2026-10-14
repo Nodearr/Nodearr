@@ -18,11 +18,30 @@ export interface ShareableTitle extends TitleKey {
   files: number;
 }
 
+// A whole series or movie, one season of a series, or one episode of it, the way
+// Sonarr monitors them. arrId is the series or the movie.
+export interface ShareKey extends TitleKey {
+  seasonNumber?: number | null;
+  episodeArrId?: number | null;
+}
+
+export interface ShareableEpisode {
+  episodeArrId: number;
+  episodeNumber: number;
+  title?: string;
+  hasFile: boolean;
+}
+
+export interface ShareableSeason {
+  seasonNumber: number;
+  episodes: ShareableEpisode[];
+}
+
 export interface ShareList {
   id: number;
   name: string;
   isHidden: boolean;
-  items: TitleKey[];
+  items: ShareKey[];
   peerIds: number[];
 }
 
@@ -74,6 +93,44 @@ export function titleId(key: TitleKey) {
   return `${key.mediaKind}:${key.applicationId}:${key.arrId}`;
 }
 
+export function seasonShareId(title: TitleKey, seasonNumber: number) {
+  return `${titleId(title)}:s${seasonNumber}`;
+}
+
+export function episodeShareId(title: TitleKey, episodeArrId: number) {
+  return `${titleId(title)}:e${episodeArrId}`;
+}
+
+// One string for each thing a list can hold, so a list can be kept as a Set.
+export function shareId(key: ShareKey) {
+  if (key.episodeArrId != null) {
+    return episodeShareId(key, key.episodeArrId);
+  }
+
+  if (key.seasonNumber != null) {
+    return seasonShareId(key, key.seasonNumber);
+  }
+
+  return titleId(key);
+}
+
+export function parseShareId(id: string): ShareKey {
+  const [mediaKind, applicationId, arrId, part] = id.split(':');
+  const key: ShareKey = {
+    mediaKind: mediaKind as MediaKind,
+    applicationId: Number(applicationId),
+    arrId: Number(arrId),
+  };
+
+  if (part?.startsWith('s')) {
+    key.seasonNumber = Number(part.slice(1));
+  } else if (part?.startsWith('e')) {
+    key.episodeArrId = Number(part.slice(1));
+  }
+
+  return key;
+}
+
 function send<T>(
   method: 'POST' | 'PUT' | 'DELETE',
   path: string,
@@ -95,6 +152,13 @@ export const useShareLists = () =>
 
 export const useShareableTitles = () =>
   useApiQuery<ShareableTitle[]>({ path: TITLES_PATH });
+
+// Read only when the series is opened on the page.
+export const useShareableSeasons = (title: TitleKey, enabled: boolean) =>
+  useApiQuery<ShareableSeason[]>({
+    path: `${TITLES_PATH}/${title.applicationId}/${title.arrId}/seasons`,
+    queryOptions: { enabled },
+  });
 
 export const useHashingStatus = () =>
   useApiQuery<HashingStatus>({

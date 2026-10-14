@@ -10,12 +10,16 @@ interface CssExports {
   'columnLabel': string;
   'columns': string;
   'error': string;
+  'inlineCheck': string;
+  'movieCheck': string;
   'muted': string;
+  'nested': string;
   'newList': string;
   'newListName': string;
   'peerName': string;
   'peerRow': string;
   'release': string;
+  'seriesRow': string;
   'summary': string;
   'title': string;
   'titles': string;

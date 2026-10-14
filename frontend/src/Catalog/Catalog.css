@@ -88,7 +88,7 @@
   overflow-y: auto;
   margin-top: 6px;
   padding: 6px 10px;
-  max-height: 260px;
+  max-height: 420px;
   border: 1px solid var(--borderColor);
   border-radius: 4px;
 }
@@ -97,6 +97,30 @@
   display: block;
   padding: 2px 0;
   cursor: pointer;
+}
+
+/* A series or season: the open button, then its box. */
+.seriesRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.inlineCheck {
+  composes: check;
+
+  flex: 1;
+}
+
+/* A movie has nothing to open, so it lines up with the boxes beside the open buttons. */
+.movieCheck {
+  composes: check;
+
+  padding-left: 26px;
+}
+
+.nested {
+  padding-left: 26px;
 }
 
 .checkBox {

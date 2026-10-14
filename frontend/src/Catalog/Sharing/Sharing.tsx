@@ -1,25 +1,38 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import Alert from 'Components/Alert';
 import FieldSet from 'Components/FieldSet';
 import TextInput from 'Components/Form/TextInput';
 import Label from 'Components/Label';
 import Button from 'Components/Link/Button';
+import IconButton from 'Components/Link/IconButton';
 import SpinnerButton from 'Components/Link/SpinnerButton';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
-import { kinds } from 'Helpers/Props';
+import { icons, kinds } from 'Helpers/Props';
 import { getErrorMessage, Peer, usePeers } from 'Nodes/useNodes';
 import { InputChanged } from 'typings/inputs';
 import translate from 'Utilities/String/translate';
 import {
+  episodeShareId,
+  parseShareId,
+  seasonShareId,
+  ShareableSeason,
   ShareableTitle,
+  shareId,
   ShareList,
   titleId,
   useDeleteShareList,
   useHashingStatus,
   useSaveShareList,
   useSetShareAll,
+  useShareableSeasons,
   useShareableTitles,
   useShareLists,
 } from '../useSharing';
@@ -29,20 +42,34 @@ function Check({
   id,
   label,
   isChecked,
+  isIndeterminate = false,
+  className,
   onToggle,
 }: {
   id: string;
   label: string;
   isChecked: boolean;
+  isIndeterminate?: boolean;
+  className?: string;
   onToggle: (id: string) => void;
 }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Some of what is under it is ticked, as Sonarr shows a partly monitored season.
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.indeterminate = isIndeterminate && !isChecked;
+    }
+  }, [isIndeterminate, isChecked]);
+
   const handleChange = useCallback(() => {
     onToggle(id);
   }, [id, onToggle]);
 
   return (
-    <label className={styles.check}>
+    <label className={className ?? styles.check}>
       <input
+        ref={inputRef}
         className={styles.checkBox}
         type="checkbox"
         checked={isChecked}
@@ -50,6 +77,231 @@ function Check({
       />
       {label}
     </label>
+  );
+}
+
+function seasonLabel(seasonNumber: number) {
+  return seasonNumber === 0
+    ? translate('Specials')
+    : translate('SeasonNumberToken', { seasonNumber });
+}
+
+// Ticking works the way Sonarr's monitoring does. The series box is the whole series,
+// including seasons that arrive later. A season box is that season, including its later
+// episodes. An episode box is that episode. Unticking part of something ticked whole
+// keeps the rest of it ticked, one level down.
+function SeriesChoice({
+  title,
+  items,
+  label,
+  onChange,
+}: {
+  title: ShareableTitle;
+  items: Set<string>;
+  label: string;
+  onChange: (next: Set<string>) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const { data: seasons = [], isFetching } = useShareableSeasons(title, isOpen);
+
+  const whole = titleId(title);
+  const isWhole = items.has(whole);
+  const isPart =
+    !isWhole && Array.from(items).some((i) => i.startsWith(`${whole}:`));
+
+  const handleSeriesToggle = useCallback(() => {
+    const next = new Set(
+      Array.from(items).filter((i) => i !== whole && !i.startsWith(`${whole}:`))
+    );
+
+    if (!isWhole) {
+      next.add(whole);
+    }
+
+    onChange(next);
+  }, [items, whole, isWhole, onChange]);
+
+  const handleSeasonToggle = useCallback(
+    (id: string) => {
+      const season = seasons.find(
+        (s) => seasonShareId(title, s.seasonNumber) === id
+      );
+
+      if (!season) {
+        return;
+      }
+
+      const next = new Set(items);
+
+      if (isWhole) {
+        next.delete(whole);
+        seasons
+          .filter((s) => s !== season)
+          .forEach((s) => next.add(seasonShareId(title, s.seasonNumber)));
+      } else if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+        season.episodes.forEach((e) =>
+          next.delete(episodeShareId(title, e.episodeArrId))
+        );
+      }
+
+      onChange(next);
+    },
+    [items, seasons, title, whole, isWhole, onChange]
+  );
+
+  const handleEpisodeToggle = useCallback(
+    (id: string) => {
+      const season = seasons.find((s) =>
+        s.episodes.some((e) => episodeShareId(title, e.episodeArrId) === id)
+      );
+
+      if (!season) {
+        return;
+      }
+
+      const next = new Set(items);
+      const seasonId = seasonShareId(title, season.seasonNumber);
+      const others = season.episodes
+        .map((e) => episodeShareId(title, e.episodeArrId))
+        .filter((e) => e !== id);
+
+      if (isWhole) {
+        next.delete(whole);
+        seasons
+          .filter((s) => s !== season)
+          .forEach((s) => next.add(seasonShareId(title, s.seasonNumber)));
+        others.forEach((e) => next.add(e));
+      } else if (next.has(seasonId)) {
+        next.delete(seasonId);
+        others.forEach((e) => next.add(e));
+      } else if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+
+      onChange(next);
+    },
+    [items, seasons, title, whole, isWhole, onChange]
+  );
+
+  const handleOpenPress = useCallback(() => {
+    setIsOpen((open) => !open);
+  }, []);
+
+  return (
+    <div>
+      <div className={styles.seriesRow}>
+        <IconButton
+          name={isOpen ? icons.COLLAPSE : icons.EXPAND}
+          title={translate('SharingSeasonsAndEpisodes')}
+          onPress={handleOpenPress}
+        />
+
+        <Check
+          id={whole}
+          label={label}
+          isChecked={isWhole}
+          isIndeterminate={isPart}
+          className={styles.inlineCheck}
+          onToggle={handleSeriesToggle}
+        />
+      </div>
+
+      {isOpen ? (
+        <div className={styles.nested}>
+          {isFetching && !seasons.length ? (
+            <LoadingIndicator size={20} />
+          ) : null}
+
+          {isPart ? (
+            <div className={styles.muted}>
+              {translate('SharingPartOfSeriesHelpText')}
+            </div>
+          ) : null}
+
+          {seasons.map((season) => (
+            <SeasonChoice
+              key={season.seasonNumber}
+              title={title}
+              season={season}
+              items={items}
+              isWhole={isWhole}
+              onSeasonToggle={handleSeasonToggle}
+              onEpisodeToggle={handleEpisodeToggle}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function SeasonChoice({
+  title,
+  season,
+  items,
+  isWhole,
+  onSeasonToggle,
+  onEpisodeToggle,
+}: {
+  title: ShareableTitle;
+  season: ShareableSeason;
+  items: Set<string>;
+  isWhole: boolean;
+  onSeasonToggle: (id: string) => void;
+  onEpisodeToggle: (id: string) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const seasonId = seasonShareId(title, season.seasonNumber);
+  const isTicked = isWhole || items.has(seasonId);
+  const episodeIds = season.episodes.map((e) =>
+    episodeShareId(title, e.episodeArrId)
+  );
+
+  const handleOpenPress = useCallback(() => {
+    setIsOpen((open) => !open);
+  }, []);
+
+  return (
+    <div>
+      <div className={styles.seriesRow}>
+        <IconButton
+          name={isOpen ? icons.COLLAPSE : icons.EXPAND}
+          title={translate('SharingEpisodes')}
+          onPress={handleOpenPress}
+        />
+
+        <Check
+          id={seasonId}
+          label={seasonLabel(season.seasonNumber)}
+          isChecked={isTicked}
+          isIndeterminate={episodeIds.some((e) => items.has(e))}
+          className={styles.inlineCheck}
+          onToggle={onSeasonToggle}
+        />
+      </div>
+
+      {isOpen ? (
+        <div className={styles.nested}>
+          {season.episodes.map((episode, index) => (
+            <Check
+              key={episode.episodeArrId}
+              id={episodeIds[index]}
+              label={`${episode.episodeNumber}. ${episode.title ?? ''}${
+                episode.hasFile ? '' : ` (${translate('SharingNoFileYet')})`
+              }`}
+              isChecked={isTicked || items.has(episodeIds[index])}
+              onToggle={onEpisodeToggle}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -155,7 +407,7 @@ function ShareListEditor({
 }) {
   const [name, setName] = useState(list.name);
   const [filter, setFilter] = useState('');
-  const [items, setItems] = useState(new Set(list.items.map(titleId)));
+  const [items, setItems] = useState(new Set(list.items.map(shareId)));
   const [peerIds, setPeerIds] = useState(
     new Set(list.peerIds.map((id) => `${id}`))
   );
@@ -163,7 +415,7 @@ function ShareListEditor({
   // Another tab, or this one after a save, may have changed the list.
   useEffect(() => {
     setName(list.name);
-    setItems(new Set(list.items.map(titleId)));
+    setItems(new Set(list.items.map(shareId)));
     setPeerIds(new Set(list.peerIds.map((id) => `${id}`)));
   }, [list]);
 
@@ -192,10 +444,10 @@ function ShareListEditor({
     saveList({
       id: list.id,
       name,
-      items: titles.filter((t) => items.has(titleId(t))),
+      items: Array.from(items, parseShareId),
       peerIds: Array.from(peerIds, Number),
     });
-  }, [saveList, list.id, name, titles, items, peerIds]);
+  }, [saveList, list.id, name, items, peerIds]);
 
   const handleDeletePress = useCallback(() => {
     deleteList(list.id);
@@ -231,15 +483,26 @@ function ShareListEditor({
           />
 
           <div className={styles.titles}>
-            {visible.map((title) => (
-              <Check
-                key={titleId(title)}
-                id={titleId(title)}
-                label={describeTitle(title)}
-                isChecked={items.has(titleId(title))}
-                onToggle={handleItemToggle}
-              />
-            ))}
+            {visible.map((title) =>
+              title.mediaKind === 'tv' ? (
+                <SeriesChoice
+                  key={titleId(title)}
+                  title={title}
+                  items={items}
+                  label={describeTitle(title)}
+                  onChange={setItems}
+                />
+              ) : (
+                <Check
+                  key={titleId(title)}
+                  id={titleId(title)}
+                  label={describeTitle(title)}
+                  isChecked={items.has(titleId(title))}
+                  className={styles.movieCheck}
+                  onToggle={handleItemToggle}
+                />
+              )
+            )}
           </div>
         </div>
 

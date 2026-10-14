@@ -13,16 +13,37 @@ public class TitleKeyResource
     public MediaKind MediaKind { get; set; }
     public int ApplicationId { get; set; }
     public int ArrId { get; set; }
+}
 
-    public TitleKey ToModel()
+// A series, a season of it, one episode of it, or a movie. ArrId is the series or the movie.
+public class ShareKeyResource : TitleKeyResource
+{
+    public int? SeasonNumber { get; set; }
+    public int? EpisodeArrId { get; set; }
+
+    public ShareKey ToModel()
     {
-        return new TitleKey(MediaKind, ApplicationId, ArrId);
+        return new ShareKey(MediaKind, ApplicationId, ArrId, SeasonNumber, EpisodeArrId);
     }
 
-    public static TitleKeyResource FromModel(TitleKey key)
+    public static ShareKeyResource FromModel(ShareKey key)
     {
-        return new TitleKeyResource { MediaKind = key.Kind, ApplicationId = key.ApplicationId, ArrId = key.ArrId };
+        return new ShareKeyResource { MediaKind = key.Kind, ApplicationId = key.ApplicationId, ArrId = key.ArrId, SeasonNumber = key.SeasonNumber, EpisodeArrId = key.EpisodeArrId };
     }
+}
+
+public class ShareableSeasonResource
+{
+    public int SeasonNumber { get; set; }
+    public List<ShareableEpisodeResource> Episodes { get; set; } = new();
+}
+
+public class ShareableEpisodeResource
+{
+    public int EpisodeArrId { get; set; }
+    public int EpisodeNumber { get; set; }
+    public string? Title { get; set; }
+    public bool HasFile { get; set; }
 }
 
 public class ShareListResource
@@ -30,7 +51,7 @@ public class ShareListResource
     public int Id { get; set; }
     public string? Name { get; set; }
     public bool IsHidden { get; set; }
-    public List<TitleKeyResource> Items { get; set; } = new();
+    public List<ShareKeyResource> Items { get; set; } = new();
     public List<int> PeerIds { get; set; } = new();
 
     public static ShareListResource FromModel(ShareListDetails details)
@@ -40,7 +61,7 @@ public class ShareListResource
             Id = details.List.Id,
             Name = details.List.Name,
             IsHidden = details.List.IsHidden,
-            Items = details.Items.ConvertAll(TitleKeyResource.FromModel),
+            Items = details.Items.ConvertAll(ShareKeyResource.FromModel),
             PeerIds = details.PeerIds
         };
     }
@@ -135,6 +156,18 @@ public class SharingController : Controller
         }
 
         return TypedResults.NoContent();
+    }
+
+    // The seasons and episodes of one series, for choosing among them.
+    [HttpGet("titles/{applicationId:int}/{arrId:int}/seasons")]
+    [Produces("application/json")]
+    public Ok<List<ShareableSeasonResource>> GetSeasons(int applicationId, int arrId)
+    {
+        return TypedResults.Ok(_sharingService.GetSeasons(applicationId, arrId).ConvertAll(s => new ShareableSeasonResource
+        {
+            SeasonNumber = s.SeasonNumber,
+            Episodes = s.Episodes.ConvertAll(e => new ShareableEpisodeResource { EpisodeArrId = e.EpisodeArrId, EpisodeNumber = e.EpisodeNumber, Title = e.Title, HasFile = e.HasFile })
+        }));
     }
 
     // Every series and movie in the local catalog, for choosing what goes on a list.

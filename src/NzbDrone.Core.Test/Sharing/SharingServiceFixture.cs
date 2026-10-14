@@ -18,9 +18,9 @@ namespace NzbDrone.Core.Test.Sharing
     [TestFixture]
     public class SharingServiceFixture : DbTest<SharingService, ShareList>
     {
-        private static readonly TitleKey Pingu = new(MediaKind.Tv, 1, 10);
-        private static readonly TitleKey Bluey = new(MediaKind.Tv, 1, 11);
-        private static readonly TitleKey NightOfTheLivingDead = new(MediaKind.Movie, 2, 20);
+        private static readonly ShareKey Pingu = new(MediaKind.Tv, 1, 10);
+        private static readonly ShareKey Bluey = new(MediaKind.Tv, 1, 11);
+        private static readonly ShareKey NightOfTheLivingDead = new(MediaKind.Movie, 2, 20);
 
         private Peer _bob;
         private Peer _carol;
@@ -252,11 +252,123 @@ namespace NzbDrone.Core.Test.Sharing
             AllAgree("everything shared with Bob, and with Dave, who is not trusted");
 
             var list = Subject.Create("Kids");
-            Subject.Update(list.List.Id, "Kids", new[] { Bluey, NightOfTheLivingDead, new TitleKey(MediaKind.Tv, 1, 12) }, new[] { _carol.Id });
+            Subject.Update(list.List.Id, "Kids", new[] { Bluey, NightOfTheLivingDead, ShareKey.Series(1, 12) }, new[] { _carol.Id });
             AllAgree("a list for Carol");
 
             Subject.Update(Hidden.List.Id, null, new[] { Pingu, NightOfTheLivingDead }, null);
             AllAgree("Pingu and the movie hidden");
+
+            Subject.Update(list.List.Id, "Kids", new[] { ShareKey.Season(1, 10, 1), ShareKey.Episode(1, 11, 201) }, new[] { _carol.Id });
+            Subject.Update(Hidden.List.Id, null, new[] { ShareKey.Episode(1, 10, 105) }, null);
+            AllAgree("a season and an episode for Carol, and one episode of a two-episode file hidden");
+
+            Subject.Update(Hidden.List.Id, null, Array.Empty<ShareKey>(), null);
+            Subject.Update(list.List.Id, "Kids", new[] { ShareKey.Episode(1, 10, 104) }, new[] { _carol.Id });
+            AllAgree("one episode of a two-episode file for Carol");
+        }
+
+        // Pingu also gets a second season: 2x01 in a file of its own.
+        private void GivenSecondSeason()
+        {
+            Mocker.Resolve<ICatalogEpisodeRepository>().Insert(new CatalogEpisode { ApplicationId = 1, ArrId = 110, ArrSeriesId = 10, SeasonNumber = 2, EpisodeNumber = 1, Title = "Pingu and the Snowball", ArrEpisodeFileId = 503 });
+            Mocker.Resolve<ICatalogEpisodeFileRepository>().Insert(new CatalogEpisodeFile { ApplicationId = 1, ArrId = 503, ArrSeriesId = 10, SeasonNumber = 2, Path = "/tv/Pingu/Season 2/Pingu - S02E01.mkv", RelativePath = "Season 2/Pingu - S02E01.mkv", Size = 100 });
+        }
+
+        private void GivenListForBob(params ShareKey[] items)
+        {
+            var list = Subject.Create("Picked");
+
+            Subject.Update(list.List.Id, "Picked", items, new[] { _bob.Id });
+        }
+
+        [Test]
+        public void a_season_should_share_that_seasons_files_only()
+        {
+            GivenSecondSeason();
+            GivenListForBob(ShareKey.Season(1, 10, 1));
+
+            OfferedTo(_bob).Should().BeEquivalentTo("e-1-501", "e-1-502");
+        }
+
+        [Test]
+        public void a_season_should_take_in_episodes_that_arrive_later_as_a_whole_series_does()
+        {
+            GivenListForBob(ShareKey.Season(1, 10, 1));
+
+            Mocker.Resolve<ICatalogEpisodeRepository>().Insert(new CatalogEpisode { ApplicationId = 1, ArrId = 106, ArrSeriesId = 10, SeasonNumber = 1, EpisodeNumber = 6, ArrEpisodeFileId = 504 });
+            Mocker.Resolve<ICatalogEpisodeFileRepository>().Insert(new CatalogEpisodeFile { ApplicationId = 1, ArrId = 504, ArrSeriesId = 10, SeasonNumber = 1, Path = "/tv/Pingu/e6.mkv", RelativePath = "e6.mkv", Size = 1 });
+
+            OfferedTo(_bob).Should().Contain("e-1-504");
+        }
+
+        [Test]
+        public void a_single_episode_should_share_its_file_only()
+        {
+            GivenSecondSeason();
+            GivenListForBob(ShareKey.Episode(1, 10, 110));
+
+            OfferedTo(_bob).Should().Equal("e-1-503");
+        }
+
+        // Sonarr wants a release only when every episode in it is monitored.
+        [Test]
+        public void a_file_of_two_episodes_should_be_shared_only_when_both_are()
+        {
+            GivenListForBob(ShareKey.Episode(1, 10, 104));
+            OfferedTo(_bob).Should().BeEmpty();
+
+            GivenListForBob(ShareKey.Episode(1, 10, 105));
+            OfferedTo(_bob).Should().Equal("e-1-502");
+        }
+
+        [Test]
+        public void hiding_one_episode_should_keep_back_every_file_it_is_in_and_nothing_else()
+        {
+            Subject.SetShareAll(_bob.Id, true);
+            Subject.Update(Hidden.List.Id, null, new[] { ShareKey.Episode(1, 10, 105) }, null);
+
+            OfferedTo(_bob).Should().BeEquivalentTo("e-1-501", "e-1-601", "m-2-701");
+        }
+
+        [Test]
+        public void hiding_a_season_should_keep_back_that_season_whatever_else_shares_it()
+        {
+            GivenSecondSeason();
+            GivenListForBob(Pingu);
+            Subject.Update(Hidden.List.Id, null, new[] { ShareKey.Season(1, 10, 1) }, null);
+
+            OfferedTo(_bob).Should().Equal("e-1-503");
+        }
+
+        [Test]
+        public void a_list_should_keep_a_season_or_episode_only_where_the_whole_series_is_not_on_it()
+        {
+            var list = Subject.Create("Mixed");
+
+            var items = new[]
+            {
+                Pingu, ShareKey.Season(1, 10, 1), ShareKey.Episode(1, 10, 101),
+                ShareKey.Season(1, 11, 1), ShareKey.Episode(1, 11, 201),
+                new ShareKey(MediaKind.Movie, 2, 20, 1, 5),
+                ShareKey.Season(1, 11, -1), new ShareKey(MediaKind.Tv, 1, 11, 1, 201)
+            };
+
+            var saved = Subject.Update(list.List.Id, "Mixed", items, null);
+
+            saved.Items.Should().BeEquivalentTo(new[] { Pingu, ShareKey.Season(1, 11, 1), ShareKey.Episode(1, 11, 201), NightOfTheLivingDead });
+        }
+
+        [Test]
+        public void the_seasons_of_a_series_should_list_its_episodes_and_which_have_files()
+        {
+            GivenSecondSeason();
+            Mocker.Resolve<ICatalogEpisodeRepository>().Insert(new CatalogEpisode { ApplicationId = 1, ArrId = 111, ArrSeriesId = 10, SeasonNumber = 2, EpisodeNumber = 2, Title = "Not yet" });
+
+            var seasons = Subject.GetSeasons(1, 10);
+
+            seasons.Select(s => s.SeasonNumber).Should().Equal(1, 2);
+            seasons[0].Episodes.Select(e => e.EpisodeNumber).Should().Equal(1, 4, 5);
+            seasons[1].Episodes.Select(e => (e.EpisodeArrId, e.EpisodeNumber, e.Title, e.HasFile)).Should().Equal((110, 1, "Pingu and the Snowball", true), (111, 2, "Not yet", false));
         }
 
         [Test]

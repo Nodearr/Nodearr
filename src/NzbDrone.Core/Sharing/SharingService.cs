@@ -16,9 +16,12 @@ namespace NzbDrone.Core.Sharing
     {
         List<ShareListDetails> All();
         ShareListDetails Create(string name);
-        ShareListDetails Update(int id, string name, IEnumerable<TitleKey> items, IEnumerable<int> peerIds);
+        ShareListDetails Update(int id, string name, IEnumerable<ShareKey> items, IEnumerable<int> peerIds);
         void Delete(int id);
         List<ShareableTitle> GetTitles();
+
+        // The seasons and episodes of one series, for choosing among them.
+        List<ShareableSeason> GetSeasons(int applicationId, int seriesArrId);
         Peer SetShareAll(int peerId, bool shareAll);
         Offer BuildOffer(Peer peer);
 
@@ -31,6 +34,10 @@ namespace NzbDrone.Core.Sharing
     //   2. Anything on the Hidden list is offered to nobody.
     //   3. A peer marked "share everything" is offered the rest.
     //   4. Otherwise a peer is offered what is on the share lists it has been given.
+    // A list holds whole series, seasons, single episodes and movies, the way Sonarr monitors. An
+    // episode is covered by its series, its season, or itself. A file holding several episodes is
+    // offered only when every one of them is, as Sonarr wants a release only when every episode
+    // in it is monitored.
     // The filtering happens here, before anything is sent. A peer never receives an item and a
     // flag saying not to show it.
     public class SharingService : ISharingService,
@@ -105,7 +112,7 @@ namespace NzbDrone.Core.Sharing
             return new ShareListDetails { List = _lists.Insert(new ShareList { Name = name.Trim() }) };
         }
 
-        public ShareListDetails Update(int id, string name, IEnumerable<TitleKey> items, IEnumerable<int> peerIds)
+        public ShareListDetails Update(int id, string name, IEnumerable<ShareKey> items, IEnumerable<int> peerIds)
         {
             var list = _lists.Get(id);
 
@@ -123,12 +130,14 @@ namespace NzbDrone.Core.Sharing
             }
 
             _items.DeleteForList(id);
-            _items.InsertMany((items ?? Enumerable.Empty<TitleKey>()).Distinct().Select(k => new ShareListItem
+            _items.InsertMany(Tidy(items).Select(k => new ShareListItem
             {
                 ShareListId = id,
                 MediaKind = k.Kind,
                 ApplicationId = k.ApplicationId,
-                ArrId = k.ArrId
+                ArrId = k.ArrId,
+                SeasonNumber = k.SeasonNumber,
+                EpisodeArrId = k.EpisodeArrId
             }).ToList());
 
             _eventAggregator.PublishEvent(new SharingChangedEvent());
@@ -176,6 +185,26 @@ namespace NzbDrone.Core.Sharing
             return series.Concat(movies).OrderBy(t => t.Title).ToList();
         }
 
+        public List<ShareableSeason> GetSeasons(int applicationId, int seriesArrId)
+        {
+            return _episodes.ForSeries(applicationId, seriesArrId)
+                .Where(e => e.MissingSince == null)
+                .GroupBy(e => e.SeasonNumber)
+                .OrderBy(g => g.Key)
+                .Select(g => new ShareableSeason
+                {
+                    SeasonNumber = g.Key,
+                    Episodes = g.OrderBy(e => e.EpisodeNumber).Select(e => new ShareableEpisode
+                    {
+                        EpisodeArrId = e.ArrId,
+                        EpisodeNumber = e.EpisodeNumber,
+                        Title = e.Title,
+                        HasFile = e.ArrEpisodeFileId > 0
+                    }).ToList()
+                })
+                .ToList();
+        }
+
         public Peer SetShareAll(int peerId, bool shareAll)
         {
             var peer = _peers.Get(peerId);
@@ -194,15 +223,15 @@ namespace NzbDrone.Core.Sharing
                 return Seal(new List<OfferItem>());
             }
 
-            var isShared = SharedWith(peer);
+            var rule = RuleFor(peer);
             var offered = new List<OfferItem>();
 
-            var series = _series.All()
-                .Where(s => s.MissingSince == null && isShared(new TitleKey(MediaKind.Tv, s.ApplicationId, s.ArrId)))
-                .ToDictionary(s => (s.ApplicationId, s.ArrId));
-
-            if (series.Count > 0)
+            if (rule.SharesAnyTv)
             {
+                var series = _series.All()
+                    .Where(s => s.MissingSince == null)
+                    .ToDictionary(s => (s.ApplicationId, s.ArrId));
+
                 var episodes = _episodes.All()
                     .Where(e => e.MissingSince == null && e.ArrEpisodeFileId > 0)
                     .ToLookup(e => (e.ApplicationId, e.ArrEpisodeFileId));
@@ -217,7 +246,7 @@ namespace NzbDrone.Core.Sharing
                     var contained = episodes[(file.ApplicationId, file.ArrId)].OrderBy(e => e.EpisodeNumber).ToList();
 
                     // A file Sonarr has not tied to an episode says nothing a peer could search for.
-                    if (contained.Count == 0)
+                    if (!rule.SharesFile(contained))
                     {
                         continue;
                     }
@@ -239,7 +268,7 @@ namespace NzbDrone.Core.Sharing
             }
 
             var movies = _movies.All()
-                .Where(m => m.MissingSince == null && isShared(new TitleKey(MediaKind.Movie, m.ApplicationId, m.ArrId)))
+                .Where(m => m.MissingSince == null && rule.SharesMovie(m.ApplicationId, m.ArrId))
                 .ToDictionary(m => (m.ApplicationId, m.ArrId));
 
             if (movies.Count > 0)
@@ -280,24 +309,78 @@ namespace NzbDrone.Core.Sharing
                 var series = file == null ? null : _series.ForArrIds(applicationId, new[] { file.ArrSeriesId }).FirstOrDefault(s => s.MissingSince == null);
 
                 return series != null &&
-                       SharedWith(peer)(new TitleKey(MediaKind.Tv, applicationId, series.ArrId)) &&
-                       _episodes.ForFiles(applicationId, new[] { arrFileId }).Any(e => e.MissingSince == null);
+                       RuleFor(peer).SharesFile(_episodes.ForFiles(applicationId, new[] { arrFileId }).Where(e => e.MissingSince == null).ToList());
             }
 
             var movieFile = _movieFiles.ForArrIds(applicationId, new[] { arrFileId }).FirstOrDefault(f => f.MissingSince == null);
             var movie = movieFile == null ? null : _movies.ForArrIds(applicationId, new[] { movieFile.ArrMovieId }).FirstOrDefault(m => m.MissingSince == null);
 
-            return movie != null && SharedWith(peer)(new TitleKey(MediaKind.Movie, applicationId, movie.ArrId));
+            return movie != null && RuleFor(peer).SharesMovie(applicationId, movie.ArrId);
         }
 
         // Rules 2 to 4, for one peer that is already known to be trusted.
-        private Func<TitleKey, bool> SharedWith(Peer peer)
+        private SharingRule RuleFor(Peer peer)
         {
             var lists = All();
             var hidden = lists.Where(l => l.List.IsHidden).SelectMany(l => l.Items).ToHashSet();
             var listed = lists.Where(l => !l.List.IsHidden && l.PeerIds.Contains(peer.Id)).SelectMany(l => l.Items).ToHashSet();
 
-            return key => !hidden.Contains(key) && (peer.ShareAll || listed.Contains(key));
+            return new SharingRule(hidden, listed, peer.ShareAll);
+        }
+
+        // What a list may hold: a movie whole, and a series whole, by season or by episode. A
+        // narrower item under a whole series on the same list says nothing more, so it is dropped.
+        private static List<ShareKey> Tidy(IEnumerable<ShareKey> items)
+        {
+            var keys = (items ?? Enumerable.Empty<ShareKey>())
+                .Select(k => k.Kind == MediaKind.Movie ? new ShareKey(MediaKind.Movie, k.ApplicationId, k.ArrId) : k)
+                .Where(k => k.SeasonNumber is null or >= 0 && !(k.SeasonNumber.HasValue && k.EpisodeArrId.HasValue))
+                .Distinct()
+                .ToList();
+
+            var whole = keys.Where(k => k.IsWhole).Select(k => k.Title).ToHashSet();
+
+            return keys.Where(k => k.IsWhole || !whole.Contains(k.Title)).ToList();
+        }
+
+        private sealed class SharingRule
+        {
+            private readonly HashSet<ShareKey> _hidden;
+            private readonly HashSet<ShareKey> _listed;
+            private readonly bool _shareAll;
+
+            public SharingRule(HashSet<ShareKey> hidden, HashSet<ShareKey> listed, bool shareAll)
+            {
+                _hidden = hidden;
+                _listed = listed;
+                _shareAll = shareAll;
+            }
+
+            public bool SharesAnyTv => _shareAll || _listed.Any(k => k.Kind == MediaKind.Tv);
+
+            public bool SharesMovie(int applicationId, int movieArrId)
+            {
+                var key = ShareKey.Movie(applicationId, movieArrId);
+
+                return !_hidden.Contains(key) && (_shareAll || _listed.Contains(key));
+            }
+
+            public bool SharesFile(List<CatalogEpisode> contained)
+            {
+                return contained.Count > 0 && contained.All(SharesEpisode);
+            }
+
+            private bool SharesEpisode(CatalogEpisode episode)
+            {
+                return !Covers(_hidden, episode) && (_shareAll || Covers(_listed, episode));
+            }
+
+            private static bool Covers(HashSet<ShareKey> keys, CatalogEpisode episode)
+            {
+                return keys.Contains(ShareKey.Series(episode.ApplicationId, episode.ArrSeriesId)) ||
+                       keys.Contains(ShareKey.Season(episode.ApplicationId, episode.ArrSeriesId, episode.SeasonNumber)) ||
+                       keys.Contains(ShareKey.Episode(episode.ApplicationId, episode.ArrSeriesId, episode.ArrId));
+            }
         }
 
         // An offer names a file e-{application}-{file} or m-{application}-{file}, and nothing else

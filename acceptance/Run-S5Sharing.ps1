@@ -158,6 +158,18 @@ function Get-Seen {
     }
 }
 
+# Waits for B to hold exactly these of A's files: "e1" for an episode, "movie" for the movie.
+function Get-SeenNames {
+    param([string[]] $Expected)
+
+    $want = ($Expected | Sort-Object) -join ' '
+    return Wait-Until -What "B to hold exactly $want" -TimeoutSec 45 -Condition {
+        $items = @((Invoke-Node B GET '/catalog/peers/items?pageSize=200').records)
+        $names = @($items | ForEach-Object { $_.mediaKind -eq 'movie' ? 'movie' : "e$(@($_.episodeNumbers) -join ',')" } | Sort-Object)
+        if (($names -join ' ') -eq $want) { @{ Names = $names } }
+    }
+}
+
 $results = [System.Collections.Generic.List[object]]::new()
 
 function Assert-That {
@@ -318,6 +330,33 @@ try {
         $beforeAssign -eq 0 -and @($seen | Where-Object mediaKind -eq 'tv').Count -eq 2
     ) @{ beforeAssign = $beforeAssign; items = @($seen | ForEach-Object releaseTitle) }
 
+    # --- Seasons and single episodes, the way Sonarr monitors them --------------------------------
+
+    $seasonOne = @(Invoke-Node A GET "/sharing/titles/$($pingu.applicationId)/$($pingu.arrId)/seasons") | Where-Object seasonNumber -eq 1
+    $e1 = ($seasonOne.episodes | Where-Object episodeNumber -eq 1).episodeArrId
+    $e2 = ($seasonOne.episodes | Where-Object episodeNumber -eq 2).episodeArrId
+    $pinguKey = @{ mediaKind = 'tv'; applicationId = $pingu.applicationId; arrId = $pingu.arrId }
+    $movieKey = @{ mediaKind = 'movie'; applicationId = $night.applicationId; arrId = $night.arrId }
+
+    Invoke-Node A PUT "/sharing/lists/$($list.id)" @{ name = 'Kids'; items = @($pinguKey + @{ episodeArrId = $e2 }); peerIds = @($bOnA.id) } | Out-Null
+    $oneEpisode = (Get-SeenNames 'e2').Names
+    Invoke-Node A PUT "/sharing/lists/$($list.id)" @{ name = 'Kids'; items = @($pinguKey + @{ seasonNumber = 1 }); peerIds = @($bOnA.id) } | Out-Null
+    $oneSeason = (Get-SeenNames 'e1', 'e2').Names
+    Assert-That 'A list can hold one episode or one season of a series, and the peer is offered just that' (
+        $e1 -and $e2 -and ($oneEpisode -join ' ') -eq 'e2' -and ($oneSeason -join ' ') -eq 'e1 e2'
+    ) @{ oneEpisode = $oneEpisode; oneSeason = $oneSeason; seasons = $seasonOne.episodes.Count }
+
+    Invoke-Node A PUT "/sharing/lists/$($list.id)" @{ name = 'Kids'; items = @($pinguKey, $movieKey); peerIds = @($bOnA.id) } | Out-Null
+    Get-SeenNames 'e1', 'e2', 'movie' | Out-Null
+    Invoke-Node A PUT "/sharing/lists/$($hidden.id)" @{ items = @($pinguKey + @{ episodeArrId = $e1 }); peerIds = @() } | Out-Null
+    $hidOne = (Get-SeenNames 'e2', 'movie').Names
+    Invoke-Node A PUT "/sharing/lists/$($hidden.id)" @{ items = @($pinguKey + @{ seasonNumber = 1 }); peerIds = @() } | Out-Null
+    $hidSeason = (Get-SeenNames 'movie').Names
+    Assert-That 'Hiding one episode or one season keeps back just that, even from a list that shares the whole series' (
+        ($hidOne -join ' ') -eq 'e2 movie' -and ($hidSeason -join ' ') -eq 'movie'
+    ) @{ hidOneEpisode = $hidOne; hidSeason = $hidSeason }
+
+    Invoke-Node A PUT "/sharing/lists/$($hidden.id)" @{ items = @(); peerIds = @() } | Out-Null
     Invoke-Node A DELETE "/sharing/lists/$($list.id)" | Out-Null
     Get-Seen 0 | Out-Null
     Assert-That 'Deleting the list takes its titles away from the peer' $true @{ }
