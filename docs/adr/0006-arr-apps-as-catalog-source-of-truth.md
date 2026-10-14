@@ -63,3 +63,11 @@ Rejected for core scope. Media servers consume the imported library but do not d
 - Define stale/deleted item handling.
 - Define future source contracts for Lidarr, Readarr, Whisparr / Eros, and other Arr-like applications.
 
+## Amendments
+
+- 2026-10-14: **the catalog follows the Arr apps within seconds.** Until now Nodearr read each Arr app's whole library on a schedule, every 6 hours, so a file imported or deleted in Sonarr was not seen by Nodearr for hours. Now:
+  - Sonarr and Radarr call Nodearr's webhook (ADR 0010, amendments) when a file is imported, upgraded, renamed or deleted, and when a series or movie is added or deleted.
+  - Nodearr reads only that series or movie again from the Arr app and merges it into the catalog, as the full read does. A series or movie the Arr app no longer has is marked missing, with everything in it. Nothing else of the library is touched. The webhook's body is used only for the ID of the series or movie, so the catalog always holds what the Arr app says, not what an event claimed.
+  - Several events about one title close together, such as a season imported file by file, become one read, because Sonarr's command queue merges identical commands that are waiting.
+  - The whole library is still read on a schedule, now every 12 hours as Sonarr refreshes its series, to catch anything a webhook missed, for example while Nodearr was down.
+  - Checked by unit tests and by `acceptance/Run-S5Sharing.ps1` against a real Sonarr: a file deleted in Sonarr left the other node in 1.1 seconds with nobody asking, and a file imported again was in the catalog 1.0 second after the import was started.
