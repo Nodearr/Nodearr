@@ -42,7 +42,7 @@ Having been offered a file earlier earns nothing. A resumed transfer is a new re
 
 When trust ends, in either direction, the node cuts every upload to the other node at once and fails every download from it.
 
-A transfer already under way is not cut when the file is only unshared, as opposed to trust ending. The check is per request.
+~~A transfer already under way is not cut when the file is only unshared, as opposed to trust ending. The check is per request.~~ It is now: see the amendment of 2026-10-13.
 
 ### Resuming
 
@@ -130,7 +130,7 @@ Nodearr reports paths as it sees them. When the Arr app sees the download folder
 
 - **Hashing is on demand.** The plan called for hashing in the background as well. Here the first request for a file pays for hashing it, and the receiver waits. BLAKE3 is fast, but a very large file on a slow disk will take a while to start.
 - **Checking permission rebuilds the peer's whole offer** for each request. Fine for now. A large library will want a direct check.
-- **Unsharing does not stop a transfer already under way.** Ending trust does.
+- ~~**Unsharing does not stop a transfer already under way.** Ending trust does.~~ Done afterwards, see the amendments.
 - **A failed verification is not tried again**, though a file that changed while it was being sent would pass the second time.
 - **No speed limit setting in the UI.** There is an upload limit option, used by the acceptance script.
 - **Whole-file hash.** A resumed transfer has to read back what it already holds.
@@ -144,3 +144,4 @@ Nodearr reports paths as it sees them. When the Arr app sees the download folder
 
 - 2026-10-11: **uploads are shown.** The sidecar keeps a record of each file it sends, from the moment Nodearr allows it: who to, which file, how far along, and how it ended. Nodearr reads that once a second, and the Transfers page has a "Sending" section beside "Receiving", updated live. An upload ends as sent, stopped (the other side went away or cancelled), cut because trust ended, or failed for want of a direct route. A request that was refused never becomes an upload and is not listed. It is logged. The list is kept in memory: it holds the last hundred finished uploads and starts empty when Nodearr starts. Nothing is decided here. Whether a node may have a file is settled before the upload begins.
 - 2026-10-11 (ADR 0019): the upload limit and the download folder have a settings page.
+- 2026-10-13: **unsharing stops what is already being sent.** Whenever sharing changes, and whenever the library is refreshed from an Arr app, the sending node asks the sharing rule again about every upload under way, including one still being hashed. An upload of a file the receiving node is no longer offered is cut at once with `NotAuthorized`, the same name a refused request gets. The receiving node fails the transfer without trying again, removes what had arrived, and tells the Arr app, which blocklists the release. The sending node lists the upload as failed with `NotAuthorized`. An upload to a node that is no longer trusted is cut too, as `Revoked`, in case ending trust did not reach the transport. Whether the file can still be read is not asked again: the transport already has it open. The sidecar has one more call for this, `POST /v1/uploads/{id}/stop`. Checked by unit tests and by a new step in `acceptance/Run-S7Transfers.ps1`, where node A hides the series while an episode is on its way.

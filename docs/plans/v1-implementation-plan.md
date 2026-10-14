@@ -87,7 +87,7 @@ What S7 left for later slices:
 - Everything has run with both nodes on one machine. Two machines on different networks, and a transfer with no direct route, are S8.
 - Files are hashed when first asked for, not in the background.
 - ~~Uploads are not shown on the Transfers page. The upload limit and the download folder are options with no settings page.~~ Both done afterwards, see below.
-- Unsharing a title does not stop a transfer of it that is already under way. Ending trust does.
+- ~~Unsharing a title does not stop a transfer of it that is already under way. Ending trust does.~~ Done afterwards, see below.
 - The sidecar is still built separately with cargo.
 
 What S8 left:
@@ -114,6 +114,7 @@ Then a settings page. ADR 0019. Branch `v1/s10-node-settings`.
 - Links to pages that do not exist are gone from every page the app leads to: the "More Info" block on System > Status, the donate button in the header, three wiki links, and the wiki addresses the API handed out. Inherited pages that no route leads to still hold theirs.
 - Settings > General is a real page: where the page is served, signing in, the API key, and logging. A reset API key is given to Sonarr and Radarr at once. In a container the port and address are fixed by the image. A restart from the page works, on the host and in a container, after fixing a crash it uncovered. The inherited series search box is gone from the header. Branches `v1/s15-header-search` and `v1/s16-general-settings`.
 - A sign-in page. A fresh install made its owner set up signing in and then sent the browser to a page that did not exist. Found on the first real deployment, on a rented machine. Branch `v1/s18-sign-in-page`.
+- Unsharing a title stops an upload of it that is already under way. So does the file leaving the Arr app's library. The receiving node fails the transfer with `NotAuthorized` and does not try again (ADR 0016, amendments). Branch `v1/s23-unshare-stops-upload`.
 - Settings > Node holds the node's name, relay, UDP port, port mapping, wait for a direct route, download folder and upload limit. Bad values are refused field by field. A setting given in the environment is shown and cannot be changed. A change that needs it restarts the transport and nothing else, and the node keeps its identity and its trust (`acceptance/Run-NodeSettings.ps1`).
 
 ## Where V1 stands
