@@ -12,6 +12,8 @@ using NUnit.Framework;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Options;
 using NzbDrone.Core.Configuration;
+using NzbDrone.Core.Configuration.Events;
+using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Nodes.Settings;
 using NzbDrone.Core.Test.Framework;
 using NzbDrone.Core.Transfers;
@@ -25,6 +27,7 @@ namespace NzbDrone.Core.Test.Nodes
         private InMemoryPeerTransport _transport;
         private List<TransferJob> _activeTransfers;
         private TransportOptions _environment;
+        private Mock<IEventAggregator> _events;
 
         [SetUp]
         public void Setup()
@@ -35,10 +38,12 @@ namespace NzbDrone.Core.Test.Nodes
             _config.Object.TransportRelay = "n0";
             _config.Object.TransportPortMapping = true;
             _config.Object.TransferDirectTimeout = 20;
+            _config.Object.CatalogSyncInterval = 15;
 
             _transport = new InMemoryNetwork().Join("alice");
             _activeTransfers = new List<TransferJob>();
             _environment = new TransportOptions();
+            _events = new Mock<IEventAggregator>();
         }
 
         private NodeSettingsProvider Provider
@@ -61,7 +66,7 @@ namespace NzbDrone.Core.Test.Nodes
 
                 transfers.Setup(t => t.Active()).Returns(() => _activeTransfers);
 
-                return new NodeSettingsService(Provider, _config.Object, _transport, transfers.Object, TestLogger);
+                return new NodeSettingsService(Provider, _config.Object, _transport, transfers.Object, _events.Object, TestLogger);
             }
         }
 
@@ -87,10 +92,40 @@ namespace NzbDrone.Core.Test.Nodes
         [Test]
         public void a_new_node_should_use_public_relays_any_port_and_a_folder_beside_its_data()
         {
-            Provider.Get().Should().BeEquivalentTo(new NodeSettings { Relay = RelayMode.N0, Port = 0, PortMapping = true, DirectTimeoutSeconds = 20, UploadLimitKbps = 0 });
+            Provider.Get().Should().BeEquivalentTo(new NodeSettings { Relay = RelayMode.N0, Port = 0, PortMapping = true, DirectTimeoutSeconds = 20, UploadLimitKbps = 0, CatalogSyncInterval = 15 });
             Provider.FixedByEnvironment().Should().BeEmpty();
             Provider.NodeName.Should().Be(Environment.MachineName);
             Provider.DownloadFolder.Should().Be(Path.Combine(TempFolder, "data", "downloads"));
+        }
+
+        // Sonarr's limits for its RSS Sync Interval.
+        [TestCase(0, true)]
+        [TestCase(10, true)]
+        [TestCase(15, true)]
+        [TestCase(120, true)]
+        [TestCase(9, false)]
+        [TestCase(121, false)]
+        [TestCase(-1, false)]
+        public void the_catalog_sync_interval_should_be_10_to_120_minutes_or_0(int minutes, bool allowed)
+        {
+            Problems(s => s.CatalogSyncInterval = minutes).Contains(nameof(NodeSettings.CatalogSyncInterval)).Should().Be(!allowed);
+        }
+
+        [Test]
+        public void a_new_catalog_sync_interval_should_be_saved_and_the_schedule_told()
+        {
+            Save(s => s.CatalogSyncInterval = 30);
+
+            Provider.Get().CatalogSyncInterval.Should().Be(30);
+            _events.Verify(e => e.PublishEvent(It.IsAny<ConfigSavedEvent>()), Times.Once());
+        }
+
+        [Test]
+        public void other_settings_should_not_disturb_the_schedule()
+        {
+            Save(s => s.UploadLimitKbps = 500);
+
+            _events.Verify(e => e.PublishEvent(It.IsAny<ConfigSavedEvent>()), Times.Never());
         }
 
         [Test]

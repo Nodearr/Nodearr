@@ -37,6 +37,10 @@ namespace NzbDrone.Core.Nodes.Settings
         // The most each upload may send, in kilobytes per second. Zero is no limit.
         public int UploadLimitKbps { get; set; }
 
+        // Minutes between asking each trusted node what changed in its catalog, like Sonarr's RSS
+        // Sync Interval: 10 to 120, or 0 to ask only when told or asked by hand.
+        public int CatalogSyncInterval { get; set; }
+
         public NodeSettings Clone()
         {
             return (NodeSettings)MemberwiseClone();
@@ -46,6 +50,11 @@ namespace NzbDrone.Core.Nodes.Settings
     public static class NodeSettingsDefaults
     {
         public const int DirectTimeoutSeconds = 20;
+
+        // Sonarr's default for its RSS Sync Interval, and its limits.
+        public const int CatalogSyncInterval = 15;
+        public const int MinCatalogSyncInterval = 10;
+        public const int MaxCatalogSyncInterval = 120;
     }
 
     public class NodeSettingsSaved

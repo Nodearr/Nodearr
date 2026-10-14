@@ -2217,6 +2217,8 @@
   "NodeSettingsTransportDidNotStart": "Saved, but the peer transport did not start with these settings, so other nodes cannot be reached. Check the relay address and the port, and see System > Status.",
   "NodeSettingsTransportRestarted": "Saved. The peer transport was restarted with the new settings. Transfers that were under way carry on from where they were.",
   "NodeSettingsUploadLimit": "Upload Limit",
+  "NodeSettingsCatalogSyncInterval": "Catalog Sync Interval",
+  "NodeSettingsCatalogSyncIntervalHelpText": "Interval in minutes, like RSS Sync in Sonarr and Radarr. How often to ask each trusted node what it has added. Set to zero to disable: new files from other nodes then appear only when you sync by hand. Files a node stops sharing always disappear at once.",
   "NodeSettingsUploadLimitHelpText": "The most each upload to another node may use. 0 is no limit.",
   "PeerConnection": "Connection",
   "PeerConnectionDirect": "Direct",

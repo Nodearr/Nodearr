@@ -277,6 +277,27 @@ function NodeSettings() {
                 )}
               </FormGroup>
             </FieldSet>
+
+            <FieldSet legend={translate('Catalog')}>
+              <FormGroup>
+                <FormLabel>
+                  {translate('NodeSettingsCatalogSyncInterval')}
+                </FormLabel>
+
+                <FormInputGroup
+                  type={inputTypes.NUMBER}
+                  name="catalogSyncInterval"
+                  min={0}
+                  max={120}
+                  unit="minutes"
+                  helpText={translate(
+                    'NodeSettingsCatalogSyncIntervalHelpText'
+                  )}
+                  onChange={handleInputChange}
+                  {...settings.catalogSyncInterval}
+                />
+              </FormGroup>
+            </FieldSet>
           </Form>
         ) : null}
       </PageContentBody>

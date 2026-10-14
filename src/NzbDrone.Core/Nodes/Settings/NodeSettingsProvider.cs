@@ -74,7 +74,10 @@ namespace NzbDrone.Core.Nodes.Settings
                 PortMapping = _options.DisablePortMapping.HasValue ? !_options.DisablePortMapping.Value : _configService.TransportPortMapping,
                 DirectTimeoutSeconds = _options.DirectTimeoutSeconds ?? _configService.TransferDirectTimeout,
                 DownloadFolder = _options.DownloadFolder ?? _configService.TransferDownloadFolder,
-                UploadLimitKbps = _options.UploadLimitKbps ?? _configService.TransferUploadLimit
+                UploadLimitKbps = _options.UploadLimitKbps ?? _configService.TransferUploadLimit,
+
+                // Not something a container is built around, so the environment does not set it.
+                CatalogSyncInterval = _configService.CatalogSyncInterval
             };
         }
 

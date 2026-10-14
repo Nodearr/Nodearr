@@ -286,8 +286,17 @@ try {
 
     # --- Share everything except Hidden ----------------------------------------------------------
 
+    # Something newly shared waits for B's next Catalog Sync, as a new release waits for Sonarr's
+    # next RSS Sync. B is asked to sync now, as a user can.
     Invoke-Node A PUT "/nodes/peers/$($bOnA.id)/shareall" @{ shareAll = $true } | Out-Null
+    Start-Sleep -Seconds 8
+    $beforeSync = (Invoke-Node B GET '/catalog/peers/items?pageSize=50').totalRecords
+    Invoke-NodeCommand B @{ name = 'PeerCatalogSync' }
     $seen = (Get-Seen 3).Items
+    $syncTask = Invoke-Node B GET '/system/task' | Where-Object { $_.taskName -eq 'PeerCatalogSync' }
+    Assert-That 'Something newly shared reaches the peer at its next Catalog Sync, every 15 minutes, and not before' (
+        $beforeSync -eq 0 -and $syncTask.interval -eq 15
+    ) @{ heldBeforeSync = $beforeSync; interval = $syncTask.interval }
     $summary = Invoke-Node B GET '/catalog/peers' | Where-Object peerId -eq $aOnB.id
     $byTitle = @{}
     foreach ($item in $seen) { $byTitle[$item.releaseTitle] = $item }
@@ -331,6 +340,7 @@ try {
     Start-Sleep -Seconds 3
     $beforeAssign = (Invoke-Node B GET '/catalog/peers/items?pageSize=50').totalRecords
     Invoke-Node A PUT "/sharing/lists/$($list.id)" @{ name = 'Kids'; items = $list.items; peerIds = @($bOnA.id) } | Out-Null
+    Invoke-NodeCommand B @{ name = 'PeerCatalogSync' }
     $seen = (Get-Seen 2).Items
     Assert-That 'A share list offers only its titles, and only once the peer is put on it' (
         $beforeAssign -eq 0 -and @($seen | Where-Object mediaKind -eq 'tv').Count -eq 2
@@ -347,12 +357,14 @@ try {
     Invoke-Node A PUT "/sharing/lists/$($list.id)" @{ name = 'Kids'; items = @($pinguKey + @{ episodeArrId = $e2 }); peerIds = @($bOnA.id) } | Out-Null
     $oneEpisode = (Get-SeenNames 'e2').Names
     Invoke-Node A PUT "/sharing/lists/$($list.id)" @{ name = 'Kids'; items = @($pinguKey + @{ seasonNumber = 1 }); peerIds = @($bOnA.id) } | Out-Null
+    Invoke-NodeCommand B @{ name = 'PeerCatalogSync' }
     $oneSeason = (Get-SeenNames 'e1', 'e2').Names
     Assert-That 'A list can hold one episode or one season of a series, and the peer is offered just that' (
         $e1 -and $e2 -and ($oneEpisode -join ' ') -eq 'e2' -and ($oneSeason -join ' ') -eq 'e1 e2'
     ) @{ oneEpisode = $oneEpisode; oneSeason = $oneSeason; seasons = $seasonOne.episodes.Count }
 
     Invoke-Node A PUT "/sharing/lists/$($list.id)" @{ name = 'Kids'; items = @($pinguKey, $movieKey); peerIds = @($bOnA.id) } | Out-Null
+    Invoke-NodeCommand B @{ name = 'PeerCatalogSync' }
     Get-SeenNames 'e1', 'e2', 'movie' | Out-Null
     Invoke-Node A PUT "/sharing/lists/$($hidden.id)" @{ items = @($pinguKey + @{ episodeArrId = $e1 }); peerIds = @() } | Out-Null
     $hidOne = (Get-SeenNames 'e2', 'movie').Names
@@ -370,6 +382,7 @@ try {
     # --- Trust ends ------------------------------------------------------------------------------
 
     Invoke-Node A PUT "/nodes/peers/$($bOnA.id)/shareall" @{ shareAll = $true } | Out-Null
+    Invoke-NodeCommand B @{ name = 'PeerCatalogSync' }
     Get-Seen 3 | Out-Null
     Invoke-Node A POST "/nodes/peers/$($bOnA.id)/revoke" | Out-Null
     $after = Wait-Until -What "B to drop A's catalog" -TimeoutSec 30 -Condition {

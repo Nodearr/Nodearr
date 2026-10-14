@@ -96,6 +96,7 @@ namespace NzbDrone.Core.Configuration
         int TransferDirectTimeout { get; set; }
         string TransferDownloadFolder { get; set; }
         int TransferUploadLimit { get; set; }
+        int CatalogSyncInterval { get; set; }
 
         // Proxy
         bool ProxyEnabled { get; }

@@ -444,6 +444,14 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("TransferUploadLimit", value); }
         }
 
+        // Minutes between asking each trusted node for what changed in its catalog, as Sonarr's
+        // RSS Sync Interval is between asking each indexer. Zero turns it off.
+        public int CatalogSyncInterval
+        {
+            get { return GetValueInt("CatalogSyncInterval", 15); }
+            set { SetValue("CatalogSyncInterval", value); }
+        }
+
         public bool ProxyEnabled => GetValueBoolean("ProxyEnabled", false);
 
         public ProxyType ProxyType => GetValueEnum<ProxyType>("ProxyType", ProxyType.Http);

@@ -15,6 +15,7 @@ using NzbDrone.Core.MediaFiles.Commands;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Nodes;
+using NzbDrone.Core.Nodes.Settings;
 using NzbDrone.Core.PeerCatalog;
 
 namespace NzbDrone.Core.Jobs
@@ -76,15 +77,17 @@ namespace NzbDrone.Core.Jobs
                         TypeName = typeof(ApplicationIndexerSyncCommand).FullName
                     },
 
+                    // The whole library from each Arr app, as often as Sonarr refreshes its series.
                     new ScheduledTask
                     {
-                        Interval = 6 * 60,
+                        Interval = 12 * 60,
                         TypeName = typeof(CatalogRefreshCommand).FullName
                     },
 
+                    // What changed in each trusted node's catalog, as often as Sonarr's RSS Sync.
                     new ScheduledTask
                     {
-                        Interval = 60,
+                        Interval = GetCatalogSyncInterval(),
                         TypeName = typeof(PeerCatalogSyncCommand).FullName
                     },
 
@@ -167,6 +170,19 @@ namespace NzbDrone.Core.Jobs
             return intervalMinutes * 60 * 24;
         }
 
+        // As Sonarr treats its RSS Sync Interval: zero is off, and anything else is held to 10 to 120.
+        private int GetCatalogSyncInterval()
+        {
+            var interval = _configService.CatalogSyncInterval;
+
+            if (interval <= 0)
+            {
+                return 0;
+            }
+
+            return Math.Clamp(interval, NodeSettingsDefaults.MinCatalogSyncInterval, NodeSettingsDefaults.MaxCatalogSyncInterval);
+        }
+
         public void Handle(CommandExecutedEvent message)
         {
             var scheduledTask = _scheduledTaskRepository.All().SingleOrDefault(c => c.TypeName == message.Command.Body.GetType().FullName);
@@ -192,9 +208,13 @@ namespace NzbDrone.Core.Jobs
             var backup = _scheduledTaskRepository.GetDefinition(typeof(BackupCommand));
             backup.Interval = GetBackupInterval();
 
-            _scheduledTaskRepository.UpdateMany(new List<ScheduledTask> { backup });
+            var catalogSync = _scheduledTaskRepository.GetDefinition(typeof(PeerCatalogSyncCommand));
+            catalogSync.Interval = GetCatalogSyncInterval();
+
+            _scheduledTaskRepository.UpdateMany(new List<ScheduledTask> { backup, catalogSync });
 
             _cache.Find(backup.TypeName).Interval = backup.Interval;
+            _cache.Find(catalogSync.TypeName).Interval = catalogSync.Interval;
         }
     }
 }

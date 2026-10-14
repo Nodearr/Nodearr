@@ -368,6 +368,7 @@ try {
     Invoke-Node A PUT "/sharing/lists/$($hidden.id)" @{ items = @(@{ mediaKind = 'movie'; applicationId = $night.applicationId; arrId = $night.arrId }); peerIds = @() } | Out-Null
     Get-Seen 2 | Out-Null
     Invoke-Node A PUT "/sharing/lists/$($hidden.id)" @{ items = @(); peerIds = @() } | Out-Null
+    Invoke-NodeCommand B @{ name = 'PeerCatalogSync' }
     Get-Seen 3 | Out-Null
     $again = Search-Arr sonarrB "episodeId=$($episodesB[0].id)" | Select-Object -First 1
     Assert-That 'A file keeps its ID and its publish date when the catalog it came in is fetched again' (

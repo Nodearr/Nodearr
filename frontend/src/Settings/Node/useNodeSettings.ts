@@ -12,6 +12,7 @@ export interface NodeSettingsModel {
   directTimeoutSeconds: number;
   downloadFolder: string;
   uploadLimitKbps: number;
+  catalogSyncInterval: number;
 
   // Told by the server, and ignored when sent back.
   fixedByEnvironment: string[];

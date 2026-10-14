@@ -9,6 +9,8 @@ using FluentValidation.Results;
 using NLog;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Configuration;
+using NzbDrone.Core.Configuration.Events;
+using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Nodes.Transport;
 using NzbDrone.Core.Transfers;
 
@@ -36,14 +38,16 @@ namespace NzbDrone.Core.Nodes.Settings
         private readonly IConfigService _configService;
         private readonly IPeerTransport _transport;
         private readonly ITransferRepository _transfers;
+        private readonly IEventAggregator _eventAggregator;
         private readonly Logger _logger;
 
-        public NodeSettingsService(INodeSettingsProvider provider, IConfigService configService, IPeerTransport transport, ITransferRepository transfers, Logger logger)
+        public NodeSettingsService(INodeSettingsProvider provider, IConfigService configService, IPeerTransport transport, ITransferRepository transfers, IEventAggregator eventAggregator, Logger logger)
         {
             _provider = provider;
             _configService = configService;
             _transport = transport;
             _transfers = transfers;
+            _eventAggregator = eventAggregator;
             _logger = logger;
         }
 
@@ -130,6 +134,12 @@ namespace NzbDrone.Core.Nodes.Settings
 
             Check(nameof(NodeSettings.DownloadFolder), () => CheckDownloadFolder(settings.DownloadFolder, current.DownloadFolder));
 
+            // Sonarr's own words for its RSS Sync Interval.
+            Check(nameof(NodeSettings.CatalogSyncInterval), () =>
+                settings.CatalogSyncInterval == 0 || settings.CatalogSyncInterval is >= NodeSettingsDefaults.MinCatalogSyncInterval and <= NodeSettingsDefaults.MaxCatalogSyncInterval
+                    ? null
+                    : $"Must be between {NodeSettingsDefaults.MinCatalogSyncInterval} and {NodeSettingsDefaults.MaxCatalogSyncInterval} or 0 to disable");
+
             return failures;
         }
 
@@ -165,8 +175,15 @@ namespace NzbDrone.Core.Nodes.Settings
             Write(nameof(NodeSettings.DirectTimeoutSeconds), before.DirectTimeoutSeconds, settings.DirectTimeoutSeconds, v => _configService.TransferDirectTimeout = v);
             Write(nameof(NodeSettings.DownloadFolder), before.DownloadFolder ?? string.Empty, (settings.DownloadFolder ?? string.Empty).Trim(), v => _configService.TransferDownloadFolder = v);
             Write(nameof(NodeSettings.UploadLimitKbps), before.UploadLimitKbps, settings.UploadLimitKbps, v => _configService.TransferUploadLimit = v);
+            Write(nameof(NodeSettings.CatalogSyncInterval), before.CatalogSyncInterval, settings.CatalogSyncInterval, v => _configService.CatalogSyncInterval = v);
 
             var after = _provider.Get();
+
+            // The task schedule takes a new interval when told the configuration changed.
+            if (before.CatalogSyncInterval != after.CatalogSyncInterval)
+            {
+                _eventAggregator.PublishEvent(new ConfigSavedEvent());
+            }
 
             result.Settings = after;
             result.TransportRunning = _transport.IsRunning;

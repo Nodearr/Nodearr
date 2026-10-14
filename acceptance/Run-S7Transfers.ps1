@@ -567,7 +567,10 @@ try {
     $cut = Wait-Until -What 'the transfer to stop once the series is unshared' -TimeoutSec 15 -EverySec 0.5 -Condition {
         Get-Transfers | Where-Object { $_.downloadId -eq $unshared.downloadId -and $_.state -eq 'failed' } | Select-Object -First 1
     }
-    $cutUpload = @(Invoke-Node A GET '/transfers/uploads') | Where-Object { $_.title -eq "$($episodeNames[2]).mkv" -and $_.state -eq 'failed' } | Select-Object -First 1
+    # A reads its uploads from the transport once a second, so it can be a moment behind B.
+    $cutUpload = Wait-Until -What 'A to list the upload it cut' -TimeoutSec 10 -EverySec 0.5 -Condition {
+        @(Invoke-Node A GET '/transfers/uploads') | Where-Object { $_.title -eq "$($episodeNames[2]).mkv" -and $_.state -eq 'failed' } | Select-Object -First 1
+    }
     $cutSlot = (Invoke-Sab 'mode=history&start=0&limit=60&category=tv').history.slots | Where-Object nzo_id -eq $unshared.downloadId
     Assert-That 'When the sending node unshares a series mid-transfer, the transfer stops there, says why, and is not tried again' (
         $cut.failure -eq 'notAuthorized' -and $cut.bytesDone -lt $cut.size -and $cut.attempts -eq 1 -and
@@ -584,6 +587,7 @@ try {
     } | Out-Null
     foreach ($entry in @((Invoke-Arr sonarrB GET '/blocklist?pageSize=50').records)) { Invoke-Arr sonarrB DELETE "/blocklist/$($entry.id)" | Out-Null }
     Invoke-Node A PUT "/sharing/lists/$($hiddenList.id)" @{ name = $hiddenList.name; items = @(); peerIds = @() } | Out-Null
+    Invoke-NodeCommand B @{ name = 'PeerCatalogSync' }
     Wait-Until -What "B to hold A's four files again" -TimeoutSec 45 -Condition { (Invoke-Node B GET '/catalog/peers/items?pageSize=50').totalRecords -eq 4 } | Out-Null
     Wait-Until -What 'the failed download to be cleared' -TimeoutSec 60 -Condition { (Get-Transfers).Count -eq 0 } | Out-Null
 

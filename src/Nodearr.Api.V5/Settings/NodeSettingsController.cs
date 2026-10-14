@@ -21,6 +21,9 @@ public class NodeSettingsResource : RestResource
     public string? DownloadFolder { get; set; }
     public int UploadLimitKbps { get; set; }
 
+    // Left out by a client that does not know it, which keeps what is set.
+    public int? CatalogSyncInterval { get; set; }
+
     // Told, not asked: these are ignored when sent back.
 
     // The settings the environment fixes. They cannot be changed here.
@@ -34,7 +37,7 @@ public class NodeSettingsResource : RestResource
     // Set on the answer to a save that had to restart the peer transport.
     public bool TransportRestarted { get; set; }
 
-    public NodeSettings ToModel()
+    public NodeSettings ToModel(NodeSettings current)
     {
         return new NodeSettings
         {
@@ -45,7 +48,8 @@ public class NodeSettingsResource : RestResource
             PortMapping = PortMapping,
             DirectTimeoutSeconds = DirectTimeoutSeconds,
             DownloadFolder = DownloadFolder,
-            UploadLimitKbps = UploadLimitKbps
+            UploadLimitKbps = UploadLimitKbps,
+            CatalogSyncInterval = CatalogSyncInterval ?? current.CatalogSyncInterval
         };
     }
 }
@@ -81,7 +85,7 @@ public class NodeSettingsController : RestController<NodeSettingsResource>
     [Produces("application/json")]
     public Accepted<NodeSettingsResource> SaveSettings([FromBody] NodeSettingsResource resource)
     {
-        var settings = resource.ToModel();
+        var settings = resource.ToModel(_provider.Get());
         var failures = _service.Validate(settings);
 
         if (failures.Count > 0)
@@ -107,6 +111,7 @@ public class NodeSettingsController : RestController<NodeSettingsResource>
             DirectTimeoutSeconds = settings.DirectTimeoutSeconds,
             DownloadFolder = settings.DownloadFolder ?? string.Empty,
             UploadLimitKbps = settings.UploadLimitKbps,
+            CatalogSyncInterval = settings.CatalogSyncInterval,
             FixedByEnvironment = _provider.FixedByEnvironment().OrderBy(n => n).ToList(),
             DefaultNodeName = Environment.MachineName,
             DefaultDownloadFolder = _provider.DefaultDownloadFolder,
