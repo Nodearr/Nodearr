@@ -6,6 +6,7 @@ using Moq;
 using NUnit.Framework;
 using NzbDrone.Core.Applications;
 using NzbDrone.Core.Catalog;
+using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Test.Framework;
 using NzbDrone.Core.ThingiProvider.Events;
 using NzbDrone.Test.Common;
@@ -184,6 +185,99 @@ namespace NzbDrone.Core.Test.Catalog
             EpisodeFiles.Should().BeEmpty();
             Mocker.Resolve<ICatalogSeriesRepository>().ForApplication(ApplicationId).Should().BeEmpty();
             Mocker.Resolve<ICatalogSyncStatusRepository>().ForApplication(ApplicationId).Should().BeNull();
+        }
+
+        // A second series, Bluey, beside Pingu, so that reading one title again can be seen to
+        // leave the other alone.
+        private void GivenTwoSeriesImported()
+        {
+            _catalog.Series.Add(new CatalogSeries { ArrId = 11, TvdbId = 353546, Title = "Bluey", Year = 2018 });
+            _catalog.Episodes.Add(new CatalogEpisode { ArrId = 201, ArrSeriesId = 11, SeasonNumber = 1, EpisodeNumber = 1, ArrEpisodeFileId = 601 });
+            _catalog.EpisodeFiles.Add(new CatalogEpisodeFile { ArrId = 601, ArrSeriesId = 11, SeasonNumber = 1, Path = "/tv/Bluey/S01E01.mkv", Size = 300 });
+            Subject.Refresh(null, false);
+        }
+
+        // Pingu as Sonarr has it after the webhook: episode 1's file deleted, episode 6 imported.
+        private static ApplicationCatalog PinguNow()
+        {
+            var pingu = new ApplicationCatalog();
+
+            pingu.Series.Add(new CatalogSeries { ArrId = 10, TvdbId = 75669, Title = "Pingu", Year = 1989 });
+            pingu.Episodes.Add(new CatalogEpisode { ArrId = 101, ArrSeriesId = 10, SeasonNumber = 1, EpisodeNumber = 1 });
+            pingu.Episodes.Add(new CatalogEpisode { ArrId = 104, ArrSeriesId = 10, SeasonNumber = 1, EpisodeNumber = 4, ArrEpisodeFileId = 502 });
+            pingu.Episodes.Add(new CatalogEpisode { ArrId = 105, ArrSeriesId = 10, SeasonNumber = 1, EpisodeNumber = 5, ArrEpisodeFileId = 502 });
+            pingu.Episodes.Add(new CatalogEpisode { ArrId = 106, ArrSeriesId = 10, SeasonNumber = 1, EpisodeNumber = 6, ArrEpisodeFileId = 503 });
+            pingu.EpisodeFiles.Add(new CatalogEpisodeFile { ArrId = 502, ArrSeriesId = 10, SeasonNumber = 1, Path = "/tv/Pingu/S01E04E05.mkv", Size = 200, Quality = "WEBDL-720p" });
+            pingu.EpisodeFiles.Add(new CatalogEpisodeFile { ArrId = 503, ArrSeriesId = 10, SeasonNumber = 1, Path = "/tv/Pingu/S01E06.mkv", Size = 400, Quality = "WEBDL-720p" });
+
+            return pingu;
+        }
+
+        [Test]
+        public void reading_one_series_again_should_take_in_its_changes_and_leave_the_rest_alone()
+        {
+            GivenTwoSeriesImported();
+            _application.Setup(a => a.FetchTitle(10)).Returns(PinguNow());
+
+            Subject.RefreshTitle(ApplicationId, 10);
+
+            EpisodeFiles.Single(f => f.ArrId == 503).MissingSince.Should().BeNull();
+            EpisodeFiles.Single(f => f.ArrId == 501).MissingSince.Should().NotBeNull();
+            EpisodeFiles.Single(f => f.ArrId == 601).MissingSince.Should().BeNull();
+            Mocker.Resolve<ICatalogSeriesRepository>().ForApplication(ApplicationId).Should().OnlyContain(s => s.MissingSince == null);
+            Mocker.GetMock<IEventAggregator>().Verify(e => e.PublishEvent(It.Is<CatalogRefreshedEvent>(c => c.ApplicationId == ApplicationId)), Times.Exactly(2));
+        }
+
+        [Test]
+        public void a_series_the_arr_app_no_longer_has_should_be_marked_missing_with_everything_in_it()
+        {
+            GivenTwoSeriesImported();
+            _application.Setup(a => a.FetchTitle(10)).Returns(new ApplicationCatalog());
+
+            Subject.RefreshTitle(ApplicationId, 10);
+
+            Mocker.Resolve<ICatalogSeriesRepository>().ForApplication(ApplicationId).Single(s => s.ArrId == 10).MissingSince.Should().NotBeNull();
+            Mocker.Resolve<ICatalogEpisodeRepository>().ForSeries(ApplicationId, 10).Should().OnlyContain(e => e.MissingSince != null);
+            EpisodeFiles.Where(f => f.ArrSeriesId == 10).Should().OnlyContain(f => f.MissingSince != null);
+            EpisodeFiles.Single(f => f.ArrId == 601).MissingSince.Should().BeNull();
+        }
+
+        [Test]
+        public void a_title_that_cannot_be_read_should_change_nothing()
+        {
+            GivenTwoSeriesImported();
+            _application.Setup(a => a.FetchTitle(10)).Throws(new InvalidOperationException("connection refused"));
+
+            Subject.RefreshTitle(ApplicationId, 10);
+
+            EpisodeFiles.Should().OnlyContain(f => f.MissingSince == null);
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void reading_one_movie_again_should_touch_only_that_movie()
+        {
+            _application.SetupGet(a => a.Definition).Returns(new ApplicationDefinition { Id = ApplicationId, Name = "Radarr", Implementation = "Radarr" });
+            _catalog = new ApplicationCatalog();
+            _catalog.Movies.Add(new CatalogMovie { ArrId = 20, TmdbId = 10331, Title = "Night of the Living Dead", ArrMovieFileId = 701 });
+            _catalog.Movies.Add(new CatalogMovie { ArrId = 21, TmdbId = 10513, Title = "Plan 9 from Outer Space", ArrMovieFileId = 702 });
+            _catalog.MovieFiles.Add(new CatalogMovieFile { ArrId = 701, ArrMovieId = 20, Path = "/movies/night.mkv", Size = 1 });
+            _catalog.MovieFiles.Add(new CatalogMovieFile { ArrId = 702, ArrMovieId = 21, Path = "/movies/plan9.mkv", Size = 1 });
+            Subject.Refresh(null, false);
+
+            // Radarr upgraded Night of the Living Dead: a new file in place of the old one.
+            var night = new ApplicationCatalog();
+            night.Movies.Add(new CatalogMovie { ArrId = 20, TmdbId = 10331, Title = "Night of the Living Dead", ArrMovieFileId = 703 });
+            night.MovieFiles.Add(new CatalogMovieFile { ArrId = 703, ArrMovieId = 20, Path = "/movies/night-1080p.mkv", Size = 2 });
+            _application.Setup(a => a.FetchTitle(20)).Returns(night);
+
+            Subject.RefreshTitle(ApplicationId, 20);
+
+            var files = Mocker.Resolve<ICatalogMovieFileRepository>().ForApplication(ApplicationId);
+
+            files.Single(f => f.ArrId == 703).MissingSince.Should().BeNull();
+            files.Single(f => f.ArrId == 701).MissingSince.Should().NotBeNull();
+            files.Single(f => f.ArrId == 702).MissingSince.Should().BeNull();
         }
     }
 }

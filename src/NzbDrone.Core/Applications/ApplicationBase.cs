@@ -22,6 +22,9 @@ namespace NzbDrone.Core.Applications
 
         private const int AnimeCategory = 5070;
 
+        // The Arr apps' WebhookMethod: POST is 1.
+        private const int WebhookPost = 1;
+
         private static readonly HashSet<string> SecretFields = new() { "apiKey" };
 
         protected readonly IArrV3Proxy _proxy;
@@ -42,6 +45,21 @@ namespace NzbDrone.Core.Applications
         protected abstract string CategoryField { get; }
 
         public abstract ApplicationCatalog FetchCatalog();
+        public abstract ApplicationCatalog FetchTitle(int arrId);
+
+        // The resource, or null when the Arr app answers that it has no such thing.
+        protected T GetOrNull<T>(string resource)
+            where T : class, new()
+        {
+            try
+            {
+                return _proxy.Get<T>(Settings, resource);
+            }
+            catch (HttpException ex) when (ex.Response.StatusCode == HttpStatusCode.NotFound)
+            {
+                return null;
+            }
+        }
 
         public Type ConfigContract => typeof(TSettings);
         public virtual ProviderMessage Message => null;
@@ -142,10 +160,31 @@ namespace NzbDrone.Core.Applications
                     { "downloadClientId", downloadClient.Value<int>("id") }
                 },
                 force);
+
+            // The Arr app tells Nodearr when a file is imported, upgraded, renamed or deleted, so
+            // the catalog follows the library within seconds and not at the next full read. It is
+            // the Arr app's own webhook connection, as a user would add one under Connect.
+            EnsureProvider("connection",
+                "/notification",
+                "Webhook",
+                new Dictionary<string, JToken>
+                {
+                    { "url", Settings.NodearrUrl.TrimEnd('/') + $"/api/v5/arr/webhook/{Definition.Id}" },
+                    { "method", WebhookPost },
+                    { "headers", new JArray(new JObject { ["key"] = "X-Api-Key", ["value"] = apiKey }) }
+                },
+                WebhookEvents.ToDictionary(e => e.Key, e => (JToken)e.Value),
+                force);
         }
+
+        // The Arr app's events, by the names its notification resource gives them, and whether the
+        // webhook wants each. Every one is named, so none is left as the Arr app's default.
+        protected abstract IReadOnlyDictionary<string, bool> WebhookEvents { get; }
 
         public void RemoveRegistration()
         {
+            RemoveProvider("connection", "/notification", "Webhook");
+
             // The indexer goes first. It points at the download client.
             RemoveProvider("indexer", "/indexer", "Newznab");
             RemoveProvider("download client", "/downloadclient", "Sabnzbd");

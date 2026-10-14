@@ -33,6 +33,7 @@ namespace NzbDrone.Core.Test.Applications
 
             GivenTheAppHas("/indexer", (1, "Newznab", "NZBgeek"), (2, "Newznab", "Nodearr"), (3, "Torznab", "Nodearr"));
             GivenTheAppHas("/downloadclient", (7, "Sabnzbd", "Nodearr"), (8, "Sabnzbd", "SABnzbd"), (9, "QBittorrent", "Nodearr"));
+            GivenTheAppHas("/notification", (4, "Webhook", "Nodearr"), (5, "Webhook", "Home Assistant"), (6, "Discord", "Nodearr"));
         }
 
         private void GivenTheAppHas(string resource, params (int Id, string Implementation, string Name)[] providers)
@@ -50,11 +51,11 @@ namespace NzbDrone.Core.Test.Applications
         }
 
         [Test]
-        public void the_indexer_should_go_first_and_then_the_download_client_it_points_at()
+        public void the_webhook_should_go_first_then_the_indexer_and_then_the_download_client_it_points_at()
         {
             Subject.RemoveRegistration();
 
-            _deleted.Should().Equal("/indexer/2", "/downloadclient/7");
+            _deleted.Should().Equal("/notification/4", "/indexer/2", "/downloadclient/7");
         }
 
         [Test]
@@ -62,6 +63,7 @@ namespace NzbDrone.Core.Test.Applications
         {
             GivenTheAppHas("/indexer", (1, "Newznab", "NZBgeek"));
             GivenTheAppHas("/downloadclient", (8, "Sabnzbd", "SABnzbd"));
+            GivenTheAppHas("/notification", (5, "Webhook", "Home Assistant"));
 
             Subject.RemoveRegistration();
 
@@ -72,7 +74,7 @@ namespace NzbDrone.Core.Test.Applications
         public void an_app_that_cannot_be_reached_should_say_so_to_the_caller()
         {
             Mocker.GetMock<IArrV3Proxy>()
-                  .Setup(p => p.GetArray(It.IsAny<ArrApplicationSettings>(), "/indexer"))
+                  .Setup(p => p.GetArray(It.IsAny<ArrApplicationSettings>(), "/notification"))
                   .Throws(new InvalidOperationException("connection refused"));
 
             Assert.Throws<InvalidOperationException>(() => Subject.RemoveRegistration());

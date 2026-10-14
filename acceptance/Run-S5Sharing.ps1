@@ -219,7 +219,7 @@ try {
     # --- Catalogs --------------------------------------------------------------------------------
 
     # A registers itself in both apps. B only reads Sonarr and leaves A's registration alone.
-    Add-Application A Sonarr 'http://127.0.0.1:18989' $arr.sonarr.Key 'fullSync' | Out-Null
+    $sonarrOnA = Add-Application A Sonarr 'http://127.0.0.1:18989' $arr.sonarr.Key 'fullSync'
     Add-Application A Radarr 'http://127.0.0.1:17878' $arr.radarr.Key 'fullSync' | Out-Null
     foreach ($app in 'sonarr', 'radarr') {
         Wait-Until -What "A's indexer in $app" -Condition { Invoke-Arr $app GET '/indexer' | Where-Object name -eq 'Nodearr' } | Out-Null
@@ -258,6 +258,9 @@ try {
     Invoke-NodeCommand A @{ name = 'CatalogRefresh' }
 
     # Then episode 2 is deleted in Sonarr, and only B refreshes. A still offers it. B no longer has it.
+    # A misses the deletion, as it would if it were down when Sonarr called: its webhook is taken
+    # out of Sonarr first. It is put back, and tested, further down.
+    foreach ($hook in @(Invoke-Arr sonarr GET '/notification' | Where-Object name -eq 'Nodearr')) { Invoke-Arr sonarr DELETE "/notification/$($hook.id)" | Out-Null }
     $episodeTwoFile = Invoke-Arr sonarr GET "/episodefile?seriesId=$($series.id)" | Where-Object { $_.relativePath -like '*S01E02*' } | Select-Object -First 1
     Invoke-Arr sonarr DELETE "/episodefile/$($episodeTwoFile.id)" | Out-Null
     Add-Application B Sonarr 'http://127.0.0.1:18989' $arr.sonarr.Key 'addOnly' | Out-Null
@@ -379,11 +382,53 @@ try {
     Get-Seen 0 | Out-Null
     Assert-That 'Deleting the list takes its titles away from the peer' $true @{ }
 
-    # --- Trust ends ------------------------------------------------------------------------------
+    # --- Sonarr tells A, and A tells the peer ------------------------------------------------------
 
+    # A's webhook goes back into Sonarr the way it got there: A keeping its registration in step.
+    Invoke-NodeCommand A @{ name = 'ApplicationIndexerSync' }
+    $hook = Wait-Until -What "A's webhook in Sonarr" -TimeoutSec 30 -Condition {
+        Invoke-Arr sonarr GET '/notification' | Where-Object { $_.name -eq 'Nodearr' -and $_.implementation -eq 'Webhook' } | Select-Object -First 1
+    }
+    $hookUrl = ($hook.fields | Where-Object name -eq 'url').value
+    $hookHeader = @(($hook.fields | Where-Object name -eq 'headers').value) | Select-Object -First 1
+    Assert-That 'A puts its own webhook into Sonarr: to itself, with its key, for files coming and going and nothing else' (
+        $hookUrl -eq "http://host.docker.internal:$($nodes.A.Port)/api/v5/arr/webhook/$sonarrOnA" -and $hookHeader.key -eq 'X-Api-Key' -and
+        $hook.onDownload -and $hook.onUpgrade -and $hook.onEpisodeFileDelete -and $hook.onSeriesDelete -and -not $hook.onGrab -and -not $hook.onHealthIssue
+    ) @{ url = $hookUrl; header = $hookHeader.key; onDownload = $hook.onDownload; onEpisodeFileDelete = $hook.onEpisodeFileDelete; onGrab = $hook.onGrab }
+
+    # A catches up on the deletion it missed, and B holds what A has: episode 1 and the movie.
+    Invoke-NodeCommand A @{ name = 'CatalogRefresh' }
     Invoke-Node A PUT "/nodes/peers/$($bOnA.id)/shareall" @{ shareAll = $true } | Out-Null
     Invoke-NodeCommand B @{ name = 'PeerCatalogSync' }
-    Get-Seen 3 | Out-Null
+    Get-SeenNames 'e1', 'movie' | Out-Null
+
+    # Episode 1 is deleted in Sonarr. Nobody asks anyone to sync.
+    $episodeOneFile = Invoke-Arr sonarr GET "/episodefile?seriesId=$($series.id)" | Where-Object { $_.relativePath -like '*S01E01*' } | Select-Object -First 1
+    $deletedAt = Get-Date
+    Invoke-Arr sonarr DELETE "/episodefile/$($episodeOneFile.id)" | Out-Null
+    $gone = (Get-SeenNames 'movie').Names
+    $tookToGo = ((Get-Date) - $deletedAt).TotalSeconds
+    Assert-That 'A file deleted in Sonarr leaves the peer within seconds with nobody asking: Sonarr tells A, and A tells the peer' (
+        ($gone -join ' ') -eq 'movie' -and $tookToGo -lt 30
+    ) @{ held = $gone; seconds = [math]::Round($tookToGo, 1) }
+
+    # Sonarr imports it again. A has it at once. The peer gets it at its next sync, as from any indexer.
+    $importedAt = Get-Date
+    Import-ArrDownload -ApiUrl $arr.sonarr.Url -ApiKey $arr.sonarr.Key -App Sonarr -SourceFile $tvMedia -Name 'Pingu.S01E01.720p.WEB-DL.AAC2.0.H.264-NODEARR' -DownloadsDir $downloads
+    $back = Wait-Until -What 'A to hold episode 1 again' -TimeoutSec 30 -EverySec 0.5 -Condition {
+        $now = Invoke-Node A GET '/sharing/titles' | Where-Object title -eq 'Pingu'
+        if ($now.files -eq 1) { $now }
+    }
+    $tookToCome = ((Get-Date) - $importedAt).TotalSeconds
+    Invoke-NodeCommand B @{ name = 'PeerCatalogSync' }
+    $returned = (Get-SeenNames 'e1', 'movie').Names
+    Assert-That 'A file Sonarr imports is in A''s catalog within seconds, without waiting for a full read' (
+        $back.files -eq 1 -and $tookToCome -lt 30 -and ($returned -join ' ') -eq 'e1 movie'
+    ) @{ seconds = [math]::Round($tookToCome, 1); held = $returned }
+
+    # --- Trust ends ------------------------------------------------------------------------------
+
+    Get-Seen 2 | Out-Null
     Invoke-Node A POST "/nodes/peers/$($bOnA.id)/revoke" | Out-Null
     $after = Wait-Until -What "B to drop A's catalog" -TimeoutSec 30 -Condition {
         $left = Invoke-Node B GET '/catalog/peers/items?pageSize=50'

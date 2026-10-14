@@ -31,6 +31,9 @@ namespace NzbDrone.Core.Catalog
     public interface ICatalogService
     {
         void Refresh(int? applicationId, bool purgeMissing);
+
+        // Reads one series or movie again, and nothing else of the Arr app's library.
+        void RefreshTitle(int applicationId, int arrId);
         List<CatalogApplicationSummary> GetSummaries();
         PagingSpec<CatalogEpisodeFile> PagedEpisodeFiles(PagingSpec<CatalogEpisodeFile> pagingSpec);
         PagingSpec<CatalogMovieFile> PagedMovieFiles(PagingSpec<CatalogMovieFile> pagingSpec);
@@ -41,6 +44,7 @@ namespace NzbDrone.Core.Catalog
 
     public class CatalogService : ICatalogService,
                                   IExecute<CatalogRefreshCommand>,
+                                  IExecute<CatalogTitleRefreshCommand>,
                                   IHandle<ProviderDeletedEvent<IApplication>>
     {
         // How long an item the Arr app no longer reports is kept before it is removed.
@@ -106,6 +110,58 @@ namespace NzbDrone.Core.Catalog
                     Refresh(application, purgeMissing);
                 }
             }
+        }
+
+        public void Execute(CatalogTitleRefreshCommand message)
+        {
+            RefreshTitle(message.ApplicationId, message.ArrId);
+        }
+
+        public void RefreshTitle(int applicationId, int arrId)
+        {
+            var application = _applicationFactory.SyncEnabled().FirstOrDefault(a => a.Definition.Id == applicationId);
+
+            if (application == null)
+            {
+                return;
+            }
+
+            ApplicationCatalog catalog;
+
+            try
+            {
+                catalog = application.FetchTitle(arrId);
+            }
+            catch (Exception ex)
+            {
+                // The next full read catches up.
+                _logger.Warn(ex, "Unable to read item {0} from {1}", arrId, application.Definition.Name);
+
+                return;
+            }
+
+            var now = DateTime.UtcNow;
+            var purgeBefore = now - MissingRetention;
+
+            lock (RefreshLock)
+            {
+                // Only this title's rows are compared, so everything else the Arr app has is left alone.
+                if (application.Definition.Implementation == "Radarr")
+                {
+                    Merge(_movies, applicationId, catalog.Movies, now, purgeBefore, m => m.ArrId == arrId);
+                    Merge(_movieFiles, applicationId, catalog.MovieFiles, now, purgeBefore, f => f.ArrMovieId == arrId);
+                }
+                else
+                {
+                    Merge(_series, applicationId, catalog.Series, now, purgeBefore, s => s.ArrId == arrId);
+                    Merge(_episodes, applicationId, catalog.Episodes, now, purgeBefore, e => e.ArrSeriesId == arrId);
+                    Merge(_episodeFiles, applicationId, catalog.EpisodeFiles, now, purgeBefore, f => f.ArrSeriesId == arrId);
+                }
+            }
+
+            _eventAggregator.PublishEvent(new CatalogRefreshedEvent(applicationId));
+
+            _logger.Debug("Read {0} {1} again from {2}: {3} files", application.Definition.Implementation == "Radarr" ? "movie" : "series", arrId, application.Definition.Name, catalog.EpisodeFiles.Count + catalog.MovieFiles.Count);
         }
 
         public void Handle(ProviderDeletedEvent<IApplication> message)
@@ -215,10 +271,11 @@ namespace NzbDrone.Core.Catalog
 
         // Inserts what is new, updates what changed, and marks what the Arr app stopped reporting.
         // Items missing since before purgeBefore are removed.
-        private static void Merge<TModel>(ICatalogRepository<TModel> repository, int applicationId, List<TModel> incoming, DateTime now, DateTime purgeBefore)
+        // A scope limits the comparison to some of the application's rows, such as one series.
+        private static void Merge<TModel>(ICatalogRepository<TModel> repository, int applicationId, List<TModel> incoming, DateTime now, DateTime purgeBefore, Func<TModel, bool> scope = null)
             where TModel : CatalogModel, new()
         {
-            var existing = repository.ForApplication(applicationId).ToDictionary(x => x.ArrId);
+            var existing = repository.ForApplication(applicationId).Where(scope ?? (_ => true)).ToDictionary(x => x.ArrId);
             var inserts = new List<TModel>();
             var updates = new List<TModel>();
 

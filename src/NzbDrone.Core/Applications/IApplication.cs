@@ -22,6 +22,10 @@ namespace NzbDrone.Core.Applications
 
         ApplicationCatalog FetchCatalog();
 
+        // One series, with its episodes and files, or one movie with its file, as the Arr app has
+        // it now. Empty when the Arr app no longer has it.
+        ApplicationCatalog FetchTitle(int arrId);
+
         // Asks the Arr app whether it can see a marker folder that was just made inside one of
         // Nodearr's folders. That is the only way to know the two really share the folder.
         FolderVisibility LookForFolder(string folder, string marker);

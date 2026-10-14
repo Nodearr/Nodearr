@@ -17,6 +17,25 @@ namespace NzbDrone.Core.Applications.Sonarr
         protected override Version MinimumVersion => new(3, 0, 5, 0);
         protected override string CategoryField => "tvCategory";
 
+        // Anything that adds, changes or removes a file or a series. Grabs, health and updates are
+        // no concern of Nodearr's. Import Complete would repeat what each file's import says.
+        protected override IReadOnlyDictionary<string, bool> WebhookEvents => new Dictionary<string, bool>
+        {
+            { "onGrab", false },
+            { "onDownload", true },
+            { "onUpgrade", true },
+            { "onImportComplete", false },
+            { "onRename", true },
+            { "onSeriesAdd", true },
+            { "onSeriesDelete", true },
+            { "onEpisodeFileDelete", true },
+            { "onEpisodeFileDeleteForUpgrade", true },
+            { "onHealthIssue", false },
+            { "onHealthRestored", false },
+            { "onApplicationUpdate", false },
+            { "onManualInteractionRequired", false }
+        };
+
         public override ApplicationCatalog FetchCatalog()
         {
             var catalog = new ApplicationCatalog();
@@ -43,6 +62,31 @@ namespace NzbDrone.Core.Applications.Sonarr
                         catalog.EpisodeFiles.Add(file.ToCatalog());
                     }
                 }
+            }
+
+            return catalog;
+        }
+
+        public override ApplicationCatalog FetchTitle(int arrId)
+        {
+            var catalog = new ApplicationCatalog();
+            var series = GetOrNull<SonarrSeriesResource>($"/series/{arrId}");
+
+            if (series == null)
+            {
+                return catalog;
+            }
+
+            catalog.Series.Add(series.ToCatalog());
+
+            foreach (var episode in _proxy.Get<List<SonarrEpisodeResource>>(Settings, $"/episode?seriesId={arrId}"))
+            {
+                catalog.Episodes.Add(episode.ToCatalog());
+            }
+
+            foreach (var file in _proxy.Get<List<SonarrEpisodeFileResource>>(Settings, $"/episodefile?seriesId={arrId}"))
+            {
+                catalog.EpisodeFiles.Add(file.ToCatalog());
             }
 
             return catalog;
