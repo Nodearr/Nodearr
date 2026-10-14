@@ -87,6 +87,10 @@ namespace NzbDrone.Core.Nodes.Transport
         // Stops a transfer and forgets it. What it wrote stays where it is.
         void Cancel(string id);
 
+        // Cuts one file this node is sending, telling the other node why: NotAuthorized, Revoked
+        // or NotFound, as for a refused request.
+        void StopUpload(string id, string reason);
+
         // Cuts every file this node is sending to another node.
         void Disconnect(string nodeId);
         void SetSource(FileSourceHandler handler);

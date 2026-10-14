@@ -9,7 +9,8 @@
     Node B has its own Sonarr and Radarr, which know the same series and movie and have no files.
     The nodes pair and A shares. The script then presses "search" in B's Sonarr and Radarr and
     follows each grab to the file landing in B's library. It also cancels a transfer, restarts
-    node B in the middle of one, and has A end trust in the middle of one.
+    node B in the middle of one, has A unshare the series in the middle of one, and has A end
+    trust in the middle of one.
 
     Both nodes run on this machine with relays off, so their only route to each other is direct.
     A's uploads are slowed so that there is a middle to act in.
@@ -21,7 +22,8 @@
     Path to the built nodearr-transport binary.
 
 .PARAMETER KeepRunning
-    Leave both instances and the containers running afterwards: A on port 6633, B on port 6634,
+    Leave both instances and the containers running afterwards: A on port 6633, B on port 6634
+    (or FirstPort and the one after),
     B's Sonarr on 28989 and B's Radarr on 27878.
 
 .PARAMETER SetupOnly
@@ -35,6 +37,13 @@
 .PARAMETER UploadLimitKbps
     How fast node A may send, in kilobytes per second. The checks need it slow enough to act in
     the middle of a transfer. An episode of about 21 MB takes about 20 seconds at the default.
+
+.PARAMETER NodearrDll
+    Path to a built Nodearr.Console.dll, when it is not the one in _output. For running beside a
+    node that is already running out of _output.
+
+.PARAMETER FirstPort
+    Node A's port. Node B takes the next one.
 #>
 [CmdletBinding()]
 param(
@@ -42,7 +51,9 @@ param(
     [switch] $KeepRunning,
     [switch] $SetupOnly,
     [switch] $Down,
-    [int] $UploadLimitKbps = 1024
+    [int] $UploadLimitKbps = 1024,
+    [string] $NodearrDll,
+    [int] $FirstPort = 6633
 )
 
 $ErrorActionPreference = 'Stop'
@@ -52,7 +63,7 @@ Set-StrictMode -Version 1
 $root = $PSScriptRoot
 $repo = Resolve-Path (Join-Path $root '..')
 $run = Join-Path $root '.run/s7'
-$dll = Join-Path $repo '_output/net10.0/Nodearr.Console.dll'
+$dll = $NodearrDll ? $NodearrDll : (Join-Path $repo '_output/net10.0/Nodearr.Console.dll')
 $composeFiles = @(
     '-f', (Join-Path $repo 'spikes/arr-contract/docker-compose.yml'),
     '-f', (Join-Path $root 'docker-compose.library.yml'),
@@ -80,8 +91,8 @@ if (-not (Test-Path $TransportBin)) { throw "Build the transport first: cargo bu
 function New-Key { -join ((1..32) | ForEach-Object { '{0:x}' -f (Get-Random -Maximum 16) }) }
 
 $nodes = @{
-    A = @{ Port = 6633; Data = Join-Path $run 'a'; Key = New-Key; Downloads = $downloads; UploadLimit = $UploadLimitKbps }
-    B = @{ Port = 6634; Data = Join-Path $run 'b'; Key = New-Key; Downloads = $downloadsB; UploadLimit = 0 }
+    A = @{ Port = $FirstPort; Data = Join-Path $run 'a'; Key = New-Key; Downloads = $downloads; UploadLimit = $UploadLimitKbps }
+    B = @{ Port = $FirstPort + 1; Data = Join-Path $run 'b'; Key = New-Key; Downloads = $downloadsB; UploadLimit = 0 }
 }
 $arr = @{
     sonarr  = @{ Url = 'http://127.0.0.1:18989'; Key = New-Key }
@@ -492,6 +503,39 @@ try {
     $landedTwo = docker exec nodearr-s7-sonarr-b-1 sha256sum $fileTwo.path
     Assert-That 'The file that was resumed is still whole and correct when Sonarr imports it' ("$landedTwo" -match $tvHash) @{ path = $fileTwo.path; hashMatches = ("$landedTwo" -match $tvHash) }
 
+    # --- 4b. The series is unshared in the middle ------------------------------------------------
+
+    # A puts the series on its Hidden list while episode 3 is on its way. Trust stays.
+    $hiddenList = Invoke-Node A GET '/sharing/lists' | Where-Object isHidden | Select-Object -First 1
+    $pinguOnA = Invoke-Node A GET '/sharing/titles' | Where-Object title -match 'Pingu' | Select-Object -First 1
+    $pinguKey = @{ mediaKind = $pinguOnA.mediaKind; applicationId = $pinguOnA.applicationId; arrId = $pinguOnA.arrId }
+
+    Invoke-Arr sonarrB POST '/command' @{ name = 'EpisodeSearch'; episodeIds = @($episodesB[2].id) } | Out-Null
+    $unshared = Wait-Transferring (2 * 1024 * 1024)
+    Invoke-Node A PUT "/sharing/lists/$($hiddenList.id)" @{ name = $hiddenList.name; items = @($pinguKey); peerIds = @() } | Out-Null
+    $cut = Wait-Until -What 'the transfer to stop once the series is unshared' -TimeoutSec 15 -EverySec 0.5 -Condition {
+        Get-Transfers | Where-Object { $_.downloadId -eq $unshared.downloadId -and $_.state -eq 'failed' } | Select-Object -First 1
+    }
+    $cutUpload = @(Invoke-Node A GET '/transfers/uploads') | Where-Object { $_.title -eq "$($episodeNames[2]).mkv" -and $_.state -eq 'failed' } | Select-Object -First 1
+    $cutSlot = (Invoke-Sab 'mode=history&start=0&limit=60&category=tv').history.slots | Where-Object nzo_id -eq $unshared.downloadId
+    Assert-That 'When the sending node unshares a series mid-transfer, the transfer stops there, says why, and is not tried again' (
+        $cut.failure -eq 'notAuthorized' -and $cut.bytesDone -lt $cut.size -and $cut.attempts -eq 1 -and
+        $cutSlot.status -eq 'Failed' -and $cutSlot.fail_message -match 'NotAuthorized' -and
+        $cutUpload.failure -eq 'NotAuthorized' -and $cutUpload.bytesSent -lt $cutUpload.size -and
+        -not (Test-Path (Join-Path $downloadsB "incomplete/$($unshared.downloadId)"))
+    ) @{ failure = $cut.failure; bytesDone = $cut.bytesDone; size = $cut.size; attempts = $cut.attempts; message = $cutSlot.fail_message; upload = @{ failure = $cutUpload.failure; message = $cutUpload.failureMessage; bytesSent = $cutUpload.bytesSent } }
+
+    # Share it again, and let Sonarr record the failure and then forget it, so the release can be
+    # grabbed again below.
+    Wait-Until -What 'Sonarr to record the failure' -TimeoutSec 90 -EverySec 2 -Condition {
+        Invoke-Arr sonarrB POST '/command' @{ name = 'RefreshMonitoredDownloads' } | Out-Null
+        Get-History sonarrB "/history/series?seriesId=$($series.sonarrB.id)" | Where-Object { $_.eventType -eq 'downloadFailed' -and $_.downloadId -eq $unshared.downloadId } | Select-Object -First 1
+    } | Out-Null
+    foreach ($entry in @((Invoke-Arr sonarrB GET '/blocklist?pageSize=50').records)) { Invoke-Arr sonarrB DELETE "/blocklist/$($entry.id)" | Out-Null }
+    Invoke-Node A PUT "/sharing/lists/$($hiddenList.id)" @{ name = $hiddenList.name; items = @(); peerIds = @() } | Out-Null
+    Wait-Until -What "B to hold A's four files again" -TimeoutSec 45 -Condition { (Invoke-Node B GET '/catalog/peers/items?pageSize=50').totalRecords -eq 4 } | Out-Null
+    Wait-Until -What 'the failed download to be cleared' -TimeoutSec 60 -Condition { (Get-Transfers).Count -eq 0 } | Out-Null
+
     # --- 5. Trust ends in the middle ---------------------------------------------------------------
 
     Invoke-Arr sonarrB POST '/command' @{ name = 'EpisodeSearch'; episodeIds = @($episodesB[2].id) } | Out-Null
@@ -520,9 +564,10 @@ try {
     # The first episode was sent twice: once asked for by number, once by day.
     $uploads = @(Invoke-Node A GET '/transfers/uploads')
     $ended = { param([string] $name, [string] $state, [string] $failure) @($uploads | Where-Object { $_.title -eq "$name.mkv" -and $_.state -eq $state -and (-not $failure -or $_.failure -eq $failure) }).Count }
-    Assert-That 'Afterwards the sending node lists each upload and how it ended: sent, stopped by the other side, or cut when trust ended' (
+    Assert-That 'Afterwards the sending node lists each upload and how it ended: sent, stopped by the other side, cut when unshared, or cut when trust ended' (
         (& $ended $episodeNames[0] 'completed') -eq 2 -and (& $ended $movieName 'completed') -eq 1 -and
         (& $ended $episodeNames[1] 'completed') -eq 1 -and (& $ended $episodeNames[1] 'failed' 'Stopped') -ge 2 -and
+        (& $ended $episodeNames[2] 'failed' 'NotAuthorized') -eq 1 -and
         (& $ended $episodeNames[2] 'failed' 'Revoked') -eq 1 -and @($uploads | Where-Object { $_.state -in 'sending', 'preparing' }).Count -eq 0
     ) @{ uploads = @($uploads | ForEach-Object { "$($_.title -replace '\.720p.*', '') -> $($_.state) $($_.failure) $($_.bytesSent)/$($_.size)" }) }
 }

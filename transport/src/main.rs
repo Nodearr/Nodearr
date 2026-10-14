@@ -169,6 +169,7 @@ async fn main() -> Result<()> {
         .route("/v1/transfers", get(list_transfers).post(start_transfer))
         .route("/v1/transfers/{id}", delete(cancel_transfer))
         .route("/v1/uploads", get(list_uploads))
+        .route("/v1/uploads/{id}/stop", post(stop_upload))
         .route("/v1/disconnect", post(disconnect))
         .layer(middleware::from_fn_with_state(app.clone(), require_token))
         .with_state(app.clone());
@@ -612,6 +613,20 @@ async fn cancel_transfer(State(app): State<Arc<App>>, UrlPath(id): UrlPath<Strin
         StatusCode::NO_CONTENT
     } else {
         StatusCode::NOT_FOUND
+    }
+}
+
+#[derive(Deserialize)]
+struct StopUploadBody {
+    /// NotAuthorized, Revoked or NotFound, as for a refused request.
+    reason: Option<String>,
+}
+
+/// Cuts one upload that Nodearr no longer allows.
+async fn stop_upload(State(app): State<Arc<App>>, UrlPath(id): UrlPath<String>, Json(body): Json<StopUploadBody>) -> StatusCode {
+    match id.parse::<u64>() {
+        Ok(id) if app.transfers.stop_upload(id, body.reason.as_deref()) => StatusCode::NO_CONTENT,
+        _ => StatusCode::NOT_FOUND,
     }
 }
 

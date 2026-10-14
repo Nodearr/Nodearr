@@ -297,6 +297,12 @@ namespace NzbDrone.Core.Nodes.Transport
             Send(client => client.DeleteAsync("/v1/transfers/" + Uri.EscapeDataString(id)), allowNotFound: true);
         }
 
+        public void StopUpload(string id, string reason)
+        {
+            // 404 is fine: the upload had already ended.
+            Send(client => client.PostAsJsonAsync("/v1/uploads/" + Uri.EscapeDataString(id) + "/stop", new StopUploadBody { Reason = reason }, JsonOptions), allowNotFound: true);
+        }
+
         public void Disconnect(string nodeId)
         {
             Send(client => client.PostAsJsonAsync("/v1/disconnect", new DisconnectBody { NodeId = nodeId }, JsonOptions));
@@ -731,6 +737,11 @@ namespace NzbDrone.Core.Nodes.Transport
         {
             public string Kind { get; set; }
             public string Message { get; set; }
+        }
+
+        private class StopUploadBody
+        {
+            public string Reason { get; set; }
         }
 
         private class DisconnectBody

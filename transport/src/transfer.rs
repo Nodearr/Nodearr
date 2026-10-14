@@ -199,6 +199,23 @@ impl Transfers {
         closed
     }
 
+    /// Cuts one upload. Used when Nodearr stops sharing the file with that node part way through.
+    pub fn stop_upload(&self, id: u64, reason: Option<&str>) -> bool {
+        let uploads = self.uploads.lock().unwrap();
+        let Some((_, conn)) = uploads.get(&id) else {
+            return false;
+        };
+        let (code, name) = refusal(reason);
+        let message = match name {
+            "Revoked" => "trust in this node ended",
+            "NotFound" => "the file is no longer in the library",
+            _ => "this file is no longer shared with that node",
+        };
+        self.upload_failed(id, name, message);
+        conn.close(VarInt::from_u32(code), name.as_bytes());
+        true
+    }
+
     /// The size and BLAKE3 hash of a file, worked out once for each version of it.
     async fn hash(&self, path: &Path) -> Result<(u64, String)> {
         let metadata = tokio::fs::metadata(path).await?;
@@ -320,6 +337,15 @@ fn code_name(code: u64) -> &'static str {
     }
 }
 
+/// The close code and name for Nodearr's reason to refuse a node a file.
+fn refusal(reason: Option<&str>) -> (u32, &'static str) {
+    match reason {
+        Some("NotFound") => (CODE_NOT_FOUND, "NotFound"),
+        Some("Revoked") => (CODE_REVOKED, "Revoked"),
+        _ => (CODE_NOT_AUTHORIZED, "NotAuthorized"),
+    }
+}
+
 /// Names a failure from the code the other side closed the connection with.
 fn close_name(conn: &Connection) -> &'static str {
     match conn.close_reason() {
@@ -363,13 +389,9 @@ async fn send_file(transfers: &Transfers, conn: &Connection, remote: EndpointId,
     let path = match tokio::time::timeout(Duration::from_secs(30), answer).await {
         Ok(Ok(Reply::File(path))) => path,
         Ok(Ok(Reply::Reject(reason))) => {
-            let (code, name): (u32, &[u8]) = match reason.as_deref() {
-                Some("NotFound") => (CODE_NOT_FOUND, b"NotFound"),
-                Some("Revoked") => (CODE_REVOKED, b"Revoked"),
-                _ => (CODE_NOT_AUTHORIZED, b"NotAuthorized"),
-            };
-            conn.close(VarInt::from_u32(code), name);
-            bail!("refused: {}", String::from_utf8_lossy(name));
+            let (code, name) = refusal(reason.as_deref());
+            conn.close(VarInt::from_u32(code), name.as_bytes());
+            bail!("refused: {name}");
         }
         _ => {
             conn.close(VarInt::from_u32(CODE_NOT_AUTHORIZED), b"NotAuthorized");

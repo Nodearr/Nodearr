@@ -1,3 +1,4 @@
+using System.Linq;
 using FluentAssertions;
 using Moq;
 using NUnit.Framework;
@@ -96,6 +97,126 @@ namespace NzbDrone.Core.Test.Transfers
 
             Subject.Resolve("bob", File).Refusal.Should().Be(FileSourceService.NotFound);
             ExceptionVerification.IgnoreWarns();
+        }
+
+        private void GivenUploads(params FileUploadProgress[] uploads)
+        {
+            Mocker.GetMock<IFileTransport>().Setup(t => t.ListUploads()).Returns(uploads.ToList());
+        }
+
+        private static FileUploadProgress Upload(string id, UploadState state, string file = File, string node = "bob")
+        {
+            return new FileUploadProgress { Id = id, RemoteNodeId = node, File = file, Path = "/library/" + file + ".mkv", State = state };
+        }
+
+        [Test]
+        public void unsharing_a_file_should_stop_it_being_sent()
+        {
+            GivenPeer(PeerState.Trusted);
+            GivenOffered(false);
+            GivenUploads(Upload("7", UploadState.Sending));
+
+            Subject.HandleAsync(new SharingChangedEvent());
+
+            Mocker.GetMock<IFileTransport>().Verify(t => t.StopUpload("7", FileSourceService.NotAuthorized), Times.Once());
+        }
+
+        [Test]
+        public void a_file_being_hashed_before_sending_should_be_stopped_too()
+        {
+            GivenPeer(PeerState.Trusted);
+            GivenOffered(false);
+            GivenUploads(Upload("7", UploadState.Preparing));
+
+            Subject.HandleAsync(new SharingChangedEvent());
+
+            Mocker.GetMock<IFileTransport>().Verify(t => t.StopUpload("7", FileSourceService.NotAuthorized), Times.Once());
+        }
+
+        [Test]
+        public void a_file_still_shared_should_carry_on()
+        {
+            GivenPeer(PeerState.Trusted);
+            GivenOffered(true);
+            GivenUploads(Upload("7", UploadState.Sending));
+
+            Subject.HandleAsync(new SharingChangedEvent());
+
+            Mocker.GetMock<IFileTransport>().Verify(t => t.StopUpload(It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+        }
+
+        [Test]
+        public void only_the_upload_no_longer_shared_should_stop()
+        {
+            GivenPeer(PeerState.Trusted);
+            GivenOffered(true);
+            Mocker.GetMock<ISharingService>().Setup(s => s.IsOffered(It.Is<Peer>(p => p.NodeId == "bob"), "m-1-9")).Returns(false);
+            GivenUploads(Upload("7", UploadState.Sending), Upload("8", UploadState.Sending, "m-1-9"));
+
+            Subject.HandleAsync(new SharingChangedEvent());
+
+            Mocker.GetMock<IFileTransport>().Verify(t => t.StopUpload("8", FileSourceService.NotAuthorized), Times.Once());
+            Mocker.GetMock<IFileTransport>().Verify(t => t.StopUpload("7", It.IsAny<string>()), Times.Never());
+        }
+
+        [Test]
+        public void a_finished_upload_should_be_left_alone()
+        {
+            GivenPeer(PeerState.Trusted);
+            GivenOffered(false);
+            GivenUploads(Upload("7", UploadState.Completed), Upload("8", UploadState.Failed));
+
+            Subject.HandleAsync(new SharingChangedEvent());
+
+            Mocker.GetMock<IFileTransport>().Verify(t => t.StopUpload(It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+        }
+
+        [Test]
+        public void a_file_that_left_the_library_should_stop_being_sent()
+        {
+            GivenPeer(PeerState.Trusted);
+            GivenOffered(false);
+            GivenUploads(Upload("7", UploadState.Sending));
+
+            Subject.HandleAsync(new CatalogRefreshedEvent(1));
+
+            Mocker.GetMock<IFileTransport>().Verify(t => t.StopUpload("7", FileSourceService.NotAuthorized), Times.Once());
+        }
+
+        [Test]
+        public void an_upload_to_a_node_no_longer_trusted_should_be_stopped_as_revoked()
+        {
+            GivenPeer(PeerState.Revoked);
+            GivenUploads(Upload("7", UploadState.Sending));
+
+            Subject.HandleAsync(new SharingChangedEvent());
+
+            Mocker.GetMock<IFileTransport>().Verify(t => t.StopUpload("7", FileSourceService.Revoked), Times.Once());
+            Mocker.GetMock<ISharingService>().Verify(s => s.IsOffered(It.IsAny<Peer>(), It.IsAny<string>()), Times.Never());
+        }
+
+        [Test]
+        public void a_transport_that_is_not_running_should_be_left_alone()
+        {
+            Mocker.GetMock<IFileTransport>().Setup(t => t.ListUploads()).Throws(new TransportException(TransportFailure.Unavailable, "not running"));
+
+            Subject.HandleAsync(new SharingChangedEvent());
+
+            Mocker.GetMock<IFileTransport>().Verify(t => t.StopUpload(It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+        }
+
+        [Test]
+        public void a_failure_to_stop_one_upload_should_not_spare_the_next()
+        {
+            GivenPeer(PeerState.Trusted);
+            GivenOffered(false);
+            GivenUploads(Upload("7", UploadState.Sending), Upload("8", UploadState.Sending));
+            Mocker.GetMock<IFileTransport>().Setup(t => t.StopUpload("7", It.IsAny<string>())).Throws(new TransportException(TransportFailure.Unavailable, "not answering"));
+
+            Subject.HandleAsync(new SharingChangedEvent());
+
+            Mocker.GetMock<IFileTransport>().Verify(t => t.StopUpload("8", FileSourceService.NotAuthorized), Times.Once());
+            ExceptionVerification.ExpectedWarns(1);
         }
     }
 }
