@@ -210,6 +210,31 @@ namespace NzbDrone.Core.Test.Transfers
         }
 
         [Test]
+        public void a_hash_the_other_node_found_wrong_should_be_forgotten_and_worked_out_again()
+        {
+            GivenShared(_bob, Item("e-1-501"), Item("e-1-502"));
+            Subject.HashShared(CancellationToken.None);
+            _read.Clear();
+
+            Subject.Handle(new UploadVerificationFailedEvent("/library/e-1-501.mkv"));
+
+            Subject.Known("/library/e-1-501.mkv").Should().BeNull();
+            Subject.Known("/library/e-1-502.mkv").Should().NotBeNull();
+
+            Subject.HashShared(CancellationToken.None);
+
+            _read.Should().Equal("/library/e-1-501.mkv");
+        }
+
+        [Test]
+        public void a_mismatch_for_a_file_with_no_kept_hash_should_change_nothing()
+        {
+            Subject.Handle(new UploadVerificationFailedEvent("/library/unknown.mkv"));
+
+            Db.All<FileHash>().Should().BeEmpty();
+        }
+
+        [Test]
         public void a_hash_for_a_shared_file_should_be_kept_however_old_it_is()
         {
             GivenShared(_bob, Item("e-1-501"));

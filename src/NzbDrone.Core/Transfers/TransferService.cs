@@ -429,9 +429,19 @@ namespace NzbDrone.Core.Transfers
 
         private void Failed(TransferJob job, TransferFailure failure, string detail)
         {
-            if (TransferFailureText.IsTransient(failure) && job.Attempts < MaxAttempts)
+            var startsOver = TransferFailureText.StartsOver(failure);
+
+            if ((TransferFailureText.IsTransient(failure) || startsOver) && job.Attempts < MaxAttempts)
             {
                 _logger.Info("Transfer {0} stopped ({1}: {2}). Trying again, attempt {3} of {4}", job.DownloadId, failure, detail, job.Attempts + 1, MaxAttempts);
+
+                if (startsOver)
+                {
+                    // The transport has already thrown the file away. Nothing here is worth resuming from.
+                    DeleteFolder(_folders.IncompleteFolder(job));
+                    job.Hash = null;
+                    job.BytesDone = 0;
+                }
 
                 job.State = TransferState.Queued;
                 job.NextAttempt = DateTime.UtcNow.Add(RetryDelay);

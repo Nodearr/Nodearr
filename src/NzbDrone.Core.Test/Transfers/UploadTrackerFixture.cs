@@ -100,6 +100,33 @@ namespace NzbDrone.Core.Test.Transfers
             Subject.All().Single().Should().Match<Upload>(u => u.State == UploadState.Completed && u.BytesSent == 1000 && u.Ended != null);
         }
 
+        private List<string> Mismatches => Mocker.GetMock<IEventAggregator>().Invocations
+            .Where(i => i.Arguments.Count > 0 && i.Arguments[0] is UploadVerificationFailedEvent)
+            .Select(i => ((UploadVerificationFailedEvent)i.Arguments[0]).Path)
+            .ToList();
+
+        [Test]
+        public void a_file_the_other_node_said_did_not_match_should_be_announced_once_with_where_it_is()
+        {
+            GivenUpload("1", UploadState.Sending, 400);
+            Subject.Tick();
+            GivenUpload("1", UploadState.Failed, 1000, failure: "VerificationFailed");
+            Subject.Tick();
+            Subject.Tick();
+
+            Mismatches.Should().Equal("/tv/Pingu/Season 1/Pingu.S01E01.mkv");
+        }
+
+        [Test]
+        public void an_upload_that_failed_any_other_way_should_not_be_announced_as_a_mismatch()
+        {
+            GivenUpload("1", UploadState.Failed, 300, failure: "Revoked");
+            GivenUpload("2", UploadState.Completed, 1000);
+            Subject.Tick();
+
+            Mismatches.Should().BeEmpty();
+        }
+
         [Test]
         public void a_failed_upload_should_say_why()
         {

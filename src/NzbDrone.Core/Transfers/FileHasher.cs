@@ -49,7 +49,8 @@ namespace NzbDrone.Core.Transfers
                               IHandle<ApplicationShutdownRequested>,
                               IHandleAsync<CatalogRefreshedEvent>,
                               IHandleAsync<SharingChangedEvent>,
-                              IHandleAsync<PeerStateChangedEvent>
+                              IHandleAsync<PeerStateChangedEvent>,
+                              IHandle<UploadVerificationFailedEvent>
     {
         private static readonly TimeSpan Interval = TimeSpan.FromHours(6);
         private static readonly TimeSpan RetryAfter = TimeSpan.FromMinutes(1);
@@ -118,6 +119,21 @@ namespace NzbDrone.Core.Transfers
             {
                 _wake.Set();
             }
+        }
+
+        // The kept hash did not match what was sent, so it is no use. The file is hashed afresh
+        // when it is next asked for, or by the next pass.
+        public void Handle(UploadVerificationFailedEvent message)
+        {
+            var kept = _hashes.FindByPath(message.Path);
+
+            if (kept != null)
+            {
+                _hashes.Delete(kept.Id);
+                _logger.Info("Forgot the hash of {0}: the node it was sent to said the file did not match it", message.Path);
+            }
+
+            _wake.Set();
         }
 
         public HashedFile Known(string path)

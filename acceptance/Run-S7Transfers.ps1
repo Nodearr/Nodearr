@@ -448,6 +448,48 @@ try {
     Invoke-Arr sonarrB PUT "/series/$($series.sonarrB.id)" $asStandard | Out-Null
     Wait-Until -What 'the finished download to be cleared' -TimeoutSec 60 -Condition { (Get-Transfers).Count -eq 0 } | Out-Null
 
+    # --- 2c. The file changes on A without its size or modified time changing ---------------------
+
+    # A's kept hash for it is now wrong, and nothing about the file says so. The first attempt
+    # fails verification. A forgets the hash on hearing that, and the next attempt carries the
+    # right one.
+    $changedFile = Join-Path $library "tv/Pingu/Season 1/$($episodeNames[0]).mkv"
+    $modified = (Get-Item $changedFile).LastWriteTimeUtc
+    $stream = [IO.File]::Open($changedFile, 'Open', 'ReadWrite')
+    $stream.Position = [long]($stream.Length / 2)
+    $byte = $stream.ReadByte()
+    $stream.Position--
+    $stream.WriteByte(($byte + 1) % 256)
+    $stream.Dispose()
+    (Get-Item $changedFile).LastWriteTimeUtc = $modified
+    $changedHash = (Get-FileHash $changedFile -Algorithm SHA256).Hash
+
+    $byDayFileId = (Invoke-Arr sonarrB GET "/episode/$($episodesB[0].id)").episodeFileId
+    Invoke-Arr sonarrB DELETE "/episodefile/$byDayFileId" | Out-Null
+    Invoke-Arr sonarrB POST '/command' @{ name = 'EpisodeSearch'; episodeIds = @($episodesB[0].id) } | Out-Null
+
+    $sawMismatch = $false
+    $lastSeen = $null
+    $importedChanged = Wait-Until -What "B's Sonarr to import the changed episode" -TimeoutSec 240 -EverySec 2 -Condition {
+        $transfer = Get-Transfers | Where-Object title -eq $episodeNames[0] | Select-Object -First 1
+        if ($transfer) {
+            $script:lastSeen = $transfer
+            if ($transfer.failure -eq 'verificationFailed') { $script:sawMismatch = $true }
+        }
+        Invoke-Arr sonarrB POST '/command' @{ name = 'RefreshMonitoredDownloads' } | Out-Null
+        $episode = Invoke-Arr sonarrB GET "/episode/$($episodesB[0].id)"
+        if ($episode.hasFile -and $episode.episodeFileId -ne $byDayFileId) { $episode }
+    }
+    $fileChanged = Invoke-Arr sonarrB GET "/episodefile/$($importedChanged.episodeFileId)"
+    $landedChanged = docker exec nodearr-s7-sonarr-b-1 sha256sum $fileChanged.path
+    $failedInSonarr = @(Get-History sonarrB "/history/series?seriesId=$($series.sonarrB.id)" | Where-Object { $_.eventType -eq 'downloadFailed' -and $_.downloadId -eq $lastSeen.downloadId }).Count
+    $mismatchUploads = @(Invoke-Node A GET '/transfers/uploads' | Where-Object { $_.title -eq "$($episodeNames[0]).mkv" -and $_.failure -eq 'VerificationFailed' }).Count
+    Assert-That 'A file that changed on the sending node without its size or time changing costs one attempt, not the release: the next attempt brings the changed file' (
+        $sawMismatch -and $lastSeen.attempts -eq 2 -and "$landedChanged" -match $changedHash -and $changedHash -ne $tvHash -and
+        $failedInSonarr -eq 0 -and $mismatchUploads -eq 1
+    ) @{ sawMismatch = $sawMismatch; attempts = $lastSeen.attempts; hashMatchesChangedFile = ("$landedChanged" -match $changedHash); failedInSonarr = $failedInSonarr; mismatchUploadsOnA = $mismatchUploads }
+    Wait-Until -What 'the finished download to be cleared' -TimeoutSec 60 -Condition { (Get-Transfers).Count -eq 0 } | Out-Null
+
     # --- 3. The same ticket twice, and cancelling --------------------------------------------------
 
     $release = @(Invoke-Arr sonarrB GET "/release?episodeId=$($episodesB[1].id)" | Where-Object indexer -eq 'Nodearr')[0]
@@ -570,7 +612,8 @@ try {
 
     # --- 6. What the sending node saw of all that ---------------------------------------------------
 
-    # The first episode was sent twice: once asked for by number, once by day.
+    # The first episode was sent three times: by number, by day, and after it changed, which took
+    # a second attempt.
     $uploads = @(Invoke-Node A GET '/transfers/uploads')
     $ended = { param([string] $name, [string] $state, [string] $failure) @($uploads | Where-Object { $_.title -eq "$name.mkv" -and $_.state -eq $state -and (-not $failure -or $_.failure -eq $failure) }).Count }
 
@@ -579,7 +622,7 @@ try {
     # path to B going with it.
     $wentAway = (& $ended $episodeNames[1] 'failed' 'Stopped') + (& $ended $episodeNames[1] 'failed' 'DirectPathLost')
     Assert-That 'Afterwards the sending node lists each upload and how it ended: sent, stopped by the other side, cut when unshared, or cut when trust ended' (
-        (& $ended $episodeNames[0] 'completed') -eq 2 -and (& $ended $movieName 'completed') -eq 1 -and
+        (& $ended $episodeNames[0] 'completed') -eq 3 -and (& $ended $episodeNames[0] 'failed' 'VerificationFailed') -eq 1 -and (& $ended $movieName 'completed') -eq 1 -and
         (& $ended $episodeNames[1] 'completed') -eq 1 -and $wentAway -ge 2 -and
         (& $ended $episodeNames[2] 'failed' 'NotAuthorized') -eq 1 -and
         (& $ended $episodeNames[2] 'failed' 'Revoked') -eq 1 -and @($uploads | Where-Object { $_.state -in 'sending', 'preparing' }).Count -eq 0

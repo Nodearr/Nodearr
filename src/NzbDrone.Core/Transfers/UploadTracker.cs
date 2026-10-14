@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using NzbDrone.Common.Messaging;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Nodes;
 using NzbDrone.Core.Nodes.Transport;
@@ -38,6 +39,18 @@ namespace NzbDrone.Core.Transfers
         public bool IsActive => State is UploadState.Preparing or UploadState.Sending;
     }
 
+    // The other node said that a file this node sent did not match the hash it was sent with.
+    public class UploadVerificationFailedEvent : IEvent
+    {
+        public UploadVerificationFailedEvent(string path)
+        {
+            Path = path;
+        }
+
+        // Where the file is on this machine.
+        public string Path { get; }
+    }
+
     public interface IUploadTracker
     {
         // What is being sent now, and what was sent since Nodearr started, newest first.
@@ -55,6 +68,8 @@ namespace NzbDrone.Core.Transfers
     public class UploadTracker : IUploadTracker
     {
         public const int MaxFinished = 100;
+
+        private const string VerificationFailed = "VerificationFailed";
 
         private readonly IFileTransport _transport;
         private readonly IPeerRepository _peers;
@@ -96,6 +111,7 @@ namespace NzbDrone.Core.Transfers
             }
 
             var changed = false;
+            var mismatched = new List<string>();
 
             lock (_sync)
             {
@@ -123,7 +139,14 @@ namespace NzbDrone.Core.Transfers
                         changed = true;
                     }
 
+                    var mismatchedBefore = upload.Failure == VerificationFailed;
+
                     changed |= Follow(upload, progress);
+
+                    if (upload.Failure == VerificationFailed && !mismatchedBefore)
+                    {
+                        mismatched.Add(progress.Path);
+                    }
                 }
 
                 // The transport restarted and forgot these. They did not finish.
@@ -139,6 +162,11 @@ namespace NzbDrone.Core.Transfers
                 {
                     _uploads.Remove(old.Id);
                 }
+            }
+
+            foreach (var path in mismatched)
+            {
+                _eventAggregator.PublishEvent(new UploadVerificationFailedEvent(path));
             }
 
             if (changed)

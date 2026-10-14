@@ -142,7 +142,7 @@ namespace NzbDrone.Core.Test.Transfers
             var job = Subject.Add("candidate-daily", "tv", "2024-05-17");
 
             Subject.Tick();
-            GivenTransport(job, FileTransferState.Failed, 0, "VerificationFailed");
+            GivenTransport(job, FileTransferState.Failed, 0, "NotFound");
             Subject.Tick();
 
             var again = Subject.Retry(job.DownloadId);
@@ -292,6 +292,58 @@ namespace NzbDrone.Core.Test.Transfers
             Stored(job).FailureMessage.Should().StartWith("Nodearr transfer failed: NoDirectRoute.").And.Contain("never sends files through a relay");
         }
 
+        [Test]
+        public void a_file_that_did_not_match_its_hash_should_be_tried_again_from_nothing()
+        {
+            var job = GivenDownloading();
+
+            GivenTransport(job, FileTransferState.Receiving, 400);
+            Subject.Tick();
+            GivenTransport(job, FileTransferState.Failed, 1000, "VerificationFailed");
+            Subject.Tick();
+
+            var waiting = Stored(job);
+
+            waiting.Should().Match<TransferJob>(j => j.State == TransferState.Queued && j.Failure == TransferFailure.VerificationFailed && j.Hash == null && j.BytesDone == 0);
+            Directory.Exists(_folders.IncompleteFolder(job)).Should().BeFalse();
+
+            waiting.NextAttempt = DateTime.UtcNow.AddSeconds(-1);
+            Db.Update(waiting);
+            _progress.Clear();
+            Subject.Tick();
+
+            // Nothing is resumed: the other node is not asked to carry on from a hash that was wrong.
+            _started.Should().HaveCount(2);
+            _started[1].ExpectedHash.Should().BeNull();
+            Stored(job).Attempts.Should().Be(2);
+        }
+
+        [Test]
+        public void a_file_that_never_matches_its_hash_should_end_the_transfer()
+        {
+            var job = GivenDownloading();
+
+            for (var attempt = 1; attempt <= TransferService.MaxAttempts; attempt++)
+            {
+                GivenTransport(job, FileTransferState.Failed, 1000, "VerificationFailed");
+                Subject.Tick();
+
+                var current = Stored(job);
+
+                if (current.State == TransferState.Queued)
+                {
+                    current.NextAttempt = DateTime.UtcNow.AddSeconds(-1);
+                    Db.Update(current);
+                    _progress.Clear();
+                    Subject.Tick();
+                }
+            }
+
+            Stored(job).Should().Match<TransferJob>(j => j.State == TransferState.Failed && j.Failure == TransferFailure.VerificationFailed && j.Attempts == TransferService.MaxAttempts);
+            Stored(job).FailureMessage.Should().StartWith("Nodearr transfer failed: VerificationFailed.");
+            Directory.Exists(_folders.IncompleteFolder(job)).Should().BeFalse();
+        }
+
         [TestCase("NoDirectRoute")]
         [TestCase("DirectPathLost")]
         public void a_transfer_with_no_direct_route_should_say_what_is_known_about_the_route(string kind)
@@ -360,7 +412,6 @@ namespace NzbDrone.Core.Test.Transfers
         [TestCase("Revoked", TransferFailure.Revoked)]
         [TestCase("Blocked", TransferFailure.Blocked)]
         [TestCase("NotFound", TransferFailure.NotFound)]
-        [TestCase("VerificationFailed", TransferFailure.VerificationFailed)]
         [TestCase("DiskError", TransferFailure.DiskError)]
         public void a_failure_that_will_not_pass_should_end_the_transfer_at_once(string kind, TransferFailure expected)
         {

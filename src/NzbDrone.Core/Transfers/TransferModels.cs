@@ -152,5 +152,14 @@ namespace NzbDrone.Core.Transfers
         {
             return failure is TransferFailure.NoDirectRoute or TransferFailure.DirectPathLost or TransferFailure.ConnectionLost or TransferFailure.PeerUnreachable or TransferFailure.Failed;
         }
+
+        // Worth another attempt from nothing. What arrived did not match the hash it was sent
+        // with, so none of it is kept. The likely cause is a file that changed on the other node
+        // without its size or modified time changing. That node works the hash out afresh once
+        // it hears, and the next attempt carries the right one.
+        public static bool StartsOver(TransferFailure failure)
+        {
+            return failure is TransferFailure.VerificationFailed;
+        }
     }
 }

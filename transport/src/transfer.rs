@@ -518,6 +518,9 @@ async fn send_file(transfers: &Transfers, conn: &Connection, remote: EndpointId,
 
     match verdict {
         Ok(Ok(answer)) if answer == [0] => {
+            // The hash given was likely out of date: the file changed without its size or modified
+            // time changing. It is worked out afresh next time. Nodearr drops its copy too.
+            transfers.hashes.lock().unwrap().remove(&path);
             transfers.upload_failed(upload, "VerificationFailed", "the other node said what arrived did not match the hash");
         }
         _ => transfers.upload_update(upload, |u| {
