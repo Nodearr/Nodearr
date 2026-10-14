@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Messaging;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Messaging.Commands;
@@ -48,6 +49,11 @@ namespace NzbDrone.Core.PeerCatalog
 
         // The day each episode aired, as yyyy-MM-dd, comma separated. Empty when the peer did not say.
         public string AirDates { get; set; }
+
+        // As the scene numbers the episodes, for a series it numbers differently from TVDB. Null
+        // and empty otherwise. One number for each in EpisodeNumbers, comma separated.
+        public int? SceneSeasonNumber { get; set; }
+        public string SceneEpisodeNumbers { get; set; }
         public string SceneName { get; set; }
         public string Edition { get; set; }
         public string Extension { get; set; }
@@ -78,6 +84,32 @@ namespace NzbDrone.Core.PeerCatalog
             return (AirDates ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries).ToList();
         }
 
+        public bool HasSceneNumbers => SceneSeasonNumber.HasValue && SceneEpisodeNumbers.IsNotNullOrWhiteSpace();
+
+        public List<int> GetSceneEpisodeNumbers()
+        {
+            return (SceneEpisodeNumbers ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToList();
+        }
+
+        // The season and episodes a release title for this file says. Sonarr reads a title's
+        // numbers as the scene's for a series that has scene numbers.
+        public int TitleSeasonNumber => HasSceneNumbers ? SceneSeasonNumber.Value : SeasonNumber;
+
+        public List<int> GetTitleEpisodeNumbers()
+        {
+            return HasSceneNumbers ? GetSceneEpisodeNumbers() : GetEpisodeNumbers();
+        }
+
+        // Scene numbers from another node are kept only when they fit the file: a sensible season,
+        // and one number for each of its episodes.
+        private static bool AreSceneNumbers(OfferItem offer)
+        {
+            return offer.SceneSeasonNumber is >= 0 and < 10000 &&
+                   offer.SceneEpisodeNumbers is { Count: > 0 } numbers &&
+                   numbers.Count == (offer.EpisodeNumbers?.Count ?? 0) &&
+                   numbers.All(n => n is >= 0 and < 100000);
+        }
+
         // A date from another node ends up in a release title and a folder name, so only a real
         // date in the one expected spelling is kept.
         private static bool IsAirDate(string value)
@@ -102,6 +134,8 @@ namespace NzbDrone.Core.PeerCatalog
                 EpisodeNumbers = string.Join(",", offer.EpisodeNumbers ?? new List<int>()),
                 EpisodeTitles = string.Join(" + ", offer.EpisodeTitles ?? new List<string>()),
                 AirDates = string.Join(",", (offer.AirDates ?? new List<string>()).Where(IsAirDate)),
+                SceneSeasonNumber = AreSceneNumbers(offer) ? offer.SceneSeasonNumber : null,
+                SceneEpisodeNumbers = AreSceneNumbers(offer) ? string.Join(",", offer.SceneEpisodeNumbers) : null,
                 SceneName = offer.SceneName,
                 Edition = offer.Edition,
                 Extension = offer.Extension,

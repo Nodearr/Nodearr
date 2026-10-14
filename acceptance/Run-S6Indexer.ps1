@@ -16,13 +16,22 @@
     Path to the built nodearr-transport binary.
 
 .PARAMETER KeepRunning
-    Leave both instances and the containers running afterwards: A on port 6633, B on port 6634,
-    B's Sonarr on 28989 and B's Radarr on 27878.
+    Leave both instances and the containers running afterwards: A on port 6633, B on port 6634
+    (or FirstPort and the one after), B's Sonarr on 28989 and B's Radarr on 27878.
+
+.PARAMETER NodearrDll
+    Path to a built Nodearr.Console.dll, when it is not the one in _output. For running beside a
+    node that is already running out of _output.
+
+.PARAMETER FirstPort
+    Node A's port. Node B takes the next one.
 #>
 [CmdletBinding()]
 param(
     [string] $TransportBin,
-    [switch] $KeepRunning
+    [switch] $KeepRunning,
+    [string] $NodearrDll,
+    [int] $FirstPort = 6633
 )
 
 $ErrorActionPreference = 'Stop'
@@ -32,7 +41,7 @@ Set-StrictMode -Version 1
 $root = $PSScriptRoot
 $repo = Resolve-Path (Join-Path $root '..')
 $run = Join-Path $root '.run/s6'
-$dll = Join-Path $repo '_output/net10.0/Nodearr.Console.dll'
+$dll = $NodearrDll ? $NodearrDll : (Join-Path $repo '_output/net10.0/Nodearr.Console.dll')
 $composeFiles = @(
     '-f', (Join-Path $repo 'spikes/arr-contract/docker-compose.yml'),
     '-f', (Join-Path $root 'docker-compose.library.yml'),
@@ -55,8 +64,8 @@ if (-not (Test-Path $TransportBin)) { throw "Build the transport first: cargo bu
 function New-Key { -join ((1..32) | ForEach-Object { '{0:x}' -f (Get-Random -Maximum 16) }) }
 
 $nodes = @{
-    A = @{ Port = 6633; Data = Join-Path $run 'a'; Key = New-Key }
-    B = @{ Port = 6634; Data = Join-Path $run 'b'; Key = New-Key }
+    A = @{ Port = $FirstPort; Data = Join-Path $run 'a'; Key = New-Key }
+    B = @{ Port = $FirstPort + 1; Data = Join-Path $run 'b'; Key = New-Key }
 }
 $arr = @{
     sonarr  = @{ Url = 'http://127.0.0.1:18989'; Key = New-Key }

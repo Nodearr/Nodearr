@@ -105,6 +105,36 @@ namespace NzbDrone.Core.Test.PeerCatalog
         }
 
         [Test]
+        public void should_keep_scene_numbers_that_fit_the_file_and_title_it_by_them()
+        {
+            _offered[0].SceneSeasonNumber = 2;
+            _offered[0].SceneEpisodeNumbers = new List<int> { 7 };
+
+            Subject.Sync(_alice.Id);
+
+            var item = Stored.Single(i => i.RemoteId == _offered[0].Id);
+
+            item.Should().Match<PeerCatalogItem>(i => i.SceneSeasonNumber == 2 && i.SceneEpisodeNumbers == "7" && i.SeasonNumber == 1);
+            item.ReleaseTitle.Should().Be("Pingu.S02E07");
+            Stored.Where(i => i.RemoteId != _offered[0].Id).Should().OnlyContain(i => !i.HasSceneNumbers);
+        }
+
+        [TestCase(2, new[] { 7, 8 })]
+        [TestCase(-1, new[] { 7 })]
+        [TestCase(2, new[] { -3 })]
+        [TestCase(null, new[] { 7 })]
+        [TestCase(2, new int[0])]
+        public void should_drop_scene_numbers_that_do_not_fit_the_file(int? season, int[] episodes)
+        {
+            _offered[0].SceneSeasonNumber = season;
+            _offered[0].SceneEpisodeNumbers = episodes.ToList();
+
+            Subject.Sync(_alice.Id);
+
+            Stored.Single(i => i.RemoteId == _offered[0].Id).Should().Match<PeerCatalogItem>(i => !i.HasSceneNumbers && i.ReleaseTitle == "Pingu.S01E01");
+        }
+
+        [Test]
         public void should_keep_one_of_two_files_a_peer_gives_the_same_name()
         {
             _offered.Add(new OfferItem { Id = "e-1-1", Kind = MediaKind.Tv, TvdbId = 75669, Title = "Pingu", SeasonNumber = 1, EpisodeNumbers = new List<int> { 9 } });

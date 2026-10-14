@@ -18,6 +18,10 @@ namespace NzbDrone.Core.Test.PeerIndexer
         private const int NightTmdbId = 10331;
         private const int DailyTvdbId = 71256;
 
+        // A series the scene numbers differently from TVDB. TVDB's 1x62 is the scene's 2x01, and
+        // TVDB's 2x01 is the scene's 3x05.
+        private const int ScenedTvdbId = 81797;
+
         private Peer _alice;
         private Peer _bob;
         private Peer _mallory;
@@ -73,6 +77,52 @@ namespace NzbDrone.Core.Test.PeerIndexer
                 Title = "Night of the Living Dead", Year = 1968, Resolution = 720,
                 ReleaseTitle = "Night.of.the.Living.Dead.1968.720p.WEB-DL", DateAdded = DateTime.UtcNow.AddDays(-daysAgo)
             });
+        }
+
+        private void GivenScened()
+        {
+            foreach (var (id, season, episode, sceneSeason, sceneEpisode) in new[] { ("s-1x62", 1, 62, 2, 1), ("s-2x01", 2, 1, 3, 5), ("s-1x01", 1, 1, (int?)null, (int?)null) })
+            {
+                Db.Insert(new PeerCatalogItem
+                {
+                    PeerId = _alice.Id, RemoteId = id, CandidateId = id, MediaKind = MediaKind.Tv, TvdbId = ScenedTvdbId, Title = "Scened",
+                    SeasonNumber = season, EpisodeNumbers = $"{episode}", SceneSeasonNumber = sceneSeason, SceneEpisodeNumbers = sceneEpisode?.ToString(),
+                    Resolution = 720, ReleaseTitle = id, DateAdded = DateTime.UtcNow
+                });
+            }
+        }
+
+        private static CandidateQuery Scened(int? season = null, string episode = null)
+        {
+            return new CandidateQuery { IncludeMovies = false, TvdbId = ScenedTvdbId, Season = season, Episode = episode };
+        }
+
+        [Test]
+        public void an_episode_should_be_found_by_the_scenes_numbers()
+        {
+            GivenScened();
+
+            // What a Sonarr with scene numbers asks for 1x62. TVDB's own 2x01 is found too, and
+            // Sonarr turns it down when it reads the title.
+            Found(Scened(2, "1")).Should().BeEquivalentTo("s-1x62", "s-2x01");
+        }
+
+        [Test]
+        public void an_episode_should_still_be_found_by_tvdbs_numbers()
+        {
+            GivenScened();
+
+            // What a Sonarr without scene numbers for the series asks.
+            Found(Scened(1, "62")).Should().Equal("s-1x62");
+        }
+
+        [Test]
+        public void a_season_should_be_found_by_either_numbering()
+        {
+            GivenScened();
+
+            Found(Scened(3)).Should().Equal("s-2x01");
+            Found(Scened(1)).Should().BeEquivalentTo("s-1x62", "s-1x01");
         }
 
         private List<string> Found(CandidateQuery query)

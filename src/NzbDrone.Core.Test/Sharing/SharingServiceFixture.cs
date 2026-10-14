@@ -260,6 +260,43 @@ namespace NzbDrone.Core.Test.Sharing
         }
 
         [Test]
+        public void a_file_should_carry_the_scenes_numbers_only_where_they_differ_from_tvdbs()
+        {
+            // Pingu's 1x04 and 1x05 are the scene's 2x01 and 2x02. Bluey's 1x01 has scene numbers
+            // that are TVDB's own.
+            var episodes = Mocker.Resolve<ICatalogEpisodeRepository>();
+            var all = episodes.All().ToList();
+
+            foreach (var episode in all.Where(e => e.ArrEpisodeFileId == 502))
+            {
+                episode.SceneSeasonNumber = 2;
+                episode.SceneEpisodeNumber = episode.EpisodeNumber - 3;
+            }
+
+            var bluey = all.Single(e => e.ArrId == 201);
+            bluey.SceneSeasonNumber = 1;
+            bluey.SceneEpisodeNumber = 1;
+            episodes.UpdateMany(all);
+
+            Subject.SetShareAll(_bob.Id, true);
+
+            var items = Subject.BuildOffer(Mocker.Resolve<IPeerRepository>().Get(_bob.Id)).Items;
+            var multi = items.Single(i => i.Id == "e-1-502");
+
+            multi.SeasonNumber.Should().Be(1);
+            multi.EpisodeNumbers.Should().Equal(4, 5);
+            multi.SceneSeasonNumber.Should().Be(2);
+            multi.SceneEpisodeNumbers.Should().Equal(1, 2);
+
+            items.Where(i => i.Id != "e-1-502").Should().OnlyContain(i => i.SceneSeasonNumber == null && i.SceneEpisodeNumbers == null);
+
+            // Left out of what is sent, so an offer with no scene numbers is the same as before.
+            var json = JsonSerializer.Serialize(items.Single(i => i.Id == "e-1-601"));
+
+            json.Should().NotContain("Scene" + "SeasonNumber").And.NotContain("SceneEpisodeNumbers");
+        }
+
+        [Test]
         public void a_multi_episode_file_should_be_offered_once_with_all_its_episodes()
         {
             Subject.SetShareAll(_bob.Id, true);

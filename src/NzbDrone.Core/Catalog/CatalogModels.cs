@@ -45,6 +45,10 @@ namespace NzbDrone.Core.Catalog
         public int SeasonNumber { get; set; }
         public int EpisodeNumber { get; set; }
         public int? AbsoluteEpisodeNumber { get; set; }
+
+        // Set only where the scene numbers the episode differently from TVDB.
+        public int? SceneSeasonNumber { get; set; }
+        public int? SceneEpisodeNumber { get; set; }
         public string Title { get; set; }
 
         // The day it aired where it aired, as yyyy-MM-dd.

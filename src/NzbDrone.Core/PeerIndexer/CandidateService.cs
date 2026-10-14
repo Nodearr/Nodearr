@@ -243,13 +243,22 @@ namespace NzbDrone.Core.PeerIndexer
                 return airDate != null;
             }
 
+            // For a series the scene numbers differently, Sonarr asks by the scene's numbers. A
+            // Sonarr that has no scene numbers for it asks by TVDB's, so either is a match. A file
+            // found the other way than Sonarr meant is named in its title by the scene's numbers,
+            // and Sonarr turns it down as not the episode it asked for.
             if (query.Episode.IsNotNullOrWhiteSpace())
             {
-                return (!query.Season.HasValue || item.SeasonNumber == query.Season.Value) &&
-                       int.TryParse(query.Episode, out var episode) && item.GetEpisodeNumbers().Contains(episode);
+                if (!int.TryParse(query.Episode, out var episode))
+                {
+                    return false;
+                }
+
+                return ((!query.Season.HasValue || item.SeasonNumber == query.Season.Value) && item.GetEpisodeNumbers().Contains(episode)) ||
+                       (item.HasSceneNumbers && (!query.Season.HasValue || item.SceneSeasonNumber == query.Season.Value) && item.GetSceneEpisodeNumbers().Contains(episode));
             }
 
-            if (!query.Season.HasValue || item.SeasonNumber == query.Season.Value)
+            if (!query.Season.HasValue || item.SeasonNumber == query.Season.Value || (item.HasSceneNumbers && item.SceneSeasonNumber == query.Season.Value))
             {
                 return true;
             }

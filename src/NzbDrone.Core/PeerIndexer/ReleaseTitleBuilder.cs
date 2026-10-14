@@ -112,9 +112,10 @@ namespace NzbDrone.Core.PeerIndexer
             }
             else
             {
-                var episodes = item.GetEpisodeNumbers();
+                // Sonarr reads the numbers in an indexer's title as the scene's, for a series that has them.
+                var episodes = item.GetTitleEpisodeNumbers();
 
-                parts.Add($"S{item.SeasonNumber:00}" + string.Concat(episodes.Select(e => $"E{e:00}")));
+                parts.Add($"S{item.TitleSeasonNumber:00}" + string.Concat(episodes.Select(e => $"E{e:00}")));
             }
 
             parts.AddRange(LanguageTokens(item.Languages));

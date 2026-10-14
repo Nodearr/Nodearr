@@ -160,6 +160,10 @@ namespace NzbDrone.Core.Applications
         public int SeasonNumber { get; set; }
         public int EpisodeNumber { get; set; }
         public int? AbsoluteEpisodeNumber { get; set; }
+
+        // From XEM, for a series the scene numbers differently. Sonarr searches by these.
+        public int? SceneSeasonNumber { get; set; }
+        public int? SceneEpisodeNumber { get; set; }
         public string Title { get; set; }
 
         // The day it aired where it aired, as yyyy-MM-dd. Sonarr searches for daily shows by this,
@@ -178,6 +182,8 @@ namespace NzbDrone.Core.Applications
                 SeasonNumber = SeasonNumber,
                 EpisodeNumber = EpisodeNumber,
                 AbsoluteEpisodeNumber = AbsoluteEpisodeNumber,
+                SceneSeasonNumber = SceneSeasonNumber,
+                SceneEpisodeNumber = SceneEpisodeNumber,
                 Title = Title,
                 AirDate = AirDate,
                 AirDateUtc = AirDateUtc?.ToUniversalTime(),

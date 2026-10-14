@@ -215,5 +215,33 @@ namespace NzbDrone.Core.Test.PeerIndexer
             ReleaseTitleBuilder.For(item).Should().Be("The.Daily.Show.S29E45.1080p.WEB.h264-GROUP");
             ReleaseTitleBuilder.For(item, "2024-05-17").Should().Be("The.Daily.Show.2024.05.17.720p.WEB-DL");
         }
+
+        // Sonarr reads the numbers in an indexer's title as the scene's for a series that has them.
+        [Test]
+        public void a_built_title_should_number_episodes_the_way_the_scene_does_when_it_differs()
+        {
+            var item = Episode(episodes: "62,63");
+
+            item.SceneSeasonNumber = 2;
+            item.SceneEpisodeNumbers = "1,2";
+
+            var title = ReleaseTitleBuilder.Build(item);
+            var parsed = Parser.Parser.ParseTitle(title);
+
+            title.Should().StartWith("Pingu.S02E01E02.");
+            parsed.SeasonNumber.Should().Be(2);
+            parsed.EpisodeNumbers.Should().Equal(1, 2);
+        }
+
+        [Test]
+        public void a_title_by_day_should_not_be_changed_by_scene_numbers()
+        {
+            var item = Episode();
+
+            item.SceneSeasonNumber = 2;
+            item.SceneEpisodeNumbers = "7";
+
+            ReleaseTitleBuilder.For(item, "2024-05-17").Should().StartWith("Pingu.2024.05.17.");
+        }
     }
 }

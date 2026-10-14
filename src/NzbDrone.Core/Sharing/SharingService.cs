@@ -233,6 +233,7 @@ namespace NzbDrone.Core.Sharing
                     item.EpisodeNumbers = contained.Select(e => e.EpisodeNumber).ToList();
                     item.EpisodeTitles = contained.Select(e => e.Title ?? string.Empty).ToList();
                     item.AirDates = contained.Select(e => e.AirDate).Where(d => d.IsNotNullOrWhiteSpace()).ToList();
+                    (item.SceneSeasonNumber, item.SceneEpisodeNumbers) = SceneNumbers(contained);
                     offered.Add(item);
                 }
             }
@@ -353,6 +354,27 @@ namespace NzbDrone.Core.Sharing
                 AudioChannels = file.AudioChannels,
                 DateAdded = file.DateAdded
             };
+        }
+
+        // The numbers Sonarr would search for these episodes by: the scene's where it has them,
+        // TVDB's where it does not. Nothing when that is just the TVDB numbers, and nothing when
+        // the scene puts the episodes of one file in different seasons, which a title cannot say.
+        private static (int? Season, List<int> Episodes) SceneNumbers(List<CatalogEpisode> contained)
+        {
+            if (!contained.Any(e => e.SceneSeasonNumber.HasValue || e.SceneEpisodeNumber.HasValue))
+            {
+                return (null, null);
+            }
+
+            var seasons = contained.Select(e => e.SceneSeasonNumber ?? e.SeasonNumber).Distinct().ToList();
+            var episodes = contained.Select(e => e.SceneEpisodeNumber ?? e.EpisodeNumber).ToList();
+
+            if (seasons.Count != 1 || (seasons[0] == contained[0].SeasonNumber && episodes.SequenceEqual(contained.Select(e => e.EpisodeNumber))))
+            {
+                return (null, null);
+            }
+
+            return (seasons[0], episodes);
         }
 
         // The extension says what kind of file it is. It is the only part of the file name sent.

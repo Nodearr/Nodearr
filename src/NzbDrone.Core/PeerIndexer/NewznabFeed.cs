@@ -98,9 +98,11 @@ namespace NzbDrone.Core.PeerIndexer
             else
             {
                 AddId(element, "tvdbid", item.TvdbId);
-                element.Add(Attr("season", "S" + item.SeasonNumber.ToString("00")));
 
-                var episodes = item.GetEpisodeNumbers();
+                // The same numbers as the title.
+                element.Add(Attr("season", "S" + item.TitleSeasonNumber.ToString("00")));
+
+                var episodes = item.GetTitleEpisodeNumbers();
 
                 if (episodes.Count > 0)
                 {

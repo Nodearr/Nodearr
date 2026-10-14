@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 using NzbDrone.Core.Datastore;
 
 namespace NzbDrone.Core.Sharing
@@ -73,6 +74,15 @@ namespace NzbDrone.Core.Sharing
         // The day each episode aired, as yyyy-MM-dd, where the Arr app knows it. Sonarr asks for
         // daily shows by day and not by number.
         public List<string> AirDates { get; set; } = new();
+
+        // For a series the scene numbers differently from TVDB: the season and episodes as the
+        // scene has them, which is how Sonarr searches for them and reads them in a title. Left
+        // out for every other file, so an offer without them is the same as it ever was.
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? SceneSeasonNumber { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<int> SceneEpisodeNumbers { get; set; }
 
         // The name the release had when the Arr app grabbed it, when the Arr app kept one.
         public string SceneName { get; set; }
