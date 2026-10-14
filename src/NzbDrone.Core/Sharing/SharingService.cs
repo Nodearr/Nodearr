@@ -194,16 +194,11 @@ namespace NzbDrone.Core.Sharing
                 return Seal(new List<OfferItem>());
             }
 
-            var lists = All();
-            var hidden = lists.Where(l => l.List.IsHidden).SelectMany(l => l.Items).ToHashSet();
-            var listed = lists.Where(l => !l.List.IsHidden && l.PeerIds.Contains(peer.Id)).SelectMany(l => l.Items).ToHashSet();
-
-            bool IsShared(TitleKey key) => !hidden.Contains(key) && (peer.ShareAll || listed.Contains(key));
-
+            var isShared = SharedWith(peer);
             var offered = new List<OfferItem>();
 
             var series = _series.All()
-                .Where(s => s.MissingSince == null && IsShared(new TitleKey(MediaKind.Tv, s.ApplicationId, s.ArrId)))
+                .Where(s => s.MissingSince == null && isShared(new TitleKey(MediaKind.Tv, s.ApplicationId, s.ArrId)))
                 .ToDictionary(s => (s.ApplicationId, s.ArrId));
 
             if (series.Count > 0)
@@ -243,7 +238,7 @@ namespace NzbDrone.Core.Sharing
             }
 
             var movies = _movies.All()
-                .Where(m => m.MissingSince == null && IsShared(new TitleKey(MediaKind.Movie, m.ApplicationId, m.ArrId)))
+                .Where(m => m.MissingSince == null && isShared(new TitleKey(MediaKind.Movie, m.ApplicationId, m.ArrId)))
                 .ToDictionary(m => (m.ApplicationId, m.ArrId));
 
             if (movies.Count > 0)
@@ -268,9 +263,60 @@ namespace NzbDrone.Core.Sharing
             return Seal(offered);
         }
 
+        // The same answer as looking for the file in BuildOffer(peer), from the file's own rows. It
+        // is asked for every file request, and building the whole offer for a large library takes
+        // most of a second.
         public bool IsOffered(Peer peer, string offerFileId)
         {
-            return offerFileId.IsNotNullOrWhiteSpace() && BuildOffer(peer).Items.Any(i => i.Id == offerFileId);
+            if (peer is not { State: PeerState.Trusted } || !TryParseFileId(offerFileId, out var kind, out var applicationId, out var arrFileId))
+            {
+                return false;
+            }
+
+            if (kind == MediaKind.Tv)
+            {
+                var file = _episodeFiles.ForArrIds(applicationId, new[] { arrFileId }).FirstOrDefault(f => f.MissingSince == null);
+                var series = file == null ? null : _series.ForArrIds(applicationId, new[] { file.ArrSeriesId }).FirstOrDefault(s => s.MissingSince == null);
+
+                return series != null &&
+                       SharedWith(peer)(new TitleKey(MediaKind.Tv, applicationId, series.ArrId)) &&
+                       _episodes.ForFiles(applicationId, new[] { arrFileId }).Any(e => e.MissingSince == null);
+            }
+
+            var movieFile = _movieFiles.ForArrIds(applicationId, new[] { arrFileId }).FirstOrDefault(f => f.MissingSince == null);
+            var movie = movieFile == null ? null : _movies.ForArrIds(applicationId, new[] { movieFile.ArrMovieId }).FirstOrDefault(m => m.MissingSince == null);
+
+            return movie != null && SharedWith(peer)(new TitleKey(MediaKind.Movie, applicationId, movie.ArrId));
+        }
+
+        // Rules 2 to 4, for one peer that is already known to be trusted.
+        private Func<TitleKey, bool> SharedWith(Peer peer)
+        {
+            var lists = All();
+            var hidden = lists.Where(l => l.List.IsHidden).SelectMany(l => l.Items).ToHashSet();
+            var listed = lists.Where(l => !l.List.IsHidden && l.PeerIds.Contains(peer.Id)).SelectMany(l => l.Items).ToHashSet();
+
+            return key => !hidden.Contains(key) && (peer.ShareAll || listed.Contains(key));
+        }
+
+        // An offer names a file e-{application}-{file} or m-{application}-{file}, and nothing else
+        // names the same file.
+        private static bool TryParseFileId(string offerFileId, out MediaKind kind, out int applicationId, out int arrFileId)
+        {
+            kind = MediaKind.Tv;
+            applicationId = 0;
+            arrFileId = 0;
+
+            var parts = (offerFileId ?? string.Empty).Split('-');
+
+            if (parts.Length != 3 || parts[0] is not ("e" or "m") || !int.TryParse(parts[1], out applicationId) || !int.TryParse(parts[2], out arrFileId))
+            {
+                return false;
+            }
+
+            kind = parts[0] == "e" ? MediaKind.Tv : MediaKind.Movie;
+
+            return offerFileId == $"{parts[0]}-{applicationId}-{arrFileId}";
         }
 
         public void Handle(ProviderDeletedEvent<IApplication> message)

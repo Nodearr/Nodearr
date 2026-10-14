@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.EnvironmentInfo;
@@ -23,6 +24,10 @@ namespace NzbDrone.Core.Catalog
         // The same, for a file named the way offers name it: e-{application}-{file} or
         // m-{application}-{file}. Null when there is no such file in the catalog.
         LocatedFile Locate(string offerFileId);
+
+        // The same for many files at once, with a few queries in all. A name with no file in the
+        // catalog is left out.
+        Dictionary<string, LocatedFile> Locate(IEnumerable<string> offerFileIds);
     }
 
     // Path mappings are keyed by the Arr app's host, the same way the Arr apps key theirs by
@@ -50,8 +55,66 @@ namespace NzbDrone.Core.Catalog
 
         public LocatedFile Locate(int applicationId, string arrPath)
         {
-            var application = _applicationFactory.All().FirstOrDefault(a => a.Id == applicationId);
+            return Locate(_applicationFactory.All().FirstOrDefault(a => a.Id == applicationId), arrPath);
+        }
 
+        public LocatedFile Locate(string offerFileId)
+        {
+            if (!TryParse(offerFileId, out var kind, out var applicationId, out var arrId))
+            {
+                return null;
+            }
+
+            CatalogFile file = kind switch
+            {
+                "e" => _episodeFiles.ForArrIds(applicationId, new[] { arrId }).FirstOrDefault(f => f.MissingSince == null),
+                _ => _movieFiles.ForArrIds(applicationId, new[] { arrId }).FirstOrDefault(f => f.MissingSince == null)
+            };
+
+            return file == null ? null : Locate(applicationId, file.Path);
+        }
+
+        public Dictionary<string, LocatedFile> Locate(IEnumerable<string> offerFileIds)
+        {
+            var applications = _applicationFactory.All().ToDictionary(a => a.Id);
+            var located = new Dictionary<string, LocatedFile>();
+            var wanted = offerFileIds
+                .Select(id => TryParse(id, out var kind, out var applicationId, out var arrId) ? (id, kind, applicationId, arrId) : default)
+                .Where(w => w.id != null)
+                .GroupBy(w => (w.kind, w.applicationId));
+
+            foreach (var group in wanted)
+            {
+                var (kind, applicationId) = group.Key;
+                var files = (kind == "e" ? _episodeFiles.ForApplication(applicationId).Cast<CatalogFile>() : _movieFiles.ForApplication(applicationId))
+                    .Where(f => f.MissingSince == null)
+                    .ToDictionary(f => f.ArrId);
+
+                foreach (var (id, _, _, arrId) in group)
+                {
+                    if (files.TryGetValue(arrId, out var file))
+                    {
+                        located[id] = Locate(applications.GetValueOrDefault(applicationId), file.Path);
+                    }
+                }
+            }
+
+            return located;
+        }
+
+        private static bool TryParse(string offerFileId, out string kind, out int applicationId, out int arrId)
+        {
+            var parts = (offerFileId ?? string.Empty).Split('-');
+
+            kind = parts[0];
+            applicationId = 0;
+            arrId = 0;
+
+            return parts.Length == 3 && kind is "e" or "m" && int.TryParse(parts[1], out applicationId) && int.TryParse(parts[2], out arrId);
+        }
+
+        private LocatedFile Locate(ApplicationDefinition application, string arrPath)
+        {
             if (application == null || arrPath.IsNullOrWhiteSpace())
             {
                 return new LocatedFile { LocalPath = arrPath };
@@ -64,25 +127,6 @@ namespace NzbDrone.Core.Catalog
             var isPathHere = local.IsRooted && (OsInfo.IsWindows ? local.IsWindowsPath : local.IsUnixPath);
 
             return new LocatedFile { LocalPath = local.FullPath, Readable = isPathHere && _diskProvider.FileExists(local.FullPath) };
-        }
-
-        public LocatedFile Locate(string offerFileId)
-        {
-            var parts = (offerFileId ?? string.Empty).Split('-');
-
-            if (parts.Length != 3 || !int.TryParse(parts[1], out var applicationId) || !int.TryParse(parts[2], out var arrId))
-            {
-                return null;
-            }
-
-            CatalogFile file = parts[0] switch
-            {
-                "e" => _episodeFiles.ForArrIds(applicationId, new[] { arrId }).FirstOrDefault(f => f.MissingSince == null),
-                "m" => _movieFiles.ForArrIds(applicationId, new[] { arrId }).FirstOrDefault(f => f.MissingSince == null),
-                _ => null
-            };
-
-            return file == null ? null : Locate(applicationId, file.Path);
         }
     }
 }

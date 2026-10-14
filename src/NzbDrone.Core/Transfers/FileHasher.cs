@@ -264,9 +264,11 @@ namespace NzbDrone.Core.Transfers
                 }
             }
 
+            var located = _locator.Locate(offered.Keys);
+
             return offered
                 .OrderByDescending(o => o.Value ?? DateTime.MinValue)
-                .Select(o => _locator.Locate(o.Key))
+                .Select(o => located.GetValueOrDefault(o.Key))
                 .Where(l => l is { Readable: true })
                 .Select(l => l.LocalPath)
                 .Distinct(StringComparer.Ordinal)

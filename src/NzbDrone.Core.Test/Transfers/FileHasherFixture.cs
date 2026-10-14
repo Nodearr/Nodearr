@@ -21,6 +21,7 @@ namespace NzbDrone.Core.Test.Transfers
         private readonly Dictionary<Peer, List<OfferItem>> _offers = new();
         private readonly List<Upload> _uploads = new();
         private readonly List<string> _read = new();
+        private readonly HashSet<string> _unreadable = new();
 
         [SetUp]
         public void Setup()
@@ -28,12 +29,17 @@ namespace NzbDrone.Core.Test.Transfers
             _offers.Clear();
             _uploads.Clear();
             _read.Clear();
+            _unreadable.Clear();
 
             Mocker.SetConstant<IFileHashRepository>(Mocker.Resolve<FileHashRepository>());
 
             Mocker.GetMock<IPeerRepository>().Setup(p => p.All()).Returns(() => _offers.Keys.ToList());
             Mocker.GetMock<ISharingService>().Setup(s => s.BuildOffer(It.IsAny<Peer>())).Returns((Peer peer) => new Offer { Items = _offers[peer] });
-            Mocker.GetMock<ICatalogFileLocator>().Setup(l => l.Locate(It.IsAny<string>())).Returns((string id) => new LocatedFile { LocalPath = "/library/" + id + ".mkv", Readable = true });
+            Mocker.GetMock<ICatalogFileLocator>()
+                  .Setup(l => l.Locate(It.IsAny<IEnumerable<string>>()))
+                  .Returns((IEnumerable<string> ids) => ids.ToDictionary(id => id, id => _unreadable.Contains(id)
+                      ? new LocatedFile { LocalPath = "/tv/" + id + ".mkv", Readable = false }
+                      : new LocatedFile { LocalPath = "/library/" + id + ".mkv", Readable = true }));
             Mocker.GetMock<IUploadTracker>().Setup(u => u.All()).Returns(() => _uploads.ToList());
 
             // The transport reads a file only when it was not told a hash that still fits.
@@ -136,7 +142,7 @@ namespace NzbDrone.Core.Test.Transfers
         public void a_file_that_cannot_be_read_here_should_be_skipped()
         {
             GivenShared(_bob, Item("e-1-501"), Item("e-1-502"));
-            Mocker.GetMock<ICatalogFileLocator>().Setup(l => l.Locate("e-1-501")).Returns(new LocatedFile { LocalPath = "/tv/e1.mkv", Readable = false });
+            _unreadable.Add("e-1-501");
 
             Subject.HashShared(CancellationToken.None);
 

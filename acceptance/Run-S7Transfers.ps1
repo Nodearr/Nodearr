@@ -573,9 +573,14 @@ try {
     # The first episode was sent twice: once asked for by number, once by day.
     $uploads = @(Invoke-Node A GET '/transfers/uploads')
     $ended = { param([string] $name, [string] $state, [string] $failure) @($uploads | Where-Object { $_.title -eq "$name.mkv" -and $_.state -eq $state -and (-not $failure -or $_.failure -eq $failure) }).Count }
+
+    # Episode 2 was cancelled by B once and cut off by B stopping once. Which of the two words A
+    # uses for B stopping depends on what it notices first: the connection closing, or the direct
+    # path to B going with it.
+    $wentAway = (& $ended $episodeNames[1] 'failed' 'Stopped') + (& $ended $episodeNames[1] 'failed' 'DirectPathLost')
     Assert-That 'Afterwards the sending node lists each upload and how it ended: sent, stopped by the other side, cut when unshared, or cut when trust ended' (
         (& $ended $episodeNames[0] 'completed') -eq 2 -and (& $ended $movieName 'completed') -eq 1 -and
-        (& $ended $episodeNames[1] 'completed') -eq 1 -and (& $ended $episodeNames[1] 'failed' 'Stopped') -ge 2 -and
+        (& $ended $episodeNames[1] 'completed') -eq 1 -and $wentAway -ge 2 -and
         (& $ended $episodeNames[2] 'failed' 'NotAuthorized') -eq 1 -and
         (& $ended $episodeNames[2] 'failed' 'Revoked') -eq 1 -and @($uploads | Where-Object { $_.state -in 'sending', 'preparing' }).Count -eq 0
     ) @{ uploads = @($uploads | ForEach-Object { "$($_.title -replace '\.720p.*', '') -> $($_.state) $($_.failure) $($_.bytesSent)/$($_.size)" }) }

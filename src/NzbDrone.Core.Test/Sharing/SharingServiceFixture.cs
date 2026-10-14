@@ -212,6 +212,53 @@ namespace NzbDrone.Core.Test.Sharing
             Subject.IsOffered(bob, "e-1-501").Should().BeFalse();
         }
 
+        // IsOffered answers from a file's own rows. It must agree with the offer itself, file for
+        // file, whatever the sharing and whatever state the catalog is in.
+        [Test]
+        public void checking_one_file_should_always_agree_with_the_whole_offer()
+        {
+            // A file Sonarr has not tied to an episode, a series Sonarr stopped reporting with a
+            // file still listed, and a movie whose file is still there but whose movie is not.
+            Mocker.Resolve<ICatalogEpisodeFileRepository>().Insert(new CatalogEpisodeFile { ApplicationId = 1, ArrId = 503, ArrSeriesId = 10, SeasonNumber = 1, Path = "/tv/Pingu/extra.mkv", RelativePath = "extra.mkv", Size = 1 });
+            Mocker.Resolve<ICatalogSeriesRepository>().Insert(new CatalogSeries { ApplicationId = 1, ArrId = 12, TvdbId = 1, Title = "Gone", Path = "/tv/Gone", MissingSince = DateTime.UtcNow });
+            Mocker.Resolve<ICatalogEpisodeRepository>().Insert(new CatalogEpisode { ApplicationId = 1, ArrId = 301, ArrSeriesId = 12, SeasonNumber = 1, EpisodeNumber = 1, ArrEpisodeFileId = 801 });
+            Mocker.Resolve<ICatalogEpisodeFileRepository>().Insert(new CatalogEpisodeFile { ApplicationId = 1, ArrId = 801, ArrSeriesId = 12, SeasonNumber = 1, Path = "/tv/Gone/e1.mkv", RelativePath = "e1.mkv", Size = 1 });
+            Mocker.Resolve<ICatalogMovieRepository>().Insert(new CatalogMovie { ApplicationId = 2, ArrId = 22, TmdbId = 2, Title = "Gone Movie", ArrMovieFileId = 703, MissingSince = DateTime.UtcNow });
+            Mocker.Resolve<ICatalogMovieFileRepository>().Insert(new CatalogMovieFile { ApplicationId = 2, ArrId = 703, ArrMovieId = 22, Path = "/movies/gone.mkv", RelativePath = "gone.mkv", Size = 1 });
+
+            var names = new[]
+            {
+                "e-1-501", "e-1-502", "e-1-503", "e-1-601", "e-1-801", "m-2-701", "m-2-702", "m-2-703",
+                "m-1-501", "e-2-701", "e-1-999", "e-01-501", "e-1-501-1", "x-1-501", "e-1", "", null
+            };
+
+            void AllAgree(string setup)
+            {
+                foreach (var peer in Mocker.Resolve<IPeerRepository>().All())
+                {
+                    var offered = Subject.BuildOffer(peer).Items.Select(i => i.Id).ToHashSet();
+
+                    foreach (var name in names)
+                    {
+                        Subject.IsOffered(peer, name).Should().Be(name != null && offered.Contains(name), $"{name} for {peer.Name} with {setup}");
+                    }
+                }
+            }
+
+            AllAgree("nothing shared");
+
+            Subject.SetShareAll(_bob.Id, true);
+            Subject.SetShareAll(_dave.Id, true);
+            AllAgree("everything shared with Bob, and with Dave, who is not trusted");
+
+            var list = Subject.Create("Kids");
+            Subject.Update(list.List.Id, "Kids", new[] { Bluey, NightOfTheLivingDead, new TitleKey(MediaKind.Tv, 1, 12) }, new[] { _carol.Id });
+            AllAgree("a list for Carol");
+
+            Subject.Update(Hidden.List.Id, null, new[] { Pingu, NightOfTheLivingDead }, null);
+            AllAgree("Pingu and the movie hidden");
+        }
+
         [Test]
         public void a_multi_episode_file_should_be_offered_once_with_all_its_episodes()
         {
