@@ -91,7 +91,7 @@ Each failure has a name, and the name and a plain sentence go to the Arr app, wh
 | Revoked | Trust has ended, from either side. | No |
 | Blocked | The other node has blocked this node. | No |
 | NotFound | The other node no longer has the file, or cannot read it. | No |
-| VerificationFailed | What arrived did not match the hash. | No |
+| VerificationFailed | What arrived did not match the hash. | Yes, from nothing (amended 2026-10-13) |
 | DiskError | The file could not be written or moved here. | No |
 
 The plan also listed `Cancelled`. There is no such failure: a cancelled transfer is removed, which is what the Arr apps expect when they delete from the queue.
@@ -131,7 +131,7 @@ Nodearr reports paths as it sees them. When the Arr app sees the download folder
 - ~~**Hashing is on demand.** The plan called for hashing in the background as well. Here the first request for a file pays for hashing it, and the receiver waits. BLAKE3 is fast, but a very large file on a slow disk will take a while to start.~~ Done afterwards, see the amendments.
 - ~~**Checking permission rebuilds the peer's whole offer** for each request. Fine for now. A large library will want a direct check.~~ Done afterwards: 7 ms with 66,000 files, was 0.65 s (ADR 0014, amendments).
 - ~~**Unsharing does not stop a transfer already under way.** Ending trust does.~~ Done afterwards, see the amendments.
-- **A failed verification is not tried again**, though a file that changed while it was being sent would pass the second time.
+- ~~**A failed verification is not tried again**, though a file that changed while it was being sent would pass the second time.~~ Done afterwards, see the amendments.
 - **No speed limit setting in the UI.** There is an upload limit option, used by the acceptance script.
 - **Whole-file hash.** A resumed transfer has to read back what it already holds.
 
@@ -153,4 +153,10 @@ Nodearr reports paths as it sees them. When the Arr app sees the download folder
   - A file with no hash yet waits while this node is sending anything, so the background reading does not slow an upload. A file already hashed is checked even then, since checking reads nothing.
   - A pass runs shortly after Nodearr starts, when the library is refreshed, when sharing changes, when a node becomes trusted, and otherwise every six hours, which finds files changed in place. If the sidecar is not running, the pass stops and is tried again a minute later.
   - The Sharing page has a "Preparing Shared Files" section showing how many shared files are ready, which file is being read, and whether hashing is waiting for an upload. `GET /api/v5/sharing/hashing` gives the same.
-  - What a wrong stored hash would do: the sidecar trusts it while size and modified time match, so a file changed without either changing would be sent with a hash it does not match. The receiver would fail it with `VerificationFailed` and not import it. Nothing wrong reaches a library.
+  - What a wrong stored hash would do: the sidecar trusts it while size and modified time match, so a file changed without either changing would be sent with a hash it does not match. The receiver would fail it with `VerificationFailed` and not import it. Nothing wrong reaches a library. (Since then such a transfer is tried again with a fresh hash, see below.)
+- 2026-10-13: **a failed verification is tried again.** It used to end the transfer at once, and the Arr app blocklisted the release. With hashes kept from before (the amendment above), the likely cause is the sending node's own: a file that changed without its size or modified time changing, sent with the hash it had before. Another attempt with a fresh hash would pass, so one is made.
+  - The receiving node treats `VerificationFailed` as a failure that may pass, within the same three attempts. Nothing of what arrived is kept, and the next attempt asks for the file from the start, without the old hash.
+  - The sending node is told by the receiver's one-byte verdict. Its sidecar forgets the hash it had for the file, and Nodearr deletes the kept one, so the next request has the file hashed afresh.
+  - The Arr app hears of a failure only if every attempt fails. A file that never matches still ends as `VerificationFailed` and is blocklisted.
+  - Checked by unit tests, and by a step in `acceptance/Run-S7Transfers.ps1`: one byte of an episode on node A is changed in place, its modified time set back, and node B grabs it. The first attempt fails verification, the second brings the changed file, and Sonarr imports it with no failure in its history.
+  - A trusted node can make the sending node read a file again by claiming a mismatch. That costs reading the file once more, and nothing else.
