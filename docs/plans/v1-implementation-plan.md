@@ -53,6 +53,14 @@ Owner decisions made after the plan was written:
 - The default port is 6633.
 - Port mapping (UPnP, NAT-PMP, PCP) is on by default, with a setting to turn it off.
 - When the catalog is empty, the indexer answers ID-less queries with a stand-in item so the Arr apps accept it (ADR 0010, amendments).
+- 2026-10-14, the owner's overall direction: work with the Arr ecosystem, not against it. Nodearr's concepts, units and schedules follow Sonarr's and Radarr's.
+- 2026-10-14: sharing is per file, which for TV is per episode, the way Sonarr monitors a whole series, a season or single episodes. Movies are already per file.
+- 2026-10-14: a changed catalog is sent as only what changed, not whole. Designed on the Arr apps' conventions:
+  - A Catalog Sync Interval, polled like Sonarr's RSS Sync: in minutes, default 15, 10 to 120, or 0 to turn it off.
+  - Nodearr hears of new, upgraded and deleted files from Sonarr and Radarr through a webhook connection, which it adds itself as it adds its indexer and download client. It is never set up by hand.
+  - The full import from each Arr app runs every 12 hours, as Sonarr's Refresh Series does.
+  - Removals are still pushed to peers at once, so unsharing reaches them in seconds.
+- Release builds will eventually match Sonarr's and Radarr's platforms. Not a focus yet.
 
 What S3 left for later slices:
 
@@ -71,7 +79,7 @@ What S4 left for later slices:
 
 What S5 left for later slices:
 
-- Sharing is by whole series or movie. There is no per-season or per-file control.
+- ~~Sharing is by whole series or movie. There is no per-season or per-file control.~~ Done afterwards, see below.
 - Peer catalog rows are not yet indexer results (S6), and a transfer request is not yet checked against the sharing rule (S7).
 - ~~An offer is rebuilt from the whole local catalog on each request. It has not been tried on a large library.~~ Measured afterwards, see below.
 
@@ -119,6 +127,7 @@ Then a settings page. ADR 0019. Branch `v1/s10-node-settings`.
 - A large library was measured: 66,000 files in a real database (ADR 0014, amendments). Building and exchanging the offer, storing a peer's catalog and the indexer were all well under a second, apart from storing a whole new catalog at 6 s. A file request rebuilt the whole offer to check one file, which took 0.65 s. It now checks the file directly, in 7 ms. A hashing pass found each shared file with its own query, which took 5 s. It now takes under 1 s. What remains: a changed offer is sent whole, 36 MB at this size, and Sonarr import, at two requests per series, was not measured against a real Sonarr that large. Branch `v1/s25-large-library`.
 - A file that fails verification is tried again from nothing, and the sending node forgets the hash it sent, so a file that changed without its size or modified time changing costs one attempt and not the release (ADR 0016, amendments). Branch `v1/s26-verification-retry`.
 - Series the scene numbers differently from TVDB are titled and matched by the scene's numbers, which is how Sonarr reads them. Before, a built title named the wrong episode: checked against a real Sonarr with American Dad! (ADR 0015, amendments). Branch `v1/s27-scene-numbers`.
+- Sharing is by series, season or episode, as Sonarr monitors, on share lists and the Hidden list alike. A file of several episodes is shared only when all of them are (ADR 0014, amendments). Branch `v1/s28-per-episode-sharing`.
 - Settings > Node holds the node's name, relay, UDP port, port mapping, wait for a direct route, download folder and upload limit. Bad values are refused field by field. A setting given in the environment is shown and cannot be changed. A change that needs it restarts the transport and nothing else, and the node keeps its identity and its trust (`acceptance/Run-NodeSettings.ps1`).
 
 ## Where V1 stands

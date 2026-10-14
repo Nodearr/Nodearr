@@ -14,7 +14,7 @@ The owner had already decided the default: a newly trusted peer sees nothing unt
 
 ### What is shared
 
-Sharing is by title: a whole series or a whole movie. Three things control it.
+Sharing is by title: a whole series or a whole movie. Three things control it. (Since 2026-10-14 also by season and by episode, see the amendments.)
 
 - **The Hidden list.** One built-in list. Anything on it is offered to nobody.
 - **Share everything.** A switch on each peer. The peer is offered every title that is not hidden, including titles added later.
@@ -85,7 +85,7 @@ The marks are worked out again whenever the local catalog is refreshed.
 
 ### Negative / trade-offs
 
-- Sharing is all of a series or none of it. There is no per-season or per-file control.
+- ~~Sharing is all of a series or none of it. There is no per-season or per-file control.~~ Done afterwards, see the amendments.
 - A peer that has been offered a title knows it existed, and may have kept its own notes. Unsharing stops future offers. It cannot make a peer forget.
 - A peer learns what this node has from what it is offered, and can infer a little from changes over time. That is inherent in sharing a catalog.
 - The whole offer is rebuilt from the full local catalog on every request, and the receiver replaces every row for a peer on every change. This is simple and correct, and it will want a cheaper path for very large libraries.
@@ -116,6 +116,14 @@ The marks are worked out again whenever the local catalog is refreshed.
   The rebuild described above is cheap enough, and was left alone. Checking a single request is no longer done by building the whole offer. It reads the file's own rows and asks the same rule, and a test holds it to the same answer as the offer for every file, whatever is shared and whatever state the catalog is in.
 
   What was not changed: a changed offer is sent whole. At this size that is 36 MB to each trusted node, each time anything shared changes, which with new episodes arriving daily is a few times a day. A page is far under the 4 MB message limit. Sending only what changed, or compressing pages, is the next step if that matters.
+
+- 2026-10-14: **sharing by season and by episode, the way Sonarr monitors.** The owner's direction was to work with the Arr ecosystem: in Sonarr a whole series, a season or single episodes can be monitored, so a share list, and the Hidden list, can now hold any of those.
+  - A whole series covers every episode, including those that arrive later. A season covers every episode in it, including later ones. An episode covers itself. A movie is always whole.
+  - An episode is shared with a peer when its series, its season or the episode itself is on a list given to the peer, or the peer has "share everything", and none of those is on the Hidden list. Seasons are TVDB's, as in Sonarr.
+  - A file that holds several episodes is offered only when every one of them is shared, as Sonarr wants a release only when every episode in it is monitored ("One or more episodes is not monitored").
+  - A season or episode under a whole series on the same list adds nothing, and is dropped when the list is saved. Existing lists hold whole series and movies, and mean what they meant.
+  - The Sharing page opens a series into its seasons and episodes. The boxes work like Sonarr's monitor toggles: a partly ticked series or season shows as such, and unticking part of something ticked whole keeps the rest ticked one level down. Episodes with no file yet are listed too, and marked.
+  - Checked by unit tests, by `acceptance/Run-S5Sharing.ps1`, which now shares one episode, then a season, and hides one episode, then a season, from a list that shares the whole series, and by hand on the page against a real Sonarr's Pingu, 162 episodes in 7 seasons.
 
 ## Follow-up work
 
