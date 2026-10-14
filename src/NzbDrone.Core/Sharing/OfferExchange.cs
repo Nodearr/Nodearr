@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
+using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Nodes;
 
 namespace NzbDrone.Core.Sharing
@@ -12,36 +14,50 @@ namespace NzbDrone.Core.Sharing
 
     // Answers a trusted peer's request for this node's catalog, one page at a time.
     //
-    // The first page builds the peer's offer afresh and remembers it, so the following pages come
-    // from the same snapshot even if sharing changes in between. A peer that asks for a later page
-    // of a snapshot that has been replaced is told to start again.
-    public class OfferExchange : IOfferExchange
+    // The first page builds the peer's offer afresh. If the peer holds the version this node last
+    // sent it, and can take changes, it is sent only the files added or changed since and the IDs
+    // of those removed. Otherwise it is sent the whole catalog. Either way the reply is remembered,
+    // so the following pages come from the same snapshot even if sharing changes in between. A
+    // peer that asks for a later page of a snapshot that has been replaced is told to start again.
+    public class OfferExchange : IOfferExchange, IHandle<PeerDeletedEvent>
     {
         public const int PageSize = 500;
 
         private readonly ISharingService _sharingService;
-        private readonly ConcurrentDictionary<int, Offer> _snapshots = new();
+        private readonly IOfferRecordRepository _records;
+        private readonly ConcurrentDictionary<int, Snapshot> _snapshots = new();
 
-        public OfferExchange(ISharingService sharingService)
+        public OfferExchange(ISharingService sharingService, IOfferRecordRepository records)
         {
             _sharingService = sharingService;
+            _records = records;
         }
 
         public PeerReply Answer(Peer peer, PeerMessage request)
         {
-            Offer offer;
+            Snapshot snapshot;
 
             if (request.CatalogPage <= 0)
             {
-                offer = _sharingService.BuildOffer(peer);
-                _snapshots[peer.Id] = offer;
+                var offer = _sharingService.BuildOffer(peer);
 
                 if (offer.Version == request.CatalogKnownVersion)
                 {
-                    return new PeerReply { Ok = true, CatalogVersion = offer.Version, CatalogUnchanged = true };
+                    // The peer holds what it would be sent. Make sure the next change can be sent
+                    // as a change, even if this node lost its record of what the peer holds.
+                    if (_records.FindForPeer(peer.Id)?.Version != offer.Version)
+                    {
+                        Remember(peer, offer);
+                    }
+
+                    return new PeerReply { Ok = true, CatalogVersion = offer.Version, CatalogUnchanged = true, CatalogItemCount = offer.Items.Count };
                 }
+
+                snapshot = Prepare(peer, offer, request);
+                _snapshots[peer.Id] = snapshot;
+                Remember(peer, offer);
             }
-            else if (!_snapshots.TryGetValue(peer.Id, out offer) || offer.Version != request.CatalogVersion)
+            else if (!_snapshots.TryGetValue(peer.Id, out snapshot) || snapshot.Version != request.CatalogVersion)
             {
                 return new PeerReply { Ok = false, Error = "CatalogChanged" };
             }
@@ -51,10 +67,71 @@ namespace NzbDrone.Core.Sharing
             return new PeerReply
             {
                 Ok = true,
-                CatalogVersion = offer.Version,
-                CatalogTotalPages = Math.Max(1, (int)Math.Ceiling(offer.Items.Count / (double)PageSize)),
-                CatalogItems = offer.Items.Skip(page * PageSize).Take(PageSize).ToList()
+                CatalogVersion = snapshot.Version,
+                CatalogTotalPages = Math.Max(1, (int)Math.Ceiling(snapshot.Items.Count / (double)PageSize)),
+                CatalogItems = snapshot.Items.Skip(page * PageSize).Take(PageSize).ToList(),
+                CatalogChanges = snapshot.Changes,
+                CatalogRemoved = snapshot.Changes && page == 0 ? snapshot.Removed : null,
+                CatalogItemCount = snapshot.ItemCount
             };
+        }
+
+        public void Handle(PeerDeletedEvent message)
+        {
+            _snapshots.TryRemove(message.PeerId, out _);
+            _records.DeleteForPeer(message.PeerId);
+        }
+
+        // Only what changed, when this node knows what the peer holds and the peer can take it.
+        // When more than half the files changed, the whole catalog is about as big, and simpler.
+        private Snapshot Prepare(Peer peer, Offer offer, PeerMessage request)
+        {
+            var whole = new Snapshot { Version = offer.Version, Items = offer.Items, ItemCount = offer.Items.Count };
+
+            if (!request.CatalogAcceptsChanges || request.CatalogKnownVersion == null)
+            {
+                return whole;
+            }
+
+            var record = _records.FindForPeer(peer.Id);
+
+            if (record?.Version != request.CatalogKnownVersion)
+            {
+                return whole;
+            }
+
+            var before = record.GetFingerprints();
+            var changed = offer.Items.Where(i => !before.TryGetValue(i.Id, out var fingerprint) || fingerprint != i.Fingerprint).ToList();
+
+            if (changed.Count > offer.Items.Count / 2 && changed.Count > PageSize)
+            {
+                return whole;
+            }
+
+            var current = offer.Items.Select(i => i.Id).ToHashSet(StringComparer.Ordinal);
+
+            return new Snapshot
+            {
+                Version = offer.Version,
+                Items = changed,
+                Changes = true,
+                Removed = before.Keys.Where(id => !current.Contains(id)).OrderBy(id => id, StringComparer.Ordinal).ToList(),
+                ItemCount = offer.Items.Count
+            };
+        }
+
+        private void Remember(Peer peer, Offer offer)
+        {
+            _records.Save(new OfferRecord { PeerId = peer.Id, Version = offer.Version, Fingerprints = OfferRecord.Write(offer.Items), Sent = DateTime.UtcNow });
+        }
+
+        private class Snapshot
+        {
+            public string Version { get; set; }
+            public List<OfferItem> Items { get; set; }
+            public bool Changes { get; set; }
+            public List<string> Removed { get; set; }
+            public int ItemCount { get; set; }
         }
     }
 }

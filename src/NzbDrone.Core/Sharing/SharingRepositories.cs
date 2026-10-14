@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Messaging.Events;
 
@@ -43,6 +44,47 @@ namespace NzbDrone.Core.Sharing
         public void DeleteForApplication(int applicationId)
         {
             Delete(i => i.ApplicationId == applicationId);
+        }
+    }
+
+    public interface IOfferRecordRepository : IBasicRepository<OfferRecord>
+    {
+        OfferRecord FindForPeer(int peerId);
+        void Save(OfferRecord record);
+        void DeleteForPeer(int peerId);
+    }
+
+    public class OfferRecordRepository : BasicRepository<OfferRecord>, IOfferRecordRepository
+    {
+        public OfferRecordRepository(IMainDatabase database, IEventAggregator eventAggregator)
+            : base(database, eventAggregator)
+        {
+        }
+
+        public OfferRecord FindForPeer(int peerId)
+        {
+            return Query(r => r.PeerId == peerId).SingleOrDefault();
+        }
+
+        // One record for each peer: the latest replaces the one before.
+        public void Save(OfferRecord record)
+        {
+            var existing = FindForPeer(record.PeerId);
+
+            if (existing != null)
+            {
+                record.Id = existing.Id;
+                Update(record);
+            }
+            else
+            {
+                Insert(record);
+            }
+        }
+
+        public void DeleteForPeer(int peerId)
+        {
+            Delete(r => r.PeerId == peerId);
         }
     }
 

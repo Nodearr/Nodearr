@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Messaging.Events;
@@ -16,6 +17,9 @@ namespace NzbDrone.Core.Transfers
         public string Blake3 { get; set; }
         public DateTime Hashed { get; set; }
 
+        // The offered file this is, as offers name it, so an offer can carry the hash.
+        public string OfferFileId { get; set; }
+
         public HashedFile ToHashedFile()
         {
             return new HashedFile { Size = Size, ModifiedNs = ModifiedNs, Blake3 = Blake3 };
@@ -30,6 +34,9 @@ namespace NzbDrone.Core.Transfers
     public interface IFileHashRepository : IBasicRepository<FileHash>
     {
         FileHash FindByPath(string path);
+
+        // Each kept hash by the offered file it is for.
+        Dictionary<string, FileHash> ByOfferFileId();
     }
 
     public class FileHashRepository : BasicRepository<FileHash>, IFileHashRepository
@@ -42,6 +49,11 @@ namespace NzbDrone.Core.Transfers
         public FileHash FindByPath(string path)
         {
             return Query(h => h.Path == path).SingleOrDefault();
+        }
+
+        public Dictionary<string, FileHash> ByOfferFileId()
+        {
+            return All().Where(h => h.OfferFileId != null).GroupBy(h => h.OfferFileId).ToDictionary(g => g.Key, g => g.OrderByDescending(h => h.Hashed).First());
         }
     }
 }

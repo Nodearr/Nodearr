@@ -12,6 +12,7 @@ using NzbDrone.Core.Nodes;
 using NzbDrone.Core.Sharing;
 using NzbDrone.Core.Test.Framework;
 using NzbDrone.Core.ThingiProvider.Events;
+using NzbDrone.Core.Transfers;
 
 namespace NzbDrone.Core.Test.Sharing
 {
@@ -38,6 +39,7 @@ namespace NzbDrone.Core.Test.Sharing
             Mocker.SetConstant<ICatalogEpisodeFileRepository>(Mocker.Resolve<CatalogEpisodeFileRepository>());
             Mocker.SetConstant<ICatalogMovieRepository>(Mocker.Resolve<CatalogMovieRepository>());
             Mocker.SetConstant<ICatalogMovieFileRepository>(Mocker.Resolve<CatalogMovieFileRepository>());
+            Mocker.SetConstant<IFileHashRepository>(Mocker.Resolve<FileHashRepository>());
 
             Mocker.GetMock<IApplicationFactory>()
                   .Setup(f => f.All())
@@ -406,6 +408,25 @@ namespace NzbDrone.Core.Test.Sharing
             var json = JsonSerializer.Serialize(items.Single(i => i.Id == "e-1-601"));
 
             json.Should().NotContain("Scene" + "SeasonNumber").And.NotContain("SceneEpisodeNumbers");
+        }
+
+        [Test]
+        public void a_file_should_carry_its_hash_where_one_was_worked_out_for_a_file_its_size()
+        {
+            var hashes = Mocker.Resolve<IFileHashRepository>();
+
+            hashes.Insert(new FileHash { Path = "/tv/a.mkv", OfferFileId = "e-1-501", Size = 100, ModifiedNs = 1, Blake3 = new string('a', 64), Hashed = DateTime.UtcNow });
+            hashes.Insert(new FileHash { Path = "/tv/b.mkv", OfferFileId = "e-1-601", Size = 999, ModifiedNs = 1, Blake3 = new string('b', 64), Hashed = DateTime.UtcNow });
+            Subject.SetShareAll(_bob.Id, true);
+
+            var items = Subject.BuildOffer(Mocker.Resolve<IPeerRepository>().Get(_bob.Id)).Items;
+
+            items.Single(i => i.Id == "e-1-501").Blake3.Should().Be(new string('a', 64));
+
+            // Worked out for a file of another size, so not this file as the Arr app has it now.
+            items.Single(i => i.Id == "e-1-601").Blake3.Should().BeNull();
+            items.Single(i => i.Id == "e-1-502").Blake3.Should().BeNull();
+            items.Should().OnlyContain(i => i.Fingerprint != null && i.Fingerprint.Length == 16);
         }
 
         [Test]

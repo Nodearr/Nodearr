@@ -74,6 +74,11 @@ namespace NzbDrone.Core.PeerCatalog
         public DateTime? DateAdded { get; set; }
         public PeerItemStatus LocalStatus { get; set; }
 
+        // As the peer sent them: a hash of what it said about the file, which the catalog's
+        // version is made from, and the file's BLAKE3 hash where the peer has worked it out.
+        public string Fingerprint { get; set; }
+        public string Blake3 { get; set; }
+
         public List<int> GetEpisodeNumbers()
         {
             return (EpisodeNumbers ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToList();
@@ -150,8 +155,17 @@ namespace NzbDrone.Core.PeerCatalog
                 VideoDynamicRange = offer.VideoDynamicRange,
                 AudioCodec = offer.AudioCodec,
                 AudioChannels = offer.AudioChannels,
-                DateAdded = offer.DateAdded
+                DateAdded = offer.DateAdded,
+                Fingerprint = IsHex(offer.Fingerprint, 16) ? offer.Fingerprint : null,
+                Blake3 = IsHex(offer.Blake3, 64) ? offer.Blake3 : null
             };
+        }
+
+        // Hashes from another node end up compared and stored, so only lowercase hex of the
+        // expected length is kept.
+        private static bool IsHex(string value, int length)
+        {
+            return value != null && value.Length == length && value.All(c => c is >= '0' and <= '9' or >= 'a' and <= 'f');
         }
     }
 

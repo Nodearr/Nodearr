@@ -315,6 +315,12 @@ try {
     $seen = (Get-Seen 1).Items
     Assert-That 'Hiding a series removes it from what a "share everything" peer is offered' ($seen[0].mediaKind -eq 'movie') @{ items = @($seen | ForEach-Object releaseTitle) }
 
+    # B already held A's catalog, so the hiding reached it as two removals and nothing else.
+    $changeLine = Wait-Until -What "B to log the change it took" -TimeoutSec 15 -Condition {
+        Select-String -Path (Join-Path $nodes.B.Data 'logs/nodearr.debug.txt') -Pattern 'is now version \w+: 0 files added or changed, 2 removed' -ErrorAction SilentlyContinue | Select-Object -Last 1
+    }
+    Assert-That 'A change reaches a peer that holds the catalog as only what changed, not the whole catalog again' ($null -ne $changeLine) @{ line = "$($changeLine.Line)" }
+
     # --- Share lists -----------------------------------------------------------------------------
 
     Invoke-Node A PUT "/nodes/peers/$($bOnA.id)/shareall" @{ shareAll = $false } | Out-Null

@@ -81,6 +81,17 @@ namespace NzbDrone.Core.Test.Transfers
         }
 
         [Test]
+        public void each_kept_hash_should_say_which_offered_file_it_is_for()
+        {
+            GivenShared(_bob, Item("e-1-501"), Item("m-2-701"));
+            Db.Insert(new FileHash { Path = "/library/e-1-501.mkv", Size = 100, ModifiedNs = 5, Blake3 = "hash-of-/library/e-1-501.mkv", Hashed = DateTime.UtcNow });
+
+            Subject.HashShared(CancellationToken.None);
+
+            Db.All<FileHash>().Select(h => (h.Path, h.OfferFileId)).Should().BeEquivalentTo(new[] { ("/library/e-1-501.mkv", "e-1-501"), ("/library/m-2-701.mkv", "m-2-701") });
+        }
+
+        [Test]
         public void the_newest_files_should_be_hashed_first()
         {
             GivenShared(_bob, Item("e-1-old", 30), Item("e-1-new", 1), Item("e-1-middle", 10));

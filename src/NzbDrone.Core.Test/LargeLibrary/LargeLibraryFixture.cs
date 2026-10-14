@@ -171,6 +171,7 @@ namespace NzbDrone.Core.Test.LargeLibrary
         {
             // The sending side.
             Mocker.SetConstant<ISharingService>(Subject);
+            Mocker.SetConstant<IOfferRecordRepository>(Mocker.Resolve<OfferRecordRepository>());
             Mocker.SetConstant<IOfferExchange>(Mocker.Resolve<OfferExchange>());
 
             var offer = Time("build the offer for a node that is shared everything", () => Subject.BuildOffer(_bob));
@@ -221,7 +222,14 @@ namespace NzbDrone.Core.Test.LargeLibrary
             });
 
             // The receiving side: this node fetches its own offer as if from a peer.
-            Mocker.GetMock<IPeerService>().Setup(p => p.Ask(It.IsAny<Peer>(), It.IsAny<PeerMessage>())).Returns((Peer peer, PeerMessage message) => PeerReply.FromBytes(exchange.Answer(peer, message).ToBytes()));
+            var received = 0L;
+            Mocker.GetMock<IPeerService>().Setup(p => p.Ask(It.IsAny<Peer>(), It.IsAny<PeerMessage>())).Returns((Peer peer, PeerMessage message) =>
+            {
+                var bytes = exchange.Answer(peer, message).ToBytes();
+                received += bytes.Length;
+
+                return PeerReply.FromBytes(bytes);
+            });
             var peerCatalog = Mocker.Resolve<PeerCatalogService>();
             Time("receive a peer's whole catalog and store it", () =>
             {
@@ -235,6 +243,22 @@ namespace NzbDrone.Core.Test.LargeLibrary
 
                 return 0;
             });
+
+            // One episode is upgraded in Sonarr. Only that file is sent.
+            var episodeFiles = Mocker.Resolve<ICatalogEpisodeFileRepository>();
+            var upgraded = episodeFiles.ForArrIds(1, new[] { 7 }).Single();
+            upgraded.Quality = "Bluray-1080p";
+            upgraded.QualitySource = "bluray";
+            episodeFiles.Update(upgraded);
+
+            received = 0;
+            Time("receive one changed file", () =>
+            {
+                peerCatalog.Sync(_bob.Id);
+
+                return 0;
+            });
+            _report.Add($"           {received:N0} bytes received for it");
             Time("compare every peer file with the library again after a refresh", () =>
             {
                 peerCatalog.HandleAsync(new CatalogRefreshedEvent(1));

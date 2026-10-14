@@ -14,6 +14,10 @@ namespace NzbDrone.Core.PeerCatalog
         List<PeerCatalogItem> FindByMediaIds(MediaKind kind, int tvdbId, int tmdbId, string imdbId);
         List<PeerCatalogItem> FindByText(string word);
         void DeleteForPeer(int peerId);
+        void DeleteForPeer(int peerId, IEnumerable<string> remoteIds);
+
+        // What is held for a peer, as the peer names each file and with its fingerprint.
+        List<(string RemoteId, string Fingerprint)> FingerprintsForPeer(int peerId);
         Dictionary<(int PeerId, PeerItemStatus Status), int> CountByStatus();
     }
 
@@ -65,6 +69,26 @@ namespace NzbDrone.Core.PeerCatalog
         public void DeleteForPeer(int peerId)
         {
             Delete(i => i.PeerId == peerId);
+        }
+
+        public void DeleteForPeer(int peerId, IEnumerable<string> remoteIds)
+        {
+            // In batches, to stay well inside SQLite's limit on query parameters.
+            foreach (var batch in remoteIds.Distinct().Chunk(500))
+            {
+                var ids = batch.ToList();
+
+                Delete(i => i.PeerId == peerId && ids.Contains(i.RemoteId));
+            }
+        }
+
+        public List<(string RemoteId, string Fingerprint)> FingerprintsForPeer(int peerId)
+        {
+            using var connection = _database.OpenConnection();
+
+            return connection
+                .Query<(string RemoteId, string Fingerprint)>($"SELECT \"RemoteId\", \"Fingerprint\" FROM \"{_table}\" WHERE \"PeerId\" = @peerId", new { peerId })
+                .ToList();
         }
 
         public Dictionary<(int PeerId, PeerItemStatus Status), int> CountByStatus()

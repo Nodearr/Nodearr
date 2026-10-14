@@ -157,13 +157,13 @@ namespace NzbDrone.Core.Transfers
 
         public bool HashShared(CancellationToken cancellation)
         {
-            var paths = SharedPaths();
+            var files = SharedFiles();
             var kept = _hashes.All().ToDictionary(h => h.Path, StringComparer.Ordinal);
-            var status = new HashingStatus { Shared = paths.Count, Hashed = paths.Count(kept.ContainsKey), LastPass = _status.LastPass };
+            var status = new HashingStatus { Shared = files.Count, Hashed = files.Count(f => kept.ContainsKey(f.Path)), LastPass = _status.LastPass };
 
             _status = status;
 
-            foreach (var path in paths)
+            foreach (var (offerFileId, path) in files)
             {
                 if (cancellation.IsCancellationRequested)
                 {
@@ -201,7 +201,7 @@ namespace NzbDrone.Core.Transfers
 
                 if (known == null)
                 {
-                    _hashes.Insert(new FileHash { Path = path, Size = hashed.Size, ModifiedNs = hashed.ModifiedNs, Blake3 = hashed.Blake3, Hashed = DateTime.UtcNow });
+                    _hashes.Insert(new FileHash { Path = path, OfferFileId = offerFileId, Size = hashed.Size, ModifiedNs = hashed.ModifiedNs, Blake3 = hashed.Blake3, Hashed = DateTime.UtcNow });
                     status.Hashed++;
                     _logger.Debug("Hashed {0}", path);
                 }
@@ -211,16 +211,23 @@ namespace NzbDrone.Core.Transfers
                     known.Size = hashed.Size;
                     known.ModifiedNs = hashed.ModifiedNs;
                     known.Blake3 = hashed.Blake3;
+                    known.OfferFileId = offerFileId;
                     known.Hashed = DateTime.UtcNow;
                     _hashes.Update(known);
                     _logger.Debug("Hashed {0} again, because it changed", path);
+                }
+                else if (known.OfferFileId != offerFileId)
+                {
+                    // Kept from before hashes named their file, or the Arr app's name for it changed.
+                    known.OfferFileId = offerFileId;
+                    _hashes.SetFields(known, h => h.OfferFileId);
                 }
             }
 
             status.Current = null;
             status.LastPass = DateTime.UtcNow;
 
-            var shared = paths.ToHashSet(StringComparer.Ordinal);
+            var shared = files.Select(f => f.Path).ToHashSet(StringComparer.Ordinal);
             var stale = kept.Values.Where(h => !shared.Contains(h.Path) && h.Hashed < DateTime.UtcNow - KeepUnshared).Select(h => h.Id).ToList();
 
             if (stale.Count > 0)
@@ -267,8 +274,9 @@ namespace NzbDrone.Core.Transfers
             return true;
         }
 
-        // Every file offered to at least one trusted node, where it is on this machine, newest first.
-        private List<string> SharedPaths()
+        // Every file offered to at least one trusted node, by the name offers give it and where it
+        // is on this machine, newest first. A file two Arr apps both report is read once.
+        private List<(string Id, string Path)> SharedFiles()
         {
             var offered = new Dictionary<string, DateTime?>();
 
@@ -284,10 +292,10 @@ namespace NzbDrone.Core.Transfers
 
             return offered
                 .OrderByDescending(o => o.Value ?? DateTime.MinValue)
-                .Select(o => located.GetValueOrDefault(o.Key))
-                .Where(l => l is { Readable: true })
-                .Select(l => l.LocalPath)
-                .Distinct(StringComparer.Ordinal)
+                .Select(o => (Id: o.Key, Located: located.GetValueOrDefault(o.Key)))
+                .Where(f => f.Located is { Readable: true })
+                .Select(f => (f.Id, f.Located.LocalPath))
+                .DistinctBy(f => f.LocalPath, StringComparer.Ordinal)
                 .ToList();
         }
     }

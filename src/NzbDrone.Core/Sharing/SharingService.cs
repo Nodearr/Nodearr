@@ -1,14 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Cryptography;
-using System.Text.Json;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Applications;
 using NzbDrone.Core.Catalog;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Nodes;
 using NzbDrone.Core.ThingiProvider.Events;
+using NzbDrone.Core.Transfers;
 
 namespace NzbDrone.Core.Sharing
 {
@@ -56,6 +55,7 @@ namespace NzbDrone.Core.Sharing
         private readonly ICatalogEpisodeFileRepository _episodeFiles;
         private readonly ICatalogMovieRepository _movies;
         private readonly ICatalogMovieFileRepository _movieFiles;
+        private readonly IFileHashRepository _fileHashes;
         private readonly IEventAggregator _eventAggregator;
 
         public SharingService(IShareListRepository lists,
@@ -68,8 +68,10 @@ namespace NzbDrone.Core.Sharing
                               ICatalogEpisodeFileRepository episodeFiles,
                               ICatalogMovieRepository movies,
                               ICatalogMovieFileRepository movieFiles,
+                              IFileHashRepository fileHashes,
                               IEventAggregator eventAggregator)
         {
+            _fileHashes = fileHashes;
             _eventAggregator = eventAggregator;
             _lists = lists;
             _items = items;
@@ -290,6 +292,20 @@ namespace NzbDrone.Core.Sharing
                 }
             }
 
+            // The hash, where it has been worked out for a file the size the Arr app says it is.
+            if (offered.Count > 0)
+            {
+                var hashes = _fileHashes.ByOfferFileId();
+
+                foreach (var item in offered)
+                {
+                    if (hashes.TryGetValue(item.Id, out var hash) && hash.Size == item.Size)
+                    {
+                        item.Blake3 = hash.Blake3;
+                    }
+                }
+            }
+
             return Seal(offered);
         }
 
@@ -472,10 +488,7 @@ namespace NzbDrone.Core.Sharing
 
         private static Offer Seal(List<OfferItem> items)
         {
-            var ordered = items.OrderBy(i => i.Id, StringComparer.Ordinal).ToList();
-            var hash = SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(ordered));
-
-            return new Offer { Version = Convert.ToHexString(hash)[..16], Items = ordered };
+            return Offer.Seal(items);
         }
 
         private void EnsureHiddenList()

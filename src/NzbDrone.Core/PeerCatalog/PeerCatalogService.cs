@@ -135,30 +135,19 @@ namespace NzbDrone.Core.PeerCatalog
         {
             try
             {
-                var offer = Fetch(peer);
+                var fetched = Fetch(peer, peer.CatalogVersion, acceptChanges: true);
 
-                if (offer != null)
+                if (fetched is { Changes: true } && !ApplyChanges(peer, fetched))
                 {
-                    var holdings = _holdings.Load();
-                    var items = offer.Items
-                        .Where(o => o.Id.IsNotNullOrWhiteSpace())
-                        .DistinctBy(o => o.Id)
-                        .Select(o => PeerCatalogItem.FromOffer(peer.Id, o))
-                        .ToList();
+                    // What this node holds does not add up to what the peer says it sent. Start
+                    // again from the whole catalog.
+                    _logger.Warn("Catalog changes from {0} did not add up to version {1}. Fetching the whole catalog.", peer.Name, fetched.Version);
+                    fetched = Fetch(peer, null, acceptChanges: false);
+                }
 
-                    foreach (var item in items)
-                    {
-                        item.LocalStatus = holdings.Classify(item);
-                        item.CandidateId = _candidateIds.For(peer.NodeId, item.RemoteId);
-                        item.ReleaseTitle = ReleaseTitleBuilder.For(item);
-                    }
-
-                    // The whole set is replaced, so what the peer stopped offering is gone.
-                    _items.DeleteForPeer(peer.Id);
-                    _items.InsertMany(items);
-                    peer.CatalogVersion = offer.Version;
-
-                    _logger.Debug("Catalog from {0} is now version {1} with {2} files", peer.Name, offer.Version, items.Count);
+                if (fetched is { Changes: false })
+                {
+                    ApplyWhole(peer, fetched);
                 }
 
                 peer.CatalogSyncedAt = DateTime.UtcNow;
@@ -180,12 +169,74 @@ namespace NzbDrone.Core.PeerCatalog
             _peers.SetFields(peer, p => p.CatalogVersion, p => p.CatalogSyncedAt, p => p.CatalogError);
         }
 
-        // Returns the peer's offer, or null when it has not changed since the last sync.
-        private Offer Fetch(Peer peer)
+        // The whole set is replaced, so what the peer stopped offering is gone.
+        private void ApplyWhole(Peer peer, Fetched fetched)
+        {
+            var items = ToItems(peer, fetched.Items);
+
+            _items.DeleteForPeer(peer.Id);
+            _items.InsertMany(items);
+            peer.CatalogVersion = fetched.Version;
+
+            // A peer on an older Nodearr sends no fingerprints, and there is nothing to check.
+            if (items.All(i => i.Fingerprint != null) && Offer.VersionOf(items.Select(i => (i.RemoteId, i.Fingerprint))) != fetched.Version)
+            {
+                // Kept, since it is what the peer sent, but the next sync asks for all of it again.
+                _logger.Warn("The catalog {0} sent does not add up to its version {1}", peer.Name, fetched.Version);
+                peer.CatalogVersion = null;
+            }
+
+            _logger.Debug("Catalog from {0} is now version {1} with {2} files", peer.Name, fetched.Version, items.Count);
+        }
+
+        // Only what changed. Returns false when the result does not add up to the version the
+        // peer says it is, which needs the whole catalog fetched.
+        private bool ApplyChanges(Peer peer, Fetched fetched)
+        {
+            var items = ToItems(peer, fetched.Items);
+
+            _items.DeleteForPeer(peer.Id, fetched.Removed.Concat(items.Select(i => i.RemoteId)));
+            _items.InsertMany(items);
+
+            var held = _items.FingerprintsForPeer(peer.Id);
+
+            if (held.Count != fetched.ItemCount || held.Any(h => h.Fingerprint == null) || Offer.VersionOf(held) != fetched.Version)
+            {
+                return false;
+            }
+
+            peer.CatalogVersion = fetched.Version;
+            _logger.Debug("Catalog from {0} is now version {1}: {2} files added or changed, {3} removed", peer.Name, fetched.Version, items.Count, fetched.Removed.Count);
+
+            return true;
+        }
+
+        private List<PeerCatalogItem> ToItems(Peer peer, List<OfferItem> offered)
+        {
+            var holdings = _holdings.Load();
+            var items = offered
+                .Where(o => o.Id.IsNotNullOrWhiteSpace())
+                .DistinctBy(o => o.Id)
+                .Select(o => PeerCatalogItem.FromOffer(peer.Id, o))
+                .ToList();
+
+            foreach (var item in items)
+            {
+                item.LocalStatus = holdings.Classify(item);
+                item.CandidateId = _candidateIds.For(peer.NodeId, item.RemoteId);
+                item.ReleaseTitle = ReleaseTitleBuilder.For(item);
+            }
+
+            return items;
+        }
+
+        // The peer's catalog, or only what changed in it since knownVersion when the peer can say.
+        // Null when nothing changed.
+        private Fetched Fetch(Peer peer, string knownVersion, bool acceptChanges)
         {
             for (var attempt = 0; attempt < MaxAttempts; attempt++)
             {
-                var first = _peerService.Ask(peer, new PeerMessage { Type = PeerMessageTypes.Catalog, CatalogKnownVersion = peer.CatalogVersion });
+                var first = _peerService.Ask(peer, new PeerMessage { Type = PeerMessageTypes.Catalog, CatalogKnownVersion = knownVersion, CatalogAcceptsChanges = acceptChanges });
 
                 if (first is not { Ok: true })
                 {
@@ -197,12 +248,19 @@ namespace NzbDrone.Core.PeerCatalog
                     return null;
                 }
 
-                var offer = new Offer { Version = first.CatalogVersion, Items = first.CatalogItems ?? new List<OfferItem>() };
+                var fetched = new Fetched
+                {
+                    Version = first.CatalogVersion,
+                    Items = first.CatalogItems ?? new List<OfferItem>(),
+                    Changes = acceptChanges && first.CatalogChanges,
+                    Removed = first.CatalogRemoved ?? new List<string>(),
+                    ItemCount = first.CatalogItemCount
+                };
                 var complete = true;
 
                 for (var page = 1; page < Math.Min(first.CatalogTotalPages, MaxPages); page++)
                 {
-                    var next = _peerService.Ask(peer, new PeerMessage { Type = PeerMessageTypes.Catalog, CatalogPage = page, CatalogVersion = offer.Version });
+                    var next = _peerService.Ask(peer, new PeerMessage { Type = PeerMessageTypes.Catalog, CatalogPage = page, CatalogVersion = fetched.Version });
 
                     if (next is not { Ok: true })
                     {
@@ -211,16 +269,25 @@ namespace NzbDrone.Core.PeerCatalog
                         break;
                     }
 
-                    offer.Items.AddRange(next.CatalogItems ?? new List<OfferItem>());
+                    fetched.Items.AddRange(next.CatalogItems ?? new List<OfferItem>());
                 }
 
                 if (complete)
                 {
-                    return offer;
+                    return fetched;
                 }
             }
 
             throw new PeerException("The node's catalog kept changing while it was being read");
+        }
+
+        private class Fetched
+        {
+            public string Version { get; set; }
+            public List<OfferItem> Items { get; set; }
+            public bool Changes { get; set; }
+            public List<string> Removed { get; set; }
+            public int ItemCount { get; set; }
         }
 
         private void Sync(int peerId)

@@ -36,6 +36,10 @@ namespace NzbDrone.Core.Nodes
         public int CatalogPage { get; set; }
         public string CatalogVersion { get; set; }
 
+        // The asker can take only what changed since CatalogKnownVersion. An older node does not
+        // say so, and is always sent the whole catalog.
+        public bool CatalogAcceptsChanges { get; set; }
+
         public byte[] ToBytes()
         {
             return JsonSerializer.SerializeToUtf8Bytes(this, JsonOptions);
@@ -67,6 +71,14 @@ namespace NzbDrone.Core.Nodes
         public bool CatalogUnchanged { get; set; }
         public int CatalogTotalPages { get; set; }
         public List<OfferItem> CatalogItems { get; set; }
+
+        // Set when the pages hold only what changed since the version the asker holds: the files
+        // added or changed, and on the first page the IDs of the files no longer offered.
+        public bool CatalogChanges { get; set; }
+        public List<string> CatalogRemoved { get; set; }
+
+        // How many files the whole catalog at CatalogVersion has, so the asker can check.
+        public int CatalogItemCount { get; set; }
 
         public byte[] ToBytes()
         {

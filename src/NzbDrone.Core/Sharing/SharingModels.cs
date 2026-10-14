@@ -1,5 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using NzbDrone.Core.Datastore;
 
@@ -137,6 +141,41 @@ namespace NzbDrone.Core.Sharing
         public string AudioCodec { get; set; }
         public double AudioChannels { get; set; }
         public DateTime? DateAdded { get; set; }
+
+        // The file's BLAKE3 hash, where this node has worked it out. Two peers whose files have the
+        // same hash hold the same bytes.
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string Blake3 { get; set; }
+
+        // A hash of everything above, set when the offer is sealed. It changes when anything said
+        // about the file does.
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string Fingerprint { get; set; }
+    }
+
+    // What this node last sent one peer: the version, and each file's fingerprint by its ID.
+    public class OfferRecord : ModelBase
+    {
+        public int PeerId { get; set; }
+        public string Version { get; set; }
+
+        // "id fingerprint" pairs, one to a line.
+        public string Fingerprints { get; set; }
+        public DateTime Sent { get; set; }
+
+        public Dictionary<string, string> GetFingerprints()
+        {
+            return (Fingerprints ?? string.Empty)
+                .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                .Select(line => line.Split(' '))
+                .Where(parts => parts.Length == 2)
+                .ToDictionary(parts => parts[0], parts => parts[1], StringComparer.Ordinal);
+        }
+
+        public static string Write(IEnumerable<OfferItem> items)
+        {
+            return string.Join("\n", items.Select(i => $"{i.Id} {i.Fingerprint}"));
+        }
     }
 
     // Everything one peer is offered at one moment. The version changes when the contents do.
@@ -144,5 +183,33 @@ namespace NzbDrone.Core.Sharing
     {
         public string Version { get; set; }
         public List<OfferItem> Items { get; set; } = new();
+
+        // Sets each item's fingerprint, orders the items, and works out the version from the
+        // fingerprints alone. A node that kept each file's fingerprint can work out the same
+        // version from what it holds, and so check that what it holds is what was offered.
+        public static Offer Seal(List<OfferItem> items)
+        {
+            foreach (var item in items)
+            {
+                item.Fingerprint = null;
+                item.Fingerprint = Hex(JsonSerializer.SerializeToUtf8Bytes(item));
+            }
+
+            var ordered = items.OrderBy(i => i.Id, StringComparer.Ordinal).ToList();
+
+            return new Offer { Version = VersionOf(ordered.Select(i => (i.Id, i.Fingerprint))), Items = ordered };
+        }
+
+        public static string VersionOf(IEnumerable<(string Id, string Fingerprint)> files)
+        {
+            var lines = files.OrderBy(f => f.Id, StringComparer.Ordinal).Select(f => $"{f.Id} {f.Fingerprint}\n");
+
+            return Hex(Encoding.UTF8.GetBytes(string.Concat(lines)));
+        }
+
+        private static string Hex(byte[] data)
+        {
+            return Convert.ToHexString(SHA256.HashData(data))[..16].ToLowerInvariant();
+        }
     }
 }
