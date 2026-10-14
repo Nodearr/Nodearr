@@ -129,7 +129,7 @@ Nodearr reports paths as it sees them. When the Arr app sees the download folder
 ### Negative / trade-offs
 
 - ~~**Hashing is on demand.** The plan called for hashing in the background as well. Here the first request for a file pays for hashing it, and the receiver waits. BLAKE3 is fast, but a very large file on a slow disk will take a while to start.~~ Done afterwards, see the amendments.
-- **Checking permission rebuilds the peer's whole offer** for each request. Fine for now. A large library will want a direct check.
+- ~~**Checking permission rebuilds the peer's whole offer** for each request. Fine for now. A large library will want a direct check.~~ Done afterwards: 7 ms with 66,000 files, was 0.65 s (ADR 0014, amendments).
 - ~~**Unsharing does not stop a transfer already under way.** Ending trust does.~~ Done afterwards, see the amendments.
 - **A failed verification is not tried again**, though a file that changed while it was being sent would pass the second time.
 - **No speed limit setting in the UI.** There is an upload limit option, used by the acceptance script.

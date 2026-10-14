@@ -73,7 +73,7 @@ What S5 left for later slices:
 
 - Sharing is by whole series or movie. There is no per-season or per-file control.
 - Peer catalog rows are not yet indexer results (S6), and a transfer request is not yet checked against the sharing rule (S7).
-- An offer is rebuilt from the whole local catalog on each request. It has not been tried on a large library.
+- ~~An offer is rebuilt from the whole local catalog on each request. It has not been tried on a large library.~~ Measured afterwards, see below.
 
 What S6 left for later slices:
 
@@ -116,6 +116,7 @@ Then a settings page. ADR 0019. Branch `v1/s10-node-settings`.
 - A sign-in page. A fresh install made its owner set up signing in and then sent the browser to a page that did not exist. Found on the first real deployment, on a rented machine. Branch `v1/s18-sign-in-page`.
 - Unsharing a title stops an upload of it that is already under way. So does the file leaving the Arr app's library. The receiving node fails the transfer with `NotAuthorized` and does not try again (ADR 0016, amendments). Branch `v1/s23-unshare-stops-upload`.
 - Shared files are hashed in the background, and the hashes are kept, so a request does not wait while a large file is read. The Sharing page shows how far it has got (ADR 0016, amendments). Branch `v1/s24-background-hashing`.
+- A large library was measured: 66,000 files in a real database (ADR 0014, amendments). Building and exchanging the offer, storing a peer's catalog and the indexer were all well under a second, apart from storing a whole new catalog at 6 s. A file request rebuilt the whole offer to check one file, which took 0.65 s. It now checks the file directly, in 7 ms. A hashing pass found each shared file with its own query, which took 5 s. It now takes under 1 s. What remains: a changed offer is sent whole, 36 MB at this size, and Sonarr import, at two requests per series, was not measured against a real Sonarr that large. Branch `v1/s25-large-library`.
 - Settings > Node holds the node's name, relay, UDP port, port mapping, wait for a direct route, download folder and upload limit. Bad values are refused field by field. A setting given in the environment is shown and cannot be changed. A change that needs it restarts the transport and nothing else, and the node keeps its identity and its trust (`acceptance/Run-NodeSettings.ps1`).
 
 ## Where V1 stands

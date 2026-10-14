@@ -100,8 +100,25 @@ The marks are worked out again whenever the local catalog is refreshed.
 
 - 2026-10-11 (ADR 0015): an offered episode file carries the day each of its episodes aired, where the Arr app knows it. Sonarr searches for daily shows by day. Nothing else is added, and nothing of the path is sent still.
 
+- 2026-10-13: **measured on a large library.** `LargeLibraryFixture` (run on purpose, not with the other tests) fills a real database with 1,500 series of 40 episodes and 6,000 movies, 66,000 files, shares all of it with one node, and times each path. On the development PC:
+
+  | What | Time |
+  | --- | --- |
+  | Build the offer for a node shared everything | 0.6 s |
+  | Answer every page of a catalog request | 0.6 to 0.9 s. 132 pages of 281 KB, 36 MB in all |
+  | Receive a node's whole catalog and store it | 6.4 s |
+  | Receive it again, unchanged | 0.4 s |
+  | Compare every peer file with the library after a refresh | 0.7 s |
+  | Check one file request against the sharing rule | 7 ms, was 0.65 s |
+  | The indexer: by ID, a grab, the newest 100 | 1 to 63 ms |
+  | The indexer: a text search | 0.26 s |
+
+  The rebuild described above is cheap enough, and was left alone. Checking a single request is no longer done by building the whole offer. It reads the file's own rows and asks the same rule, and a test holds it to the same answer as the offer for every file, whatever is shared and whatever state the catalog is in.
+
+  What was not changed: a changed offer is sent whole. At this size that is 36 MB to each trusted node, each time anything shared changes, which with new episodes arriving daily is a few times a day. A page is far under the 4 MB message limit. Sending only what changed, or compressing pages, is the next step if that matters.
+
 ## Follow-up work
 
 - S6: turn peer catalog rows into indexer results, with the opaque file identifier inside a signed GUID.
 - S7: authorize every transfer request against the same sharing rule, so a file that is no longer offered cannot be fetched with an old identifier.
-- A cheaper update path for large catalogs, if it is needed.
+- A cheaper update path for large catalogs, if it is needed. Measured on 2026-10-13, see the amendments: building is cheap, and the cost that remains is sending a large changed offer whole.
