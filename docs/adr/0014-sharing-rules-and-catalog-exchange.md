@@ -47,7 +47,7 @@ A trusted peer asks for the catalog over the control channel. The sharing node a
 - A large offer is sent in pages of 500 files. The first page takes a snapshot, and later pages come from that snapshot, so a change to sharing in the middle cannot produce a mixed result. If the snapshot is replaced before the asker finishes, it is told to start again.
 - The receiver replaces everything it holds for that peer in one step. Whatever the peer stopped offering is gone.
 
-A node fetches a peer's catalog when the peer becomes trusted, every hour, on demand, and when the peer says its sharing changed. That last message is only a hint and carries no content: each peer still has to ask, and is answered for itself. It exists so that something unshared disappears from peers within seconds, not within the hour.
+A node fetches a peer's catalog when the peer becomes trusted, every hour, on demand, and when the peer says its sharing changed. (Since 2026-10-14: at the Catalog Sync Interval, and told only of removals, see the amendments.) That last message is only a hint and carries no content: each peer still has to ask, and is answered for itself. It exists so that something unshared disappears from peers within seconds, not within the hour.
 
 A node drops everything it holds from a peer when trust ends in either direction, when the peer refuses the request, and when the peer is deleted.
 
@@ -132,6 +132,12 @@ The marks are worked out again whenever the local catalog is refreshed.
   - The whole catalog is sent instead when the asker is an older node, when the sending node has no record or the asker holds another version, and when more than half of a catalog of more than one page changed, since that is about as large.
   - The receiving node applies the change, then works out the version of what it holds and counts it. If either does not match what the peer said, it fetches the whole catalog at once. A whole catalog that does not add up is kept, since it is what the peer sent, and the next sync fetches the whole of it again.
   - Measured with `LargeLibraryFixture`, 66,000 files: one upgraded episode reached the other node as 809 bytes in about a second, where the whole catalog is 38 MB. Checked by a round-trip test of both ends through the bytes they send, and by `acceptance/Run-S5Sharing.ps1`, where hiding a series reaches the peer as two removals and nothing else.
+
+- 2026-10-14: **the Catalog Sync Interval, and only removals pushed.** Designed on the Arr apps' conventions, as the owner directed:
+  - A node asks each trusted node what changed in its catalog every Catalog Sync Interval, a setting on Settings > Node. It works as Sonarr's RSS Sync Interval does: in minutes, 15 by default, 10 to 120, or 0 to turn it off, with Sonarr's own words when a value is refused. It was every hour. Asking is cheap now that only changes are sent.
+  - A node tells a peer at once only when something the peer holds is no longer offered to it: unshared, hidden, or gone from the Arr app. It works this out by comparing what it would offer the peer now with its record of what it last sent. Something newly shared waits for the peer's next Catalog Sync, as a new release waits for Sonarr's next RSS Sync, or for a sync started by hand. It used to tell every peer of every change.
+  - The whole library is read from each Arr app every 12 hours, as often as Sonarr refreshes its series. It was every 6 hours. The webhook from the Arr apps (planned) will bring single changes in between.
+  - Checked by unit tests of the schedule, the setting and the notifier, and by `acceptance/Run-S5Sharing.ps1`: a newly shared file is not pushed, and arrives when the peer syncs. The scripts that wait for newly shared files now ask the peer to sync, as a user would.
 
 ## Follow-up work
 

@@ -109,7 +109,8 @@ Read from `GET /api/v5/system/task` on a fresh install.
 | ImportListSync | 5 min | Unscheduled in S3 |
 | UpdateSceneMapping | 3 h | Unscheduled in S3 |
 | ApplicationUpdateCheck | 6 h | Unscheduled in S3 |
-| CatalogRefresh | 6 h | Added in S3 |
+| CatalogRefresh | 12 h (6 h until 2026-10-14) | Added in S3. As often as Sonarr's RefreshSeries. |
+| PeerCatalogSync | Catalog Sync Interval, 15 min by default (60 min until 2026-10-14) | Added in S5. Held to 10 to 120, or 0 for off, as Sonarr's RssSync is. |
 | ApplicationIndexerSync | 6 h | Added in S3 |
 
 ## Health checks
