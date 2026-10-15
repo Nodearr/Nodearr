@@ -142,4 +142,4 @@ The plan's definition of done is "a real Sonarr/Radarr import of a verified, per
 
 On 2026-10-13 the same two machines connected directly and moved a file with nothing opened on either side: no port forwarded at home, and no UDP allowed in at the cloud machine. The home side ran Nodearr straight on Windows that time. ADR 0011 and ADR 0012 were accepted on it. That is V1's definition of done, met.
 
-What has not been tried is two home routers, and a node in Docker Desktop on Windows or macOS remains hard to reach directly without a forwarded port.
+On 2026-10-14 two home networks connected directly and moved a file: two Windows machines behind ordinary routers, with no port forwarded, and in the second run with Nodearr's port mapping off on both sides and on fresh UDP ports (ADR 0011, "two home networks"). That was the last connection case V1 had not tried. A node in Docker Desktop on Windows or macOS remains hard to reach directly without a forwarded port.

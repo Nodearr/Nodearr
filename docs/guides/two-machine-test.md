@@ -4,6 +4,8 @@ Everything in `acceptance/` runs on one machine. This is the test that cannot: t
 
 It needs two machines on different networks. A laptop on a phone hotspot or a café's Wi-Fi counts as a second network.
 
+**Two Windows machines with nothing set up**, no Docker and no Sonarr or Radarr, have a guide and a script of their own: [two-machine-test-windows.md](two-machine-test-windows.md). The rest of this page is for machines that run Docker, or that already run Sonarr or Radarr.
+
 ## What each side needs
 
 - Docker.
@@ -121,7 +123,7 @@ It ends by printing an invite code, the command for the other machine, and the S
 
 In the EC2 console, launch an instance:
 
-- **Ubuntu Server 24.04**, and **64-bit (x86)**. There is no Arm image of Nodearr yet, so not a Graviton type.
+- **Ubuntu Server 24.04**, and **64-bit (x86)**. The script uses Radarr's x86 image, so not a Graviton type.
 - **t3.medium**, with **30 GB** of storage.
 - A key pair, saved as a `.pem` file.
 - Under network settings, allow **SSH from My IP** and nothing else.
@@ -203,7 +205,7 @@ To see what the machine's own network allows, run Nodearr straight on it and onl
 ```sh
 dotnet build src/Nodearr.sln
 cargo build --release --manifest-path transport/Cargo.toml
-python docker	wo-machine-test.py send --native
+python docker\two-machine-test.py send --native
 ```
 
 If the transport was built somewhere else, add `--transport-bin PATH`. Windows may ask whether to let `nodearr-transport` through its firewall the first time. Say yes.
