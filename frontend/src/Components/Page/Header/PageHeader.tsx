@@ -7,7 +7,6 @@ import { icons } from 'Helpers/Props';
 import translate from 'Utilities/String/translate';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import PageHeaderActionsMenu from './PageHeaderActionsMenu';
-import SeriesSearchInput from './SeriesSearchInput';
 import styles from './PageHeader.css';
 
 function PageHeader() {
@@ -60,18 +59,7 @@ function PageHeader() {
         />
       </div>
 
-      <SeriesSearchInput />
-
       <div className={styles.right}>
-        <IconButton
-          className={styles.donate}
-          name={icons.HEART}
-          aria-label={translate('Donate')}
-          to="https://nodearr.com/donate.html"
-          size={14}
-          title={translate('Donate')}
-        />
-
         <PageHeaderActionsMenu
           onKeyboardShortcutsPress={handleOpenKeyboardShortcutsModal}
         />

@@ -40,6 +40,7 @@ namespace NzbDrone.Common.Test
             container.RegisterInstance(new Mock<IOptions<ServerOptions>>().Object);
             container.RegisterInstance(new Mock<IOptions<LogOptions>>().Object);
             container.RegisterInstance(new Mock<IOptions<UpdateOptions>>().Object);
+            container.RegisterInstance(Microsoft.Extensions.Options.Options.Create(new TransportOptions()));
 
             var serviceProvider = container.GetServiceProvider();
 

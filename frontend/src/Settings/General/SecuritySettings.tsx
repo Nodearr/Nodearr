@@ -11,6 +11,7 @@ import Icon from 'Components/Icon';
 import ClipboardButton from 'Components/Link/ClipboardButton';
 import ConfirmModal from 'Components/Modal/ConfirmModal';
 import { icons, inputTypes, kinds } from 'Helpers/Props';
+import FixedSetting from 'Settings/FixedSetting';
 import { InputChanged } from 'typings/inputs';
 import { PendingSection } from 'typings/pending';
 import translate from 'Utilities/String/translate';
@@ -99,6 +100,7 @@ interface SecuritySettingsProps {
   apiKey: PendingSection<GeneralSettingsModel>['apiKey'];
   certificateValidation: PendingSection<GeneralSettingsModel>['certificateValidation'];
   isResettingApiKey: boolean;
+  isFixed: (name: string) => boolean;
   onInputChange: (change: InputChanged) => void;
 }
 
@@ -111,6 +113,7 @@ function SecuritySettings({
   apiKey,
   certificateValidation,
   isResettingApiKey,
+  isFixed,
   onInputChange,
 }: SecuritySettingsProps) {
   const executeCommand = useExecuteCommand();
@@ -139,39 +142,65 @@ function SecuritySettings({
     setIsConfirmApiKeyResetModalOpen(false);
   }, []);
 
-  // createCommandExecutingSelector(CommandNames.RESET_API_KEY),
-
+  // Signing in is handled outside Nodearr, so there is no user name or password to keep here.
   const authenticationEnabled =
-    authenticationMethod && authenticationMethod.value !== 'none';
+    authenticationMethod &&
+    authenticationMethod.value !== 'none' &&
+    authenticationMethod.value !== 'external';
+
+  // A key given in the environment is the key. It can be read and copied here, not replaced.
+  const apiKeyButtons = [
+    <ClipboardButton key="copy" value={apiKey.value} kind={kinds.DEFAULT} />,
+  ];
+
+  if (!isFixed('apiKey')) {
+    apiKeyButtons.push(
+      <FormInputButton
+        key="reset"
+        kind={kinds.DANGER}
+        onPress={handleResetApiKeyPress}
+      >
+        <Icon name={icons.REFRESH} isSpinning={isResettingApiKey} />
+      </FormInputButton>
+    );
+  }
 
   return (
     <FieldSet legend={translate('Security')}>
       <FormGroup>
         <FormLabel>{translate('Authentication')}</FormLabel>
 
-        <FormInputGroup
-          type={inputTypes.SELECT}
-          name="authenticationMethod"
-          values={authenticationMethodOptions}
-          helpText={translate('AuthenticationMethodHelpText')}
-          helpTextWarning={translate('AuthenticationRequiredWarning')}
-          onChange={onInputChange}
-          {...authenticationMethod}
-        />
+        {isFixed('authenticationMethod') ? (
+          <FixedSetting value={authenticationMethod.value} />
+        ) : (
+          <FormInputGroup
+            type={inputTypes.SELECT}
+            name="authenticationMethod"
+            values={authenticationMethodOptions}
+            helpText={translate('AuthenticationMethodHelpText')}
+            helpTextWarning={translate('AuthenticationRequiredWarning')}
+            onChange={onInputChange}
+            {...authenticationMethod}
+          />
+        )}
       </FormGroup>
 
       {authenticationEnabled ? (
         <FormGroup>
           <FormLabel>{translate('AuthenticationRequired')}</FormLabel>
 
-          <FormInputGroup
-            type={inputTypes.SELECT}
-            name="authenticationRequired"
-            values={authenticationRequiredOptions}
-            helpText={translate('AuthenticationRequiredHelpText')}
-            onChange={onInputChange}
-            {...authenticationRequired}
-          />
+          {isFixed('authenticationRequired') ? (
+            <FixedSetting value={authenticationRequired.value} />
+          ) : (
+            <FormInputGroup
+              type={inputTypes.SELECT}
+              name="authenticationRequired"
+              values={authenticationRequiredOptions}
+              helpText={translate('AuthenticationRequiredHelpText')}
+              onChange={onInputChange}
+              {...authenticationRequired}
+            />
+          )}
         </FormGroup>
       ) : null}
 
@@ -221,22 +250,12 @@ function SecuritySettings({
           type={inputTypes.TEXT}
           name="apiKey"
           readOnly={true}
-          helpTextWarning={translate('RestartRequiredHelpTextWarning')}
-          buttons={[
-            <ClipboardButton
-              key="copy"
-              value={apiKey.value}
-              kind={kinds.DEFAULT}
-            />,
-
-            <FormInputButton
-              key="reset"
-              kind={kinds.DANGER}
-              onPress={handleResetApiKeyPress}
-            >
-              <Icon name={icons.REFRESH} isSpinning={isResettingApiKey} />
-            </FormInputButton>,
-          ]}
+          helpText={
+            isFixed('apiKey')
+              ? translate('NodeSettingsFixedByEnvironment')
+              : translate('ApiKeyHelpText')
+          }
+          buttons={apiKeyButtons}
           onChange={onInputChange}
           onFocus={handleApikeyFocus}
           {...apiKey}

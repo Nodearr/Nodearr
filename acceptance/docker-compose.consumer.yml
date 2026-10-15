@@ -1,0 +1,46 @@
+# Adds a second Sonarr and Radarr to spikes/arr-contract/docker-compose.yml: the ones that belong
+# to the node that wants the files. They have the series and the movie, and no files.
+services:
+  sonarr-b:
+    restart: "no"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    image: lscr.io/linuxserver/sonarr:4.0.20.3014-ls327@sha256:dffc730adcb8b4f4342792fbb27fcad9c62fb8660523f2aeb082416980d7fe0c
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: Etc/UTC
+      SONARR__AUTH__APIKEY: ${SONARR_B_API_KEY}
+      SONARR__AUTH__METHOD: External
+      SONARR__LOG__ANALYTICSENABLED: "false"
+    volumes:
+      - sonarr-b-config:/config
+      - tv-b:/tv
+      - ${DOWNLOADS_B_DIR}:/downloads
+    ports:
+      - "127.0.0.1:28989:8989"
+
+  radarr-b:
+    restart: "no"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    image: lscr.io/linuxserver/radarr:6.4.4.10685-ls319@sha256:7dfd049e79c00b16fbc29c3f5d96a9e7b9e73a23930b4c5b3c4541d60b366814
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: Etc/UTC
+      RADARR__AUTH__APIKEY: ${RADARR_B_API_KEY}
+      RADARR__AUTH__METHOD: External
+      RADARR__LOG__ANALYTICSENABLED: "false"
+    volumes:
+      - radarr-b-config:/config
+      - movies-b:/movies
+      - ${DOWNLOADS_B_DIR}:/downloads
+    ports:
+      - "127.0.0.1:27878:7878"
+
+volumes:
+  sonarr-b-config:
+  radarr-b-config:
+  tv-b:
+  movies-b:

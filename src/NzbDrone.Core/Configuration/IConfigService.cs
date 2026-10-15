@@ -83,6 +83,21 @@ namespace NzbDrone.Core.Configuration
         string RijndaelSalt { get; }
         string HmacSalt { get; }
 
+        // Keys the IDs Nodearr gives the Arr apps for what peers offer
+        string CandidateIdSecret { get; }
+
+        // This node: its name, how it reaches other nodes, and where transfers go.
+        // Read through INodeSettingsProvider, which lets the environment override them.
+        string NodeName { get; set; }
+        string TransportRelay { get; set; }
+        string TransportRelayUrl { get; set; }
+        int TransportPort { get; set; }
+        bool TransportPortMapping { get; set; }
+        int TransferDirectTimeout { get; set; }
+        string TransferDownloadFolder { get; set; }
+        int TransferUploadLimit { get; set; }
+        int CatalogSyncInterval { get; set; }
+
         // Proxy
         bool ProxyEnabled { get; }
         ProxyType ProxyType { get; }

@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="_THEME_">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <meta name="theme-color" content="#14b8a6" />
+
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/Content/Images/Icons/favicon-32x32.png"
+    />
+    <link
+      rel="shortcut icon"
+      type="image/ico"
+      href="/favicon.ico"
+      data-no-hash
+    />
+
+    <title>Sign in - Nodearr</title>
+
+    <!--
+      The page Nodearr sends a browser to when signing in by form is turned on and the browser
+      has not signed in. It stands alone: nothing here needs the app's own scripts, which are
+      not handed out before signing in.
+    -->
+    <style>
+      :root {
+        --page: #202020;
+        --panel: #2a2a2a;
+        --border: #494949;
+        --text: #ccc;
+        --muted: #909293;
+        --input: #333;
+        --accent: #14b8a6;
+        --accentText: #04221f;
+        --danger: #f05050;
+      }
+
+      :root[data-theme='light'] {
+        --page: #f5f7fa;
+        --panel: #fff;
+        --border: #dde6e9;
+        --text: #333;
+        --muted: #737d83;
+        --input: #fff;
+        --accentText: #fff;
+      }
+
+      @media (prefers-color-scheme: light) {
+        :root[data-theme='auto'] {
+          --page: #f5f7fa;
+          --panel: #fff;
+          --border: #dde6e9;
+          --text: #333;
+          --muted: #737d83;
+          --input: #fff;
+          --accentText: #fff;
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background: var(--page);
+        color: var(--text);
+        font-family: Roboto, 'open sans', 'Helvetica Neue', Helvetica, Arial,
+          sans-serif;
+        font-size: 14px;
+      }
+
+      main {
+        display: flex;
+        justify-content: center;
+        padding: 48px 16px;
+      }
+
+      .panel {
+        width: 100%;
+        max-width: 360px;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        background: var(--panel);
+        padding: 28px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 24px;
+      }
+
+      .brand img {
+        width: 40px;
+        height: 40px;
+      }
+
+      h1 {
+        margin: 0;
+        font-weight: 300;
+        font-size: 22px;
+      }
+
+      label {
+        display: block;
+        margin: 16px 0 6px;
+      }
+
+      input[type='text'],
+      input[type='password'] {
+        width: 100%;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        background: var(--input);
+        color: var(--text);
+        padding: 9px 10px;
+        font: inherit;
+      }
+
+      input:focus-visible,
+      button:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+      }
+
+      .remember {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 18px 0 0;
+        color: var(--muted);
+      }
+
+      .remember input {
+        margin: 0;
+      }
+
+      button {
+        width: 100%;
+        margin-top: 22px;
+        border: 0;
+        border-radius: 4px;
+        background: var(--accent);
+        color: var(--accentText);
+        padding: 10px;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .failed {
+        display: none;
+        margin: 0 0 4px;
+        border: 1px solid var(--danger);
+        border-radius: 4px;
+        padding: 9px 10px;
+        color: var(--danger);
+      }
+
+      .failed.shown {
+        display: block;
+      }
+
+      .note {
+        margin: 20px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+    </style>
+  </head>
+
+  <body>
+    <main>
+      <!-- No action: the form goes back to the address it was opened at, which carries the page to return to. -->
+      <form class="panel" method="POST">
+        <div class="brand">
+          <img src="/Content/Images/logo.svg" alt="" />
+          <h1>Sign in to Nodearr</h1>
+        </div>
+
+        <p id="failed" class="failed" role="alert">
+          That username and password were not accepted.
+        </p>
+
+        <label for="username">Username</label>
+        <input
+          id="username"
+          name="username"
+          type="text"
+          autocomplete="username"
+          autocapitalize="none"
+          spellcheck="false"
+          required
+          autofocus
+        />
+
+        <label for="password">Password</label>
+        <input
+          id="password"
+          name="password"
+          type="password"
+          autocomplete="current-password"
+          required
+        />
+
+        <label class="remember">
+          <input name="rememberMe" type="checkbox" checked />
+          Keep me signed in on this browser
+        </label>
+
+        <button type="submit">Sign in</button>
+
+        <p class="note">
+          The username and password are the ones chosen in Nodearr, under
+          Settings &gt; General. Sonarr and Radarr do not sign in here. They
+          use the API key.
+        </p>
+      </form>
+    </main>
+
+    <script>
+      // Nodearr sends the browser back here with this set when signing in did not work.
+      if (/[?&]loginFailed=true(&|$)/.test(window.location.search)) {
+        document.getElementById('failed').className = 'failed shown';
+      }
+    </script>
+  </body>
+</html>

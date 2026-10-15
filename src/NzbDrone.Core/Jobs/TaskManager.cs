@@ -3,21 +3,20 @@ using System.Collections.Generic;
 using System.Linq;
 using NLog;
 using NzbDrone.Common.Cache;
+using NzbDrone.Core.Applications;
 using NzbDrone.Core.Backup;
+using NzbDrone.Core.Catalog;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Configuration.Events;
-using NzbDrone.Core.DataAugmentation.Scene;
-using NzbDrone.Core.Download;
 using NzbDrone.Core.HealthCheck;
 using NzbDrone.Core.Housekeeping;
-using NzbDrone.Core.ImportLists;
-using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Lifecycle;
 using NzbDrone.Core.MediaFiles.Commands;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
-using NzbDrone.Core.Tv.Commands;
-using NzbDrone.Core.Update.Commands;
+using NzbDrone.Core.Nodes;
+using NzbDrone.Core.Nodes.Settings;
+using NzbDrone.Core.PeerCatalog;
 
 namespace NzbDrone.Core.Jobs
 {
@@ -68,13 +67,6 @@ namespace NzbDrone.Core.Jobs
                 {
                     new ScheduledTask
                     {
-                        Interval = 1,
-                        TypeName = typeof(RefreshMonitoredDownloadsCommand).FullName,
-                        Priority = CommandPriority.High
-                    },
-
-                    new ScheduledTask
-                    {
                         Interval = 5,
                         TypeName = typeof(MessagingCleanupCommand).FullName
                     },
@@ -82,25 +74,33 @@ namespace NzbDrone.Core.Jobs
                     new ScheduledTask
                     {
                         Interval = 6 * 60,
-                        TypeName = typeof(ApplicationUpdateCheckCommand).FullName
+                        TypeName = typeof(ApplicationIndexerSyncCommand).FullName
+                    },
+
+                    // The whole library from each Arr app, as often as Sonarr refreshes its series.
+                    new ScheduledTask
+                    {
+                        Interval = 12 * 60,
+                        TypeName = typeof(CatalogRefreshCommand).FullName
+                    },
+
+                    // What changed in each trusted node's catalog, as often as Sonarr's RSS Sync.
+                    new ScheduledTask
+                    {
+                        Interval = GetCatalogSyncInterval(),
+                        TypeName = typeof(PeerCatalogSyncCommand).FullName
                     },
 
                     new ScheduledTask
                     {
-                        Interval = 3 * 60,
-                        TypeName = typeof(UpdateSceneMappingCommand).FullName
+                        Interval = 15,
+                        TypeName = typeof(CheckPeerConnectionsCommand).FullName
                     },
 
                     new ScheduledTask
                     {
                         Interval = 6 * 60,
                         TypeName = typeof(CheckHealthCommand).FullName
-                    },
-
-                    new ScheduledTask
-                    {
-                        Interval = 12 * 60,
-                        TypeName = typeof(RefreshSeriesCommand).FullName
                     },
 
                     new ScheduledTask
@@ -117,20 +117,8 @@ namespace NzbDrone.Core.Jobs
 
                     new ScheduledTask
                     {
-                        Interval = 5,
-                        TypeName = typeof(ImportListSyncCommand).FullName
-                    },
-
-                    new ScheduledTask
-                    {
                         Interval = GetBackupInterval(),
                         TypeName = typeof(BackupCommand).FullName
-                    },
-
-                    new ScheduledTask
-                    {
-                        Interval = GetRssSyncInterval(),
-                        TypeName = typeof(RssSyncCommand).FullName
                     }
                 };
 
@@ -182,21 +170,17 @@ namespace NzbDrone.Core.Jobs
             return intervalMinutes * 60 * 24;
         }
 
-        private int GetRssSyncInterval()
+        // As Sonarr treats its RSS Sync Interval: zero is off, and anything else is held to 10 to 120.
+        private int GetCatalogSyncInterval()
         {
-            var interval = _configService.RssSyncInterval;
+            var interval = _configService.CatalogSyncInterval;
 
-            if (interval > 0 && interval < 10)
-            {
-                return 10;
-            }
-
-            if (interval < 0)
+            if (interval <= 0)
             {
                 return 0;
             }
 
-            return interval;
+            return Math.Clamp(interval, NodeSettingsDefaults.MinCatalogSyncInterval, NodeSettingsDefaults.MaxCatalogSyncInterval);
         }
 
         public void Handle(CommandExecutedEvent message)
@@ -221,16 +205,16 @@ namespace NzbDrone.Core.Jobs
 
         public void HandleAsync(ConfigSavedEvent message)
         {
-            var rss = _scheduledTaskRepository.GetDefinition(typeof(RssSyncCommand));
-            rss.Interval = GetRssSyncInterval();
-
             var backup = _scheduledTaskRepository.GetDefinition(typeof(BackupCommand));
             backup.Interval = GetBackupInterval();
 
-            _scheduledTaskRepository.UpdateMany(new List<ScheduledTask> { rss, backup });
+            var catalogSync = _scheduledTaskRepository.GetDefinition(typeof(PeerCatalogSyncCommand));
+            catalogSync.Interval = GetCatalogSyncInterval();
 
-            _cache.Find(rss.TypeName).Interval = rss.Interval;
+            _scheduledTaskRepository.UpdateMany(new List<ScheduledTask> { backup, catalogSync });
+
             _cache.Find(backup.TypeName).Interval = backup.Interval;
+            _cache.Find(catalogSync.TypeName).Interval = catalogSync.Interval;
         }
     }
 }

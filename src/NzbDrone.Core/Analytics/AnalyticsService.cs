@@ -1,7 +1,5 @@
 using System;
 using System.Linq;
-using NzbDrone.Common.EnvironmentInfo;
-using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Core.History;
 
@@ -15,16 +13,16 @@ namespace NzbDrone.Core.Analytics
 
     public class AnalyticsService : IAnalyticsService
     {
-        private readonly IConfigFileProvider _configFileProvider;
         private readonly IHistoryService _historyService;
 
-        public AnalyticsService(IHistoryService historyService, IConfigFileProvider configFileProvider)
+        public AnalyticsService(IHistoryService historyService)
         {
-            _configFileProvider = configFileProvider;
             _historyService = historyService;
         }
 
-        public bool IsEnabled => (_configFileProvider.AnalyticsEnabled && RuntimeInfo.IsProduction) || RuntimeInfo.IsDevelopment;
+        // Nodearr collects nothing. The code this came from loaded a tracking script in the UI
+        // and reported UI errors when this was true, and it was always true in development builds.
+        public bool IsEnabled => false;
 
         public bool InstallIsActive
         {

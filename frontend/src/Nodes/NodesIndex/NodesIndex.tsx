@@ -1,7 +1,7 @@
-import React from "react";
-import PageContent from "Components/Page/PageContent";
-import PageContentBody from "Components/Page/PageContentBody";
-import translate from "Utilities/String/translate";
+import React from 'react';
+import PageContent from 'Components/Page/PageContent';
+import PageContentBody from 'Components/Page/PageContentBody';
+import translate from 'Utilities/String/translate';
 
 function NodesIndex() {
   return (
@@ -10,7 +10,7 @@ function NodesIndex() {
         <div>Nodes Index</div>
       </PageContentBody>
     </PageContent>
-  )
+  );
 }
 
 export default NodesIndex;

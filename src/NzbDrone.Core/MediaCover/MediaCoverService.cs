@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
-using System.Threading;
 using NLog;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.EnvironmentInfo;
@@ -27,7 +26,6 @@ namespace NzbDrone.Core.MediaCover
         IMapCoversToLocal
     {
         private readonly IMediaCoverProxy _mediaCoverProxy;
-        private readonly IImageResizer _resizer;
         private readonly IHttpClient _httpClient;
         private readonly IDiskProvider _diskProvider;
         private readonly ICoverExistsSpecification _coverExistsSpecification;
@@ -37,12 +35,7 @@ namespace NzbDrone.Core.MediaCover
 
         private readonly string _coverRootFolder;
 
-        // ImageSharp is slow on ARM (no hardware acceleration on mono yet)
-        // So limit the number of concurrent resizing tasks
-        private static SemaphoreSlim _semaphore = new SemaphoreSlim((int)Math.Ceiling(Environment.ProcessorCount / 2.0));
-
         public MediaCoverService(IMediaCoverProxy mediaCoverProxy,
-                                 IImageResizer resizer,
                                  IHttpClient httpClient,
                                  IDiskProvider diskProvider,
                                  IAppFolderInfo appFolderInfo,
@@ -52,7 +45,6 @@ namespace NzbDrone.Core.MediaCover
                                  Logger logger)
         {
             _mediaCoverProxy = mediaCoverProxy;
-            _resizer = resizer;
             _httpClient = httpClient;
             _diskProvider = diskProvider;
             _coverExistsSpecification = coverExistsSpecification;
@@ -110,7 +102,6 @@ namespace NzbDrone.Core.MediaCover
         private bool EnsureCovers(Series series)
         {
             var updated = false;
-            var toResize = new List<Tuple<MediaCover, bool>>();
 
             foreach (var cover in series.Images)
             {
@@ -120,13 +111,10 @@ namespace NzbDrone.Core.MediaCover
                 }
 
                 var fileName = GetCoverPath(series.Id, cover.CoverType);
-                var alreadyExists = false;
 
                 try
                 {
-                    alreadyExists = _coverExistsSpecification.AlreadyExists(cover.RemoteUrl, fileName);
-
-                    if (!alreadyExists)
+                    if (!_coverExistsSpecification.AlreadyExists(cover.RemoteUrl, fileName))
                     {
                         DownloadCover(series, cover);
                         updated = true;
@@ -144,22 +132,6 @@ namespace NzbDrone.Core.MediaCover
                 {
                     _logger.Error(e, "Couldn't download media cover for {0}", series);
                 }
-
-                toResize.Add(Tuple.Create(cover, alreadyExists));
-            }
-
-            try
-            {
-                _semaphore.Wait();
-
-                foreach (var tuple in toResize)
-                {
-                    EnsureResizedCovers(series, tuple.Item1, !tuple.Item2);
-                }
-            }
-            finally
-            {
-                _semaphore.Release();
             }
 
             return updated;
@@ -171,51 +143,6 @@ namespace NzbDrone.Core.MediaCover
 
             _logger.Info("Downloading {0} for {1} {2}", cover.CoverType, series, cover.RemoteUrl);
             _httpClient.DownloadFile(cover.RemoteUrl, fileName);
-        }
-
-        private void EnsureResizedCovers(Series series, MediaCover cover, bool forceResize)
-        {
-            int[] heights;
-
-            switch (cover.CoverType)
-            {
-                default:
-                    return;
-
-                case MediaCoverTypes.Poster:
-                case MediaCoverTypes.Headshot:
-                    heights = new[] { 500, 250 };
-                    break;
-
-                case MediaCoverTypes.Banner:
-                    heights = new[] { 70, 35 };
-                    break;
-
-                case MediaCoverTypes.Fanart:
-                case MediaCoverTypes.Screenshot:
-                    heights = new[] { 360, 180 };
-                    break;
-            }
-
-            foreach (var height in heights)
-            {
-                var mainFileName = GetCoverPath(series.Id, cover.CoverType);
-                var resizeFileName = GetCoverPath(series.Id, cover.CoverType, height);
-
-                if (forceResize || !_diskProvider.FileExists(resizeFileName) || _diskProvider.GetFileSize(resizeFileName) == 0)
-                {
-                    _logger.Debug("Resizing {0}-{1} for {2}", cover.CoverType, height, series);
-
-                    try
-                    {
-                        _resizer.Resize(mainFileName, resizeFileName, height);
-                    }
-                    catch
-                    {
-                        _logger.Debug("Couldn't resize media cover {0}-{1} for {2}, using full size image instead.", cover.CoverType, height, series);
-                    }
-                }
-            }
         }
 
         private string GetExtension(MediaCoverTypes coverType)

@@ -34,9 +34,7 @@ namespace Nodearr.Api.V5.Provider
                 ConfigContract = definition.ConfigContract,
                 Message = definition.Message,
                 Tags = definition.Tags,
-                Fields = SchemaBuilder.ToSchema(definition.Settings),
-
-                InfoLink = $"https://wiki.servarr.com/nodearr/supported#{definition.Implementation.ToLower()}"
+                Fields = SchemaBuilder.ToSchema(definition.Settings)
             };
         }
 

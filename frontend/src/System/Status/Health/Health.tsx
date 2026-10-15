@@ -4,7 +4,6 @@ import AppState from 'App/State/AppState';
 import Alert from 'Components/Alert';
 import FieldSet from 'Components/FieldSet';
 import Icon, { IconKind } from 'Components/Icon';
-import IconButton from 'Components/Link/IconButton';
 import SpinnerIconButton from 'Components/Link/SpinnerIconButton';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import InlineMarkdown from 'Components/Markdown/InlineMarkdown';
@@ -114,13 +113,6 @@ function Health() {
                     <TableRowCell>{item.message}</TableRowCell>
 
                     <TableRowCell>
-                      <IconButton
-                        name={icons.WIKI}
-                        to={item.wikiUrl}
-                        title={translate('ReadTheWikiForMoreInformation')}
-                        aria-label={translate('ReadTheWikiForMoreInformation')}
-                      />
-
                       <HealthItemLink source={source} />
 
                       {source === 'IndexerStatusCheck' ||

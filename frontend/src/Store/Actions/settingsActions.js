@@ -1,11 +1,13 @@
 import { handleThunks } from 'Store/thunks';
 import createHandleActions from './Creators/createHandleActions';
+import applications from './Settings/applications';
 import customFormats from './Settings/customFormats';
 import customFormatSpecifications from './Settings/customFormatSpecifications';
 import delayProfiles from './Settings/delayProfiles';
 import downloadClientOptions from './Settings/downloadClientOptions';
 import downloadClients from './Settings/downloadClients';
 
+export * from './Settings/applications';
 export * from './Settings/customFormatSpecifications.js';
 export * from './Settings/customFormats';
 export * from './Settings/delayProfiles';
@@ -22,6 +24,7 @@ export const section = 'settings';
 
 export const defaultState = {
   advancedSettings: false,
+  applications: applications.defaultState,
   customFormatSpecifications: customFormatSpecifications.defaultState,
   customFormats: customFormats.defaultState,
   delayProfiles: delayProfiles.defaultState,
@@ -37,6 +40,7 @@ export const persistState = [
 // Action Handlers
 
 export const actionHandlers = handleThunks({
+  ...applications.actionHandlers,
   ...customFormatSpecifications.actionHandlers,
   ...customFormats.actionHandlers,
   ...delayProfiles.actionHandlers,
@@ -48,6 +52,7 @@ export const actionHandlers = handleThunks({
 // Reducers
 
 export const reducers = createHandleActions({
+  ...applications.reducers,
   ...customFormatSpecifications.reducers,
   ...customFormats.reducers,
   ...delayProfiles.reducers,

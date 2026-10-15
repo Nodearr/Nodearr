@@ -12,6 +12,7 @@ TestResults/
 
 # Node
 node_modules/
+.yarn/install-state.gz
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -19,8 +20,14 @@ pnpm-debug.log*
 
 # Build output
 _output/
+_tests/
+_artifacts/
+_staging/
 dist/
 build/
+# The webpack configuration lives in a folder of that name, and is source. So are the release scripts.
+!/frontend/build/
+!/build/
 coverage/
 src/Nodearr.Host/wwwroot/
 

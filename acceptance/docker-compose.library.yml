@@ -1,0 +1,14 @@
+# Override for spikes/arr-contract/docker-compose.yml: puts the Arr libraries on the host, so the
+# Nodearr running there can read the same files through a path mapping.
+services:
+  sonarr:
+    volumes:
+      - sonarr-config:/config
+      - ${LIBRARY_DIR}/tv:/tv
+      - ${DOWNLOADS_DIR}:/downloads
+
+  radarr:
+    volumes:
+      - radarr-config:/config
+      - ${LIBRARY_DIR}/movies:/movies
+      - ${DOWNLOADS_DIR}:/downloads

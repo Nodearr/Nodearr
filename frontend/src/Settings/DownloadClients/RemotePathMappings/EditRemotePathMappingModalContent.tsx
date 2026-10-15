@@ -9,9 +9,9 @@ import ModalBody from 'Components/Modal/ModalBody';
 import ModalContent from 'Components/Modal/ModalContent';
 import ModalFooter from 'Components/Modal/ModalFooter';
 import ModalHeader from 'Components/Modal/ModalHeader';
-import useDownloadClientHostOptions from 'DownloadClient/useDownloadClientHostOptions';
 import usePrevious from 'Helpers/Hooks/usePrevious';
 import { inputTypes, kinds } from 'Helpers/Props';
+import useApplicationHostOptions from 'Settings/Applications/useApplicationHostOptions';
 import { InputChanged } from 'typings/inputs';
 import translate from 'Utilities/String/translate';
 import { useManageRemotePathMappings } from './useRemotePathMappings';
@@ -28,7 +28,7 @@ function EditRemotePathMappingModalContent({
   onDeleteRemotePathMappingPress,
   onModalClose,
 }: EditRemotePathMappingModalContentProps) {
-  const downloadClientHosts = useDownloadClientHostOptions();
+  const applicationHosts = useApplicationHostOptions();
 
   const {
     item,
@@ -100,7 +100,7 @@ function EditRemotePathMappingModalContent({
               name="host"
               helpText={translate('RemotePathMappingHostHelpText')}
               {...host}
-              values={downloadClientHosts}
+              values={applicationHosts}
               onChange={handleInputChange}
             />
           </FormGroup>

@@ -23,7 +23,9 @@ public static class HealthResourceMapper
             Type = model.Type,
             Reason = model.Reason,
             Message = model.Message,
-            WikiUrl = model.WikiUrl.FullUri
+
+            // There is no wiki to point at.
+            WikiUrl = null
         };
     }
 

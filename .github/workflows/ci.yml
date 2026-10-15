@@ -1,0 +1,131 @@
+# Every push and pull request: the web UI is linted and built, the application is built and its
+# unit tests run on Linux and Windows, the transport sidecar is built, and the image is built.
+#
+# The tests are the ones Sonarr's own CI runs: everything but the manual, integration and
+# automation tests, and the tests for the other operating system.
+
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Web UI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '20.11.1'
+
+      - name: Yarn
+        run: corepack enable && corepack prepare yarn@4.15.0 --activate
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.yarn/berry/cache
+          key: yarn-${{ hashFiles('yarn.lock') }}
+
+      - run: yarn install --immutable
+      - run: yarn lint
+      - run: yarn stylelint
+      - run: yarn build --env production
+
+  backend:
+    name: Application (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux
+            os: ubuntu-latest
+            platform: Posix
+            exclude-category: WINDOWS
+            skip-assembly: Nodearr.Windows.Test
+          - name: Windows
+            os: windows-latest
+            platform: Windows
+            exclude-category: LINUX
+            skip-assembly: Nodearr.Mono.Test
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('src/**/*.csproj', 'src/**/*.props', 'src/**/*.targets') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Build
+        run: dotnet build src/Nodearr.sln --configuration Debug -p:Platform=${{ matrix.platform }} --nologo --verbosity minimal
+
+      # One assembly at a time. Run together, the test hosts fight over the files they share.
+      - name: Test
+        shell: pwsh
+        run: |
+          $filter = 'TestCategory!=ManualTest&TestCategory!=${{ matrix.exclude-category }}&TestCategory!=IntegrationTest&TestCategory!=AutomationTest'
+          $skip = '${{ matrix.skip-assembly }}', 'Nodearr.Automation.Test', 'Nodearr.Integration.Test'
+          $failed = @()
+
+          foreach ($assembly in Get-ChildItem _tests/net10.0 -Filter 'Nodearr.*.Test.dll') {
+              if ($skip -contains $assembly.BaseName) { continue }
+
+              Write-Host "::group::$($assembly.BaseName)"
+              dotnet test $assembly.FullName --filter $filter --logger 'trx;LogFilePrefix=${{ matrix.name }}' --results-directory TestResults
+              if ($LASTEXITCODE -ne 0) { $failed += $assembly.BaseName }
+              Write-Host '::endgroup::'
+          }
+
+          if ($failed) { throw "Tests failed: $($failed -join ', ')" }
+
+      - uses: actions/upload-artifact@v5
+        if: ${{ !cancelled() }}
+        with:
+          name: test-results-${{ matrix.name }}
+          path: TestResults
+          if-no-files-found: ignore
+
+  transport:
+    name: Transport sidecar
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: transport
+
+      - run: cargo build --locked --manifest-path transport/Cargo.toml
+      - run: cargo test --locked --manifest-path transport/Cargo.toml
+
+  docker:
+    name: Image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

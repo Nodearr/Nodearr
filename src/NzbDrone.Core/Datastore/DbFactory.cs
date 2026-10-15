@@ -121,10 +121,10 @@ namespace NzbDrone.Core.Datastore
 
                 if (OsInfo.IsOsx)
                 {
-                    throw new CorruptDatabaseException("Database file: {0} is corrupt, restore from backup if available. See: https://wiki.servarr.com/nodearr/faq#i-use-nodearr-on-a-mac-and-it-suddenly-stopped-working-what-happened", e, fileName);
+                    throw new CorruptDatabaseException("Database file: {0} is corrupt, restore from backup if available. On a Mac this can follow an update of the operating system.", e, fileName);
                 }
 
-                throw new CorruptDatabaseException("Database file: {0} is corrupt, restore from backup if available. See: https://wiki.servarr.com/nodearr/faq#i-am-getting-an-error-database-disk-image-is-malformed", e, fileName);
+                throw new CorruptDatabaseException("Database file: {0} is corrupt, restore from backup if available.", e, fileName);
             }
             catch (NpgsqlException e)
             {

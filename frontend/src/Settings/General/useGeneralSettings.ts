@@ -49,6 +49,8 @@ export interface GeneralSettingsModel {
   backupFolder: string;
   backupInterval: number;
   backupRetention: number;
+  // The settings above that are given in the environment and cannot be changed here.
+  fixedByEnvironment?: string[];
   id: number;
 }
 

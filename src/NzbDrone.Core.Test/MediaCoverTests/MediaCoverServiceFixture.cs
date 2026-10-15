@@ -7,6 +7,7 @@ using Moq;
 using NUnit.Framework;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.EnvironmentInfo;
+using NzbDrone.Common.Http;
 using NzbDrone.Core.MediaCover;
 using NzbDrone.Core.Test.Framework;
 using NzbDrone.Core.Tv;
@@ -63,100 +64,29 @@ namespace NzbDrone.Core.Test.MediaCoverTests
         }
 
         [Test]
-        public void should_resize_covers_if_main_downloaded()
+        public void should_download_cover_if_missing()
         {
             Mocker.GetMock<ICoverExistsSpecification>()
                   .Setup(v => v.AlreadyExists(It.IsAny<string>(), It.IsAny<string>()))
                   .Returns(false);
 
-            Mocker.GetMock<IDiskProvider>()
-                  .Setup(v => v.FileExists(It.IsAny<string>()))
-                  .Returns(true);
-
             Subject.HandleAsync(new SeriesUpdatedEvent(_series));
 
-            Mocker.GetMock<IImageResizer>()
-                  .Verify(v => v.Resize(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>()), Times.Exactly(2));
+            Mocker.GetMock<IHttpClient>()
+                  .Verify(v => v.DownloadFile(It.IsAny<string>(), It.IsAny<string>()), Times.Once());
         }
 
         [Test]
-        public void should_resize_covers_if_missing()
+        public void should_not_download_cover_if_exists()
         {
             Mocker.GetMock<ICoverExistsSpecification>()
                   .Setup(v => v.AlreadyExists(It.IsAny<string>(), It.IsAny<string>()))
                   .Returns(true);
 
-            Mocker.GetMock<IDiskProvider>()
-                  .Setup(v => v.FileExists(It.IsAny<string>()))
-                  .Returns(false);
-
             Subject.HandleAsync(new SeriesUpdatedEvent(_series));
 
-            Mocker.GetMock<IImageResizer>()
-                  .Verify(v => v.Resize(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>()), Times.Exactly(2));
-        }
-
-        [Test]
-        public void should_not_resize_covers_if_exists()
-        {
-            Mocker.GetMock<ICoverExistsSpecification>()
-                  .Setup(v => v.AlreadyExists(It.IsAny<string>(), It.IsAny<string>()))
-                  .Returns(true);
-
-            Mocker.GetMock<IDiskProvider>()
-                  .Setup(v => v.FileExists(It.IsAny<string>()))
-                  .Returns(true);
-
-            Mocker.GetMock<IDiskProvider>()
-                  .Setup(v => v.GetFileSize(It.IsAny<string>()))
-                  .Returns(1000);
-
-            Subject.HandleAsync(new SeriesUpdatedEvent(_series));
-
-            Mocker.GetMock<IImageResizer>()
-                  .Verify(v => v.Resize(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>()), Times.Never());
-        }
-
-        [Test]
-        public void should_resize_covers_if_existing_is_empty()
-        {
-            Mocker.GetMock<ICoverExistsSpecification>()
-                  .Setup(v => v.AlreadyExists(It.IsAny<string>(), It.IsAny<string>()))
-                  .Returns(true);
-
-            Mocker.GetMock<IDiskProvider>()
-                  .Setup(v => v.FileExists(It.IsAny<string>()))
-                  .Returns(true);
-
-            Mocker.GetMock<IDiskProvider>()
-                  .Setup(v => v.GetFileSize(It.IsAny<string>()))
-                  .Returns(0);
-
-            Subject.HandleAsync(new SeriesUpdatedEvent(_series));
-
-            Mocker.GetMock<IImageResizer>()
-                  .Verify(v => v.Resize(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>()), Times.Exactly(2));
-        }
-
-        [Test]
-        public void should_log_error_if_resize_failed()
-        {
-            Mocker.GetMock<ICoverExistsSpecification>()
-                  .Setup(v => v.AlreadyExists(It.IsAny<string>(), It.IsAny<string>()))
-                  .Returns(true);
-
-            Mocker.GetMock<IDiskProvider>()
-                  .Setup(v => v.FileExists(It.IsAny<string>()))
-                  .Returns(false);
-
-            Mocker.GetMock<IImageResizer>()
-                  .Setup(v => v.Resize(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>()))
-                  .Throws<ApplicationException>();
-
-            Subject.HandleAsync(new SeriesUpdatedEvent(_series));
-
-            Mocker.GetMock<IImageResizer>()
-                  .Verify(v => v.Resize(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>()), Times.Exactly(2));
+            Mocker.GetMock<IHttpClient>()
+                  .Verify(v => v.DownloadFile(It.IsAny<string>(), It.IsAny<string>()), Times.Never());
         }
     }
 }

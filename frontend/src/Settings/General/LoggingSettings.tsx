@@ -6,6 +6,7 @@ import FormLabel from 'Components/Form/FormLabel';
 import { EnhancedSelectInputValue } from 'Components/Form/Select/EnhancedSelectInput';
 import { inputTypes } from 'Helpers/Props';
 import { useShowAdvancedSettings } from 'Settings/advancedSettingsStore';
+import FixedSetting from 'Settings/FixedSetting';
 import { InputChanged } from 'typings/inputs';
 import { PendingSection } from 'typings/pending';
 import translate from 'Utilities/String/translate';
@@ -35,12 +36,14 @@ const logLevelOptions: EnhancedSelectInputValue<string>[] = [
 interface LoggingSettingsProps {
   logLevel: PendingSection<GeneralSettingsModel>['logLevel'];
   logSizeLimit: PendingSection<GeneralSettingsModel>['logSizeLimit'];
+  isFixed: (name: string) => boolean;
   onInputChange: (change: InputChanged) => void;
 }
 
 function LoggingSettings({
   logLevel,
   logSizeLimit,
+  isFixed,
   onInputChange,
 }: LoggingSettingsProps) {
   const showAdvancedSettings = useShowAdvancedSettings();
@@ -50,33 +53,41 @@ function LoggingSettings({
       <FormGroup>
         <FormLabel>{translate('LogLevel')}</FormLabel>
 
-        <FormInputGroup
-          type={inputTypes.SELECT}
-          name="logLevel"
-          values={logLevelOptions}
-          helpTextWarning={
-            logLevel.value === 'trace'
-              ? translate('LogLevelTraceHelpTextWarning')
-              : undefined
-          }
-          onChange={onInputChange}
-          {...logLevel}
-        />
+        {isFixed('logLevel') ? (
+          <FixedSetting value={logLevel.value} />
+        ) : (
+          <FormInputGroup
+            type={inputTypes.SELECT}
+            name="logLevel"
+            values={logLevelOptions}
+            helpTextWarning={
+              logLevel.value === 'trace'
+                ? translate('LogLevelTraceHelpTextWarning')
+                : undefined
+            }
+            onChange={onInputChange}
+            {...logLevel}
+          />
+        )}
       </FormGroup>
 
       <FormGroup advancedSettings={showAdvancedSettings} isAdvanced={true}>
         <FormLabel>{translate('LogSizeLimit')}</FormLabel>
 
-        <FormInputGroup
-          type={inputTypes.NUMBER}
-          name="logSizeLimit"
-          min={1}
-          max={10}
-          unit="MB"
-          helpText={translate('LogSizeLimitHelpText')}
-          onChange={onInputChange}
-          {...logSizeLimit}
-        />
+        {isFixed('logSizeLimit') ? (
+          <FixedSetting value={`${logSizeLimit.value} MB`} />
+        ) : (
+          <FormInputGroup
+            type={inputTypes.NUMBER}
+            name="logSizeLimit"
+            min={1}
+            max={10}
+            unit="MB"
+            helpText={translate('LogSizeLimitHelpText')}
+            onChange={onInputChange}
+            {...logSizeLimit}
+          />
+        )}
       </FormGroup>
     </FieldSet>
   );

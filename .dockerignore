@@ -1,0 +1,23 @@
+# Everything is left out except what the image is built from.
+*
+
+!Dockerfile
+!docker/entrypoint.sh
+!.editorconfig
+!package.json
+!yarn.lock
+!.yarnrc.yml
+!tsconfig.json
+!frontend
+!Logo
+!src
+!transport/Cargo.toml
+!transport/Cargo.lock
+!transport/src
+
+# Build leftovers inside those folders.
+**/bin
+**/obj
+**/node_modules
+**/.vscode
+src/**/TestResults

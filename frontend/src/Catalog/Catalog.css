@@ -1,0 +1,140 @@
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+
+  margin-bottom: 20px;
+  gap: 10px;
+}
+
+.card {
+  flex: 1 1 260px;
+  padding: 12px 16px;
+  max-width: 420px;
+  border: 1px solid var(--borderColor);
+  border-radius: 4px;
+  background-color: var(--cardBackgroundColor);
+}
+
+.cardName {
+  margin-bottom: 6px;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.muted {
+  color: var(--helpTextColor);
+  font-size: 12px;
+}
+
+.error {
+  margin-top: 6px;
+  color: var(--dangerColor);
+  font-size: 12px;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+
+  margin-bottom: 12px;
+  gap: 8px;
+}
+
+.title {
+  composes: cell from '~Components/Table/Cells/TableRowCell.css';
+
+  min-width: 220px;
+}
+
+.release {
+  composes: cell from '~Components/Table/Cells/TableRowCell.css';
+
+  word-break: break-all;
+  font-size: 12px;
+}
+
+.peerRow {
+  display: flex;
+  align-items: center;
+
+  margin-bottom: 8px;
+  max-width: 760px;
+  gap: 12px;
+}
+
+.peerName {
+  flex: 1;
+  font-weight: bold;
+}
+
+.columns {
+  display: flex;
+  flex-wrap: wrap;
+
+  max-width: 900px;
+  gap: 20px;
+}
+
+.column {
+  flex: 1 1 260px;
+}
+
+.columnLabel {
+  margin-bottom: 6px;
+  font-weight: bold;
+}
+
+.titles {
+  overflow-y: auto;
+  margin-top: 6px;
+  padding: 6px 10px;
+  max-height: 420px;
+  border: 1px solid var(--borderColor);
+  border-radius: 4px;
+}
+
+.check {
+  display: block;
+  padding: 2px 0;
+  cursor: pointer;
+}
+
+/* A series or season: the open button, then its box. */
+.seriesRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.inlineCheck {
+  composes: check;
+
+  flex: 1;
+}
+
+/* A movie has nothing to open, so it lines up with the boxes beside the open buttons. */
+.movieCheck {
+  composes: check;
+
+  padding-left: 26px;
+}
+
+.nested {
+  padding-left: 26px;
+}
+
+.checkBox {
+  margin-right: 8px;
+}
+
+.newList {
+  display: flex;
+  align-items: flex-end;
+
+  max-width: 520px;
+  gap: 10px;
+}
+
+.newListName {
+  flex: 1;
+}

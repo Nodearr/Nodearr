@@ -333,6 +333,17 @@ function SignalRListener() {
       return;
     }
 
+    if (name === 'nodes') {
+      queryClient.invalidateQueries({ queryKey: ['/nodes/peers'] });
+      return;
+    }
+
+    if (name === 'transfers') {
+      queryClient.invalidateQueries({ queryKey: ['/transfers'] });
+      queryClient.invalidateQueries({ queryKey: ['/transfers/uploads'] });
+      return;
+    }
+
     if (name === 'version') {
       setVersion({ version: body.version });
       return;

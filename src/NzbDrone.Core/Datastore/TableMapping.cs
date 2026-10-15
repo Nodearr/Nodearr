@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using Dapper;
 using NzbDrone.Common.Reflection;
+using NzbDrone.Core.Applications;
 using NzbDrone.Core.Authentication;
 using NzbDrone.Core.AutoTagging.Specifications;
 using NzbDrone.Core.Blocklisting;
+using NzbDrone.Core.Catalog;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.CustomFilters;
 using NzbDrone.Core.CustomFormats;
@@ -27,9 +29,11 @@ using NzbDrone.Core.Jobs;
 using NzbDrone.Core.Languages;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.Messaging.Commands;
+using NzbDrone.Core.Nodes;
 using NzbDrone.Core.Notifications;
 using NzbDrone.Core.Organizer;
 using NzbDrone.Core.Parser.Model;
+using NzbDrone.Core.PeerCatalog;
 using NzbDrone.Core.Profiles;
 using NzbDrone.Core.Profiles.Delay;
 using NzbDrone.Core.Profiles.Qualities;
@@ -37,8 +41,10 @@ using NzbDrone.Core.Profiles.Releases;
 using NzbDrone.Core.Qualities;
 using NzbDrone.Core.RemotePathMappings;
 using NzbDrone.Core.RootFolders;
+using NzbDrone.Core.Sharing;
 using NzbDrone.Core.Tags;
 using NzbDrone.Core.ThingiProvider;
+using NzbDrone.Core.Transfers;
 using NzbDrone.Core.Tv;
 using NzbDrone.Core.Update.History;
 using static Dapper.SqlMapper;
@@ -110,6 +116,29 @@ namespace NzbDrone.Core.Datastore
                   .Ignore(x => x.ImplementationName)
                   .Ignore(d => d.Protocol);
 
+            Mapper.Entity<ApplicationDefinition>("Applications").RegisterModel()
+                  .Ignore(x => x.ImplementationName)
+                  .Ignore(a => a.Enable);
+
+            Mapper.Entity<CatalogQualityProfile>("CatalogQualityProfiles").RegisterModel();
+            Mapper.Entity<CatalogSeries>("CatalogSeries").RegisterModel();
+            Mapper.Entity<CatalogEpisode>("CatalogEpisodes").RegisterModel();
+            Mapper.Entity<CatalogEpisodeFile>("CatalogEpisodeFiles").RegisterModel();
+            Mapper.Entity<CatalogMovie>("CatalogMovies").RegisterModel();
+            Mapper.Entity<CatalogMovieFile>("CatalogMovieFiles").RegisterModel();
+            Mapper.Entity<CatalogSyncStatus>("CatalogSyncStatus").RegisterModel();
+
+            Mapper.Entity<Peer>("Peers").RegisterModel();
+            Mapper.Entity<PeerInvite>("PeerInvites").RegisterModel();
+
+            Mapper.Entity<ShareList>("ShareLists").RegisterModel();
+            Mapper.Entity<ShareListItem>("ShareListItems").RegisterModel();
+            Mapper.Entity<ShareListPeer>("ShareListPeers").RegisterModel();
+            Mapper.Entity<PeerCatalogItem>("PeerCatalogItems").RegisterModel();
+            Mapper.Entity<OfferRecord>("OfferRecords").RegisterModel();
+            Mapper.Entity<TransferJob>("Transfers").RegisterModel();
+            Mapper.Entity<FileHash>("FileHashes").RegisterModel();
+
             Mapper.Entity<SceneMapping>("SceneMappings").RegisterModel();
 
             Mapper.Entity<EpisodeHistory>("History").RegisterModel();
@@ -165,6 +194,7 @@ namespace NzbDrone.Core.Datastore
             Mapper.Entity<DownloadClientStatus>("DownloadClientStatus").RegisterModel();
             Mapper.Entity<ImportListStatus>("ImportListStatus").RegisterModel();
             Mapper.Entity<NotificationStatus>("NotificationStatus").RegisterModel();
+            Mapper.Entity<ApplicationStatus>("ApplicationStatus").RegisterModel();
 
             Mapper.Entity<CustomFilter>("CustomFilters").RegisterModel();
 

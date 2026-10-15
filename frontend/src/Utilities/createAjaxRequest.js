@@ -1,6 +1,7 @@
 import $ from 'jquery';
 
 const absUrlRegex = /^(https?:)?\/\//i;
+const explicitApiRootRegex = /^\/api\/v\d+\//i;
 const apiRoot = window.Nodearr.apiRoot;
 
 function isRelative(ajaxOptions) {
@@ -8,7 +9,11 @@ function isRelative(ajaxOptions) {
 }
 
 function addRootUrl(ajaxOptions) {
-  ajaxOptions.url = apiRoot + ajaxOptions.url;
+  if (explicitApiRootRegex.test(ajaxOptions.url)) {
+    ajaxOptions.url = `${window.Nodearr.urlBase || ''}${ajaxOptions.url}`;
+  } else {
+    ajaxOptions.url = apiRoot + ajaxOptions.url;
+  }
 }
 
 function addApiKey(ajaxOptions) {

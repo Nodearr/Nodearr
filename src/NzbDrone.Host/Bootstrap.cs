@@ -109,6 +109,7 @@ namespace NzbDrone.Host
                     services.Configure<AppOptions>(config.GetSection("Nodearr:App"));
                     services.Configure<AuthOptions>(config.GetSection("Nodearr:Auth"));
                     services.Configure<ServerOptions>(config.GetSection("Nodearr:Server"));
+                    services.Configure<TransportOptions>(config.GetSection("Nodearr:Transport"));
                     services.Configure<LogOptions>(config.GetSection("Nodearr:Log"));
                     services.Configure<UpdateOptions>(config.GetSection("Nodearr:Update"));
                 })
@@ -142,7 +143,7 @@ namespace NzbDrone.Host
             var config = GetConfiguration(context);
 
             var bindAddress = config.GetValue<string>($"Nodearr:Server:{nameof(ServerOptions.BindAddress)}") ?? config.GetValue(nameof(ConfigFileProvider.BindAddress), "*");
-            var port = config.GetValue<int?>($"Nodearr:Server:{nameof(ServerOptions.Port)}") ?? config.GetValue(nameof(ConfigFileProvider.Port), 8989);
+            var port = config.GetValue<int?>($"Nodearr:Server:{nameof(ServerOptions.Port)}") ?? config.GetValue(nameof(ConfigFileProvider.Port), 6633);
             var sslPort = config.GetValue<int?>($"Nodearr:Server:{nameof(ServerOptions.SslPort)}") ?? config.GetValue(nameof(ConfigFileProvider.SslPort), 9898);
             var enableSsl = config.GetValue<bool?>($"Nodearr:Server:{nameof(ServerOptions.EnableSsl)}") ?? config.GetValue(nameof(ConfigFileProvider.EnableSsl), false);
             var sslCertPath = config.GetValue<string>($"Nodearr:Server:{nameof(ServerOptions.SslCertPath)}") ?? config.GetValue<string>(nameof(ConfigFileProvider.SslCertPath));
@@ -186,6 +187,7 @@ namespace NzbDrone.Host
                     services.Configure<AppOptions>(config.GetSection("Nodearr:App"));
                     services.Configure<AuthOptions>(config.GetSection("Nodearr:Auth"));
                     services.Configure<ServerOptions>(config.GetSection("Nodearr:Server"));
+                    services.Configure<TransportOptions>(config.GetSection("Nodearr:Transport"));
                     services.Configure<LogOptions>(config.GetSection("Nodearr:Log"));
                     services.Configure<UpdateOptions>(config.GetSection("Nodearr:Update"));
                 })

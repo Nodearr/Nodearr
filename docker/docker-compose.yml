@@ -1,0 +1,98 @@
+# Nodearr beside Sonarr and Radarr.
+#
+#   docker compose -f docker/docker-compose.yml up -d
+#
+# Build the image first, from the repository root:  docker build -t nodearr .
+#
+# The three things that matter:
+#
+#   1. /downloads is ONE folder, mounted at the same path in Nodearr, Sonarr and Radarr.
+#      Nodearr puts a finished transfer there and the Arr app imports it from there.
+#   2. The libraries are mounted into Nodearr at the same paths Sonarr and Radarr use, read-only.
+#      Nodearr only ever reads them, to send files to nodes you share with.
+#   3. Other nodes reach this one over UDP. See "Networking" below.
+
+services:
+  nodearr:
+    image: nodearr
+    container_name: nodearr
+    restart: unless-stopped
+    environment:
+      # The same user Sonarr and Radarr run as.
+      PUID: "1000"
+      PGID: "1000"
+      TZ: Etc/UTC
+      # Anything else is set in the UI, under Settings > Node: this node's name, the relay,
+      # the upload limit. A setting given here as Nodearr__Transport__... is fixed, and the
+      # page shows it as such. The image fixes two: the download folder, /downloads, and the
+      # UDP port, 6633, because the mounts and ports of this file are built around them.
+      #
+      # The same goes for Settings > General. The image fixes the port the web page and the API
+      # are served at, 6633, so it cannot be changed in the UI into one that is not published.
+      # To use another with the host's network, set it here:  Nodearr__Server__Port: "7000"
+    volumes:
+      - ./config/nodearr:/config
+      - ./downloads:/downloads
+      - /path/to/tv:/tv:ro
+      - /path/to/movies:/movies:ro
+
+    # Networking, option A: the host's own network. Linux only. Best chance of a direct
+    # connection, and the only way the router can be asked for a port mapping (UPnP).
+    network_mode: host
+
+    # Networking, option B: a bridge network with the ports published. Use this on Docker
+    # Desktop (Windows and macOS), or if you prefer it. Forward UDP 6633 on your router to this
+    # machine, because a container on a bridge cannot ask the router itself. Remove
+    # "network_mode: host" above and use:
+    #
+    # ports:
+    #   - "6633:6633/tcp"
+    #   - "6633:6633/udp"
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    restart: unless-stopped
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: Etc/UTC
+    volumes:
+      - ./config/sonarr:/config
+      - ./downloads:/downloads
+      - /path/to/tv:/tv
+    ports:
+      - "8989:8989"
+    # With option A Nodearr is on the host's network and this container is not. This gives it a
+    # name for the host, so it can reach Nodearr there.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    restart: unless-stopped
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: Etc/UTC
+    volumes:
+      - ./config/radarr:/config
+      - ./downloads:/downloads
+      - /path/to/movies:/movies
+    ports:
+      - "7878:7878"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+# Then, in Nodearr at http://localhost:6633:
+#
+#   Settings > Applications: add Sonarr and Radarr. Each asks for two addresses: where the Arr
+#   app finds Nodearr, and where Nodearr finds the Arr app.
+#     With option A, Nodearr's address for them is http://host.docker.internal:6633, because
+#     "localhost" inside the Sonarr container is the Sonarr container. Theirs are
+#     http://localhost:8989 and http://localhost:7878.
+#     With option B, use the service names: http://nodearr:6633, http://sonarr:8989 and
+#     http://radarr:7878.
+#   Nodes > Invites: create an invite and send it to the person you want to share with.
+#   Catalog > Sharing: choose what they are offered. Nothing is shared until you do.

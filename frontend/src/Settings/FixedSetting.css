@@ -1,0 +1,15 @@
+.fixed {
+  flex: 1;
+  padding: 6px 0;
+}
+
+.fixedValue {
+  word-break: break-all;
+  font-family: var(--monoSpaceFontFamily);
+}
+
+.fixedNote {
+  margin-top: 4px;
+  color: var(--helpTextColor);
+  font-size: 12px;
+}

@@ -1,0 +1,118 @@
+# Releases
+
+A Nodearr release matches Sonarr's and Radarr's own downloads, so it can be installed where they are: one package per platform, and an image for Docker.
+
+## What a release has
+
+| Package | For |
+| --- | --- |
+| `Nodearr.<version>.linux-x64.tar.gz` | Linux on x86-64, glibc (Debian, Ubuntu, Fedora, ...) |
+| `Nodearr.<version>.linux-arm64.tar.gz` | Linux on 64-bit ARM, glibc (Raspberry Pi OS 64-bit, ...) |
+| `Nodearr.<version>.linux-arm.tar.gz` | Linux on 32-bit ARM, glibc |
+| `Nodearr.<version>.linux-musl-x64.tar.gz` | Linux on x86-64, musl (Alpine) |
+| `Nodearr.<version>.linux-musl-arm64.tar.gz` | Linux on 64-bit ARM, musl (Alpine) |
+| `Nodearr.<version>.osx-x64.tar.gz` | macOS on Intel |
+| `Nodearr.<version>.osx-arm64.tar.gz` | macOS on Apple silicon |
+| `Nodearr.<version>.win-x64.zip` | Windows, 64-bit |
+| `Nodearr.<version>.win-x86.zip` | Windows, 32-bit |
+| `SHA256SUMS` | The checksum of each package |
+
+The image is `ghcr.io/<owner>/nodearr`, for `linux/amd64` and `linux/arm64`. `0.1.0` is tagged `0.1.0`, `0.1` and `latest`. A pre-release such as `0.1.0-beta.1` is tagged with only its own version.
+
+Each package is one folder, `Nodearr`, holding:
+
+- the application, published self-contained, so the machine needs no .NET;
+- the web UI;
+- the transport sidecar, `nodearr-transport`;
+- the licence and the notices.
+
+On Windows it also holds the tray application, `Nodearr.exe`, and `ServiceInstall.exe` / `ServiceUninstall.exe`. On Linux and macOS, start it with `./Nodearr`.
+
+Every Linux sidecar is a statically linked musl binary. It runs on glibc systems too, whatever their glibc version, so the glibc and musl packages for an architecture carry the same one.
+
+### What the machine needs
+
+Linux needs ICU: `libicu` on Debian and Ubuntu (`libicu72` on bookworm), `icu-libs` on Alpine. SQLite comes with the package. On a bare `debian:bookworm-slim` and a bare `alpine:3.20`, with nothing installed but ICU and curl, each Linux package started, served the UI, and ran its sidecar.
+
+Where each package has been run:
+
+- `linux-x64`, `linux-musl-x64`, `win-x64` and `win-x86`: on an x86-64 machine.
+- `linux-arm64` and `linux-arm`: emulated with QEMU. Not yet on real ARM hardware. Under QEMU, .NET on 32-bit ARM crashes unless `DOTNET_EnableWriteXorExecute=0` is set. That is a known problem with .NET under emulation, but it has not been ruled out on a real board.
+- `linux-musl-arm64`, `osx-x64` and `osx-arm64`: built by the release workflow only. Not yet run.
+
+macOS marks a downloaded archive as quarantined. As with Sonarr, clear it before the first start: `xattr -dr com.apple.quarantine Nodearr`.
+
+### Not in a release
+
+- **FreeBSD.** Sonarr and Radarr release for it with a .NET runtime the community builds, from a package source of their own. Nodearr's sidecar is built on iroh, and iroh on FreeBSD has not been tried. Until both have been, there is no FreeBSD package.
+- **A macOS app bundle** (`Nodearr.app`) and **a Windows installer.** Sonarr has both. Nodearr has the plain archives for now.
+- **An updater.** Nodearr does not update itself (ADR 0018). A new version is installed over the old one, or pulled as a new image.
+
+## Making a release
+
+Push a tag:
+
+```sh
+git tag v0.1.0
+```
+
+```sh
+git push origin v0.1.0
+```
+
+`.github/workflows/release.yml` builds every package, drafts a GitHub release with them and `SHA256SUMS` attached, and pushes the image. The draft is not published until someone publishes it from the Releases page.
+
+A version is three numbers with an optional pre-release tag: `0.1.0`, `0.1.0-beta.1`. The application reports the three numbers and a fourth, `0.1.0.0`, without the tag. A tag with a pre-release part makes the GitHub release a pre-release.
+
+Run the workflow by hand from the Actions tab, with a version, to build the packages without drafting or pushing anything. They are kept as the run's artifacts.
+
+## Building one package yourself
+
+The scripts in `build/` are what the workflow runs. Each needs PowerShell 7.
+
+1. Build the web UI:
+
+   ```sh
+   yarn build --env production
+   ```
+
+2. Build the sidecar for the platform. Linux sidecars are cross-compiled with `cargo-zigbuild`, which brings Zig with it:
+
+   ```sh
+   pip install cargo-zigbuild
+   ```
+
+   ```sh
+   pwsh build/Build-Transport.ps1 -Runtime linux-arm64
+   ```
+
+   It prints where the binary is. macOS and Windows sidecars are built with plain cargo on macOS and Windows.
+
+3. Package it:
+
+   ```sh
+   pwsh build/Build-Release.ps1 -Runtime linux-arm64 -Version 0.1.0-test.1 -TransportBin transport/target/aarch64-unknown-linux-musl/release/nodearr-transport
+   ```
+
+   The archive is written to `_artifacts`.
+
+Build Linux and macOS packages on Linux or macOS. `tar` on Windows cannot mark `Nodearr` and `nodearr-transport` as executable, and the script warns when it is asked to. Build macOS packages on macOS: the .NET SDK signs the executable only there, and Apple silicon will not run it unsigned.
+
+The image for both architectures:
+
+```sh
+docker buildx build --platform linux/amd64,linux/arm64 --build-arg VERSION=0.1.0 -t nodearr .
+```
+
+The web UI and the application build once, on the machine doing the build. Only the sidecar is built per architecture, cross-compiled.
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every push and pull request:
+
+- The web UI: lint, style lint, and a production build.
+- The application on Linux and on Windows: a build, then the unit tests one assembly at a time. As in Sonarr's own CI, it leaves out the manual, integration and automation tests, and the tests for the other operating system.
+- The sidecar: build and tests.
+- The image, built for amd64.
+
+The acceptance scripts in `acceptance/` are not part of CI. They start Sonarr and Radarr containers, and some take many minutes.

@@ -1,0 +1,223 @@
+# A release: the packages for every platform Sonarr and Radarr release for (less FreeBSD, see
+# docs/guides/releases.md), and the image for amd64 and arm64.
+#
+# Pushing a tag such as v0.1.0 or v0.1.0-beta.1 builds everything, drafts a GitHub release with
+# the packages attached, and pushes the image to GitHub's container registry. The draft is
+# published by hand.
+#
+# Run by hand from the Actions tab, it builds the packages and keeps them as the run's artifacts,
+# and drafts and pushes nothing.
+
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build, such as 0.1.0-test.1'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    name: Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - id: version
+        env:
+          TAG: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+          INPUT: ${{ inputs.version }}
+        run: |
+          version="${TAG#v}"
+          version="${version:-$INPUT}"
+          if ! echo "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "::error::A version looks like 0.1.0 or 0.1.0-beta.1, not '$version'"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          case "$version" in *-*) echo "prerelease=true" >> "$GITHUB_OUTPUT" ;; *) echo "prerelease=false" >> "$GITHUB_OUTPUT" ;; esac
+
+  ui:
+    name: Web UI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '20.11.1'
+
+      - name: Yarn
+        run: corepack enable && corepack prepare yarn@4.15.0 --activate
+
+      - run: yarn install --immutable
+      - run: yarn build --env production
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: ui
+          path: _output/UI
+          if-no-files-found: error
+
+  transport:
+    name: Sidecar (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          # Each Linux sidecar is static musl, so one serves both the glibc and the musl package.
+          - { runtime: linux-x64, target: x86_64-unknown-linux-musl, os: ubuntu-latest }
+          - { runtime: linux-arm64, target: aarch64-unknown-linux-musl, os: ubuntu-latest }
+          - { runtime: linux-arm, target: armv7-unknown-linux-musleabihf, os: ubuntu-latest }
+          - { runtime: osx-x64, target: x86_64-apple-darwin, os: macos-latest }
+          - { runtime: osx-arm64, target: aarch64-apple-darwin, os: macos-latest }
+          - { runtime: win-x64, target: x86_64-pc-windows-msvc, os: windows-latest }
+          - { runtime: win-x86, target: i686-pc-windows-msvc, os: windows-latest }
+    steps:
+      - uses: actions/checkout@v5
+
+      # cargo-zigbuild finds Zig through the Python it was installed with, so that Python goes on
+      # the path along with it.
+      - name: cargo-zigbuild
+        if: runner.os == 'Linux'
+        run: |
+          python3 -m venv "$RUNNER_TEMP/zigbuild"
+          "$RUNNER_TEMP/zigbuild/bin/pip" install --no-cache-dir cargo-zigbuild==0.23.4
+          echo "$RUNNER_TEMP/zigbuild/bin" >> "$GITHUB_PATH"
+
+      - name: Build
+        shell: pwsh
+        run: |
+          $binary = ./build/Build-Transport.ps1 -Runtime ${{ matrix.runtime }}
+          New-Item -ItemType Directory -Force sidecar | Out-Null
+          Copy-Item $binary sidecar/
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: transport-${{ matrix.target }}
+          path: sidecar
+          if-no-files-found: error
+
+  package:
+    name: Package (${{ matrix.runtime }})
+    needs: [version, ui, transport]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          # Linux archives are made on Linux, so they keep the executable bit. macOS ones are made
+          # on macOS, where the SDK signs the executable, without which Apple silicon will not run it.
+          - { runtime: linux-x64, target: x86_64-unknown-linux-musl, os: ubuntu-latest }
+          - { runtime: linux-musl-x64, target: x86_64-unknown-linux-musl, os: ubuntu-latest }
+          - { runtime: linux-arm64, target: aarch64-unknown-linux-musl, os: ubuntu-latest }
+          - { runtime: linux-musl-arm64, target: aarch64-unknown-linux-musl, os: ubuntu-latest }
+          - { runtime: linux-arm, target: armv7-unknown-linux-musleabihf, os: ubuntu-latest }
+          - { runtime: osx-x64, target: x86_64-apple-darwin, os: macos-latest }
+          - { runtime: osx-arm64, target: aarch64-apple-darwin, os: macos-latest }
+          - { runtime: win-x64, target: x86_64-pc-windows-msvc, os: windows-latest }
+          - { runtime: win-x86, target: i686-pc-windows-msvc, os: windows-latest }
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - uses: actions/download-artifact@v5
+        with:
+          name: ui
+          path: ui
+
+      - uses: actions/download-artifact@v5
+        with:
+          name: transport-${{ matrix.target }}
+          path: sidecar
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $sidecar = (Get-ChildItem sidecar -File | Select-Object -First 1).FullName
+          ./build/Build-Release.ps1 -Runtime ${{ matrix.runtime }} -Version ${{ needs.version.outputs.version }} -TransportBin $sidecar -UiFolder ui
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: package-${{ matrix.runtime }}
+          path: _artifacts/*
+          if-no-files-found: error
+          compression-level: 0
+
+  release:
+    name: Draft the release
+    if: github.ref_type == 'tag'
+    needs: [version, package]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: package-*
+          path: packages
+          merge-multiple: true
+
+      - name: Checksums
+        working-directory: packages
+        run: sha256sum Nodearr.* > SHA256SUMS && cat SHA256SUMS
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: Nodearr ${{ needs.version.outputs.version }}
+          draft: true
+          prerelease: ${{ needs.version.outputs.prerelease == 'true' }}
+          generate_release_notes: true
+          files: packages/*
+
+  image:
+    name: Image
+    if: github.ref_type == 'tag'
+    needs: [version]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 0.1.0 is tagged 0.1.0, 0.1 and latest. A pre-release such as 0.1.0-beta.1 is tagged only
+      # with itself.
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/nodearr
+          tags: |
+            type=semver,pattern={{version}},value=${{ needs.version.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.version.outputs.version }}
+          flavor: |
+            latest=${{ needs.version.outputs.prerelease == 'false' }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: VERSION=${{ needs.version.outputs.version }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

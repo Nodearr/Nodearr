@@ -54,40 +54,44 @@ const LINKS: SidebarItem[] = [
     alias: '/catalog',
     children: [
       {
-        title: () => translate("Local"),
-        to: "/catalog/local"
+        title: () => translate('Local'),
+        to: '/catalog/local',
       },
       {
-        title: () => translate("PeerCatalog"),
-        to: "/catalog/peers"
-      }
-    ]
+        title: () => translate('PeerCatalog'),
+        to: '/catalog/peers',
+      },
+      {
+        title: () => translate('Sharing'),
+        to: '/catalog/sharing',
+      },
+    ],
   },
   {
     iconName: icons.NODES,
-    title: () => translate("Nodes"),
+    title: () => translate('Nodes'),
     to: '/nodes',
     children: [
       {
-        title: () => translate("TrustedNodes"),
-        to: "/nodes/trusted"
+        title: () => translate('TrustedNodes'),
+        to: '/nodes/trusted',
       },
       {
-        title: () => translate("Invites"),
-        to: "/nodes/invites"
-      }
-    ]
+        title: () => translate('Invites'),
+        to: '/nodes/invites',
+      },
+    ],
   },
   {
     iconName: icons.ACTIVITY,
-    title: () => translate("Activity"),
+    title: () => translate('Activity'),
     to: '/activity/transfers',
     children: [
       {
-        title: () => translate("Transfers"),
-        to: "/activity/transfers"
-      }
-    ]
+        title: () => translate('Transfers'),
+        to: '/activity/transfers',
+      },
+    ],
   },
   {
     iconName: icons.SETTINGS,
@@ -97,6 +101,10 @@ const LINKS: SidebarItem[] = [
       {
         title: () => translate('Apps'),
         to: '/settings/apps',
+      },
+      {
+        title: () => translate('NodeSettingsShort'),
+        to: '/settings/node',
       },
       {
         title: () => translate('General'),

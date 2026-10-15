@@ -69,7 +69,8 @@ function Page({ children }: PageProps) {
       <ErrorPage
         {...errors}
         version={version}
-        isLocalStorageSupported={isLocalStorageSupported}      />
+        isLocalStorageSupported={isLocalStorageSupported}
+      />
     );
   }
 

@@ -4,7 +4,8 @@
     <OutputType>Library</OutputType>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.8" />
+    <!-- 10.0.8 brings in SignalR.Common with a known vulnerability (GHSA-334f-vvp4-7g6p). -->
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.13" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\NzbDrone.Test.Common\Nodearr.Test.Common.csproj" />
