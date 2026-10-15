@@ -833,6 +833,8 @@
   "Filters": "Filters",
   "FinaleTooltip": "Series or season finale",
   "FirstDayOfWeek": "First Day of Week",
+  "FirstRunSignInText": "{appName} can be reached from other devices on your network, and it holds the key your friends trust. Choose a username and password, and you will be asked for them when you open it. Then it walks you through the rest.",
+  "FirstRunSignInTitle": "Welcome to {appName}. First, a password",
   "Fixed": "Fixed",
   "Folder": "Folder",
   "FolderNameTokens": "Folder Name Tokens",

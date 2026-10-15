@@ -52,6 +52,13 @@ export default function AuthenticationRequiredModalContent() {
   const authenticationEnabled =
     authenticationMethod && authenticationMethod.value !== 'none';
 
+  // A new node starts with a sign-in page chosen, so all that is left is a username and password.
+  useEffect(() => {
+    if (isFetched && authenticationMethod?.value === 'none') {
+      updateSetting('authenticationMethod', 'forms');
+    }
+  }, [isFetched, authenticationMethod?.value, updateSetting]);
+
   useEffect(() => {
     if (isSaving || !wasSaving) {
       return;
@@ -66,11 +73,11 @@ export default function AuthenticationRequiredModalContent() {
 
   return (
     <ModalContent showCloseButton={false} onModalClose={onModalClose}>
-      <ModalHeader>{translate('AuthenticationRequired')}</ModalHeader>
+      <ModalHeader>{translate('FirstRunSignInTitle')}</ModalHeader>
 
       <ModalBody>
-        <Alert className={styles.authRequiredAlert} kind={kinds.WARNING}>
-          {translate('AuthenticationRequiredWarning')}
+        <Alert className={styles.authRequiredAlert} kind={kinds.INFO}>
+          {translate('FirstRunSignInText')}
         </Alert>
 
         {isFetched && !error ? (

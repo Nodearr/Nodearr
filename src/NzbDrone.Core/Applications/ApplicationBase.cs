@@ -70,11 +70,14 @@ namespace NzbDrone.Core.Applications
         {
             get
             {
+                // Where this Nodearr is listening, as an app on the same machine would reach it.
+                var settings = new TSettings { NodearrUrl = $"http://localhost:{_configFileProvider.Port}" };
+
                 yield return new ApplicationDefinition
                 {
                     SyncLevel = ApplicationSyncLevel.FullSync,
                     Implementation = GetType().Name,
-                    Settings = new TSettings()
+                    Settings = settings
                 };
             }
         }

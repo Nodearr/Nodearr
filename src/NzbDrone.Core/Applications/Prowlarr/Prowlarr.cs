@@ -59,7 +59,7 @@ namespace NzbDrone.Core.Applications.Prowlarr
                 {
                     SyncLevel = ApplicationSyncLevel.FullSync,
                     Implementation = GetType().Name,
-                    Settings = new ProwlarrSettings()
+                    Settings = new ProwlarrSettings { NodearrUrl = $"http://localhost:{_configFileProvider.Port}" }
                 };
             }
         }
