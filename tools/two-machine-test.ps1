@@ -13,7 +13,7 @@
             on the other, with the code "send" printed
 
     Each side runs Nodearr from its release package and Radarr from Radarr's own Windows
-    package, both straight on the machine, in a folder of this script's (~\nodearr-test).
+    package, both straight on the machine, in a folder of its own (~\nodearr-test-windows).
     Nothing is installed. Radarr and ffmpeg are downloaded from their GitHub releases and
     checked against the SHA-256 GitHub publishes for them. The Nodearr package is the one
     downloaded from Nodearr's Releases page; the script looks for it in Downloads.
@@ -64,7 +64,8 @@
     Radarr's web page, on this machine only. Default 7878.
 
 .PARAMETER Dir
-    Where this script keeps everything. Default ~\nodearr-test.
+    Where this script keeps everything. Default ~\nodearr-test-windows. Not ~\nodearr-test, which
+    is docker/two-machine-test.py's.
 
 .PARAMETER Side
     Which side, for status, fetch and down, when both are set up on one machine.
@@ -86,7 +87,7 @@ param(
     [int] $HttpPort = 6633,
     [int] $UdpPort = 6633,
     [int] $RadarrPort = 7878,
-    [string] $Dir = (Join-Path $HOME 'nodearr-test'),
+    [string] $Dir = (Join-Path $HOME 'nodearr-test-windows'),
 
     [ValidateSet('send', 'receive')]
     [string] $Side
@@ -103,11 +104,11 @@ $MovieRelease = 'Night.of.the.Living.Dead.1968.720p.WEB-DL.AAC2.0.H.264-NODEARR'
 # A film is not imported if it is short enough to be a sample.
 $MovieSeconds = 660
 
-$Radarr = @{
+$RadarrPackage = @{
     Url    = 'https://github.com/Radarr/Radarr/releases/download/v6.4.4.10685/Radarr.master.6.4.4.10685.windows-core-x64.zip'
     Sha256 = '316c3c7e5edaab75f5497d919bc556da259d966f9497a465d484cd49df28afe9'
 }
-$Ffmpeg = @{
+$FfmpegPackage = @{
     Url    = 'https://github.com/GyanD/codexffmpeg/releases/download/9.0.2/ffmpeg-9.0.2-essentials_build.zip'
     Sha256 = '60f467265b1e312373dbcd92200c2618a74850f98d3d078e94296bb3fa2047ba'
 }
@@ -115,6 +116,9 @@ $Ffmpeg = @{
 $ReleasesPage = 'https://github.com/Nodearr/Nodearr/releases'
 $FirewallRule = 'Nodearr two-machine test'
 $ThisScript = 'powershell -ExecutionPolicy Bypass -File two-machine-test.ps1'
+
+# Written into each side's notes, so that a folder made by anything else is never taken for one.
+$MadeBy = 'tools/two-machine-test.ps1'
 
 class StopTest : Exception {
     StopTest([string] $message) : base($message) {}
@@ -134,6 +138,14 @@ function Read-State([string] $Folder) {
 
     $state = @{}
     (Get-Content $path -Raw | ConvertFrom-Json).PSObject.Properties | ForEach-Object { $state[$_.Name] = $_.Value }
+
+    # Another script's folder, such as docker/two-machine-test.py's, holds a Nodearr set up for
+    # Docker. Taken for this one's, its Radarr connection points at a container that is not there.
+    if ($state.made_by -ne $MadeBy) {
+        Stop-Test ("$Folder was made by something else, not by this script, and is left as it is.`n" +
+            '  Choose another folder for this test: -Dir PATH')
+    }
+
     return $state
 }
 
@@ -158,7 +170,7 @@ function Get-CheckedDownload([hashtable] $What) {
     New-Item -ItemType Directory -Force $cache | Out-Null
     $file = Join-Path $cache ($What.Url -split '/')[-1]
 
-    if ((Test-Path $file) -and (Get-FileHash $file -Algorithm SHA256).Hash -eq $What.Sha256) { return $file }
+    if ((Test-Path $file -PathType Leaf) -and (Get-FileHash $file -Algorithm SHA256).Hash -eq $What.Sha256) { return $file }
 
     Say "  Downloading $(Split-Path $file -Leaf)"
     try {
@@ -346,6 +358,7 @@ function New-Key {
 
 function New-SideState([string] $Which) {
     return @{
+        made_by     = $MadeBy
         folder      = Get-SideFolder $Which
         side        = $Which
         name        = $(if ($Name) { $Name } elseif ($Which -eq 'send') { 'Sender' } else { 'Receiver' })
@@ -380,9 +393,9 @@ function Install-Apps {
     Say "  Nodearr: $(Split-Path $zip -Leaf), $check"
 
     if (-not (Test-Path (Join-Path $folder 'radarr\Radarr'))) {
-        Expand-Package (Get-CheckedDownload $Radarr) (Join-Path $folder 'radarr')
+        Expand-Package (Get-CheckedDownload $RadarrPackage) (Join-Path $folder 'radarr')
     }
-    Say "  Radarr:  $(($Radarr.Url -split '/')[-1])"
+    Say "  Radarr:  $(($RadarrPackage.Url -split '/')[-1])"
 }
 
 function Start-Apps {
@@ -532,7 +545,7 @@ function New-Film($Movie) {
     $ffmpegFolder = Join-Path $Dir 'cache\ffmpeg'
     $ffmpeg = Get-ChildItem $ffmpegFolder -Recurse -Filter 'ffmpeg.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
     if (-not $ffmpeg) {
-        Expand-Package (Get-CheckedDownload $Ffmpeg) $ffmpegFolder
+        Expand-Package (Get-CheckedDownload $FfmpegPackage) $ffmpegFolder
         $ffmpeg = Get-ChildItem $ffmpegFolder -Recurse -Filter 'ffmpeg.exe' | Select-Object -First 1
     }
 

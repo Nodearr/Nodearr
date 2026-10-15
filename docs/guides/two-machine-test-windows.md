@@ -18,7 +18,7 @@ Then:
 - **The sending side** downloads ffmpeg in the same way, makes a test video for the film, about 100 MB, imports it into Radarr, and prints an invite code.
 - **The receiving side** pairs with that code, checks how the two machines are connected, has Radarr search for the film and grab it from the sending side, and prints what happened.
 
-Nothing is installed, nothing is clicked, and nobody is asked to sign in. Everything lives in `nodearr-test` in your user folder, and `down` removes it.
+Nothing is installed, nothing is clicked, and nobody is asked to sign in. Everything lives in `nodearr-test-windows` in your user folder, and `down` removes it.
 
 ## Before you start: both of you
 
@@ -102,7 +102,7 @@ On each machine, when you are done:
 powershell -ExecutionPolicy Bypass -File two-machine-test.ps1 down
 ```
 
-It stops Nodearr and Radarr and removes the `nodearr-test` folder: Radarr, ffmpeg, the test film and both pages' data. The zip and the script in Downloads stay where they were.
+It stops Nodearr and Radarr and removes the `nodearr-test-windows` folder: Radarr, ffmpeg, the test film and both pages' data. The zip and the script in Downloads stay where they were.
 
 ## Options
 
@@ -113,8 +113,17 @@ It stops Nodearr and Radarr and removes the `nodearr-test` folder: Radarr, ffmpe
 | `-NodearrZip PATH` | Use a Nodearr package that is not in Downloads. |
 | `-SizeMB 500` | A bigger test video, on the sending side. Default 100. |
 | `-HttpPort`, `-UdpPort`, `-RadarrPort` | Other ports, if 6633 or 7878 is already taken. |
-| `-Dir PATH` | Keep everything somewhere other than `nodearr-test` in your user folder. |
+| `-Dir PATH` | Keep everything somewhere other than `nodearr-test-windows` in your user folder. |
 
 ## What has and has not been run
 
-Not yet run, on any machine. It parses, and it stops cleanly when nothing is set up. It has not yet set up a side, paired or transferred anything. This line is to be replaced once it has.
+Run end to end on one Windows 11 machine on 2026-10-14, with both sides on it, in Windows PowerShell 5.1, with Nodearr 0.1.0 and Radarr 6.4.4:
+
+- **`send`** downloaded Radarr and ffmpeg, made an 85 MB video, imported it, and printed an invite.
+- **`receive`**, on other ports, paired, connected directly, had Radarr grab the film, and imported it in 8 seconds, with the same SHA-256 as the sending side.
+- **`fetch`** did it again.
+- **`status`** and **`down`** worked. `down` left no process and no folder behind.
+
+It has not yet been run between two machines. That is the run this guide is for.
+
+The script keeps to its own folder. A folder it did not make, such as `~\nodearr-test` from `docker/two-machine-test.py`, is refused and left as it is.
