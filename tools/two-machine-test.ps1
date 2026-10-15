@@ -279,7 +279,9 @@ function Invoke-Api([string] $Base, [string] $Key, [string] $Method, [string] $P
     }
 
     try {
-        return Invoke-RestMethod @request
+        # Windows PowerShell hands on a JSON list as one object. Passed through the pipeline it
+        # comes out item by item, as it does in PowerShell 7, and an empty list comes out as nothing.
+        return Invoke-RestMethod @request | ForEach-Object { $_ }
     }
     catch [StopTest] { throw }
     catch {
@@ -859,5 +861,11 @@ try {
 catch [StopTest] {
     Say ''
     Say "Stopped: $($_.Exception.Message)"
+    exit 1
+}
+catch {
+    Say ''
+    Say "Stopped by a fault in this script, at line $($_.InvocationInfo.ScriptLineNumber): $($_.Exception.Message)"
+    Say 'Running the same command again carries on from where it stopped. If it stops here again, send this message on.'
     exit 1
 }
