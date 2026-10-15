@@ -153,7 +153,12 @@ The connection check said Direct. Radarr on the friend's side searched, grabbed 
 
 What it shows: two nodes behind two home routers found a direct route and moved a file.
 
-What it does not yet show:
+On its own it did not show that nothing was opened. Nodearr asks each router for a port mapping (UPnP, NAT-PMP or PCP) by default, and does not report whether one was granted, so either router may have opened 6633 on Nodearr's request. The second run settles that.
 
-- **That nothing was opened.** Nodearr asks each router for a port mapping (UPnP, NAT-PMP or PCP) by default, and does not report whether one was granted. Nobody forwarded a port, but either router may have opened 6633 on Nodearr's request. A run with `-NoPortMapping` on both sides settles it.
+**The second run, with nothing opened.** Both sides were taken down and started again with port mapping off (`-NoPortMapping`), on UDP ports neither had used: 6655 on the owner's side, 6656 on the friend's. The owner's sidecar was checked to be running with `--no-port-mapping`. The connection check said Direct, at 73.19.61.153:6655 one way and 174.21.18.84:6656 the other. Radarr imported the film, 89,558,499 bytes in 32 seconds, search and import included, and the SHA-256 was the same at both ends.
+
+So two nodes behind two home routers connect directly and move a file with nothing forwarded and nothing mapped on either side. Each router kept one public port for its node's traffic, which is what made it work.
+
+Still open:
+
 - **Why the friend's blocking rule did not matter.** Most likely because the friend's side opened the connections, and Windows lets in replies to traffic a program has sent. That has not been checked. A connection the owner's side opens first may still be refused there.

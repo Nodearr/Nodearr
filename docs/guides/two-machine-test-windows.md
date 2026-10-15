@@ -147,6 +147,6 @@ Run end to end on one Windows 11 machine on 2026-10-14, with both sides on it, i
 - **`fetch`** did it again.
 - **`status`** and **`down`** worked. `down` left no process and no folder behind.
 
-The same day it was run between two homes, on two Windows machines behind ordinary routers. The connection check said Direct, and the film arrived in 32 seconds with the same SHA-256. Port mapping was on, so the run above, with it off, is still to be made (ADR 0011, "two home networks").
+The same day it was run twice between two homes, on two Windows machines behind ordinary routers: once as it comes, and once with `-NoPortMapping` on fresh UDP ports. Both times the connection check said Direct, and the film arrived in 32 seconds with the same SHA-256 at both ends (ADR 0011, "two home networks").
 
 The script keeps to its own folder. A folder it did not make, such as `~\nodearr-test` from `docker/two-machine-test.py`, is refused and left as it is.
