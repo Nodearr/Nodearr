@@ -40,7 +40,7 @@ namespace NzbDrone.Core.Test.Applications
             }
 
             Mocker.GetMock<IArrV3Proxy>()
-                  .Setup(p => p.GetArray(It.IsAny<ArrApplicationSettings>(), "/remotepathmapping"))
+                  .Setup(p => p.GetArray(It.IsAny<IArrConnection>(), "/remotepathmapping"))
                   .Returns(array);
         }
 
@@ -54,8 +54,8 @@ namespace NzbDrone.Core.Test.Applications
             }
 
             Mocker.GetMock<IArrV3Proxy>()
-                  .Setup(p => p.Get<JObject>(It.IsAny<ArrApplicationSettings>(), It.Is<string>(r => r.StartsWith("/filesystem?"))))
-                  .Callback<ArrApplicationSettings, string>((_, resource) => _asked = Uri.UnescapeDataString(resource))
+                  .Setup(p => p.Get<JObject>(It.IsAny<IArrConnection>(), It.Is<string>(r => r.StartsWith("/filesystem?"))))
+                  .Callback<IArrConnection, string>((_, resource) => _asked = Uri.UnescapeDataString(resource))
                   .Returns(listing);
         }
 

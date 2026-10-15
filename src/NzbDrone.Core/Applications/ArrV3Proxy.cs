@@ -8,22 +8,32 @@ using NzbDrone.Common.Serializer;
 
 namespace NzbDrone.Core.Applications
 {
-    public interface IArrV3Proxy
+    // Where an Arr app is and how to sign in to it.
+    public interface IArrConnection
     {
-        ValidationFailure TestConnection(ArrApplicationSettings settings, string appName, Version minimumVersion);
-        T Get<T>(ArrApplicationSettings settings, string resource)
-            where T : new();
-        JArray GetArray(ArrApplicationSettings settings, string resource);
-        JObject Post(ArrApplicationSettings settings, string resource, JObject body);
-        JObject Put(ArrApplicationSettings settings, string resource, JObject body);
-        void Delete(ArrApplicationSettings settings, string resource);
+        string BaseUrl { get; }
+        string ApiKey { get; }
+        string AuthUsername { get; }
+        string AuthPassword { get; }
+
+        // /api/v3 for Sonarr and Radarr, /api/v1 for Prowlarr.
+        string ApiRoute { get; }
     }
 
-    // Sonarr and Radarr share the same v3 API shape for everything Nodearr touches.
+    public interface IArrV3Proxy
+    {
+        ValidationFailure TestConnection(IArrConnection settings, string appName, Version minimumVersion);
+        T Get<T>(IArrConnection settings, string resource)
+            where T : new();
+        JArray GetArray(IArrConnection settings, string resource);
+        JObject Post(IArrConnection settings, string resource, JObject body);
+        JObject Put(IArrConnection settings, string resource, JObject body);
+        void Delete(IArrConnection settings, string resource);
+    }
+
+    // Sonarr, Radarr and Prowlarr share one API shape for everything Nodearr touches, under their own routes.
     public class ArrV3Proxy : IArrV3Proxy
     {
-        private const string ApiRoute = "/api/v3";
-
         private readonly IHttpClient _httpClient;
 
         public ArrV3Proxy(IHttpClient httpClient)
@@ -31,7 +41,7 @@ namespace NzbDrone.Core.Applications
             _httpClient = httpClient;
         }
 
-        public ValidationFailure TestConnection(ArrApplicationSettings settings, string appName, Version minimumVersion)
+        public ValidationFailure TestConnection(IArrConnection settings, string appName, Version minimumVersion)
         {
             var status = JObject.Parse(Execute(settings, "/system/status", HttpMethod.Get, null));
             var reportedName = status.Value<string>("appName");
@@ -55,36 +65,36 @@ namespace NzbDrone.Core.Applications
             return null;
         }
 
-        public T Get<T>(ArrApplicationSettings settings, string resource)
+        public T Get<T>(IArrConnection settings, string resource)
             where T : new()
         {
             return Json.Deserialize<T>(Execute(settings, resource, HttpMethod.Get, null));
         }
 
-        public JArray GetArray(ArrApplicationSettings settings, string resource)
+        public JArray GetArray(IArrConnection settings, string resource)
         {
             return JArray.Parse(Execute(settings, resource, HttpMethod.Get, null));
         }
 
-        public JObject Post(ArrApplicationSettings settings, string resource, JObject body)
+        public JObject Post(IArrConnection settings, string resource, JObject body)
         {
             return JObject.Parse(Execute(settings, resource, HttpMethod.Post, body));
         }
 
-        public JObject Put(ArrApplicationSettings settings, string resource, JObject body)
+        public JObject Put(IArrConnection settings, string resource, JObject body)
         {
             return JObject.Parse(Execute(settings, resource, HttpMethod.Put, body));
         }
 
-        public void Delete(ArrApplicationSettings settings, string resource)
+        public void Delete(IArrConnection settings, string resource)
         {
             Execute(settings, resource, HttpMethod.Delete, null);
         }
 
-        private string Execute(ArrApplicationSettings settings, string resource, HttpMethod method, JObject body)
+        private string Execute(IArrConnection settings, string resource, HttpMethod method, JObject body)
         {
             var requestBuilder = new HttpRequestBuilder(settings.BaseUrl.TrimEnd('/'))
-                .Resource(ApiRoute + resource)
+                .Resource(settings.ApiRoute + resource)
                 .Accept(HttpAccept.Json)
                 .SetHeader("X-Api-Key", settings.ApiKey);
 

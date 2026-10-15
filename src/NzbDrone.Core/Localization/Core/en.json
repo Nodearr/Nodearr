@@ -1864,6 +1864,8 @@
   "Proper": "Proper",
   "Protocol": "Protocol",
   "ProtocolHelpText": "Choose which protocol(s) to use and which one is preferred when choosing between otherwise equal releases",
+  "ProwlarrApiKeyHelpText": "The API key from Prowlarr's Settings > General page",
+  "ProwlarrNodearrServerHelpText": "The address Prowlarr uses to reach {appName}, including http(s)://, port, and URL base if needed. If both run on this machine, the default works. If Prowlarr runs in Docker and {appName} does not, use http://host.docker.internal:6633.",
   "Proxy": "Proxy",
   "ProxyBadRequestHealthCheckMessage": "Failed to test proxy. Status Code: {statusCode}",
   "ProxyBypassFilterHelpText": "Use ',' as a separator, and '*.' as a wildcard for subdomains",

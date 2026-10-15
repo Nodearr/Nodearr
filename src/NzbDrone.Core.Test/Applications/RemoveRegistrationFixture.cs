@@ -28,8 +28,8 @@ namespace NzbDrone.Core.Test.Applications
             _deleted = new List<string>();
 
             Mocker.GetMock<IArrV3Proxy>()
-                  .Setup(p => p.Delete(It.IsAny<ArrApplicationSettings>(), It.IsAny<string>()))
-                  .Callback<ArrApplicationSettings, string>((_, resource) => _deleted.Add(resource));
+                  .Setup(p => p.Delete(It.IsAny<IArrConnection>(), It.IsAny<string>()))
+                  .Callback<IArrConnection, string>((_, resource) => _deleted.Add(resource));
 
             GivenTheAppHas("/indexer", (1, "Newznab", "NZBgeek"), (2, "Newznab", "Nodearr"), (3, "Torznab", "Nodearr"));
             GivenTheAppHas("/downloadclient", (7, "Sabnzbd", "Nodearr"), (8, "Sabnzbd", "SABnzbd"), (9, "QBittorrent", "Nodearr"));
@@ -46,7 +46,7 @@ namespace NzbDrone.Core.Test.Applications
             }
 
             Mocker.GetMock<IArrV3Proxy>()
-                  .Setup(p => p.GetArray(It.IsAny<ArrApplicationSettings>(), resource))
+                  .Setup(p => p.GetArray(It.IsAny<IArrConnection>(), resource))
                   .Returns(array);
         }
 
@@ -74,7 +74,7 @@ namespace NzbDrone.Core.Test.Applications
         public void an_app_that_cannot_be_reached_should_say_so_to_the_caller()
         {
             Mocker.GetMock<IArrV3Proxy>()
-                  .Setup(p => p.GetArray(It.IsAny<ArrApplicationSettings>(), "/notification"))
+                  .Setup(p => p.GetArray(It.IsAny<IArrConnection>(), "/notification"))
                   .Throws(new InvalidOperationException("connection refused"));
 
             Assert.Throws<InvalidOperationException>(() => Subject.RemoveRegistration());

@@ -32,7 +32,9 @@ namespace NzbDrone.Core.HealthCheck.Checks
 
         public override HealthCheck Check()
         {
-            var applications = _applicationFactory.GetAvailableProviders().ToList();
+            var applications = _applicationFactory.GetAvailableProviders()
+                .Where(a => ((ApplicationDefinition)a.Definition).HoldsLibrary)
+                .ToList();
 
             if (applications.Count == 0)
             {
