@@ -25,7 +25,7 @@ namespace NzbDrone.SysTray
 
         public void Start()
         {
-            _trayMenu.Items.Add(new ToolStripMenuItem("Launch Browser", null, LaunchBrowser));
+            _trayMenu.Items.Add(new ToolStripMenuItem("Open Nodearr", null, LaunchBrowser) { Font = new System.Drawing.Font(_trayMenu.Font, System.Drawing.FontStyle.Bold) });
             _trayMenu.Items.Add(new ToolStripSeparator());
             _trayMenu.Items.Add(new ToolStripMenuItem("Exit", null, OnExit));
 

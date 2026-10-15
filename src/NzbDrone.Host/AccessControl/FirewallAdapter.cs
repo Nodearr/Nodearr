@@ -31,13 +31,13 @@ namespace NzbDrone.Host.AccessControl
             {
                 if (!IsNzbDronePortOpen(_configFileProvider.Port))
                 {
-                    _logger.Debug("Opening Port for NzbDrone: {0}", _configFileProvider.Port);
+                    _logger.Debug("Opening the port for Nodearr's web page: {0}", _configFileProvider.Port);
                     OpenFirewallPort(_configFileProvider.Port);
                 }
 
                 if (_configFileProvider.EnableSsl && !IsNzbDronePortOpen(_configFileProvider.SslPort))
                 {
-                    _logger.Debug("Opening SSL Port for NzbDrone: {0}", _configFileProvider.SslPort);
+                    _logger.Debug("Opening the SSL port for Nodearr's web page: {0}", _configFileProvider.SslPort);
                     OpenFirewallPort(_configFileProvider.SslPort);
                 }
             }
@@ -70,7 +70,7 @@ namespace NzbDrone.Host.AccessControl
                 var port = (INetFwOpenPort)Activator.CreateInstance(type);
 
                 port.Port = portNumber;
-                port.Name = "NzbDrone";
+                port.Name = "Nodearr";
                 port.Protocol = NET_FW_IP_PROTOCOL_.NET_FW_IP_PROTOCOL_TCP;
                 port.Enabled = true;
 

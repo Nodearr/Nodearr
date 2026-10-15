@@ -99,6 +99,7 @@ Then a settings page. ADR 0019. Branch `v1/s10-node-settings`.
 - System has its pages back: Tasks, Backup, Events and Log Files, as Sonarr has them. A backup now holds the node's key as well as its settings and database, so a restored node is the node its friends paired with and nobody pairs again. The key is put in place when the transport next starts, never under a running one (ADR 0013, amendments). The Sonarr recycle bin task and the updater's log files are gone. Branch `v1/s39-system-pages`.
 - What a friend has is marked an upgrade only when the local Arr app's quality profile would take it: allowed, ranked higher, upgrades on, and the local file below the cutoff (ADR 0014, amendments). Before, any higher resolution or better source counted. Branch `v1/s40-profile-upgrades`.
 - Prowlarr can be added in Settings > Apps. Nodearr adds itself to it as an indexer, to be searched there, with a sync profile that switches off the copies Prowlarr makes in Sonarr and Radarr, which would not be pinned to Nodearr's download client. Prowlarr holds no library and Nodearr reads nothing from it (ADR 0007, amendments). Run against a real Prowlarr managing a real Radarr. Branch `v1/s41-prowlarr`.
+- A Windows installer, as Sonarr has: Nodearr in Program Files, starting from the tray at sign-in, as a Windows service, or not at all. Installing adds a firewall rule for the transport, which a service could not otherwise get, and uninstalling removes it. The tray app's icon has every size Windows asks for. Built by the release workflow with Inno Setup (`docs/guides/releases.md`). Branch `v1/s42-windows-service-tray`.
 
 ## Where V1 stands
 
@@ -125,7 +126,7 @@ Not yet run:
 Not built:
 
 - Custom formats in Nodearr's marks. Upgrades follow the quality profile's qualities, and the Arr apps judge custom formats themselves when they search (decision 2).
-- A FreeBSD package, a macOS app bundle and a Windows installer (`docs/guides/releases.md`). No updater, by design (ADR 0018).
+- A FreeBSD package and a macOS app bundle (`docs/guides/releases.md`). No updater, by design (ADR 0018).
 - Inherited pages that no route leads to still hold links to pages that do not exist.
 - The S1 spike harness no longer runs on later branches. The acceptance scripts replaced it.
 - Pair attempts are not rate limited (ADR 0013).

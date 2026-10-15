@@ -146,6 +146,16 @@ jobs:
           $sidecar = (Get-ChildItem sidecar -File | Select-Object -First 1).FullName
           ./build/Build-Release.ps1 -Runtime ${{ matrix.runtime }} -Version ${{ needs.version.outputs.version }} -TransportBin $sidecar -UiFolder ui
 
+      # From the folder the package was made from, so the installer holds exactly what the zip does.
+      - name: Installer
+        if: startsWith(matrix.runtime, 'win-')
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) {
+              choco install innosetup --yes --no-progress | Out-Host
+          }
+          ./build/Build-Installer.ps1 -Runtime ${{ matrix.runtime }} -Version ${{ needs.version.outputs.version }}
+
       - uses: actions/upload-artifact@v5
         with:
           name: package-${{ matrix.runtime }}
