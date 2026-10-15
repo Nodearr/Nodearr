@@ -97,6 +97,7 @@ Then a settings page. ADR 0019. Branch `v1/s10-node-settings`.
 - The two-machine test runs on two Windows machines with nothing set up, no Docker and no Python, from the release packages: `tools/two-machine-test.ps1` and `docs/guides/two-machine-test-windows.md`. It made the home-to-home runs. Branch `v1/s36-windows-two-machine-test`.
 - A first run that sets itself up. Home, the page the app opens on, was a placeholder. It now welcomes a new node and takes it through three steps, each ticked off from what the node reports: connect Sonarr or Radarr, choose the name friends see, and connect with a friend by creating an invite or pasting one. The page moves on by itself when the friend uses the invite. Once all three are done it is an overview: anything that needs attention, what friends have that this node is missing or has worse, the library, the friends and how each is reached, and what the node knows about its network. Catalog and Nodes in the sidebar go to real pages, and the app form no longer shows Prowlarr's tags or describes its sync level in Prowlarr's terms. Branch `v1/s38-first-run`.
 - System has its pages back: Tasks, Backup, Events and Log Files, as Sonarr has them. A backup now holds the node's key as well as its settings and database, so a restored node is the node its friends paired with and nobody pairs again. The key is put in place when the transport next starts, never under a running one (ADR 0013, amendments). The Sonarr recycle bin task and the updater's log files are gone. Branch `v1/s39-system-pages`.
+- What a friend has is marked an upgrade only when the local Arr app's quality profile would take it: allowed, ranked higher, upgrades on, and the local file below the cutoff (ADR 0014, amendments). Before, any higher resolution or better source counted. Branch `v1/s40-profile-upgrades`.
 
 ## Where V1 stands
 
@@ -122,8 +123,7 @@ Not yet run:
 
 Not built:
 
-- Nodearr-side profile filtering (decision 2). The Arr apps judge every result themselves.
-- Quality profiles are imported and not shown or used.
+- Custom formats in Nodearr's marks. Upgrades follow the quality profile's qualities, and the Arr apps judge custom formats themselves when they search (decision 2).
 - A FreeBSD package, a macOS app bundle and a Windows installer (`docs/guides/releases.md`). No updater, by design (ADR 0018).
 - Inherited pages that no route leads to still hold links to pages that do not exist.
 - The S1 spike harness no longer runs on later branches. The acceptance scripts replaced it.

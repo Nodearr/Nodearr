@@ -139,6 +139,10 @@ The marks are worked out again whenever the local catalog is refreshed.
   - The whole library is read from each Arr app every 12 hours, as often as Sonarr refreshes its series. It was every 6 hours. The webhook from the Arr apps (planned) will bring single changes in between.
   - Checked by unit tests of the schedule, the setting and the notifier, and by `acceptance/Run-S5Sharing.ps1`: a newly shared file is not pushed, and arrives when the peer syncs. The scripts that wait for newly shared files now ask the peer to sync, as a user would.
 
+- 2026-10-15: **"Better" is decided by the local quality profile.** An offered file is an upgrade only when the quality profile the local Arr app gives that series or movie would take it in place of the local file: its quality is allowed, ranks above the local file's quality in the profile's order, upgrades are on, and the local file is below the profile's cutoff. Qualities in one group count as equal, as the Arr apps treat them. Where several local apps hold a copy, it has to be better under each one's profile. Custom formats are left to the Arr app, which judges them when it searches (plan decision 2).
+  - Profiles are read with their order of qualities, lowest first as Sonarr and Radarr list them, and the cutoff as a rank. Checked against a real Radarr 6.4.4: its default HD-1080p profile came back with the WEB 1080p group at one rank, the cutoff at Bluray-1080p, and upgrades off, so nothing is an upgrade under it, as Radarr would have it.
+  - Until a profile is next read after updating, the old rule stands in: a higher resolution, or the same resolution from a better source.
+
 ## Follow-up work
 
 - S6: turn peer catalog rows into indexer results, with the opaque file identifier inside a signed GUID.
