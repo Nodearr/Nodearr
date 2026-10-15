@@ -48,9 +48,14 @@ interface SidebarItem {
 
 const LINKS: SidebarItem[] = [
   {
+    iconName: icons.HOME,
+    title: () => translate('Home'),
+    to: '/',
+  },
+  {
     iconName: icons.CATALOG,
     title: () => translate('Catalog'),
-    to: '/',
+    to: '/catalog/local',
     alias: '/catalog',
     children: [
       {
@@ -70,7 +75,8 @@ const LINKS: SidebarItem[] = [
   {
     iconName: icons.NODES,
     title: () => translate('Nodes'),
-    to: '/nodes',
+    to: '/nodes/trusted',
+    alias: '/nodes',
     children: [
       {
         title: () => translate('TrustedNodes'),

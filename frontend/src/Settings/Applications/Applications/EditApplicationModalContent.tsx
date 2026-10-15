@@ -92,14 +92,7 @@ function EditApplicationModalContent({
 
   const wasSaving = usePrevious(isSaving);
 
-  const {
-    implementationName,
-    name,
-    syncLevel,
-    tags,
-    fields = [],
-    message,
-  } = item;
+  const { implementationName, name, syncLevel, fields = [], message } = item;
 
   const handleInputChange = useCallback(
     (change: InputChanged) => {
@@ -188,19 +181,7 @@ function EditApplicationModalContent({
               />
             </FormGroup>
 
-            <FormGroup>
-              <FormLabel>{translate('Tags')}</FormLabel>
-
-              <FormInputGroup
-                type={inputTypes.TAG}
-                name="tags"
-                helpText={translate('ApplicationTagsHelpText')}
-                helpTextWarning={translate('ApplicationTagsHelpTextWarning')}
-                {...tags}
-                onChange={handleInputChange}
-              />
-            </FormGroup>
-
+            {/* No Tags field: Prowlarr matched indexers to apps by tag, and Nodearr has one indexer. */}
             {fields.map((field) => {
               return (
                 <ProviderFieldFormGroup

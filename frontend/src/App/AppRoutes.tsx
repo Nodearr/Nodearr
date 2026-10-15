@@ -1,13 +1,12 @@
 import React from 'react';
-import { Route } from 'react-router-dom';
+import { Navigate, Route } from 'react-router-dom';
 import Transfers from 'Activity/Transfers/Transfers';
-import CatalogIndex from 'Catalog/Index/CatalogIndex';
 import LocalCatalog from 'Catalog/Local/LocalCatalog';
 import PeerCatalog from 'Catalog/Peer/PeerCatalog';
 import Sharing from 'Catalog/Sharing/Sharing';
 import NotFound from 'Components/NotFound';
+import Home from 'Home/Home';
 import NodeInvites from 'Nodes/Invites/NodeInvites';
-import NodesIndex from 'Nodes/NodesIndex/NodesIndex';
 import TrustedNodes from 'Nodes/Trusted/TrustedNodes';
 import Settings from 'Settings/Settings';
 import Status from 'System/Status/Status';
@@ -19,10 +18,19 @@ export function appRouteElements() {
   return (
     <>
       {/*
+        Home: setting up, and then an overview
+      */}
+
+      <Route path="/" element={<Home />} />
+
+      {/*
         Catalog
       */}
 
-      <Route path="/" element={<CatalogIndex />} />
+      <Route
+        path="/catalog"
+        element={<Navigate to="/catalog/local" replace={true} />}
+      />
 
       <Route path="/catalog/local" element={<LocalCatalog />} />
 
@@ -34,7 +42,10 @@ export function appRouteElements() {
         Nodes
       */}
 
-      <Route path="/nodes" element={<NodesIndex />} />
+      <Route
+        path="/nodes"
+        element={<Navigate to="/nodes/trusted" replace={true} />}
+      />
 
       <Route path="/nodes/trusted" element={<TrustedNodes />} />
 
