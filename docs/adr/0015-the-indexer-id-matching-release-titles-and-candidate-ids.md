@@ -108,6 +108,8 @@ The link in a result uses the address the request came in on. Through Prowlarr t
 
 Adding the Arr app to Nodearr directly avoids all three.
 
+Amendment, 2026-10-15: adding Prowlarr to Nodearr in Settings > Apps does this safely. Nodearr adds itself to Prowlarr with a sync profile that switches off the copies Prowlarr makes in Sonarr and Radarr, so nothing unpinned can grab a Nodearr release (ADR 0007, amendments). The steps above are for someone who adds Nodearr to Prowlarr by hand instead.
+
 ## Follow-up work
 
 - S7: the download client reads the candidate ID from the ticket and starts a transfer. Until then a grab is refused with a plain reason.

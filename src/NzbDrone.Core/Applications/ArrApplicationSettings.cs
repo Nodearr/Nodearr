@@ -19,7 +19,7 @@ namespace NzbDrone.Core.Applications
         }
     }
 
-    public abstract class ArrApplicationSettings : IProviderConfig
+    public abstract class ArrApplicationSettings : IProviderConfig, IArrConnection
     {
         private static readonly ArrApplicationSettingsValidator Validator = new();
 
@@ -43,6 +43,9 @@ namespace NzbDrone.Core.Applications
 
         [FieldDefinition(6, Label = "ApplicationSettingsSyncCategories", Type = FieldType.Select, SelectOptions = typeof(NewznabCategoryFieldConverter), Advanced = true, HelpText = "ApplicationSettingsSyncCategoriesHelpText")]
         public IEnumerable<int> SyncCategories { get; set; }
+
+        // Not a setting: kept out of what is saved and shown.
+        string IArrConnection.ApiRoute => "/api/v3";
 
         public NzbDroneValidationResult Validate()
         {

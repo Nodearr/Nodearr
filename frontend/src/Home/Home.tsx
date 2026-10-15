@@ -38,8 +38,13 @@ function Home() {
   const { data: identity } = useNodeIdentity();
   const { data: nodeSettings, isFetched: isNodeSettingsFetched } =
     useSettings<NodeSettingsModel>('/settings/node');
-  const { data: applications = [], isFetched: isApplicationsFetched } =
+  const { data: allApplications = [], isFetched: isApplicationsFetched } =
     useApiQuery<Application[]>({ path: APPLICATIONS_PATH });
+
+  // The apps whose libraries Nodearr reads. Prowlarr only searches, and holds no library.
+  const applications = allApplications.filter(
+    (app) => app.implementation !== 'Prowlarr'
+  );
 
   // While an invite is out, the page looks every few seconds for the friend redeeming it.
   const { data: peers = [], isFetched: isPeersFetched } = useApiQuery<Peer[]>({

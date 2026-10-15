@@ -98,6 +98,7 @@ namespace NzbDrone.Core.Catalog
         public void Refresh(int? applicationId, bool purgeMissing)
         {
             var applications = _applicationFactory.SyncEnabled()
+                .Where(a => ((ApplicationDefinition)a.Definition).HoldsLibrary)
                 .Where(a => !applicationId.HasValue || a.Definition.Id == applicationId.Value)
                 .ToList();
 
@@ -171,7 +172,7 @@ namespace NzbDrone.Core.Catalog
 
         public List<CatalogApplicationSummary> GetSummaries()
         {
-            return _applicationFactory.All().Select(definition =>
+            return _applicationFactory.All().Where(definition => definition.HoldsLibrary).Select(definition =>
             {
                 var status = _syncStatus.ForApplication(definition.Id);
 

@@ -31,18 +31,18 @@ namespace NzbDrone.Core.Test.Applications
 
             var proxy = Mocker.GetMock<IArrV3Proxy>();
 
-            proxy.Setup(p => p.GetArray(It.IsAny<ArrApplicationSettings>(), It.IsAny<string>()))
-                 .Returns<ArrApplicationSettings, string>((_, resource) => resource.EndsWith("/schema") ? Schema(resource) : _present.GetValueOrDefault(resource) ?? new JArray());
-            proxy.Setup(p => p.Post(It.IsAny<ArrApplicationSettings>(), It.IsAny<string>(), It.IsAny<JObject>()))
-                 .Returns<ArrApplicationSettings, string, JObject>((_, resource, body) =>
+            proxy.Setup(p => p.GetArray(It.IsAny<IArrConnection>(), It.IsAny<string>()))
+                 .Returns<IArrConnection, string>((_, resource) => resource.EndsWith("/schema") ? Schema(resource) : _present.GetValueOrDefault(resource) ?? new JArray());
+            proxy.Setup(p => p.Post(It.IsAny<IArrConnection>(), It.IsAny<string>(), It.IsAny<JObject>()))
+                 .Returns<IArrConnection, string, JObject>((_, resource, body) =>
                  {
                      _posted.Add((resource, body));
                      body["id"] = _posted.Count;
 
                      return body;
                  });
-            proxy.Setup(p => p.Put(It.IsAny<ArrApplicationSettings>(), It.IsAny<string>(), It.IsAny<JObject>()))
-                 .Returns<ArrApplicationSettings, string, JObject>((_, resource, body) =>
+            proxy.Setup(p => p.Put(It.IsAny<IArrConnection>(), It.IsAny<string>(), It.IsAny<JObject>()))
+                 .Returns<IArrConnection, string, JObject>((_, resource, body) =>
                  {
                      _put.Add((resource, body));
 
