@@ -14,6 +14,7 @@ import { useIsWindowsService } from 'System/Status/useSystemStatus';
 import { useRestart } from 'System/useSystem';
 import { InputChanged } from 'typings/inputs';
 import translate from 'Utilities/String/translate';
+import BackupSettings from './BackupSettings';
 import HostSettings from './HostSettings';
 import LoggingSettings from './LoggingSettings';
 import SecuritySettings from './SecuritySettings';
@@ -171,6 +172,13 @@ function GeneralSettings() {
               logLevel={settings.logLevel}
               logSizeLimit={settings.logSizeLimit}
               isFixed={isFixed}
+              onInputChange={handleInputChange}
+            />
+
+            <BackupSettings
+              backupFolder={settings.backupFolder}
+              backupInterval={settings.backupInterval}
+              backupRetention={settings.backupRetention}
               onInputChange={handleInputChange}
             />
           </Form>
