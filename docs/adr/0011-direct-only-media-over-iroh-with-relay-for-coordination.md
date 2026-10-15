@@ -138,3 +138,22 @@ What it still does not show:
 
 - **Two home routers.** The far side had a public address of its own, translated one to one, behind a firewall that tracks connections. A second home router adds its own translation of ports. That is expected to work for a router that keeps one public port, by the same mechanism, and has not been run.
 - **Networks that give a different public port to every destination**: some mobile and carrier networks, and Docker Desktop. Two such sides cannot connect directly, and one such side needs the other to be reachable. Nodearr reports this before a transfer is tried.
+
+### 2026-10-14: two home networks
+
+The first run between two homes, each behind its own ordinary router. Both machines ran Windows, with Nodearr 0.1.0 and Radarr 6.4.4 straight on Windows from their release packages (`tools/two-machine-test.ps1`, the owner sending and a friend receiving). Neither owner forwarded a port.
+
+| | The owner's side | The friend's side |
+| --- | --- | --- |
+| Its network, as Nodearr reported it | UDP works and the public port stays the same | UDP works and the public port stays the same |
+| The address the other side reached | 73.19.61.153:6633 | 174.21.18.84:6633 |
+| Firewall | Allowed `nodearr-transport` | A rule blocking `nodearr-transport` (Windows' question was cancelled) |
+
+The connection check said Direct. Radarr on the friend's side searched, grabbed and imported the test film: 89,579,739 bytes in 32 seconds, search and import included, 24 seconds of it the transfer. The SHA-256 was the same at both ends.
+
+What it shows: two nodes behind two home routers found a direct route and moved a file.
+
+What it does not yet show:
+
+- **That nothing was opened.** Nodearr asks each router for a port mapping (UPnP, NAT-PMP or PCP) by default, and does not report whether one was granted. Nobody forwarded a port, but either router may have opened 6633 on Nodearr's request. A run with `-NoPortMapping` on both sides settles it.
+- **Why the friend's blocking rule did not matter.** Most likely because the friend's side opened the connections, and Windows lets in replies to traffic a program has sent. That has not been checked. A connection the owner's side opens first may still be refused there.

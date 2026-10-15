@@ -109,11 +109,34 @@ It stops Nodearr and Radarr and removes the `nodearr-test-windows` folder: Radar
 | Option | What for |
 | --- | --- |
 | `-OpenFirewall` | Add the firewall rule instead of waiting for Windows to ask. Needs PowerShell as administrator. |
+| `-NoPortMapping` | Stop Nodearr asking the router to open its port, which it does by default. See below. |
 | `-Name 'Alex'` | What the other side sees this node called. Default: Sender or Receiver. |
 | `-NodearrZip PATH` | Use a Nodearr package that is not in Downloads. |
 | `-SizeMB 500` | A bigger test video, on the sending side. Default 100. |
 | `-HttpPort`, `-UdpPort`, `-RadarrPort` | Other ports, if 6633 or 7878 is already taken. |
 | `-Dir PATH` | Keep everything somewhere other than `nodearr-test-windows` in your user folder. |
+
+## The run with nothing opened
+
+Nodearr asks the router to open its UDP port for it, through UPnP, NAT-PMP or PCP, and many home routers do so without asking anyone. So a run where nobody forwarded a port may still have had one open. To show that two networks connect with nothing opened on either, run both sides again with port mapping off, on a UDP port neither has used:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File two-machine-test.ps1 down
+```
+
+Then, on the sending side:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File two-machine-test.ps1 send -NoPortMapping -UdpPort 6655
+```
+
+And on the receiving side, with the new code:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File two-machine-test.ps1 receive 'THE-CODE' -NoPortMapping -UdpPort 6656
+```
+
+A new port matters because a mapping the router already made for 6633 lasts a while after Nodearr stops asking for it.
 
 ## What has and has not been run
 
@@ -124,6 +147,6 @@ Run end to end on one Windows 11 machine on 2026-10-14, with both sides on it, i
 - **`fetch`** did it again.
 - **`status`** and **`down`** worked. `down` left no process and no folder behind.
 
-It has not yet been run between two machines. That is the run this guide is for.
+The same day it was run between two homes, on two Windows machines behind ordinary routers. The connection check said Direct, and the film arrived in 32 seconds with the same SHA-256. Port mapping was on, so the run above, with it off, is still to be made (ADR 0011, "two home networks").
 
 The script keeps to its own folder. A folder it did not make, such as `~\nodearr-test` from `docker/two-machine-test.py`, is refused and left as it is.

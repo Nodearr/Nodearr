@@ -45,6 +45,11 @@
     Add a Windows Firewall rule that lets UDP in to Nodearr's transport. Needs PowerShell run as
     administrator. "down" removes the rule. Without it, allow nodearr-transport when Windows asks.
 
+.PARAMETER NoPortMapping
+    Do not let Nodearr ask the router to open its port (UPnP, NAT-PMP, PCP), which it does by
+    default. For a run that shows two networks connecting with nothing opened on either. Set
+    when a side is first set up, and kept until "down".
+
 .PARAMETER Name
     What the other side sees this node called. Default: Sender or Receiver.
 
@@ -81,6 +86,7 @@ param(
 
     [string] $NodearrZip,
     [switch] $OpenFirewall,
+    [switch] $NoPortMapping,
     [string] $Name,
     [int] $SizeMB = 100,
     [int] $TimeoutSec = 900,
@@ -367,12 +373,16 @@ function New-SideState([string] $Which) {
         radarr_port = $RadarrPort
         nodearr_key = New-Key
         radarr_key  = New-Key
+        no_port_mapping = [bool] $NoPortMapping
     }
 }
 
 function Get-SideState([string] $Which) {
     $state = Read-State (Get-SideFolder $Which)
     if ($null -eq $state) { $state = New-SideState $Which }
+    elseif ($NoPortMapping -and -not $state.no_port_mapping) {
+        Stop-Test "This side was set up with port mapping on. Run ""down"" first, then start it again with -NoPortMapping."
+    }
     Save-State $state
     return $state
 }
@@ -445,6 +455,7 @@ function Start-Apps {
             Nodearr__Transport__NodeName         = $script:state.name
             Nodearr__Transport__Port             = "$($script:state.udp_port)"
             Nodearr__Transport__DownloadFolder   = (Join-Path $folder 'downloads')
+            Nodearr__Transport__DisablePortMapping = $(if ($script:state.no_port_mapping) { 'true' } else { 'false' })
         }
         Save-State $script:state
 
@@ -485,7 +496,8 @@ function Get-BlockingRules {
     # Cancelling Windows' question adds rules that block the program, and a block wins over an allow.
     try {
         $program = Get-TransportPath
-        return @(Get-NetFirewallApplicationFilter -Program $program -ErrorAction SilentlyContinue | Get-NetFirewallRule | Where-Object { $_.Action -eq 'Block' -and $_.Enabled -eq 'True' } | ForEach-Object { $_.DisplayName })
+        # Windows adds one for UDP and one for TCP, under the same name.
+        return @(Get-NetFirewallApplicationFilter -Program $program -ErrorAction SilentlyContinue | Get-NetFirewallRule | Where-Object { $_.Action -eq 'Block' -and $_.Enabled -eq 'True' } | ForEach-Object { $_.DisplayName } | Sort-Object -Unique)
     }
     catch { return @() }
 }
