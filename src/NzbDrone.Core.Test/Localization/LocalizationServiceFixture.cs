@@ -29,15 +29,18 @@ namespace NzbDrone.Core.Test.Localization
             localizedString.Should().Be("UI Language");
         }
 
+        // Nodearr ships English only. A language chosen in the settings that has no translation
+        // falls back to English, string for string.
         [Test]
-        public void should_get_string_in_french()
+        public void should_fall_back_to_english_for_a_language_with_no_translation()
         {
             Mocker.GetMock<IConfigService>().Setup(m => m.UILanguage).Returns((int)Language.French);
 
             var localizedString = Subject.GetLocalizedString("UiLanguage");
 
-            localizedString.Should().Be("Langue de l'interface utilisateur");
+            localizedString.Should().Be("UI Language");
 
+            // That there is no French file is logged.
             ExceptionVerification.ExpectedErrors(1);
         }
 

@@ -22,13 +22,7 @@ interface ManageApplicationsModalRowProps {
 }
 
 function ManageApplicationsModalRow(props: ManageApplicationsModalRowProps) {
-  const {
-    id,
-    name,
-    syncLevel,
-    implementation,
-    tags,
-  } = props;
+  const { id, name, syncLevel, implementation, tags } = props;
 
   const { toggleSelected, useIsSelected } = useSelect<Application>();
   const isSelected = useIsSelected(id);

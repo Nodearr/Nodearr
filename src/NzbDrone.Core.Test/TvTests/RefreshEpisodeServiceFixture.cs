@@ -10,10 +10,14 @@ using NzbDrone.Core.MetadataSource.SkyHook;
 using NzbDrone.Core.Test.Framework;
 using NzbDrone.Core.Tv;
 using NzbDrone.Test.Common;
+using NzbDrone.Test.Common.Categories;
 
 namespace NzbDrone.Core.Test.TvTests
 {
+    // Its setup reads a real series from the metadata service, so it needs the network and a
+    // metadata host that answers. Run with the other integration tests.
     [TestFixture]
+    [IntegrationTest]
     public class RefreshEpisodeServiceFixture : CoreTest<RefreshEpisodeService>
     {
         private List<Episode> _insertedEpisodes;

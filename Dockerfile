@@ -3,11 +3,14 @@
 # Nodearr in one image: the web UI, the .NET application and the peer transport sidecar.
 #
 #   docker build -t nodearr .
+#   docker buildx build --platform linux/amd64,linux/arm64 -t nodearr .
 #
-# The three build stages share nothing, so they build side by side.
+# The three build stages share nothing, so they build side by side. They run on the machine doing
+# the build, whatever the image is for: the web UI and the .NET application come out the same for
+# every architecture, and the sidecar is cross-compiled. Only the last stage is the target's own.
 
 # --- The web UI -----------------------------------------------------------------------------
-FROM node:20.11.1-bookworm AS frontend
+FROM --platform=$BUILDPLATFORM node:20.11.1-bookworm AS frontend
 WORKDIR /build
 
 RUN corepack enable && corepack prepare yarn@4.15.0 --activate
@@ -20,19 +23,37 @@ COPY frontend ./frontend
 RUN yarn build --env production
 
 # --- The peer transport sidecar ---------------------------------------------------------------
-FROM rust:1-bookworm AS transport
+# A statically linked musl binary for the target architecture, cross-compiled with Zig, as the
+# release packages' Linux sidecars are (build/Build-Transport.ps1).
+FROM --platform=$BUILDPLATFORM rust:1-bookworm AS transport
+ARG TARGETARCH
 WORKDIR /build/transport
+
+RUN apt-get update && apt-get install -y --no-install-recommends python3-venv && rm -rf /var/lib/apt/lists/* && \
+    python3 -m venv /opt/zigbuild && /opt/zigbuild/bin/pip install --no-cache-dir cargo-zigbuild==0.23.4
+ENV PATH=/opt/zigbuild/bin:$PATH
 
 COPY transport/Cargo.toml transport/Cargo.lock ./
 COPY transport/src ./src
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/build/transport/target \
-    cargo build --release --locked && \
-    cp target/release/nodearr-transport /nodearr-transport
+    --mount=type=cache,target=/build/transport/target,id=transport-target-$TARGETARCH \
+    case "$TARGETARCH" in \
+      amd64) target=x86_64-unknown-linux-musl ;; \
+      arm64) target=aarch64-unknown-linux-musl ;; \
+      arm) target=armv7-unknown-linux-musleabihf ;; \
+      *) echo "No sidecar target for $TARGETARCH" && exit 1 ;; \
+    esac && \
+    rustup target add "$target" && \
+    cargo zigbuild --release --locked --target "$target" && \
+    cp "target/$target/release/nodearr-transport" /nodearr-transport
 
 # --- The application --------------------------------------------------------------------------
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS backend
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS backend
 WORKDIR /build
+
+# The release version, such as 0.1.0, which the release workflow passes. Left empty, the build
+# numbers itself as a development build does.
+ARG VERSION=
 
 # The repository's own global.json pins one SDK patch level for development. The image's SDK is
 # used here as it comes, so that file is left out.
@@ -41,7 +62,8 @@ COPY .editorconfig ./
 COPY Logo ./Logo
 COPY src ./src
 RUN --mount=type=cache,target=/root/.nuget/packages \
-    dotnet build src/Nodearr.sln --configuration Release -p:Platform=Posix --nologo --verbosity minimal
+    dotnet build src/Nodearr.sln --configuration Release -p:Platform=Posix --nologo --verbosity minimal \
+      ${VERSION:+-p:AssemblyVersion=${VERSION%%-*}.0}
 
 # --- What runs --------------------------------------------------------------------------------
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime

@@ -1,11 +1,11 @@
 import React, { useCallback, useState } from 'react';
+import { Error } from 'App/State/AppSectionState';
 import Card from 'Components/Card';
 import FieldSet from 'Components/FieldSet';
 import Icon from 'Components/Icon';
 import PageSectionContent from 'Components/Page/PageSectionContent';
 import { icons } from 'Helpers/Props';
 import ApplicationModel from 'typings/Application';
-import { Error } from 'App/State/AppSectionState';
 import translate from 'Utilities/String/translate';
 import AddApplicationModal from './AddApplicationModal';
 import Application from './Application';

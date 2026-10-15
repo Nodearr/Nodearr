@@ -15,10 +15,7 @@ function AddApplicationModal({
 }: AddApplicationModalProps) {
   return (
     <Modal isOpen={isOpen} onModalClose={onModalClose}>
-      <AddApplicationModalContent
-        {...otherProps}
-        onModalClose={onModalClose}
-      />
+      <AddApplicationModalContent {...otherProps} onModalClose={onModalClose} />
     </Modal>
   );
 }

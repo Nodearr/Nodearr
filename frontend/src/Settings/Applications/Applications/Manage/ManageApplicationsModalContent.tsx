@@ -180,10 +180,7 @@ function ManageApplicationsModalContentInner({
     [selectAll, unselectAll]
   );
 
-  const errorMessage = getErrorMessage(
-    error,
-    'Unable to load applications.'
-  );
+  const errorMessage = getErrorMessage(error, 'Unable to load applications.');
 
   return (
     <ModalContent onModalClose={onModalClose}>

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { useTranslations } from "../../App/useTranslations";
 import useSystemStatus from 'System/Status/useSystemStatus';
+import { useTranslations } from '../../App/useTranslations';
 
 const useAppPage = () => {
   const { isFetched: isSystemStatusFetched, error: systemStatusError } =
@@ -16,7 +16,7 @@ const useAppPage = () => {
       hasError: !!(systemStatusError || translationsError),
       errors: {
         systemStatusError,
-        translationsError
+        translationsError,
       },
     };
   }, [systemStatusError, translationsError]);

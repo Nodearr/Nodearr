@@ -7,8 +7,8 @@ import Form from 'Components/Form/Form';
 import FormGroup from 'Components/Form/FormGroup';
 import FormInputGroup from 'Components/Form/FormInputGroup';
 import FormLabel from 'Components/Form/FormLabel';
-import { EnhancedSelectInputValue } from 'Components/Form/Select/EnhancedSelectInput';
 import ProviderFieldFormGroup from 'Components/Form/ProviderFieldFormGroup';
+import { EnhancedSelectInputValue } from 'Components/Form/Select/EnhancedSelectInput';
 import Button from 'Components/Link/Button';
 import SpinnerErrorButton from 'Components/Link/SpinnerErrorButton';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
@@ -155,7 +155,7 @@ function EditApplicationModalContent({
             validationErrors={validationErrors}
             validationWarnings={validationWarnings}
           >
-            {!!message ? (
+            {message ? (
               <Alert className={styles.message} kind={message.value.type}>
                 {message.value.message}
               </Alert>
