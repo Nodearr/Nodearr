@@ -9,7 +9,11 @@ import Home from 'Home/Home';
 import NodeInvites from 'Nodes/Invites/NodeInvites';
 import TrustedNodes from 'Nodes/Trusted/TrustedNodes';
 import Settings from 'Settings/Settings';
+import Backups from 'System/Backup/Backups';
+import LogsTable from 'System/Events/LogsTable';
+import Logs from 'System/Logs/Logs';
 import Status from 'System/Status/Status';
+import Tasks from 'System/Tasks/Tasks';
 import ApplicationSettings from '../Settings/Applications/ApplicationSettings';
 import GeneralSettings from '../Settings/General/GeneralSettings';
 import NodeSettings from '../Settings/Node/NodeSettings';
@@ -74,6 +78,14 @@ export function appRouteElements() {
       */}
 
       <Route path="/system/status" element={<Status />} />
+
+      <Route path="/system/tasks" element={<Tasks />} />
+
+      <Route path="/system/backup" element={<Backups />} />
+
+      <Route path="/system/events" element={<LogsTable />} />
+
+      <Route path="/system/logs/files/*" element={<Logs />} />
 
       {/*
         Not Found

@@ -89,7 +89,7 @@ function LogsTable() {
   }, [executeCommand, goToPage, refetch]);
 
   return (
-    <PageContent title={translate('Logs')}>
+    <PageContent title={translate('Events')}>
       <PageToolbar>
         <PageToolbarSection>
           <PageToolbarButton

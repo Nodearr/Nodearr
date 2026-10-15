@@ -11,7 +11,6 @@ using NzbDrone.Core.Configuration.Events;
 using NzbDrone.Core.HealthCheck;
 using NzbDrone.Core.Housekeeping;
 using NzbDrone.Core.Lifecycle;
-using NzbDrone.Core.MediaFiles.Commands;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Nodes;
@@ -107,12 +106,6 @@ namespace NzbDrone.Core.Jobs
                     {
                         Interval = 24 * 60,
                         TypeName = typeof(HousekeepingCommand).FullName
-                    },
-
-                    new ScheduledTask
-                    {
-                        Interval = 24 * 60,
-                        TypeName = typeof(CleanUpRecycleBinCommand).FullName
                     },
 
                     new ScheduledTask

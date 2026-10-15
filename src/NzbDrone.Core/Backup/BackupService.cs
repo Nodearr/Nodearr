@@ -14,6 +14,7 @@ using NzbDrone.Common.Instrumentation.Extensions;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Messaging.Commands;
+using NzbDrone.Core.Nodes.Transport;
 
 namespace NzbDrone.Core.Backup
 {
@@ -89,6 +90,7 @@ namespace NzbDrone.Core.Backup
 
             BackupConfigFile();
             BackupDatabase();
+            BackupNodeKey();
             CreateVersionInfo(dateNow);
 
             _logger.ProgressDebug("Creating backup zip");
@@ -156,6 +158,12 @@ namespace NzbDrone.Core.Backup
                         _diskProvider.MoveFile(file, _appFolderInfo.GetDatabaseRestore(), true);
                         restoredFile = true;
                     }
+
+                    // Put in place when the transport next starts, as the database is at the next start.
+                    if (fileName.Equals(NodeKeyFile.FileName, StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        _diskProvider.MoveFile(file, NodeKeyFile.GetRestorePath(_appFolderInfo.AppDataFolder), true);
+                    }
                 }
 
                 if (!restoredFile)
@@ -214,6 +222,21 @@ namespace NzbDrone.Core.Backup
             var tempConfigFile = Path.Combine(_backupTempFolder, Path.GetFileName(configFile));
 
             _diskTransferService.TransferFile(configFile, tempConfigFile, TransferMode.Copy);
+        }
+
+        // Without the key a restored node is a new node, and every friend would have to pair with it again.
+        private void BackupNodeKey()
+        {
+            var keyFile = NodeKeyFile.GetPath(_appFolderInfo.AppDataFolder);
+
+            if (!_diskProvider.FileExists(keyFile))
+            {
+                return;
+            }
+
+            _logger.ProgressDebug("Backing up the node's key");
+
+            _diskTransferService.TransferFile(keyFile, Path.Combine(_backupTempFolder, NodeKeyFile.FileName), TransferMode.Copy);
         }
 
         private void CreateVersionInfo(DateTime dateNow)

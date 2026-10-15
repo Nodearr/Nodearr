@@ -128,6 +128,22 @@ const LINKS: SidebarItem[] = [
         to: '/system/status',
         statusComponent: HealthStatus,
       },
+      {
+        title: () => translate('Tasks'),
+        to: '/system/tasks',
+      },
+      {
+        title: () => translate('Backup'),
+        to: '/system/backup',
+      },
+      {
+        title: () => translate('Events'),
+        to: '/system/events',
+      },
+      {
+        title: () => translate('LogFiles'),
+        to: '/system/logs/files',
+      },
     ],
   },
 ];

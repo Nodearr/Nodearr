@@ -98,6 +98,8 @@ function Backups() {
       </PageToolbar>
 
       <PageContentBody>
+        <Alert kind={kinds.WARNING}>{translate('BackupsHoldNodeKey')}</Alert>
+
         {isFetching ? <LoadingIndicator /> : null}
 
         {!isFetching && !!error ? (

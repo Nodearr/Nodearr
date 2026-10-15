@@ -434,6 +434,8 @@ namespace NzbDrone.Core.Nodes.Transport
                 return false;
             }
 
+            NodeKeyFile.ApplyPendingRestore(_appFolderInfo.AppDataFolder, _logger);
+
             var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
             var startInfo = new ProcessStartInfo(binary)
             {

@@ -192,6 +192,7 @@
   "BackupNow": "Backup Now",
   "BackupRetentionHelpText": "Automatic backups older than the retention period will be cleaned up automatically",
   "Backups": "Backups",
+  "BackupsHoldNodeKey": "A backup holds this node's settings, its trust in your friends, and its key: the secret that makes it the node your friends paired with. Restoring one brings all of that back, so nobody has to pair again. Anyone who has a backup can pretend to be this node, so keep them somewhere private.",
   "BackupsLoadError": "Unable to load backups",
   "BeforeUpdate": "Before update",
   "BindAddress": "Bind Address",
