@@ -1,0 +1,291 @@
+.page {
+  max-width: 980px;
+}
+
+/* Welcome */
+
+.hero {
+  margin-bottom: 24px;
+  padding: 24px 28px;
+  border: 1px solid var(--borderColor);
+  border-left: 4px solid var(--primaryColor);
+  border-radius: 4px;
+  background-color: var(--cardBackgroundColor);
+}
+
+.heroTitle {
+  margin: 0 0 8px;
+  font-weight: 300;
+  font-size: 28px;
+}
+
+.heroText {
+  margin: 0;
+  max-width: 720px;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.progress {
+  margin-top: 14px;
+  color: var(--helpTextColor);
+  font-size: 13px;
+}
+
+/* Setup steps */
+
+.step {
+  margin-bottom: 14px;
+  padding: 18px 22px;
+  border: 1px solid var(--borderColor);
+  border-radius: 4px;
+  background-color: var(--cardBackgroundColor);
+}
+
+.stepActive {
+  composes: step;
+
+  border-color: var(--primaryColor);
+  box-shadow: 0 0 0 1px var(--primaryColor);
+}
+
+.stepDone {
+  composes: step;
+
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.stepHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.stepNumber {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--primaryColor);
+  border-radius: 50%;
+  color: var(--primaryColor);
+  font-weight: bold;
+}
+
+.stepNumberDone {
+  composes: stepNumber;
+
+  border-color: var(--successColor);
+  background-color: var(--successColor);
+  color: var(--inverseLabelTextColor);
+}
+
+.stepTitle {
+  flex: 1 1 auto;
+  margin: 0;
+  font-weight: bold;
+  font-size: 17px;
+}
+
+.stepSummary {
+  color: var(--helpTextColor);
+}
+
+.stepBody {
+  margin-top: 12px;
+  margin-left: 40px;
+}
+
+.stepText {
+  margin: 0 0 12px;
+  max-width: 680px;
+  line-height: 1.6;
+}
+
+.hint {
+  margin: 10px 0 0;
+  color: var(--helpTextColor);
+  font-size: 13px;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.nameRow {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  max-width: 520px;
+  gap: 10px;
+}
+
+.nameInput {
+  flex: 1 1 220px;
+}
+
+/* Connecting with a friend */
+
+.split {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.panel {
+  padding: 14px 16px;
+  border: 1px solid var(--borderColor);
+  border-radius: 4px;
+}
+
+.panelTitle {
+  margin: 0 0 6px;
+  font-weight: bold;
+  font-size: 15px;
+}
+
+.panelText {
+  margin: 0 0 12px;
+  color: var(--helpTextColor);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.checkbox {
+  display: block;
+  margin-bottom: 4px;
+  cursor: pointer;
+}
+
+.code {
+  overflow-y: auto;
+  margin: 8px 0;
+  padding: 10px;
+  max-height: 120px;
+  border: 1px solid var(--borderColor);
+  border-radius: 4px;
+  background-color: var(--inputBackgroundColor);
+  word-break: break-all;
+  font-size: 12px;
+  font-family: var(--monoSpaceFontFamily);
+}
+
+.waiting {
+  margin-top: 8px;
+  color: var(--helpTextColor);
+  font-size: 13px;
+}
+
+.message {
+  margin-top: 10px;
+}
+
+/* All set */
+
+.allSet {
+  composes: hero;
+
+  position: relative;
+  border-left-color: var(--successColor);
+}
+
+.dismiss {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+}
+
+/* Overview */
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+
+  margin-bottom: 24px;
+  gap: 16px;
+}
+
+.card {
+  padding: 16px 18px;
+  border: 1px solid var(--borderColor);
+  border-radius: 4px;
+  background-color: var(--cardBackgroundColor);
+}
+
+.cardWide {
+  composes: card;
+
+  grid-column: 1 / -1;
+}
+
+.cardTitle {
+  display: flex;
+  align-items: center;
+  margin: 0 0 12px;
+  font-weight: bold;
+  font-size: 15px;
+  gap: 8px;
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  gap: 24px;
+}
+
+.statValue {
+  font-weight: 300;
+  font-size: 30px;
+  line-height: 1.1;
+}
+
+.statLabel {
+  color: var(--helpTextColor);
+  font-size: 13px;
+}
+
+.list {
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.listItem {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--borderColor);
+  gap: 10px;
+
+  &:last-child {
+    border-bottom: 0;
+  }
+}
+
+.direct {
+  color: var(--successColor);
+}
+
+.relay {
+  color: var(--warningColor);
+}
+
+.muted {
+  color: var(--helpTextColor);
+  font-size: 13px;
+}
+
+.attention {
+  margin: 0 0 6px;
+  line-height: 1.5;
+}
+
+.cardLink {
+  font-size: 13px;
+}

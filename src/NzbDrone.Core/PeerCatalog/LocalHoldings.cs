@@ -19,23 +19,26 @@ namespace NzbDrone.Core.PeerCatalog
         private readonly ICatalogEpisodeFileRepository _episodeFiles;
         private readonly ICatalogMovieRepository _movies;
         private readonly ICatalogMovieFileRepository _movieFiles;
+        private readonly ICatalogQualityProfileRepository _profiles;
 
         public LocalHoldingsFactory(ICatalogSeriesRepository series,
                                     ICatalogEpisodeRepository episodes,
                                     ICatalogEpisodeFileRepository episodeFiles,
                                     ICatalogMovieRepository movies,
-                                    ICatalogMovieFileRepository movieFiles)
+                                    ICatalogMovieFileRepository movieFiles,
+                                    ICatalogQualityProfileRepository profiles)
         {
             _series = series;
             _episodes = episodes;
             _episodeFiles = episodeFiles;
             _movies = movies;
             _movieFiles = movieFiles;
+            _profiles = profiles;
         }
 
         public LocalHoldings Load()
         {
-            return new LocalHoldings(_series.All(), _episodes.All(), _episodeFiles.All(), _movies.All(), _movieFiles.All());
+            return new LocalHoldings(_series.All(), _episodes.All(), _episodeFiles.All(), _movies.All(), _movieFiles.All(), _profiles.All());
         }
     }
 
@@ -62,12 +65,23 @@ namespace NzbDrone.Core.PeerCatalog
         private readonly ILookup<string, CatalogMovie> _moviesByExternalId;
         private readonly Dictionary<(int, int), CatalogMovieFile> _movieFiles;
 
+        // By application and the Arr app's profile ID. Only profiles whose ranking has been read.
+        private readonly Dictionary<(int, int), QualityRanking> _rankings;
+
         public LocalHoldings(IEnumerable<CatalogSeries> series,
                              IEnumerable<CatalogEpisode> episodes,
                              IEnumerable<CatalogEpisodeFile> episodeFiles,
                              IEnumerable<CatalogMovie> movies,
-                             IEnumerable<CatalogMovieFile> movieFiles)
+                             IEnumerable<CatalogMovieFile> movieFiles,
+                             IEnumerable<CatalogQualityProfile> profiles = null)
         {
+            _rankings = (profiles ?? Enumerable.Empty<CatalogQualityProfile>())
+                .Where(p => p.MissingSince == null)
+                .Select(p => (Key: (p.ApplicationId, p.ArrId), Ranking: QualityRanking.FromStored(p.QualityRanking)))
+                .Where(x => x.Ranking != null)
+                .GroupBy(x => x.Key)
+                .ToDictionary(g => g.Key, g => g.First().Ranking);
+
             // An item the Arr app no longer reports is not something this node holds.
             _seriesByExternalId = series.Where(s => s.MissingSince == null)
                 .SelectMany(s => ExternalIds(s.TvdbId, s.TmdbId, s.ImdbId).Select(id => (id, s)))
@@ -102,7 +116,10 @@ namespace NzbDrone.Core.PeerCatalog
                 return PeerItemStatus.NotInLibrary;
             }
 
-            var files = movies.Select(m => _movieFiles.GetValueOrDefault((m.ApplicationId, m.ArrMovieFileId))).Where(f => f != null).ToList();
+            var files = movies
+                .Select(m => (File: (CatalogFile)_movieFiles.GetValueOrDefault((m.ApplicationId, m.ArrMovieFileId)), Ranking: RankingFor(m.ApplicationId, m.QualityProfileId)))
+                .Where(x => x.File != null)
+                .ToList();
 
             return Compare(item, files);
         }
@@ -122,9 +139,9 @@ namespace NzbDrone.Core.PeerCatalog
             foreach (var number in item.GetEpisodeNumbers())
             {
                 var files = series
-                    .SelectMany(s => _episodes[(s.ApplicationId, s.ArrId, item.SeasonNumber, number)])
-                    .Select(e => _episodeFiles.GetValueOrDefault((e.ApplicationId, e.ArrEpisodeFileId)))
-                    .Where(f => f != null)
+                    .SelectMany(s => _episodes[(s.ApplicationId, s.ArrId, item.SeasonNumber, number)]
+                        .Select(e => (File: (CatalogFile)_episodeFiles.GetValueOrDefault((e.ApplicationId, e.ArrEpisodeFileId)), Ranking: RankingFor(s.ApplicationId, s.QualityProfileId))))
+                    .Where(x => x.File != null)
                     .ToList();
 
                 var status = Compare(item, files);
@@ -138,30 +155,34 @@ namespace NzbDrone.Core.PeerCatalog
             return result;
         }
 
-        private static PeerItemStatus Compare(PeerCatalogItem item, List<CatalogEpisodeFile> local)
+        private QualityRanking RankingFor(int applicationId, int profileId)
         {
-            return Compare(item, local.Select(f => (f.Resolution, f.QualitySource)).ToList());
+            return _rankings.GetValueOrDefault((applicationId, profileId));
         }
 
-        private static PeerItemStatus Compare(PeerCatalogItem item, List<CatalogMovieFile> local)
-        {
-            return Compare(item, local.Select(f => (f.Resolution, f.QualitySource)).ToList());
-        }
-
-        // A deliberately simple idea of "better": higher resolution, or the same resolution from a
-        // better source. The Arr apps make the real decision with their own profiles when they search.
-        private static PeerItemStatus Compare(PeerCatalogItem item, List<(int Resolution, string Source)> local)
+        // An upgrade is a file every local copy's Arr app would take in place of the one it has.
+        private static PeerItemStatus Compare(PeerCatalogItem item, List<(CatalogFile File, QualityRanking Ranking)> local)
         {
             if (local.Count == 0)
             {
                 return PeerItemStatus.Missing;
             }
 
-            var isBetterThanAll = local.All(l =>
-                item.Resolution > l.Resolution ||
-                (item.Resolution == l.Resolution && Rank(item.QualitySource) > Rank(l.Source)));
+            return local.All(l => IsBetter(item, l.File, l.Ranking)) ? PeerItemStatus.Upgrade : PeerItemStatus.Have;
+        }
 
-            return isBetterThanAll ? PeerItemStatus.Upgrade : PeerItemStatus.Have;
+        // As the Arr app's quality profile judges it, where the profile's ranking is known. Before
+        // the profiles are next read it is not, and a simple rule stands in: a higher resolution, or
+        // the same resolution from a better source.
+        private static bool IsBetter(PeerCatalogItem item, CatalogFile local, QualityRanking ranking)
+        {
+            if (ranking != null && item.Quality.IsNotNullOrWhiteSpace())
+            {
+                return ranking.IsUpgrade(local.Quality, item.Quality);
+            }
+
+            return item.Resolution > local.Resolution ||
+                   (item.Resolution == local.Resolution && Rank(item.QualitySource) > Rank(local.QualitySource));
         }
 
         private static int Rank(string source)

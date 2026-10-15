@@ -7,7 +7,6 @@ import PageContentBody from 'Components/Page/PageContentBody';
 import PageToolbar from 'Components/Page/Toolbar/PageToolbar';
 import PageToolbarButton from 'Components/Page/Toolbar/PageToolbarButton';
 import PageToolbarSection from 'Components/Page/Toolbar/PageToolbarSection';
-import PageToolbarSeparator from 'Components/Page/Toolbar/PageToolbarSeparator';
 import Column from 'Components/Table/Column';
 import Table from 'Components/Table/Table';
 import TableBody from 'Components/Table/TableBody';
@@ -17,7 +16,6 @@ import LogFile from 'typings/LogFile';
 import combinePath from 'Utilities/String/combinePath';
 import translate from 'Utilities/String/translate';
 import LogFilesTableRow from './LogFilesTableRow';
-import LogsNavMenu from './LogsNavMenu';
 
 const columns: Column[] = [
   {
@@ -70,10 +68,6 @@ function LogFiles({
     <PageContent title={translate('LogFiles')}>
       <PageToolbar>
         <PageToolbarSection>
-          <LogsNavMenu current={currentLogView} />
-
-          <PageToolbarSeparator />
-
           <PageToolbarButton
             label={translate('Refresh')}
             iconName={icons.REFRESH}

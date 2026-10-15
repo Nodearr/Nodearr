@@ -18,6 +18,8 @@ A node's identity is its Iroh endpoint key. The public key, 64 hexadecimal chara
 
 The secret key is created on first start by the `nodearr-transport` sidecar and stored in `node.key` in the data folder, not in the database. Nodearr itself never reads it. Backing up or moving a node means keeping that file. Deleting it makes the node a stranger to every peer.
 
+Amendment, 2026-10-15: System > Backup includes `node.key` in every backup, with the settings and the database. Restoring one leaves the key as `node.key.restore`, and the transport puts it in place the next time it starts, which restoring always ends in. The key never changes under a running transport. A backup is therefore as secret as the key: whoever has one can be this node.
+
 ### The handshake is Iroh's
 
 Iroh connects to a node by its public key and both ends prove possession of their keys during the QUIC handshake. The sidecar passes the proven remote node ID to Nodearr with every incoming message.

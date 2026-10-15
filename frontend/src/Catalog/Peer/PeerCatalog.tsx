@@ -315,7 +315,14 @@ function PeerCatalog() {
                     </TableRowCell>
 
                     <TableRowCell>
-                      <Label kind={STATUS_KINDS[item.localStatus]}>
+                      <Label
+                        kind={STATUS_KINDS[item.localStatus]}
+                        title={
+                          item.localStatus === 'upgrade'
+                            ? translate('PeerItemUpgradeHelpText')
+                            : undefined
+                        }
+                      >
                         {translate(STATUS_LABELS[item.localStatus])}
                       </Label>
                     </TableRowCell>

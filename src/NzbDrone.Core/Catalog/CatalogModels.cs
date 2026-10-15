@@ -22,6 +22,9 @@ namespace NzbDrone.Core.Catalog
         public bool UpgradeAllowed { get; set; }
         public int CutoffQualityId { get; set; }
         public string AllowedQualities { get; set; }
+
+        // The profile's order of qualities, as QualityRanking stores it. Empty until the profile is next read.
+        public string QualityRanking { get; set; }
     }
 
     public class CatalogSeries : CatalogModel

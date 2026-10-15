@@ -36,7 +36,7 @@ Order: S0, then S1 and S2 together as go/no-go gates, then S3 through S8 in sequ
 
 Completion means a real Sonarr/Radarr import of a verified, permitted peer transfer between two deployed instances.
 
-## Status (updated 2026-10-10)
+## Status of the slices (updated 2026-10-14)
 
 - **S0: done.** Branch `v1/s0-baseline`.
 - **S1: done, go.** Nine of nine scenarios pass against Sonarr 4.0.20, Radarr 6.4.4 and Prowlarr 2.6.5. ADR 0010. Branch `v1/s1-s2-spikes`.
@@ -46,7 +46,7 @@ Completion means a real Sonarr/Radarr import of a verified, permitted peer trans
 - **S5: done.** Ten of ten acceptance checks pass between two real instances with real Arr catalogs (`acceptance/Run-S5Sharing.ps1`). ADR 0014. Branch `v1/s5-sharing-catalog-exchange`.
 - **S6: done.** Fourteen of fourteen acceptance checks pass: a second Sonarr and Radarr search Nodearr and find, parse and approve what a trusted node shares (`acceptance/Run-S6Indexer.ps1`). ADR 0015. Branch `v1/s6-matching-indexer`.
 - **S7: done.** A grab in Sonarr or Radarr ends in an import of a file fetched from a trusted node and verified (`acceptance/Run-S7Transfers.ps1`). ADR 0016. Branch `v1/s7-transfers`.
-- **S8: done on one machine, two-machine run still open.** One Docker image holds the UI, the application and the sidecar. Two complete deployments, each with its own Sonarr and Radarr, do the full flow and fail correctly in the five cases the plan lists (`acceptance/Run-S8Docker.ps1`). ADR 0017. Branch `v1/s8-docker`. The run between two PCs on different networks needs the owner and a second machine: `docs/guides/two-machine-test.md`.
+- **S8: done.** One Docker image holds the UI, the application and the sidecar. Two complete deployments, each with its own Sonarr and Radarr, do the full flow and fail correctly in the five cases the plan lists (`acceptance/Run-S8Docker.ps1`). ADR 0017. Branch `v1/s8-docker`. The runs between two machines on different networks followed: home to cloud on 2026-10-12 and 2026-10-13, and home to home on 2026-10-14 (ADR 0011, "Runs between two machines").
 
 Owner decisions made after the plan was written:
 
@@ -63,48 +63,7 @@ Owner decisions made after the plan was written:
   - The same work puts each file's BLAKE3 hash in the offer, so a node can tell when two peers hold the same bytes: identical copies show as one result in the Arr apps, and a transfer that fails from one peer can carry on from another that holds the same file. Fetching parts from several peers at once is later, and only if identical copies turn out to be common.
 - Release builds will eventually match Sonarr's and Radarr's platforms. Not a focus yet. Done afterwards, see below.
 
-What S3 left for later slices:
-
-- The endpoints Nodearr registers in the Arr apps are still the S1 stubs. The real indexer is S6 and the real download client is S7. The download folder the stub reports is fixed at `/downloads/complete`.
-- Quality profiles are imported but nothing shows or uses them yet.
-- Deleting an application in Nodearr does not remove Nodearr's indexer and download client from the Arr app.
-- Sonarr import makes two requests per series. It has not been tried on a large library.
-
-What S4 left for later slices:
-
-- Blocking and revoking raise an event, but there is no peer catalog to purge (S5) or transfer to cancel (S7) yet.
-- Relay mode, relay URL and port mapping are environment variables, with no settings page (S8).
-- The transport sidecar is built separately with cargo and is not yet part of a package or image (S8).
-- The node's display name is the machine name.
-- Pairing has only been run on one machine with relays off.
-
-What S5 left for later slices:
-
-- ~~Sharing is by whole series or movie. There is no per-season or per-file control.~~ Done afterwards, see below.
-- Peer catalog rows are not yet indexer results (S6), and a transfer request is not yet checked against the sharing rule (S7).
-- ~~An offer is rebuilt from the whole local catalog on each request. It has not been tried on a large library.~~ Measured afterwards, see below.
-
-What S6 left for later slices:
-
-- A grab reaches Nodearr's download client, which is still the S1 stub and refuses it with a plain reason. Transfers are S7.
-- ~~Daily shows are not found, because peers are not told air dates.~~ Done afterwards, see below. ~~Series with scene numbering can be misnumbered when a file has no release name.~~ Fixed afterwards, see below.
-- Nodearr-side profile filtering (decision 2, "UI-only") was not built. The peer catalog page shows the title the Arr apps will see, and the Arr apps do the judging.
-- The S1 spike harness no longer runs on later branches, because the indexer half of the stub is gone. The acceptance scripts now fill their test libraries by having the Arr apps import files directly.
-
-What S7 left for later slices:
-
-- Everything has run with both nodes on one machine. Two machines on different networks, and a transfer with no direct route, are S8.
-- ~~Files are hashed when first asked for, not in the background.~~ Done afterwards, see below.
-- ~~Uploads are not shown on the Transfers page. The upload limit and the download folder are options with no settings page.~~ Both done afterwards, see below.
-- ~~Unsharing a title does not stop a transfer of it that is already under way. Ending trust does.~~ Done afterwards, see below.
-- The sidecar is still built separately with cargo.
-
-What S8 left:
-
-- ~~**The two-machine run.** It is the plan's last acceptance item and the open gate on ADR 0011 and ADR 0012.~~ Done on 2026-10-13 between a home network and a cloud machine with nothing opened on either side. A run between two home routers has still not been made.
-- ~~No image is published, and only linux/amd64 has been built.~~ The image builds for amd64 and arm64, and the release workflow pushes it. See below.
-- ~~The transport options are environment variables, with no settings page.~~ Done afterwards, see below.
-- ~~The inherited update check and error reporting still point at nodearr.com hosts that do not exist yet.~~ Removed afterwards, see below.
+Each slice listed what it left for later. Those lists are gone: everything on them was done by a later slice or in the work after the plan (below), apart from what is under "What is still open" at the end. They are in this file's history.
 
 ## After the plan (2026-10-11)
 
@@ -135,6 +94,10 @@ Then a settings page. ADR 0019. Branch `v1/s10-node-settings`.
 - The same file from several trusted nodes is one result in the Arr apps, and a transfer that fails from one of them carries on from another, from where it was (ADR 0015 and ADR 0016, amendments). Branch `v1/s32-identical-copies`. That completes the owner's decisions of 2026-10-14 on catalog exchange.
 - Release packages for Sonarr's and Radarr's platforms, less FreeBSD: Linux glibc and musl on x64, arm64 and 32-bit ARM, macOS on Intel and Apple silicon, Windows 64- and 32-bit. Each is self-contained with the web UI and its sidecar. The image builds for amd64 and arm64. A pushed `v*` tag drafts a GitHub release and pushes the image, and every push runs CI: lint, build, unit tests on Linux and Windows, the sidecar and the image (`docs/guides/releases.md`). Branch `v1/s33-releases`.
 - Settings > Node holds the node's name, relay, UDP port, port mapping, wait for a direct route, download folder and upload limit. Bad values are refused field by field. A setting given in the environment is shown and cannot be changed. A change that needs it restarts the transport and nothing else, and the node keeps its identity and its trust (`acceptance/Run-NodeSettings.ps1`).
+- The two-machine test runs on two Windows machines with nothing set up, no Docker and no Python, from the release packages: `tools/two-machine-test.ps1` and `docs/guides/two-machine-test-windows.md`. It made the home-to-home runs. Branch `v1/s36-windows-two-machine-test`.
+- A first run that sets itself up. Home, the page the app opens on, was a placeholder. It now welcomes a new node and takes it through three steps, each ticked off from what the node reports: connect Sonarr or Radarr, choose the name friends see, and connect with a friend by creating an invite or pasting one. The page moves on by itself when the friend uses the invite. Once all three are done it is an overview: anything that needs attention, what friends have that this node is missing or has worse, the library, the friends and how each is reached, and what the node knows about its network. Catalog and Nodes in the sidebar go to real pages, and the app form no longer shows Prowlarr's tags or describes its sync level in Prowlarr's terms. Branch `v1/s38-first-run`.
+- System has its pages back: Tasks, Backup, Events and Log Files, as Sonarr has them. A backup now holds the node's key as well as its settings and database, so a restored node is the node its friends paired with and nobody pairs again. The key is put in place when the transport next starts, never under a running one (ADR 0013, amendments). The Sonarr recycle bin task and the updater's log files are gone. Branch `v1/s39-system-pages`.
+- What a friend has is marked an upgrade only when the local Arr app's quality profile would take it: allowed, ranked higher, upgrades on, and the local file below the cutoff (ADR 0014, amendments). Before, any higher resolution or better source counted. Branch `v1/s40-profile-upgrades`.
 
 ## Where V1 stands
 
@@ -143,3 +106,25 @@ The plan's definition of done is "a real Sonarr/Radarr import of a verified, per
 On 2026-10-13 the same two machines connected directly and moved a file with nothing opened on either side: no port forwarded at home, and no UDP allowed in at the cloud machine. The home side ran Nodearr straight on Windows that time. ADR 0011 and ADR 0012 were accepted on it. That is V1's definition of done, met.
 
 On 2026-10-14 two home networks connected directly and moved a file: two Windows machines behind ordinary routers, with no port forwarded, and in the second run with Nodearr's port mapping off on both sides and on fresh UDP ports (ADR 0011, "two home networks"). That was the last connection case V1 had not tried. A node in Docker Desktop on Windows or macOS remains hard to reach directly without a forwarded port.
+
+## What is still open
+
+V1 is done. What follows is open, and none of it needs a second machine except where it says so.
+
+Not yet run:
+
+- **Sonarr between two machines.** Every run between two machines used Radarr and one film. What Sonarr adds, sharing by episode, scene numbers and daily shows, is Nodearr's own logic and has been checked against a real Sonarr on one machine.
+- **Living with it** (needs two machines). Every run so far was one pairing and one file. Nothing has run for days: the Catalog Sync Interval, the Arr webhooks, the 12-hour import, restarts on either side, a node going away and coming back.
+- **Large files between networks.** The largest transfer between two networks was 89 MB. Multi-gigabyte files and resuming after a lost connection have been checked on one machine only.
+- **A network that cannot connect directly** (needs two machines), such as a phone's mobile data. It should say "Relay only" and fail as `NoDirectRoute`. That has been seen only against a cloud machine.
+- **Release packages that have not been started:** macOS on Intel and Apple silicon (needs a Mac), linux-musl-arm64, and 32-bit ARM on a real board. The image has not been pulled back from GHCR.
+- **A blocking firewall rule that did not block.** In the home-to-home runs the receiving machine had a rule blocking `nodearr-transport`, and both runs connected. Most likely because that side opened the connections. Not checked.
+- **Sonarr import on a large library**, at two requests per series, against a real Sonarr that large.
+
+Not built:
+
+- Custom formats in Nodearr's marks. Upgrades follow the quality profile's qualities, and the Arr apps judge custom formats themselves when they search (decision 2).
+- A FreeBSD package, a macOS app bundle and a Windows installer (`docs/guides/releases.md`). No updater, by design (ADR 0018).
+- Inherited pages that no route leads to still hold links to pages that do not exist.
+- The S1 spike harness no longer runs on later branches. The acceptance scripts replaced it.
+- Pair attempts are not rate limited (ADR 0013).

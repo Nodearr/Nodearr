@@ -22,13 +22,46 @@ namespace NzbDrone.Core.Applications
                 Name = Name,
                 UpgradeAllowed = UpgradeAllowed,
                 CutoffQualityId = Cutoff,
-                AllowedQualities = string.Join(", ", Items.SelectMany(i => i.AllowedNames()))
+                AllowedQualities = string.Join(", ", Items.SelectMany(i => i.AllowedNames())),
+                QualityRanking = ToRanking().ToStored()
             };
+        }
+
+        // The Arr apps list a profile's items from the least wanted to the most. An item is one
+        // quality or a group of them, and the cutoff names either a quality or a group.
+        public QualityRanking ToRanking()
+        {
+            var ranking = new QualityRanking { UpgradeAllowed = UpgradeAllowed };
+
+            for (var rank = 0; rank < Items.Count; rank++)
+            {
+                var item = Items[rank];
+                var members = item.Quality != null ? new List<ArrQualityResource> { item.Quality } : item.Items.Select(i => i.Quality).Where(q => q != null).ToList();
+
+                foreach (var quality in members)
+                {
+                    ranking.Qualities.Add(new RankedQuality { Name = quality.Name, Rank = rank, Allowed = item.Allowed });
+
+                    if (quality.Id == Cutoff)
+                    {
+                        ranking.CutoffRank = rank;
+                    }
+                }
+
+                if (item.Quality == null && item.Id == Cutoff)
+                {
+                    ranking.CutoffRank = rank;
+                }
+            }
+
+            return ranking;
         }
     }
 
     public class ArrQualityProfileItemResource
     {
+        // A group's own ID. A plain quality has none, and its quality's ID is what counts.
+        public int Id { get; set; }
         public string Name { get; set; }
         public bool Allowed { get; set; }
         public ArrQualityResource Quality { get; set; }

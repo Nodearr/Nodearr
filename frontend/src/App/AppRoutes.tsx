@@ -1,16 +1,19 @@
 import React from 'react';
-import { Route } from 'react-router-dom';
+import { Navigate, Route } from 'react-router-dom';
 import Transfers from 'Activity/Transfers/Transfers';
-import CatalogIndex from 'Catalog/Index/CatalogIndex';
 import LocalCatalog from 'Catalog/Local/LocalCatalog';
 import PeerCatalog from 'Catalog/Peer/PeerCatalog';
 import Sharing from 'Catalog/Sharing/Sharing';
 import NotFound from 'Components/NotFound';
+import Home from 'Home/Home';
 import NodeInvites from 'Nodes/Invites/NodeInvites';
-import NodesIndex from 'Nodes/NodesIndex/NodesIndex';
 import TrustedNodes from 'Nodes/Trusted/TrustedNodes';
 import Settings from 'Settings/Settings';
+import Backups from 'System/Backup/Backups';
+import LogsTable from 'System/Events/LogsTable';
+import Logs from 'System/Logs/Logs';
 import Status from 'System/Status/Status';
+import Tasks from 'System/Tasks/Tasks';
 import ApplicationSettings from '../Settings/Applications/ApplicationSettings';
 import GeneralSettings from '../Settings/General/GeneralSettings';
 import NodeSettings from '../Settings/Node/NodeSettings';
@@ -19,10 +22,19 @@ export function appRouteElements() {
   return (
     <>
       {/*
+        Home: setting up, and then an overview
+      */}
+
+      <Route path="/" element={<Home />} />
+
+      {/*
         Catalog
       */}
 
-      <Route path="/" element={<CatalogIndex />} />
+      <Route
+        path="/catalog"
+        element={<Navigate to="/catalog/local" replace={true} />}
+      />
 
       <Route path="/catalog/local" element={<LocalCatalog />} />
 
@@ -34,7 +46,10 @@ export function appRouteElements() {
         Nodes
       */}
 
-      <Route path="/nodes" element={<NodesIndex />} />
+      <Route
+        path="/nodes"
+        element={<Navigate to="/nodes/trusted" replace={true} />}
+      />
 
       <Route path="/nodes/trusted" element={<TrustedNodes />} />
 
@@ -63,6 +78,14 @@ export function appRouteElements() {
       */}
 
       <Route path="/system/status" element={<Status />} />
+
+      <Route path="/system/tasks" element={<Tasks />} />
+
+      <Route path="/system/backup" element={<Backups />} />
+
+      <Route path="/system/events" element={<LogsTable />} />
+
+      <Route path="/system/logs/files/*" element={<Logs />} />
 
       {/*
         Not Found
