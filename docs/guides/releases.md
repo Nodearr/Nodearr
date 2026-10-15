@@ -15,6 +15,8 @@ A Nodearr release matches Sonarr's and Radarr's own downloads, so it can be inst
 | `Nodearr.<version>.osx-arm64.tar.gz` | macOS on Apple silicon |
 | `Nodearr.<version>.win-x64.zip` | Windows, 64-bit |
 | `Nodearr.<version>.win-x86.zip` | Windows, 32-bit |
+| `Nodearr.<version>.win-x64-installer.exe` | Windows, 64-bit, installed |
+| `Nodearr.<version>.win-x86-installer.exe` | Windows, 32-bit, installed |
 | `SHA256SUMS` | The checksum of each package |
 
 The image is `ghcr.io/<owner>/nodearr`, for `linux/amd64` and `linux/arm64`. `0.1.0` is tagged `0.1.0`, `0.1` and `latest`. A pre-release such as `0.1.0-beta.1` is tagged with only its own version.
@@ -42,10 +44,28 @@ Where each package has been run:
 
 macOS marks a downloaded archive as quarantined. As with Sonarr, clear it before the first start: `xattr -dr com.apple.quarantine Nodearr`.
 
+### On Windows: the installer
+
+The installer puts Nodearr in Program Files and asks how it should start, as Sonarr's does:
+
+- **When you sign in, in the tray.** The default. A shortcut in your Startup folder runs `Nodearr.exe`, which shows an icon in the system tray. Its menu opens Nodearr or exits it. It runs as you, so it reads whatever your account can.
+- **When the computer starts, as a Windows service.** It runs whether anyone is signed in, as the `LocalService` account. That account may not be able to read your library, or a network share, until the service is given an account that can: Services, Nodearr, Properties, Log On. System > Status says when Nodearr cannot read the library.
+- **Not automatically.** Start it from the Start menu when you want it.
+
+Either way, the installer adds a Windows Firewall rule that lets UDP in to `nodearr-transport.exe`, which is how other nodes reach this one. Windows would otherwise ask the first time. A service cannot ask, and would be blocked without anyone knowing. Uninstalling takes the rule out.
+
+As Sonarr's installer does, it also opens Nodearr's web port, 6633, so Sonarr and Radarr on other machines, or in Docker, can reach it. The page still asks whoever opens it to sign in. The rule is called Nodearr, and uninstalling takes it out with the other.
+
+The data folder, `C:\ProgramData\Nodearr`, is the same for the tray app, the service and the zip, and neither installing nor uninstalling touches it: the node keeps its key and its friends.
+
+The installer is built with Inno Setup 6 from the folder `Build-Release.ps1` stages, so it holds exactly what the zip holds: `pwsh build/Build-Installer.ps1 -Runtime win-x64 -Version 0.1.0`.
+
+From the zip, `ServiceInstall.exe` and `ServiceUninstall.exe`, run as administrator, do what the installer's service option does, firewall rule included.
+
 ### Not in a release
 
 - **FreeBSD.** Sonarr and Radarr release for it with a .NET runtime the community builds, from a package source of their own. Nodearr's sidecar is built on iroh, and iroh on FreeBSD has not been tried. Until both have been, there is no FreeBSD package.
-- **A macOS app bundle** (`Nodearr.app`) and **a Windows installer.** Sonarr has both. Nodearr has the plain archives for now.
+- **A macOS app bundle** (`Nodearr.app`). Sonarr has one. Nodearr has the plain archive for now.
 - **An updater.** Nodearr does not update itself (ADR 0018). A new version is installed over the old one, or pulled as a new image.
 
 ## Making a release

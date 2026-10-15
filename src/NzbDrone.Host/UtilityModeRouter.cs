@@ -19,6 +19,7 @@ namespace NzbDrone.Host
         private readonly IProcessProvider _processProvider;
         private readonly IRemoteAccessAdapter _remoteAccessAdapter;
         private readonly IAppFolderFactory _appFolderFactory;
+        private readonly ITransportFirewallRule _transportFirewallRule;
         private readonly Logger _logger;
 
         public UtilityModeRouter(IServiceProvider serviceProvider,
@@ -26,6 +27,7 @@ namespace NzbDrone.Host
                       IProcessProvider processProvider,
                       IRemoteAccessAdapter remoteAccessAdapter,
                       IAppFolderFactory appFolderFactory,
+                      ITransportFirewallRule transportFirewallRule,
                       Logger logger)
         {
             _serviceProvider = serviceProvider;
@@ -33,6 +35,7 @@ namespace NzbDrone.Host
             _processProvider = processProvider;
             _remoteAccessAdapter = remoteAccessAdapter;
             _appFolderFactory = appFolderFactory;
+            _transportFirewallRule = transportFirewallRule;
             _logger = logger;
         }
 
@@ -52,6 +55,7 @@ namespace NzbDrone.Host
                         else
                         {
                             _remoteAccessAdapter.MakeAccessible(true);
+                            _transportFirewallRule.Allow();
                             _serviceProvider.Install(ServiceProvider.SERVICE_NAME);
                             _serviceProvider.SetPermissions(ServiceProvider.SERVICE_NAME);
 
@@ -66,6 +70,12 @@ namespace NzbDrone.Host
                 case ApplicationModes.UninstallService:
                     {
                         _logger.Debug("Uninstall Service selected");
+
+                        // Whether Nodearr ran as a service or not, the installer let the transport in,
+                        // and opened the web page's port.
+                        _transportFirewallRule.Remove();
+                        _transportFirewallRule.RemoveWebPage();
+
                         if (!_serviceProvider.ServiceExist(ServiceProvider.SERVICE_NAME))
                         {
                             _consoleService.PrintServiceDoesNotExist();
@@ -83,6 +93,7 @@ namespace NzbDrone.Host
                         _logger.Debug("Register URL selected");
                         _remoteAccessAdapter.MakeAccessible(false);
                         _appFolderFactory.SetPermissions();
+                        _transportFirewallRule.Allow();
 
                         break;
                     }
