@@ -35,7 +35,9 @@ ENV PATH=/opt/zigbuild/bin:$PATH
 
 COPY transport/Cargo.toml transport/Cargo.lock ./
 COPY transport/src ./src
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
+# A build for two architectures runs this stage twice at once. They share the crate registry, and
+# would unpack the same crates over each other, so they take turns with it.
+RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
     --mount=type=cache,target=/build/transport/target,id=transport-target-$TARGETARCH \
     case "$TARGETARCH" in \
       amd64) target=x86_64-unknown-linux-musl ;; \
