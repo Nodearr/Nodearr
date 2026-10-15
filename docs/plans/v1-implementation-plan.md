@@ -61,7 +61,7 @@ Owner decisions made after the plan was written:
   - The full import from each Arr app runs every 12 hours, as Sonarr's Refresh Series does.
   - Removals are still pushed to peers at once, so unsharing reaches them in seconds.
   - The same work puts each file's BLAKE3 hash in the offer, so a node can tell when two peers hold the same bytes: identical copies show as one result in the Arr apps, and a transfer that fails from one peer can carry on from another that holds the same file. Fetching parts from several peers at once is later, and only if identical copies turn out to be common.
-- Release builds will eventually match Sonarr's and Radarr's platforms. Not a focus yet.
+- Release builds will eventually match Sonarr's and Radarr's platforms. Not a focus yet. Done afterwards, see below.
 
 What S3 left for later slices:
 
@@ -102,7 +102,7 @@ What S7 left for later slices:
 What S8 left:
 
 - ~~**The two-machine run.** It is the plan's last acceptance item and the open gate on ADR 0011 and ADR 0012.~~ Done on 2026-10-13 between a home network and a cloud machine with nothing opened on either side. A run between two home routers has still not been made.
-- No image is published, and only linux/amd64 has been built.
+- ~~No image is published, and only linux/amd64 has been built.~~ The image builds for amd64 and arm64, and the release workflow pushes it. See below.
 - ~~The transport options are environment variables, with no settings page.~~ Done afterwards, see below.
 - ~~The inherited update check and error reporting still point at nodearr.com hosts that do not exist yet.~~ Removed afterwards, see below.
 
@@ -133,6 +133,7 @@ Then a settings page. ADR 0019. Branch `v1/s10-node-settings`.
 - A node asks its peers what changed every Catalog Sync Interval, 15 minutes by default, set like Sonarr's RSS Sync Interval. Peers are told at once only of removals. The whole library is read from the Arr apps every 12 hours (ADR 0014, amendments). Branch `v1/s30-catalog-sync-interval`.
 - Sonarr and Radarr tell Nodearr when files come and go, through a webhook connection Nodearr adds to them itself. Nodearr reads that one series or movie again, so the catalog follows the library within seconds (ADR 0006 and ADR 0010, amendments). Branch `v1/s31-arr-webhook`.
 - The same file from several trusted nodes is one result in the Arr apps, and a transfer that fails from one of them carries on from another, from where it was (ADR 0015 and ADR 0016, amendments). Branch `v1/s32-identical-copies`. That completes the owner's decisions of 2026-10-14 on catalog exchange.
+- Release packages for Sonarr's and Radarr's platforms, less FreeBSD: Linux glibc and musl on x64, arm64 and 32-bit ARM, macOS on Intel and Apple silicon, Windows 64- and 32-bit. Each is self-contained with the web UI and its sidecar. The image builds for amd64 and arm64. A pushed `v*` tag drafts a GitHub release and pushes the image, and every push runs CI: lint, build, unit tests on Linux and Windows, the sidecar and the image (`docs/guides/releases.md`). Branch `v1/s33-releases`.
 - Settings > Node holds the node's name, relay, UDP port, port mapping, wait for a direct route, download folder and upload limit. Bad values are refused field by field. A setting given in the environment is shown and cannot be changed. A change that needs it restarts the transport and nothing else, and the node keeps its identity and its trust (`acceptance/Run-NodeSettings.ps1`).
 
 ## Where V1 stands

@@ -22,6 +22,10 @@ Edit `docker/docker-compose.yml` first: it needs the paths to your libraries, an
 - `/downloads` must be the same folder Sonarr and Radarr have at `/downloads`.
 - Libraries are mounted read-only, at the same paths Sonarr and Radarr use.
 
+## Release packages
+
+Like Sonarr and Radarr, Nodearr is also packaged for Linux, macOS and Windows, to run without Docker. What each package holds, what a machine needs, and how a release is made are in [docs/guides/releases.md](docs/guides/releases.md).
+
 The rest of this page is for working on Nodearr itself.
 
 ## Prerequisites
