@@ -1,336 +1,164 @@
-# Nodearr overview: end-to-end design
+# Nodearr overview
 
-## Summary
+What Nodearr is, what its parts are, and what happens from adding an Arr app to importing a friend's file. Each part links to the decision record that explains why it works the way it does.
 
-**Nodearr is a self-hosted, Servarr-compatible, trusted peer-to-peer media availability and transfer service.**
+This describes Nodearr as it is built. The design it started from, written before any of it was, is in this file's history and in the [product definition](research/nodearr-product-definition.md).
 
-Nodearr runs alongside a user's existing Arr applications. It lets a small private group of trusted users discover who has acceptable media candidates and retrieve verified files directly from one another while keeping the existing Arr import workflow intact.
+## In one sentence
 
-The key design sentence is:
+The Arr apps say what the media is. Nodearr says which trusted friend has an acceptable copy, and fetches it from them.
 
-**Arr apps define what the media is. Nodearr defines who has an acceptable candidate and how to retrieve it.**
+## What Nodearr is, and is not
 
-V1 must support **Sonarr** and **Radarr** as catalog sources. Support for Lidarr, Readarr, Whisparr / Eros, and other Arr-like applications is planned iteratively and is not V1-required scope. See [Appendix A: Application support scope](#appendix-a-application-support-scope).
+Nodearr runs next to the Arr apps a person already has, and does two jobs for them:
 
-Nodearr has two major Arr-facing responsibilities:
+- **It is an indexer.** The Arr apps search it as they search any Newznab indexer, and the results are what trusted friends share.
+- **It is a download client.** The Arr apps hand it what they grab, as they would to SABnzbd. It fetches the file directly from the friend who has it, checks it, and puts it where the Arr app imports from.
 
-1. **Indexer responsibility**: expose peer-available candidates through a Torznab/Newznab-compatible indexer API so Arr apps and indexer managers can search Nodearr like an indexer.
-2. **Download-client responsibility**: accept grabbed candidates as transfer jobs, retrieve and verify bytes directly from trusted peers, and present job state and completed files in a way existing Arr apps can consume.
+The Arr apps remain the source of truth for what the media is, which files are in the library, where they are, and how good they are. Nodearr reads all of that from them ([ADR 0006](adr/0006-arr-apps-as-catalog-source-of-truth.md)) and never scans folders to guess.
 
-Nodearr is not a shared filesystem, shared RAID, shared Plex/Jellyfin service, public indexer, or generic library manager. Existing Arr apps remain the source of truth for media identity, library membership, file paths, quality/profile data, and import workflows.
+Nodearr is not a shared drive, a media server, a public indexer or a library manager. Nothing of a library goes to anyone the owner has not chosen, and media files only ever travel directly between two machines.
 
-## Primary goals
+## The parts
 
-1. Connect trusted peers in a private decentralized transfer network securely, with minimal configuration and no manual port forwarding as the default expectation.
-2. Index content from configured Arr app catalogs and share normalized availability metadata between connected peers.
-3. Facilitate secure peer-to-peer downloads directly between connected Nodearr clients.
-4. Make the user experience feel familiar to users of Sonarr, Radarr, Lidarr, and related Arr applications.
-5. Provide sufficient documentation for users, contributors, and future implementation work.
+```text
+ Your machine                                        A friend's machine
+ ------------                                        ------------------
+ Sonarr, Radarr, Whisparr, Lidarr                    Their Arr apps
+   |  (Arr APIs, webhooks)   ^  (Newznab, SABnzbd)        |
+   v                         |                            v
+ Nodearr  ------------------------------------------>  Nodearr
+   |   catalog, sharing, indexer, download client         |
+   v                                                       v
+ nodearr-transport  <====== direct QUIC (iroh) =====>  nodearr-transport
+                       \                         /
+                        `-- n0's relay: finding --'
+                            each other only
+```
 
-## End-to-end user/system flow
+- **Nodearr** is the application: a .NET service with a web UI, derived from Sonarr ([ADR 0004](adr/0004-technology-stack.md), [NOTICE](../NOTICE.md)). It talks to the Arr apps, keeps the catalogs, applies the sharing rules, answers searches and runs transfers.
+- **`nodearr-transport`** is a small Rust program Nodearr starts beside itself. It holds the node's key and does all the networking between nodes, with [iroh](https://www.iroh.computer): encrypted QUIC connections, NAT traversal, and the file transfer protocol ([ADR 0009](adr/0009-iroh-behind-transfer-abstraction.md), [ADR 0012](adr/0012-custom-transfer-protocol-instead-of-iroh-blobs.md)). Nodearr talks to it over a loopback port with a token only the two of them know ([ADR 0013](adr/0013-node-identity-pairing-and-trust.md)).
+- **The relay** helps two nodes find a path to each other. By default it is one of n0's public relays. A person can run their own, or turn relays off. It never carries a file ([ADR 0011](adr/0011-direct-only-media-over-iroh-with-relay-for-coordination.md)).
 
-1. John runs Nodearr next to his existing Sonarr and Radarr instances.
-2. John configures Sonarr and Radarr API connections in Nodearr.
-3. Nodearr imports library metadata from those Arr apps and normalizes it into local catalog entries.
-4. George runs his own Nodearr instance and imports from his own Arr apps.
-5. John creates a short-lived peer invite.
-6. George redeems the invite and both Nodearr instances exchange signed node identity material.
-7. Each Nodearr instance stores the other node's public identity as trusted.
-8. Their nodes use discovery/rendezvous metadata to establish connectivity and exchange catalog availability.
-9. John's Radarr searches for a wanted movie.
-10. Radarr queries Nodearr as a Torznab/Newznab-compatible indexer, either directly or through Prowlarr as an indexer manager.
-11. John's Nodearr searches trusted peer catalogs for candidates that match the requested media item and satisfy local policy.
-12. Nodearr returns acceptable peer candidates as indexer search results with stable grab URLs.
-13. Radarr grabs one result.
-14. Nodearr creates a transfer job and behaves as the download client for that grabbed candidate.
-15. John's Nodearr establishes a direct encrypted peer connection to George's Nodearr, likely using Iroh-assisted discovery and NAT traversal behind a Nodearr transfer abstraction.
-16. George's Nodearr authorizes the request against peer trust and candidate availability.
-17. George streams the file bytes directly to John. Official Nodearr infrastructure does not carry those media bytes.
-18. John's Nodearr verifies the received bytes, writes the file to a completed-download path, and exposes completion state to the Arr app.
-19. Radarr imports the file through its normal completed-download workflow.
-20. The final library can then be consumed by whatever media client the user already uses, such as Jellyfin or Plex. Those clients are outside Nodearr's primary architecture.
+## The apps it works with
 
-## Core responsibilities
+| App | Read from it | Shared as | Found for it by |
+| --- | --- | --- | --- |
+| Sonarr | Series, episodes, episode files | Whole series, seasons, single episodes | TVDB, TMDb or IMDb ID, season and episode, scene numbering, air date for daily shows |
+| Radarr | Movies and their files | Whole movies | TMDb or IMDb ID |
+| Whisparr v3 | Films and scenes, with studio, date, code and IDs | Whole items | Films by ID. Scenes by text: studio, date, title and code |
+| Whisparr v2 | Sites and their scenes, kept as v3 keeps them | Whole items | The same as v3, so a v2 and a v3 find each other's scenes |
+| Lidarr | Artists, albums and track files | Whole artists. An album is offered only when complete | Text: artist and album |
+| Prowlarr | Nothing | Nothing | Nodearr adds itself there as an indexer ([ADR 0007](adr/0007-prowlarr-as-downstream-indexer-consumer.md)) |
 
-Nodearr owns these responsibilities:
+Adult content is found only by searches in its own categories, which only Whisparr makes. Albums are found only by searches in the audio categories, which only Lidarr makes. Sonarr and Radarr never see either ([ADR 0015](adr/0015-the-indexer-id-matching-release-titles-and-candidate-ids.md), [ADR 0020](adr/0020-lidarr-albums-shared-and-moved-as-folders-of-tracks.md)).
 
-- Import and normalize catalog data from configured Arr applications.
-- Maintain local node identity and explicit trusted-peer relationships.
-- Exchange availability metadata with trusted peers.
-- Project peer availability into Torznab/Newznab-style indexer results.
-- Accept grabs as transfer jobs and expose download-client-like job state.
-- Retrieve bytes directly from trusted peers through pluggable transfer providers.
-- Verify completed transfers with content hashes.
-- Provide Arr-familiar UI/API surfaces for catalog, nodes, transfers, settings, health, logs, and status.
+## From start to finish
 
-Nodearr does not own these responsibilities:
+### 1. Adding an Arr app
 
-- Defining media identity from scratch when an Arr app already tracks it.
-- Replacing Sonarr, Radarr, or other Arr applications.
-- Treating Prowlarr as a catalog source.
-- Scanning arbitrary folders as the primary way to infer media identity.
-- Relaying media bytes through official hosted infrastructure.
-- Serving media to end-user playback clients.
+Under Settings > Apps (or the first-run steps on Home), the person gives Nodearr the Arr app's address and API key, and the address at which the Arr app can reach Nodearr. Nodearr then registers itself inside the Arr app ([ADR 0010](adr/0010-arr-contract-newznab-indexer-and-sabnzbd-download-client.md)):
 
-## Catalog responsibility
+- a **download client**, as SABnzbd, on the app's own category;
+- an **indexer**, as Newznab, pinned to that download client, so nothing Nodearr finds is ever sent to another client;
+- a **webhook**, so Nodearr hears within seconds when a file is imported, upgraded, renamed or deleted.
 
-The catalog is the first major Nodearr domain.
+It then reads the app's library into its **local catalog**: every title, file, quality and quality profile. It reads it again every 12 hours, and a webhook has it read one title again at once. What the app stops reporting is marked missing, and removed after 7 days. See [catalog import](diagrams/catalog-import-sonarr-radarr.md).
 
-Nodearr should not primarily scan folders and guess what media files represent. That duplicates the hardest and most product-specific parts of Sonarr, Radarr, and related applications.
+Nodearr checks that the Arr app can see the folder Nodearr writes finished transfers to, through the app's own file browser, and says so on System > Status when it cannot ([ADR 0018](adr/0018-diagnostics-and-no-calls-home.md)).
 
-Instead, Nodearr catalogs configured Arr instances. For V1, those catalog sources are Sonarr and Radarr.
+### 2. Becoming friends
 
-For each configured Arr app, Nodearr imports known library files and metadata such as:
+Each node has a key pair, kept by the sidecar. Its public key is the node's ID, and it never changes. A backup holds it, so a restored node is still the node its friends know ([ADR 0013](adr/0013-node-identity-pairing-and-trust.md)).
 
-- Source app.
-- Arr app item IDs.
-- Media type.
-- Movie, series, season, and episode identity as provided by the source app.
-- External IDs where available.
-- Title and year.
-- Season and episode numbers where applicable.
-- Quality, language, profile, and custom-format information where available.
-- Codec, resolution, source, and related file attributes where available.
-- File path.
-- File size.
-- Last seen / last synced timestamps.
+1. One person creates an **invite** on Nodes > Invites or on Home. It holds their node's ID, how to reach it, a random secret and an expiry, 24 hours by default. Only a hash of the secret is stored.
+2. They send the code to their friend however they like.
+3. The friend pastes it into their Nodearr, which connects to the first node. The connection's handshake proves each node holds the key for its ID. The friend's node sends the secret.
+4. The first node checks it against an unused, unexpired invite, marks the invite used, and both nodes record each other as **trusted**.
 
-Nodearr normalizes that imported data into its own catalog records.
+Trust can be **revoked** from either side, which ends it on both, or the other node can be **blocked**, which turns its connections away before they reach Nodearr. A node that keeps failing to pair is turned away for 15 minutes. See [pairing](diagrams/peer-invite-trust-establishment.md).
 
-The local catalog answers: **What does my local Arr stack say I have?**
+### 3. Choosing what to share
 
-The peer catalog answers: **What do trusted peers say they have?**
+Nothing is shared until its owner says so ([ADR 0014](adr/0014-sharing-rules-and-catalog-exchange.md)). On Catalog > Sharing:
 
-The comparison layer answers: **What do peers have that I am missing, can use, or may want as an upgrade?**
+- a **share list** holds whole series, seasons, episodes, movies, Whisparr items and artists, and is given to chosen friends;
+- a friend can instead be marked **share everything**;
+- anything on the **Hidden** list is offered to nobody, whatever else says so.
 
-Prowlarr is downstream of Nodearr, not a catalog source. Prowlarr may configure Nodearr as an indexer so Arr apps can search Nodearr through an existing indexer manager.
+A whole series, season or artist takes in what arrives later.
 
-## Indexer responsibility
+### 4. Seeing what friends have
 
-Nodearr exposes a Torznab/Newznab-compatible indexer API.
+Each node asks each friend for their **offer**: what that friend shares with this node, and nothing else ([ADR 0014](adr/0014-sharing-rules-and-catalog-exchange.md)). An offer says what each file is (its IDs, title, season and episodes, or album and tracks), how good it is (quality, resolution, codecs, size, release name) and its BLAKE3 hash where the sender has worked it out. It says nothing of where the file is or what it is called, apart from its extension.
 
-That API lets Sonarr, Radarr, and indexer managers such as Prowlarr search Nodearr as if it were an indexer. The indexer API exposes candidate availability; it does not move file bytes.
+The offer is fetched every 15 minutes by default, and at once when a friend says theirs changed. After the first time, only what changed is sent, 500 files to a page.
 
-The indexer surface should support:
+The peer catalog marks each file against the local library: **not in the library**, **missing**, an **upgrade** (one the Arr app's own quality profile would take in place of the one it has), or **have**. Catalog > Peer Catalog shows them. See [catalog exchange](diagrams/catalog-exchange-trusted-nodes.md).
 
-- Capability reporting.
-- Search and media-specific search parameters required by supported Arr apps.
-- API key authentication using common Arr-compatible forms such as `X-Api-Key` and `apikey`.
-- Categories and metadata mapping for supported media types.
-- Stable release candidate GUIDs.
-- Result titles, size, quality-like fields, source app/media IDs where known, and peer availability hints.
-- Grab/download links that create Nodearr transfer jobs.
+### 5. Searching
 
-A Nodearr search result is a projection of a peer catalog candidate. Internally, the GUID maps back to a Nodearr release candidate, trusted peer availability, and file identity data.
+When an Arr app searches Nodearr, the answer comes from the peer catalogs, matched by the IDs the Arr app sends ([ADR 0015](adr/0015-the-indexer-id-matching-release-titles-and-candidate-ids.md)). Whisparr's scenes and Lidarr's albums have no IDs to send, and are matched by text.
 
-## Download-client responsibility
+Each result has a release title written the way the Arr app reads them: the release name the friend's Arr app kept where it has one, or one built from what the offer says. The Arr app judges quality and custom formats from that title itself, as it does with any indexer.
 
-Nodearr also behaves as a download client from the Arr ecosystem perspective.
+A result names no friend and no file. Its ID is a keyed hash only this node can produce or look up. The same file offered by two friends, by its hash, is one result. See [search, grab and import](diagrams/arr-search-grab-indexer-flow.md).
 
-The indexer responsibility discovers candidates. The download-client responsibility handles what happens after a candidate is grabbed.
+### 6. Grabbing and fetching
 
-A grab creates a Nodearr transfer job. The Arr app then needs a compatible way to observe that job until it completes or fails. The exact compatibility surface is implementation work, but the product boundary is clear: Nodearr owns transfer state, verification, failure reporting, and completed-file handoff.
+When the Arr app grabs a result, it gets a small NZB that is only a ticket naming the result. It hands that to Nodearr's download client as it would to SABnzbd, and Nodearr starts a **transfer** ([ADR 0016](adr/0016-transfers-and-the-download-client.md)):
 
-The download-client-like surface should expose:
+1. The sidecar connects to the friend's node and asks for the file.
+2. The friend's Nodearr checks the request at that moment: is this node still trusted, is the file still shared with it, and can it be read? Having been offered it earlier counts for nothing.
+3. The friend's sidecar works out the file's size and BLAKE3 hash and sends them first, then the file.
+4. This node writes it under `incomplete`, hashing as it goes, and compares the hash at the end.
+5. Only a file that matches is moved, in one step, into `complete/<category>/<title>`, where the Arr app finds it, imports it, and tells Nodearr to remove it.
 
-- Queued transfers.
-- Active transfers.
-- Progress and speed where available.
-- Source peer.
-- Candidate metadata.
-- Verification state.
-- Failure reason.
-- Completed path.
-- Remove/cancel support.
-- Import-ready status.
+An album arrives as its tracks, one after another, and appears only once every one of them is verified ([ADR 0020](adr/0020-lidarr-albums-shared-and-moved-as-folders-of-tracks.md)).
 
-The actual byte movement stays internal to Nodearr and its transfer provider abstraction.
+Three transfers run at once. One that fails for a reason that may pass is tried again, up to three times, 15 seconds apart, carrying on from what had arrived. If another friend has the same file, by its hash, the transfer carries on from them instead. One that fails for good is reported to the Arr app with a reason written for its history, such as `NoDirectRoute` or `Revoked`, and the Arr app blocklists it and searches again. See [transfers](diagrams/direct-transfer-download-client-flow.md).
 
-## Profiles, matching, and content hashes
+## How two nodes reach each other
 
-Profiles decide desirability. Hashes decide exactness.
+Most home machines are behind a router that does not let connections in. iroh gets two of them talking anyway ([ADR 0011](adr/0011-direct-only-media-over-iroh-with-relay-for-coordination.md)):
 
-Nodearr should not primarily ask:
+1. Each sidecar keeps a connection open to its relay, and learns its public address from it.
+2. To reach a friend, it asks the relay to pass a message to the friend's node, then both try to reach each other at the addresses they learned. Both having sent first is what gets through most routers ("hole punching"). The sidecar can also ask the router for a port mapping (UPnP, NAT-PMP or PCP).
+3. Small messages, such as pairing and catalog requests, may go through the relay while this happens, encrypted end to end. The relay cannot read them.
+4. **File data moves only over a direct path.** The sender waits up to 20 seconds for one, and gives up with `NoDirectRoute` if none appears. If a direct path is lost part way, it stops with `DirectPathLost` rather than carry on through the relay.
 
-**Do peers have content hash X?**
+This has worked between two home networks with no port forwarded, and between a home and a cloud machine. A node in Docker Desktop on Windows or macOS is the known hard case: Docker Desktop gives it a different public port for every destination, so it needs the UDP port forwarded. See [when there is no direct path](diagrams/direct-connectivity-failure-no-relay.md).
 
-It should primarily ask:
+## Privacy
 
-**Does a trusted peer have a candidate that satisfies this media request and local policy?**
+- **What a friend sees** is the offer built for them: what is shared with them, described as above. Not what is hidden, not what is shared only with others, and not where anything is stored.
+- **What the relay sees** is that two node IDs are talking, and the encrypted messages that pass through it before a direct path forms. Never a file.
+- **What anyone else sees** is nothing. Nodearr makes no calls home: no update checks, no error reporting, no analytics. The code it was derived from did, and all of it was taken out ([ADR 0018](adr/0018-diagnostics-and-no-calls-home.md)).
+- The web UI and the API ask for a sign-in or an API key, as Sonarr's do. That is separate from trust between nodes: an API key is not a node's identity.
 
-The matching stack should be:
+## Where things are in the UI
 
-1. **Media match**: Is this the same movie, episode, album, track, book, or other media item?
-2. **Profile match**: Is this acceptable for my local preferences, quality profile, language profile, custom formats, or related Arr policy?
-3. **Release candidate**: What specific peer file is being offered as a candidate?
-4. **File identity**: What exact bytes does this candidate represent?
-5. **Transfer verification**: Did I receive the exact bytes the peer advertised?
+| Page | What it is for |
+| --- | --- |
+| Home | The first-run steps, then an overview: what needs attention, what friends have, the library, friends and the network. |
+| Catalog > Local | What the Arr apps say this node has. |
+| Catalog > Peer Catalog | What friends share, against the local library. |
+| Catalog > Sharing | Share lists, Hidden, and what each friend is offered. |
+| Nodes > Trusted Nodes | Trusted, revoked and blocked nodes, and how each is reached. |
+| Nodes > Invites | Creating invites and using a friend's. |
+| Activity > Transfers | What is being fetched, and what failed and why. |
+| Settings > Apps | The Arr apps, and Prowlarr. |
+| Settings > Node | This node's name, the relay, the UDP port, port mapping, the download folder and the upload limit ([ADR 0019](adr/0019-node-settings-saved-in-the-ui-fixed-by-the-environment.md)). |
+| Settings > General | The web port, sign-in, the API key and backups. |
+| System | Status and health, Tasks, Backup, Events and Log Files. |
 
-Content hashes are important, but they are not Nodearr's top-level media identity. They matter for verification, dedupe, exact-copy detection, resumable transfer, and future multi-source transfer.
+## Packaging
 
-For V1, Nodearr should begin with Arr metadata and profile-aware matching for search/ranking, then add whole-file content hashes for exact byte verification. Chunk hashes can come when transfer providers need resumability or multi-peer chunking.
+One image for Docker, and packages for Linux, macOS and Windows like Sonarr's, including a Windows installer that runs Nodearr in the tray or as a service ([ADR 0017](adr/0017-one-docker-image-and-how-it-is-deployed.md), [releases](guides/releases.md)). Nodearr does not update itself.
 
-## Node identity and trust
+## Further reading
 
-Each Nodearr instance is a node.
-
-A node should have a long-lived public/private keypair. The public key is the stable node identity.
-
-Local UI/API authentication is separate from peer trust. An API key used by a browser, Sonarr, Radarr, or Prowlarr is not a peer identity.
-
-A trusted node relationship should be established through an invite flow:
-
-1. John creates an invite in Nodearr.
-2. Nodearr generates a short-lived code or QR code.
-3. The invite contains John's public node identity, expiration data, one-time pairing material, and discovery/rendezvous metadata.
-4. George enters the invite code in his Nodearr instance.
-5. Both Nodearr instances exchange signed identity material.
-6. Each stores the other's public key and trust record.
-7. Future peer communication is authenticated using those public keys.
-
-The short-lived invite authorizes pairing. The keypair proves ongoing identity.
-
-## Rendezvous and direct peer connectivity
-
-Nodearr should not require a VPN by default.
-
-Nodearr should not require manual port forwarding as the default experience.
-
-Nodearr may use rendezvous/discovery infrastructure to help peers find each other. That infrastructure can exchange small connection metadata such as:
-
-- Invite IDs.
-- Public node identities.
-- Temporary session metadata.
-- Observed addresses.
-- Transport hints.
-- Connection candidates.
-- Expiration data.
-
-Rendezvous infrastructure should not store catalogs permanently, own the peer graph, relay files, or carry transfer bytes.
-
-The product promise is:
-
-**Nodearr uses rendezvous-assisted direct peer connections. If direct peer connectivity cannot be established, transfer fails clearly unless the user explicitly configured their own alternate network path. Official Nodearr infrastructure does not relay media bytes.**
-
-This allows Nodearr to provide a low-configuration default experience without becoming a hosted media relay.
-
-## Iroh and UDP hole punching
-
-Iroh is the leading peer transport direction, but it should remain behind a Nodearr transfer abstraction.
-
-The relevant networking idea is UDP hole punching: both peers contact a discovery/rendezvous mechanism, exchange observed connection information, and then both attempt outbound communication to each other. Because both sides initiated outbound traffic, NAT/firewall state may allow a direct path to form.
-
-Iroh is attractive because it provides lower-level networking capabilities Nodearr should not invent from scratch:
-
-- Endpoint identity.
-- Encrypted QUIC connections.
-- NAT traversal.
-- Discovery.
-- Direct peer connection support.
-- Protocol routing.
-- File/blob transfer primitives.
-
-Iroh also has relay-capable architecture, but Nodearr's official policy should reject relayed media-byte transfer through official infrastructure. The Nodearr domain should say, "connect to trusted peer George and request candidate X." The transfer provider decides how to attempt the direct connection and reports clear failure if policy prevents fallback.
-
-## Official relay policy
-
-Official Nodearr infrastructure must not relay media bytes.
-
-Relay fallback is common in peer-to-peer systems, but relaying large media files would create cost, abuse, moderation, privacy, and reliability problems for the project.
-
-The policy is:
-
-- Discovery is acceptable.
-- Rendezvous is acceptable.
-- Connection hints and short-lived pairing metadata are acceptable.
-- Official hosted media-byte relay is not part of V1.
-- Official hosted media-byte relay should not be presented as the default fallback.
-- Self-hosted relay or user-configured alternate network paths may be explored later as explicit opt-in advanced configuration.
-- If direct transfer fails and no user-owned alternate path is configured, the transfer fails clearly.
-
-## Arr-inspired product design
-
-Nodearr should feel familiar to Arr users.
-
-The stack and product shape are intentional:
-
-- C#/.NET backend.
-- ASP.NET Core host.
-- React/TypeScript frontend.
-- GPL-3.0 license.
-- Arr-inspired UI shell.
-- API-key machine access.
-- Settings/System/Activity patterns.
-- Provider-style abstractions where they reduce real integration complexity.
-
-The UI should use Arr conventions: sidebar navigation, table-heavy pages, status pages, activity/queue pages, settings pages, logs, health warnings, and provider cards.
-
-Nodearr's primary domain is not movies, series, albums, tracks, or books. Those remain owned by the source Arr applications.
-
-Nodearr's primary domains are **Catalog**, **Nodes**, and **Transfers**.
-
-Suggested routes:
-
-### `/catalog/local`
-
-Shows what local Arr apps say this Nodearr instance has.
-
-### `/catalog/peers`
-
-Shows what trusted peers say they have, compared against the local catalog.
-
-### `/nodes/trusted`
-
-Shows trusted Nodearr peers.
-
-### `/nodes/invites`
-
-Creates and redeems short-lived peer invites.
-
-### `/activity/transfers`
-
-Shows Nodearr transfer jobs.
-
-### `/settings/arr-apps`
-
-Configures Sonarr, Radarr, and later additional Arr app API connections.
-
-### `/settings/indexer`
-
-Configures Nodearr's Torznab/Newznab-compatible indexer surface.
-
-### `/settings/download-client`
-
-Configures Nodearr's Arr-facing download-client behavior.
-
-### `/settings/transfer-providers`
-
-Configures direct transfer providers such as local HTTP, Iroh, or future options.
-
-### `/system/status`
-
-Shows system status, health, and diagnostics.
-
-## Appendix A: Application support scope
-
-This list is intentionally iterative. Nodearr should start with a narrow, useful V1 and expand support over time.
-
-### V1 required support
-
-- **Sonarr**: TV series and episode catalog source.
-- **Radarr**: movie catalog source.
-
-### Planned post-V1 / iterative support
-
-- **Lidarr**: music catalog source.
-- **Readarr**: books and audiobook catalog source.
-- **Whisparr / Eros**: adult media catalog source.
-- **Other Arr-like applications** where the app exposes enough API metadata to support catalog import, candidate projection, and completed-download workflows.
-
-### Downstream / compatibility role
-
-- **Prowlarr**: downstream indexer manager. Nodearr does not catalog Prowlarr. Prowlarr may configure Nodearr as a Torznab/Newznab-compatible indexer.
-
-### Not catalog sources
-
-Media clients and servers such as Jellyfin or Plex are not Nodearr catalog sources. They may consume the final imported media library after normal Arr import, but they are not part of Nodearr's primary Arr integration model.
+- [Decision records](adr/), 0001 to 0020.
+- [Sequence diagrams](diagrams/).
+- [The V1 plan](plans/v1-implementation-plan.md): what was built, slice by slice, and what is still open.
+- [What Nodearr inherited from Sonarr](research/inherited-sonarr-features.md).
