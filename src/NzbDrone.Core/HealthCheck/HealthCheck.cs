@@ -89,6 +89,7 @@ namespace NzbDrone.Core.HealthCheck
         NotificationStatusAll,
         NotificationStatusSingle,
         Package,
+        PairAttempts,
         PeerNetworkNoUdp,
         PeerNetworkVaryingPort,
         PeerRelayOnly,

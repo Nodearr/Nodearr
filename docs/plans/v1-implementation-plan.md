@@ -101,6 +101,8 @@ Then a settings page. ADR 0019. Branch `v1/s10-node-settings`.
 - Prowlarr can be added in Settings > Apps. Nodearr adds itself to it as an indexer, to be searched there, with a sync profile that switches off the copies Prowlarr makes in Sonarr and Radarr, which would not be pinned to Nodearr's download client. Prowlarr holds no library and Nodearr reads nothing from it (ADR 0007, amendments). Run against a real Prowlarr managing a real Radarr. Branch `v1/s41-prowlarr`.
 - A Windows installer, as Sonarr has: Nodearr in Program Files, starting from the tray at sign-in, as a Windows service, or not at all. Installing adds a firewall rule for the transport, which a service could not otherwise get, and uninstalling removes it. The tray app's icon has every size Windows asks for. Built by the release workflow with Inno Setup (`docs/guides/releases.md`). Branch `v1/s42-windows-service-tray`.
 
+- Pair attempts are limited. A node that keeps failing to pair is turned away for 15 minutes, a flood of failures is counted rather than logged one by one, and System > Status says when it happens. Pairing is never closed to everyone (ADR 0013, amendments). Branch `v1/s47-pair-rate-limit`.
+
 ## Where V1 stands
 
 The plan's definition of done is "a real Sonarr/Radarr import of a verified, permitted peer transfer between two deployed instances". That has been met between two deployed instances on one machine, many times over, with the failure cases checked. On 2026-10-12 it was met between two machines on different networks: a PC at home and a rented cloud machine, with no port forwarded on the home router (ADR 0011, "Runs between two machines"). The cloud machine had to allow UDP in for the connection to be direct, because the home side ran in Docker Desktop.
@@ -129,4 +131,3 @@ Not built:
 - A FreeBSD package and a macOS app bundle (`docs/guides/releases.md`). No updater, by design (ADR 0018).
 - Inherited pages that no route leads to still hold links to pages that do not exist.
 - The S1 spike harness no longer runs on later branches. The acceptance scripts replaced it.
-- Pair attempts are not rate limited (ADR 0013).
