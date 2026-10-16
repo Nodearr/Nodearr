@@ -21,10 +21,10 @@ namespace NzbDrone.Core.Sharing
     // A series, a movie or an artist in the local catalog, named the way the catalog keys it.
     public readonly record struct TitleKey(MediaKind Kind, int ApplicationId, int ArrId);
 
-    // What a share list can hold, at the levels Sonarr monitors: a whole series, one season of
-    // it, or one episode. A whole series or season takes in episodes that arrive later. A movie
-    // is always whole, and so is an artist, with all its albums. ArrId is the series, the movie or
-    // the artist.
+    // What a share list can hold, at the levels the Arr apps monitor: a whole series, one season of
+    // it, or one episode; a whole artist, or one album of it; a movie, whole. A whole series,
+    // season or artist takes in what arrives later. ArrId is the series, the movie or the artist.
+    // EpisodeArrId is an episode, or, for an artist, an album.
     public readonly record struct ShareKey(MediaKind Kind, int ApplicationId, int ArrId, int? SeasonNumber = null, int? EpisodeArrId = null)
     {
         public static ShareKey Series(int applicationId, int seriesArrId) => new(MediaKind.Tv, applicationId, seriesArrId);
@@ -32,6 +32,7 @@ namespace NzbDrone.Core.Sharing
         public static ShareKey Episode(int applicationId, int seriesArrId, int episodeArrId) => new(MediaKind.Tv, applicationId, seriesArrId, null, episodeArrId);
         public static ShareKey Movie(int applicationId, int movieArrId) => new(MediaKind.Movie, applicationId, movieArrId);
         public static ShareKey Artist(int applicationId, int artistArrId) => new(MediaKind.Music, applicationId, artistArrId);
+        public static ShareKey Album(int applicationId, int artistArrId, int albumArrId) => new(MediaKind.Music, applicationId, artistArrId, null, albumArrId);
 
         public bool IsWhole => SeasonNumber == null && EpisodeArrId == null;
         public TitleKey Title => new(Kind, ApplicationId, ArrId);
@@ -88,6 +89,18 @@ namespace NzbDrone.Core.Sharing
         public int EpisodeNumber { get; set; }
         public string Title { get; set; }
         public bool HasFile { get; set; }
+    }
+
+    // The albums of one artist, for choosing among them.
+    public class ShareableAlbum
+    {
+        public int AlbumArrId { get; set; }
+        public string Title { get; set; }
+        public int Year { get; set; }
+        public string AlbumType { get; set; }
+
+        // Only an album Lidarr holds every track of is offered.
+        public bool IsWhole { get; set; }
     }
 
     // One series or movie that can be put on a share list.

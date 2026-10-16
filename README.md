@@ -14,7 +14,7 @@ Nobody else is involved. There is no account, no server of ours that sees your l
 | **Radarr** | Reads its movies and files. Finds movies for it by TMDb or IMDb ID. |
 | **Whisparr v3** (Eros) | Reads its films and scenes. Finds films by ID, and scenes by studio, release date, title and code, as Whisparr searches for them. |
 | **Whisparr v2** | The same, with each site's scenes. A v2 and a v3 find each other's scenes. |
-| **Lidarr** | Reads its artists, albums and tracks. Shares whole artists, offers albums only when they are complete, and moves an album as a folder of tracks. |
+| **Lidarr** | Reads its artists, albums and tracks. Shares whole artists or single albums, offers an album only when it is complete, and moves an album as a folder of tracks. |
 | **Prowlarr** | Adds Nodearr to Prowlarr as an indexer, so you can search it there with your others. Prowlarr holds no library, so nothing is read from it. |
 
 Adult content from Whisparr is only ever found by Whisparr's own searches, and albums only by Lidarr's. Sonarr and Radarr never see either.

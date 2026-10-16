@@ -7528,6 +7528,48 @@
         }
       }
     },
+    "/api/v5/sharing/titles/{applicationId}/{arrId}/albums": {
+      "get": {
+        "tags": [
+          "Sharing"
+        ],
+        "parameters": [
+          {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "arrId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ShareableAlbumResource"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v5/sharing/titles": {
       "get": {
         "tags": [
@@ -14019,6 +14061,11 @@
             "type": "integer",
             "format": "int32",
             "nullable": true
+          },
+          "albumArrId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -14051,6 +14098,31 @@
               "format": "int32"
             },
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ShareableAlbumResource": {
+        "type": "object",
+        "properties": {
+          "albumArrId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "year": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "albumType": {
+            "type": "string",
+            "nullable": true
+          },
+          "isWhole": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false

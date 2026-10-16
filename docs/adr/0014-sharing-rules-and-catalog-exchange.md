@@ -148,3 +148,5 @@ The marks are worked out again whenever the local catalog is refreshed.
 - ~~S6: turn peer catalog rows into indexer results, with the opaque file identifier inside a signed GUID.~~ Done: ADR 0015.
 - ~~S7: authorize every transfer request against the same sharing rule, so a file that is no longer offered cannot be fetched with an old identifier.~~ Done: ADR 0016.
 - ~~A cheaper update path for large catalogs, if it is needed. Measured on 2026-10-13, see the amendments: building is cheap, and the cost that remains is sending a large changed offer whole.~~ Done: only what changed is sent, see the amendment of 2026-10-14.
+- 2026-10-16: **one Hidden list.** The Hidden list is made the first time the lists are asked for, and two requests at once, such as a friend's catalog request and the Sharing page, could each make one. A node was found with two. Everything on either was still kept from everyone, but the second was easy to miss. It is now made under a lock, and migration 250 moves whatever was on a second Hidden list to the first, deletes the rest, and adds a unique index so the database holds at most one.
+

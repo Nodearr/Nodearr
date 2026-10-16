@@ -31,7 +31,7 @@ Three tables beside the series and movie ones: `CatalogArtists`, `CatalogAlbums`
 
 ### L2: sharing and offers by album
 
-- A share list holds whole artists, as it holds whole movies. An artist takes in albums that arrive later. Albums are not put on a list one by one.
+- A share list holds whole artists, as it holds whole movies. An artist takes in albums that arrive later. ~~Albums are not put on a list one by one.~~ They are now, see the amendment of 2026-10-16.
 - An offer lists albums, `a-{application}-{album}`. Each says its artist, title, year, release day, kind of release, both MusicBrainz IDs, and its tracks in Lidarr's order. A track says its extension, size and quality, and nothing of its name or path, as a file does (ADR 0014). Its ID, `t-{application}-{track file}`, is what a transfer asks for. The album's quality is the one most of its tracks have, and its size is all of theirs.
 - An album is offered only when Lidarr holds every track of it: the album's statistics say as many track files as tracks, and the catalog holds that many.
 - A node says it knows albums when it asks for a catalog (`CatalogAcceptsMusic`). An older node does not, and is sent none, as it would take an album for a movie.
@@ -96,3 +96,5 @@ The first run named the parts `01.flac` and so on, and Lidarr, which does not re
 - A Lidarr library with many artists costs one request per artist on every full read.
 - An album is all or nothing. A peer with one track short offers nothing for that album.
 - Lidarr finds releases by text, so a match is only as good as the artist and album names on both sides.
+- 2026-10-16: **albums are shared one by one, as seasons are.** A share list held only whole artists. Lidarr monitors by album, as Sonarr does by season and episode, so a list now holds an artist whole or some of its albums, and the Hidden list can hold one album of an artist that is otherwise shared. An album is covered by its artist or itself. A whole artist still takes in albums that arrive later, and an album on a list under its whole artist on the same list is dropped as saying nothing more. An album is still offered only when Lidarr holds every track, and Catalog > Sharing says which are not yet whole. In the API an album is `albumArrId` on a share key, and `GET /api/v5/sharing/titles/{application}/{artist}/albums` lists an artist's albums. Checked between two nodes: hiding one album took it off the friend's side within a second, and unhiding it brought it back at their next sync.
+

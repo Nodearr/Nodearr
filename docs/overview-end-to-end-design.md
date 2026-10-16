@@ -48,7 +48,7 @@ Nodearr is not a shared drive, a media server, a public indexer or a library man
 | Radarr | Movies and their files | Whole movies | TMDb or IMDb ID |
 | Whisparr v3 | Films and scenes, with studio, date, code and IDs | Whole items | Films by ID. Scenes by text: studio, date, title and code |
 | Whisparr v2 | Sites and their scenes, kept as v3 keeps them | Whole items | The same as v3, so a v2 and a v3 find each other's scenes |
-| Lidarr | Artists, albums and track files | Whole artists. An album is offered only when complete | Text: artist and album |
+| Lidarr | Artists, albums and track files | Whole artists, or single albums. An album is offered only when complete | Text: artist and album |
 | Prowlarr | Nothing | Nothing | Nodearr adds itself there as an indexer ([ADR 0007](adr/0007-prowlarr-as-downstream-indexer-consumer.md)) |
 
 Adult content is found only by searches in its own categories, which only Whisparr makes. Albums are found only by searches in the audio categories, which only Lidarr makes. Sonarr and Radarr never see either ([ADR 0015](adr/0015-the-indexer-id-matching-release-titles-and-candidate-ids.md), [ADR 0020](adr/0020-lidarr-albums-shared-and-moved-as-folders-of-tracks.md)).
@@ -82,7 +82,7 @@ Trust can be **revoked** from either side, which ends it on both, or the other n
 
 Nothing is shared until its owner says so ([ADR 0014](adr/0014-sharing-rules-and-catalog-exchange.md)). On Catalog > Sharing:
 
-- a **share list** holds whole series, seasons, episodes, movies, Whisparr items and artists, and is given to chosen friends;
+- a **share list** holds whole series, seasons, episodes, movies, Whisparr items, whole artists and single albums, and is given to chosen friends;
 - a friend can instead be marked **share everything**;
 - anything on the **Hidden** list is offered to nobody, whatever else says so.
 

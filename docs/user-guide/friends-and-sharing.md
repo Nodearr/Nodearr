@@ -61,17 +61,17 @@ Each friend is either:
 A list holds chosen things from your library, and is given to chosen friends:
 
 1. **New List**, and name it.
-2. Tick what goes on it. For a series you can tick the whole series, single seasons or single episodes. Movies, Whisparr items and artists go on whole.
+2. Tick what goes on it. For a series you can tick the whole series, single seasons or single episodes. For an artist, the whole artist or single albums. Movies and Whisparr items go on whole.
 3. Under **Shared with**, tick the friends who get it.
 4. **Save**.
 
-A whole series, season or artist takes in what arrives later: a new episode of a ticked season is shared as soon as Sonarr imports it, and so is a new album of a ticked artist, once it is complete. A season that arrives later is shared only if the whole series is ticked.
+A whole series, season or artist takes in what arrives later: a new episode of a ticked season is shared as soon as Sonarr imports it, and so is a new album of a ticked artist, once it is complete. A season or album that arrives later is shared only if the whole series or artist is ticked. An album is offered only once Lidarr holds every track of it; the Sharing page says which are not there yet.
 
 A file that holds several episodes is shared only when every one of them is, as Sonarr wants a release only when every episode in it is monitored.
 
 ### Hidden
 
-Anything on the **Hidden** list is offered to nobody, whatever else says so: not to friends who are offered everything, not to friends whose lists hold it. Use it for what you never want to share.
+Anything on the **Hidden** list is offered to nobody, whatever else says so: not to friends who are offered everything, not to friends whose lists hold it. Use it for what you never want to share. It works at the same levels as a list, so you can hide one season of a series or one album of an artist and share the rest.
 
 ### When sharing changes
 

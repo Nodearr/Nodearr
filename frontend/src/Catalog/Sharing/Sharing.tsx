@@ -20,6 +20,7 @@ import { getErrorMessage, Peer, usePeers } from 'Nodes/useNodes';
 import { InputChanged } from 'typings/inputs';
 import translate from 'Utilities/String/translate';
 import {
+  albumShareId,
   episodeShareId,
   parseShareId,
   seasonShareId,
@@ -32,6 +33,7 @@ import {
   useHashingStatus,
   useSaveShareList,
   useSetShareAll,
+  useShareableAlbums,
   useShareableSeasons,
   useShareableTitles,
   useShareLists,
@@ -305,6 +307,119 @@ function SeasonChoice({
   );
 }
 
+// An artist, whole, or some of its albums, as a series is shared whole or by season.
+function ArtistChoice({
+  title,
+  items,
+  label,
+  onChange,
+}: {
+  title: ShareableTitle;
+  items: Set<string>;
+  label: string;
+  onChange: (next: Set<string>) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const { data: albums = [], isFetching } = useShareableAlbums(title, isOpen);
+
+  const whole = titleId(title);
+  const isWhole = items.has(whole);
+  const isPart =
+    !isWhole && Array.from(items).some((i) => i.startsWith(`${whole}:`));
+
+  const handleArtistToggle = useCallback(() => {
+    const next = new Set(
+      Array.from(items).filter((i) => i !== whole && !i.startsWith(`${whole}:`))
+    );
+
+    if (!isWhole) {
+      next.add(whole);
+    }
+
+    onChange(next);
+  }, [items, whole, isWhole, onChange]);
+
+  const handleAlbumToggle = useCallback(
+    (id: string) => {
+      const next = new Set(items);
+
+      // Taking one album off a whole artist leaves every other album ticked.
+      if (isWhole) {
+        next.delete(whole);
+        albums
+          .map((a) => albumShareId(title, a.albumArrId))
+          .filter((a) => a !== id)
+          .forEach((a) => next.add(a));
+      } else if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+
+      onChange(next);
+    },
+    [items, albums, title, whole, isWhole, onChange]
+  );
+
+  const handleOpenPress = useCallback(() => {
+    setIsOpen((open) => !open);
+  }, []);
+
+  return (
+    <div>
+      <div className={styles.seriesRow}>
+        <IconButton
+          name={isOpen ? icons.COLLAPSE : icons.EXPAND}
+          title={translate('SharingAlbums')}
+          onPress={handleOpenPress}
+        />
+
+        <Check
+          id={whole}
+          label={label}
+          isChecked={isWhole}
+          isIndeterminate={isPart}
+          className={styles.inlineCheck}
+          onToggle={handleArtistToggle}
+        />
+      </div>
+
+      {isOpen ? (
+        <div className={styles.nested}>
+          {isFetching && !albums.length ? <LoadingIndicator size={20} /> : null}
+
+          {isPart ? (
+            <div className={styles.muted}>
+              {translate('SharingPartOfArtistHelpText')}
+            </div>
+          ) : null}
+
+          {albums.map((album) => {
+            const id = albumShareId(title, album.albumArrId);
+            const name = album.year
+              ? `${album.title ?? ''} (${album.year})`
+              : album.title ?? '';
+
+            return (
+              <Check
+                key={album.albumArrId}
+                id={id}
+                label={
+                  album.isWhole
+                    ? name
+                    : `${name} (${translate('SharingAlbumNotWhole')})`
+                }
+                isChecked={isWhole || items.has(id)}
+                onToggle={handleAlbumToggle}
+              />
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function ShareAllRow({ peer }: { peer: Peer }) {
   const { mutate, isPending, error } = useSetShareAll();
 
@@ -487,16 +602,32 @@ function ShareListEditor({
           />
 
           <div className={styles.titles}>
-            {visible.map((title) =>
-              title.mediaKind === 'tv' ? (
-                <SeriesChoice
-                  key={titleId(title)}
-                  title={title}
-                  items={items}
-                  label={describeTitle(title)}
-                  onChange={setItems}
-                />
-              ) : (
+            {visible.map((title) => {
+              if (title.mediaKind === 'tv') {
+                return (
+                  <SeriesChoice
+                    key={titleId(title)}
+                    title={title}
+                    items={items}
+                    label={describeTitle(title)}
+                    onChange={setItems}
+                  />
+                );
+              }
+
+              if (title.mediaKind === 'music') {
+                return (
+                  <ArtistChoice
+                    key={titleId(title)}
+                    title={title}
+                    items={items}
+                    label={describeTitle(title)}
+                    onChange={setItems}
+                  />
+                );
+              }
+
+              return (
                 <Check
                   key={titleId(title)}
                   id={titleId(title)}
@@ -505,8 +636,8 @@ function ShareListEditor({
                   className={styles.movieCheck}
                   onToggle={handleItemToggle}
                 />
-              )
-            )}
+              );
+            })}
           </div>
         </div>
 

@@ -7,7 +7,7 @@ What changed in each release, newest first. Each item links to the decision reco
 ### New
 
 - **Whisparr v3 (Eros) and Whisparr v2.** Films are found by ID and scenes by Whisparr's own text search: studio, date, title and code. A v2 and a v3 find each other's scenes. Adult content is only ever found by Whisparr's searches, never by Radarr's ([ADR 0015](docs/adr/0015-the-indexer-id-matching-release-titles-and-candidate-ids.md), amendments).
-- **Lidarr.** Artists are shared, whole albums are offered and compared by release group, and an album is moved as a folder of tracks that appears only once every track is checked. Lidarr finds albums by artist and album ([ADR 0020](docs/adr/0020-lidarr-albums-shared-and-moved-as-folders-of-tracks.md)).
+- **Lidarr.** Artists, or single albums of them, are shared, whole albums are offered and compared by release group, and an album is moved as a folder of tracks that appears only once every track is checked. Lidarr finds albums by artist and album ([ADR 0020](docs/adr/0020-lidarr-albums-shared-and-moved-as-folders-of-tracks.md)).
 - **Prowlarr.** Nodearr adds itself to Prowlarr as an indexer, to be searched there with your others, and switches off the copies Prowlarr would make in your apps ([ADR 0007](docs/adr/0007-prowlarr-as-downstream-indexer-consumer.md), amendments).
 - **A Windows installer**, as Sonarr has: Nodearr in Program Files, started in the tray at sign-in, as a service, or not at all, with the firewall rules it needs.
 - **A first run that sets itself up.** A welcome, sign-in set up first, and three steps on Home: connect your apps, name your node, connect with a friend. Home then becomes an overview.
@@ -25,6 +25,7 @@ What changed in each release, newest first. Each item links to the decision reco
 
 ### Fixed
 
+- A node could end up with two Hidden lists, when two requests made one at the same moment. It now has one, and a node that had two keeps everything that was on either.
 - Sonarr, Radarr and Prowlarr were always told to reach Nodearr at port 6633, whatever port it listened on.
 - Several help texts gave the wrong page or the wrong meaning: Sync Categories, the library and data folder warnings, and the Sharing page.
 

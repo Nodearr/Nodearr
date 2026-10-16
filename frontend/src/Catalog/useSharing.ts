@@ -18,11 +18,21 @@ export interface ShareableTitle extends TitleKey {
   files: number;
 }
 
-// A whole series or movie, one season of a series, or one episode of it, the way
-// Sonarr monitors them. arrId is the series or the movie.
+// A whole series or movie, one season of a series, or one episode of it, a whole
+// artist, or one album of it, the way the Arr apps monitor them. arrId is the
+// series, the movie or the artist.
 export interface ShareKey extends TitleKey {
   seasonNumber?: number | null;
   episodeArrId?: number | null;
+  albumArrId?: number | null;
+}
+
+export interface ShareableAlbum {
+  albumArrId: number;
+  title?: string;
+  year: number;
+  albumType?: string;
+  isWhole: boolean;
 }
 
 export interface ShareableEpisode {
@@ -103,8 +113,16 @@ export function episodeShareId(title: TitleKey, episodeArrId: number) {
   return `${titleId(title)}:e${episodeArrId}`;
 }
 
+export function albumShareId(title: TitleKey, albumArrId: number) {
+  return `${titleId(title)}:a${albumArrId}`;
+}
+
 // One string for each thing a list can hold, so a list can be kept as a Set.
 export function shareId(key: ShareKey) {
+  if (key.albumArrId != null) {
+    return albumShareId(key, key.albumArrId);
+  }
+
   if (key.episodeArrId != null) {
     return episodeShareId(key, key.episodeArrId);
   }
@@ -128,6 +146,8 @@ export function parseShareId(id: string): ShareKey {
     key.seasonNumber = Number(part.slice(1));
   } else if (part?.startsWith('e')) {
     key.episodeArrId = Number(part.slice(1));
+  } else if (part?.startsWith('a')) {
+    key.albumArrId = Number(part.slice(1));
   }
 
   return key;
@@ -159,6 +179,12 @@ export const useShareableTitles = () =>
 export const useShareableSeasons = (title: TitleKey, enabled: boolean) =>
   useApiQuery<ShareableSeason[]>({
     path: `${TITLES_PATH}/${title.applicationId}/${title.arrId}/seasons`,
+    queryOptions: { enabled },
+  });
+
+export const useShareableAlbums = (title: TitleKey, enabled: boolean) =>
+  useApiQuery<ShareableAlbum[]>({
+    path: `${TITLES_PATH}/${title.applicationId}/${title.arrId}/albums`,
     queryOptions: { enabled },
   });
 
