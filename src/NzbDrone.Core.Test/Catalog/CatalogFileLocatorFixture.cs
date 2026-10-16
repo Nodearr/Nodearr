@@ -23,8 +23,9 @@ namespace NzbDrone.Core.Test.Catalog
         {
             Mocker.SetConstant<ICatalogEpisodeFileRepository>(Mocker.Resolve<CatalogEpisodeFileRepository>());
             Mocker.SetConstant<ICatalogMovieFileRepository>(Mocker.Resolve<CatalogMovieFileRepository>());
+            Mocker.SetConstant<ICatalogTrackFileRepository>(Mocker.Resolve<CatalogTrackFileRepository>());
 
-            Mocker.GetMock<IApplicationFactory>().Setup(f => f.All()).Returns(new List<ApplicationDefinition> { new() { Id = 1, Name = "Sonarr" }, new() { Id = 2, Name = "Radarr" } });
+            Mocker.GetMock<IApplicationFactory>().Setup(f => f.All()).Returns(new List<ApplicationDefinition> { new() { Id = 1, Name = "Sonarr" }, new() { Id = 2, Name = "Radarr" }, new() { Id = 3, Name = "Lidarr" } });
 
             // The Arr apps see the library at /tv and /movies. It is at Root here.
             Mocker.GetMock<IRemotePathMappingService>()
@@ -39,9 +40,10 @@ namespace NzbDrone.Core.Test.Catalog
                 new() { ApplicationId = 1, ArrId = 503, ArrSeriesId = 10, Path = "/tv/Pingu/gone.mkv", RelativePath = "gone.mkv", MissingSince = DateTime.UtcNow }
             });
             Mocker.Resolve<ICatalogMovieFileRepository>().Insert(new CatalogMovieFile { ApplicationId = 2, ArrId = 701, ArrMovieId = 20, Path = "/movies/Night/movie.mkv", RelativePath = "movie.mkv" });
+            Mocker.Resolve<ICatalogTrackFileRepository>().Insert(new CatalogTrackFile { ApplicationId = 3, ArrId = 801, ArrArtistId = 7, ArrAlbumId = 70, Path = "/music/Low/01.flac", RelativePath = "01.flac" });
         }
 
-        private static readonly string[] Names = { "e-1-501", "e-1-502", "e-1-503", "m-2-701", "e-1-999", "m-1-501", "x-1-501", "e-1", "", null };
+        private static readonly string[] Names = { "e-1-501", "e-1-502", "e-1-503", "m-2-701", "t-3-801", "e-1-999", "m-1-501", "t-3-701", "a-3-70", "x-1-501", "e-1", "", null };
 
         [Test]
         public void many_at_once_should_find_each_file_the_way_one_at_a_time_does()
@@ -68,10 +70,11 @@ namespace NzbDrone.Core.Test.Catalog
         {
             var many = Subject.Locate(Names);
 
-            many.Keys.Should().BeEquivalentTo("e-1-501", "e-1-502", "m-2-701");
+            many.Keys.Should().BeEquivalentTo("e-1-501", "e-1-502", "m-2-701", "t-3-801");
             many["e-1-501"].Should().Match<LocatedFile>(l => l.LocalPath == Root + Path("tv/Pingu/e1.mkv") && l.Readable);
             many["e-1-502"].Readable.Should().BeFalse();
             many["m-2-701"].LocalPath.Should().Be(Root + Path("movies/Night/movie.mkv"));
+            many["t-3-801"].LocalPath.Should().Be(Root + Path("music/Low/01.flac"));
         }
 
         [Test]

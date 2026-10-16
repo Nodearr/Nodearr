@@ -16,6 +16,9 @@ namespace NzbDrone.Core.PeerIndexer
 
         // Newznab's XXX family, which Whisparr searches. Adult content is only ever filed here.
         public const int AdultCategory = 6000;
+
+        // Newznab's Audio family, which Lidarr searches: MP3 at 10 and lossless at 40.
+        public const int AudioCategory = 3000;
         public const string CandidateMetaType = "x-nodearr-candidate";
         public const string AirDateMetaType = "x-nodearr-airdate";
         public const string ConnectionTestTitle = "Nodearr connection test, not a release";
@@ -30,6 +33,7 @@ namespace NzbDrone.Core.PeerIndexer
         {
             // The TV and movie searches take IDs and no text, so the Arr apps never fall back to
             // guessing by title there. Plain search takes text, for people searching by hand.
+            // Lidarr has no IDs to send, and searches by artist and album.
             return new XElement("caps",
                 new XElement("server", new XAttribute("version", "1.0"), new XAttribute("title", "Nodearr"), new XAttribute("url", baseUrl)),
                 new XElement("limits", new XAttribute("max", CandidateService.MaxLimit), new XAttribute("default", CandidateService.MaxLimit)),
@@ -37,10 +41,12 @@ namespace NzbDrone.Core.PeerIndexer
                 new XElement("searching",
                     new XElement("search", new XAttribute("available", "yes"), new XAttribute("supportedParams", "q")),
                     new XElement("tv-search", new XAttribute("available", "yes"), new XAttribute("supportedParams", "tvdbid,imdbid,tmdbid,season,ep")),
-                    new XElement("movie-search", new XAttribute("available", "yes"), new XAttribute("supportedParams", "imdbid,tmdbid"))),
+                    new XElement("movie-search", new XAttribute("available", "yes"), new XAttribute("supportedParams", "imdbid,tmdbid")),
+                    new XElement("audio-search", new XAttribute("available", "yes"), new XAttribute("supportedParams", "q,artist,album"))),
                 new XElement("categories",
                     Category(MovieCategory, "Movies", (2030, "SD"), (2040, "HD"), (2045, "UHD")),
                     Category(TvCategory, "TV", (5030, "SD"), (5040, "HD"), (5045, "UHD"), (5070, "Anime")),
+                    Category(AudioCategory, "Audio", (3010, "MP3"), (3040, "Lossless")),
                     Category(AdultCategory, "XXX", (6040, "x264"), (6045, "UHD"), (6080, "SD"), (6090, "WEB-DL"))));
         }
 
@@ -73,6 +79,11 @@ namespace NzbDrone.Core.PeerIndexer
         // airDate is set for an item that was found by the day its episode aired.
         public static XElement Item(PeerCatalogItem item, string link, string airDate)
         {
+            if (item.MediaKind == MediaKind.Music)
+            {
+                return AlbumItem(item, link);
+            }
+
             var isMovie = item.MediaKind == MediaKind.Movie;
             var family = item.IsAdult ? AdultCategory : isMovie ? MovieCategory : TvCategory;
             var published = PublishedAt(item).ToString("r");
@@ -129,20 +140,61 @@ namespace NzbDrone.Core.PeerIndexer
             return element;
         }
 
+        // Lidarr reads an album's artist and album from its title, and its quality too. The
+        // category says MP3 or lossless as well, for an Arr app that sorts by it.
+        private static XElement AlbumItem(PeerCatalogItem item, string link)
+        {
+            var published = PublishedAt(item).ToString("r");
+            var title = item.ReleaseTitle;
+
+            return new XElement("item",
+                new XElement("title", title),
+                new XElement("guid", new XAttribute("isPermaLink", "false"), GuidPrefix + item.CandidateId),
+                new XElement("link", link),
+                new XElement("pubDate", published),
+                new XElement("category", "Audio"),
+                new XElement("description", title),
+                new XElement("enclosure", new XAttribute("url", link), new XAttribute("length", item.Size), new XAttribute("type", "application/x-nzb")),
+                Attr("category", AudioCategory),
+                Attr("category", IsLossless(item.Quality) ? 3040 : 3010),
+                Attr("size", item.Size),
+                Attr("usenetdate", published),
+                Attr("artist", item.Artist ?? string.Empty),
+                Attr("album", item.Title ?? string.Empty));
+        }
+
+        // As Lidarr names its lossless qualities.
+        private static bool IsLossless(string quality)
+        {
+            return new[] { "FLAC", "ALAC", "APE", "WavPack", "WAV" }.Any(q => (quality ?? string.Empty).StartsWith(q, StringComparison.OrdinalIgnoreCase));
+        }
+
         // The Arr apps refuse to save an indexer whose test query comes back empty (ADR 0010,
         // finding 1). One stand-in per kind asked for gets a new node past that. Its title matches
         // no series or movie, and its link leads nowhere.
         public static IEnumerable<XElement> ConnectionTestItems(bool tv, bool movies, bool adult, IReadOnlyCollection<int> requestedCategories, string baseUrl)
         {
-            foreach (var family in new[] { TvCategory, MovieCategory, AdultCategory })
+            return ConnectionTestItems(tv, movies, adult, false, requestedCategories, baseUrl);
+        }
+
+        public static IEnumerable<XElement> ConnectionTestItems(bool tv, bool movies, bool adult, bool music, IReadOnlyCollection<int> requestedCategories, string baseUrl)
+        {
+            var wanted = new[]
             {
-                if (family == TvCategory ? !tv : family == MovieCategory ? !movies : !adult)
+                (Family: TvCategory, IsAsked: tv, Kind: "tv", Name: "TV"),
+                (Family: MovieCategory, IsAsked: movies, Kind: "movie", Name: "Movies"),
+                (Family: AdultCategory, IsAsked: adult, Kind: "adult", Name: "XXX"),
+                (Family: AudioCategory, IsAsked: music, Kind: "music", Name: "Audio")
+            };
+
+            foreach (var (family, isAsked, kind, name) in wanted)
+            {
+                if (!isAsked)
                 {
                     continue;
                 }
 
                 var asked = requestedCategories.Where(c => c / 1000 * 1000 == family).ToList();
-                var kind = family == TvCategory ? "tv" : family == MovieCategory ? "movie" : "adult";
                 var published = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc).ToString("r");
                 var link = $"{baseUrl}/newznab/api?t=get&id=connection-test";
 
@@ -151,7 +203,7 @@ namespace NzbDrone.Core.PeerIndexer
                     new XElement("guid", new XAttribute("isPermaLink", "false"), $"{GuidPrefix}connection-test:{kind}"),
                     new XElement("link", link),
                     new XElement("pubDate", published),
-                    new XElement("category", family == TvCategory ? "TV" : family == MovieCategory ? "Movies" : "XXX"),
+                    new XElement("category", name),
                     new XElement("description", ConnectionTestTitle),
                     new XElement("enclosure", new XAttribute("url", link), new XAttribute("length", 1), new XAttribute("type", "application/x-nzb")),
                     Attr("category", family),

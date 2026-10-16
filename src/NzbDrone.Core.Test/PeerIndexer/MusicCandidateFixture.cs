@@ -34,6 +34,25 @@ namespace NzbDrone.Core.Test.PeerIndexer
                 ForeignAlbumId = "living-dead", Tracks = "[{\"Id\":\"t-3-701\",\"Extension\":\".flac\",\"Size\":10}]",
                 ReleaseTitle = "Night - Living Dead (1968) [FLAC]", DateAdded = DateTime.UtcNow.AddDays(-1)
             });
+
+            Db.Insert(new PeerCatalogItem
+            {
+                PeerId = alice.Id, RemoteId = "a-3-71", CandidateId = "low", MediaKind = MediaKind.Music, Artist = "Low", Title = "Things We Lost in the Fire", Year = 2001,
+                ForeignAlbumId = "things-we-lost", Tracks = "[{\"Id\":\"t-3-711\",\"Extension\":\".flac\",\"Size\":10}]",
+                ReleaseTitle = "Low - Things We Lost in the Fire (2001) [FLAC]", DateAdded = DateTime.UtcNow.AddDays(-3)
+            });
+
+            // An album whose tracks would not do: kept, never found.
+            Db.Insert(new PeerCatalogItem
+            {
+                PeerId = alice.Id, RemoteId = "a-3-72", CandidateId = "broken", MediaKind = MediaKind.Music, Artist = "Low", Title = "Secret Name", Year = 1999,
+                ReleaseTitle = "Low - Secret Name (1999) [FLAC]", DateAdded = DateTime.UtcNow
+            });
+        }
+
+        private static CandidateQuery Lidarr(string artist = null, string album = null)
+        {
+            return new CandidateQuery { IncludeTv = false, IncludeMovies = false, IncludeMusic = true, Artist = artist, Album = album };
         }
 
         private string[] Found(CandidateQuery query)
@@ -58,6 +77,42 @@ namespace NzbDrone.Core.Test.PeerIndexer
         public void a_text_search_should_find_no_albums()
         {
             Found(new CandidateQuery { Text = "Living Dead" }).Should().Equal("movie");
+        }
+
+        [Test]
+        public void lidarr_searching_by_artist_and_album_should_find_the_album()
+        {
+            Found(Lidarr("Low", "Things We Lost in the Fire")).Should().Equal("low");
+        }
+
+        [Test]
+        public void lidarr_searching_by_artist_should_find_each_of_its_albums_that_can_be_fetched()
+        {
+            Found(Lidarr("Low")).Should().Equal("low");
+        }
+
+        [Test]
+        public void lidarr_searching_for_another_album_should_find_nothing()
+        {
+            Found(Lidarr("Low", "Trust")).Should().BeEmpty();
+        }
+
+        [Test]
+        public void lidarr_should_never_find_a_movie()
+        {
+            Found(Lidarr("Night", "Living Dead")).Should().Equal("album");
+        }
+
+        [Test]
+        public void lidarr_browsing_should_list_only_albums_that_can_be_fetched()
+        {
+            Found(Lidarr()).Should().Equal("album", "low");
+        }
+
+        [Test]
+        public void a_plain_search_in_the_audio_categories_should_find_albums_by_their_words()
+        {
+            Found(new CandidateQuery { IncludeTv = false, IncludeMovies = false, IncludeMusic = true, Text = "low fire" }).Should().Equal("low");
         }
     }
 }

@@ -21,8 +21,9 @@ namespace NzbDrone.Core.Catalog
         // Where a file an Arr app reported is on this machine.
         LocatedFile Locate(int applicationId, string arrPath);
 
-        // The same, for a file named the way offers name it: e-{application}-{file} or
-        // m-{application}-{file}. Null when there is no such file in the catalog.
+        // The same, for a file named the way offers name it: e-{application}-{file},
+        // m-{application}-{file}, or an album's track, t-{application}-{file}. Null when there is
+        // no such file in the catalog.
         LocatedFile Locate(string offerFileId);
 
         // The same for many files at once, with a few queries in all. A name with no file in the
@@ -38,18 +39,21 @@ namespace NzbDrone.Core.Catalog
         private readonly IRemotePathMappingService _remotePathMappingService;
         private readonly ICatalogEpisodeFileRepository _episodeFiles;
         private readonly ICatalogMovieFileRepository _movieFiles;
+        private readonly ICatalogTrackFileRepository _trackFiles;
         private readonly IDiskProvider _diskProvider;
 
         public CatalogFileLocator(IApplicationFactory applicationFactory,
                                   IRemotePathMappingService remotePathMappingService,
                                   ICatalogEpisodeFileRepository episodeFiles,
                                   ICatalogMovieFileRepository movieFiles,
+                                  ICatalogTrackFileRepository trackFiles,
                                   IDiskProvider diskProvider)
         {
             _applicationFactory = applicationFactory;
             _remotePathMappingService = remotePathMappingService;
             _episodeFiles = episodeFiles;
             _movieFiles = movieFiles;
+            _trackFiles = trackFiles;
             _diskProvider = diskProvider;
         }
 
@@ -68,6 +72,7 @@ namespace NzbDrone.Core.Catalog
             CatalogFile file = kind switch
             {
                 "e" => _episodeFiles.ForArrIds(applicationId, new[] { arrId }).FirstOrDefault(f => f.MissingSince == null),
+                "t" => _trackFiles.ForArrIds(applicationId, new[] { arrId }).FirstOrDefault(f => f.MissingSince == null),
                 _ => _movieFiles.ForArrIds(applicationId, new[] { arrId }).FirstOrDefault(f => f.MissingSince == null)
             };
 
@@ -86,7 +91,7 @@ namespace NzbDrone.Core.Catalog
             foreach (var group in wanted)
             {
                 var (kind, applicationId) = group.Key;
-                var files = (kind == "e" ? _episodeFiles.ForApplication(applicationId).Cast<CatalogFile>() : _movieFiles.ForApplication(applicationId))
+                var files = Files(kind, applicationId)
                     .Where(f => f.MissingSince == null)
                     .ToDictionary(f => f.ArrId);
 
@@ -102,6 +107,16 @@ namespace NzbDrone.Core.Catalog
             return located;
         }
 
+        private IEnumerable<CatalogFile> Files(string kind, int applicationId)
+        {
+            return kind switch
+            {
+                "e" => _episodeFiles.ForApplication(applicationId),
+                "t" => _trackFiles.ForApplication(applicationId),
+                _ => _movieFiles.ForApplication(applicationId)
+            };
+        }
+
         private static bool TryParse(string offerFileId, out string kind, out int applicationId, out int arrId)
         {
             var parts = (offerFileId ?? string.Empty).Split('-');
@@ -110,7 +125,7 @@ namespace NzbDrone.Core.Catalog
             applicationId = 0;
             arrId = 0;
 
-            return parts.Length == 3 && kind is "e" or "m" && int.TryParse(parts[1], out applicationId) && int.TryParse(parts[2], out arrId);
+            return parts.Length == 3 && kind is "e" or "m" or "t" && int.TryParse(parts[1], out applicationId) && int.TryParse(parts[2], out arrId);
         }
 
         private LocatedFile Locate(ApplicationDefinition application, string arrPath)

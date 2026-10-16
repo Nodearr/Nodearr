@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
+using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Messaging;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Sharing;
@@ -84,7 +86,13 @@ namespace NzbDrone.Core.Transfers
         // The nodes this transfer moved away from, comma separated. It does not go back to them.
         public string TriedPeerIds { get; set; }
 
-        // Where the finished file is: a folder holding the one file.
+        // An album's tracks, as JSON, in the order they are fetched. Null for a single file. One
+        // part is fetched at a time, PartIndex is the one under way, and RemoteId and Hash are
+        // its. The album's Size and BytesDone count every part (ADR 0020).
+        public string Parts { get; set; }
+        public int PartIndex { get; set; }
+
+        // Where the finished file is: a folder holding the one file, or an album's tracks.
         public string OutputPath { get; set; }
         public int Attempts { get; set; }
         public DateTime? NextAttempt { get; set; }
@@ -94,10 +102,33 @@ namespace NzbDrone.Core.Transfers
 
         public bool IsActive => State is TransferState.Queued or TransferState.Downloading;
 
+        public bool HasParts => Parts.IsNotNullOrWhiteSpace();
+
+        public List<TransferPart> GetParts()
+        {
+            return HasParts ? JsonSerializer.Deserialize<List<TransferPart>>(Parts) : new List<TransferPart>();
+        }
+
+        public void SetParts(List<TransferPart> parts)
+        {
+            Parts = parts is { Count: > 0 } ? JsonSerializer.Serialize(parts) : null;
+        }
+
+        // What the transport knows this attempt by. Each part of an album is a transfer of its own.
+        public string TransportId => HasParts ? $"{DownloadId}-{PartIndex + 1}" : DownloadId;
+
         public HashSet<int> GetTriedPeerIds()
         {
             return (TriedPeerIds ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToHashSet();
         }
+    }
+
+    // One track of an album, as the peer offered it.
+    public class TransferPart
+    {
+        public string RemoteId { get; set; }
+        public string Extension { get; set; }
+        public long Size { get; set; }
     }
 
     // Raised when any transfer was added, removed, or moved on.

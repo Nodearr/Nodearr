@@ -45,6 +45,7 @@ namespace Nodearr.Http.Newznab
                 case "search":
                 case "tvsearch":
                 case "movie":
+                case "music":
                     return Search(function);
                 case "get":
                     return Get();
@@ -61,18 +62,21 @@ namespace Nodearr.Http.Newznab
                 .Where(c => c > 0)
                 .ToList();
 
-            // Nodearr has three kinds of thing: TV, movies, and adult content. Any category in a
-            // family asks for that kind, and how good a file is stays for the Arr app to judge from
-            // its title. Adult content is found only when its own categories are asked for, never
-            // by a search that names no category.
+            // Nodearr has four kinds of thing: TV, movies, adult content and albums. Any category in
+            // a family asks for that kind, and how good a file is stays for the Arr app to judge
+            // from its title. Adult content and albums are found only when their own categories
+            // are asked for, never by a search that names no category.
             bool Asked(int family) => categories.Count == 0 || categories.Any(c => c / 1000 * 1000 == family);
-            var adult = categories.Any(c => c / 1000 * 1000 == NewznabFeed.AdultCategory);
+            bool AskedOnly(int family) => categories.Any(c => c / 1000 * 1000 == family);
 
             var query = new CandidateQuery
             {
-                IncludeTv = function != "movie" && Asked(NewznabFeed.TvCategory),
-                IncludeMovies = function != "tvsearch" && Asked(NewznabFeed.MovieCategory),
-                IncludeAdult = function != "tvsearch" && adult,
+                IncludeTv = function is "search" or "tvsearch" && Asked(NewznabFeed.TvCategory),
+                IncludeMovies = function is "search" or "movie" && Asked(NewznabFeed.MovieCategory),
+                IncludeAdult = function is "search" or "movie" && AskedOnly(NewznabFeed.AdultCategory),
+                IncludeMusic = function is "search" or "music" && AskedOnly(NewznabFeed.AudioCategory),
+                Artist = Request.Query["artist"].ToString(),
+                Album = Request.Query["album"].ToString(),
                 TvdbId = Number("tvdbid"),
                 TmdbId = Number("tmdbid"),
                 ImdbId = Request.Query["imdbid"].ToString(),
@@ -95,7 +99,7 @@ namespace Nodearr.Http.Newznab
 
             if (total == 0 && query.IsBrowse)
             {
-                items = NewznabFeed.ConnectionTestItems(query.IncludeTv, query.IncludeMovies, query.IncludeAdult, categories, BaseUrl()).ToList();
+                items = NewznabFeed.ConnectionTestItems(query.IncludeTv, query.IncludeMovies, query.IncludeAdult, query.IncludeMusic, categories, BaseUrl()).ToList();
                 total = items.Count;
             }
 

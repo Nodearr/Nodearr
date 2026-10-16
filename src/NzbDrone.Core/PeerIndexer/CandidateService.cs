@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Linq.Expressions;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Nodes;
@@ -19,6 +20,12 @@ namespace NzbDrone.Core.PeerIndexer
         // Adult content, from peers' Whisparr. Found only when asked for by its own categories, and
         // never by a search for movies or TV.
         public bool IncludeAdult { get; set; }
+
+        // Albums, from peers' Lidarr. Found only when asked for by their own categories, and by
+        // text: the artist and album Lidarr sends, and any other words.
+        public bool IncludeMusic { get; set; }
+        public string Artist { get; set; }
+        public string Album { get; set; }
         public int TvdbId { get; set; }
         public int TmdbId { get; set; }
         public string ImdbId { get; set; }
@@ -41,8 +48,11 @@ namespace NzbDrone.Core.PeerIndexer
 
         public bool HasIds => TvdbId > 0 || TmdbId > 0 || ImdbId.IsNotNullOrWhiteSpace() || HasUnknownIds;
 
+        // Everything Lidarr said to look for, as words.
+        public string MusicText => string.Join(" ", new[] { Artist, Album, Text }.Where(t => t.IsNotNullOrWhiteSpace()));
+
         // No IDs and no text: the Arr app's connection test, or its RSS sync.
-        public bool IsBrowse => !HasIds && Text.IsNullOrWhiteSpace();
+        public bool IsBrowse => !HasIds && Text.IsNullOrWhiteSpace() && Artist.IsNullOrWhiteSpace() && Album.IsNullOrWhiteSpace();
     }
 
     public class CandidateResult
@@ -171,6 +181,11 @@ namespace NzbDrone.Core.PeerIndexer
                 kinds.Add(MediaKind.Movie);
             }
 
+            if (query.IncludeMusic)
+            {
+                kinds.Add(MediaKind.Music);
+            }
+
             return kinds;
         }
 
@@ -180,10 +195,16 @@ namespace NzbDrone.Core.PeerIndexer
             return query.IncludeAdult && !kinds.Contains(MediaKind.Movie) ? kinds.Append(MediaKind.Movie).ToList() : kinds;
         }
 
-        // Adult content only for an adult search, and nothing else for one.
+        // Adult content only for an adult search, and nothing else for one. An album only when its
+        // tracks can be fetched.
         private static bool IsAsked(PeerCatalogItem item, CandidateQuery query, List<MediaKind> kinds)
         {
-            return item.IsAdult ? query.IncludeAdult : kinds.Contains(item.MediaKind);
+            if (item.IsAdult)
+            {
+                return query.IncludeAdult;
+            }
+
+            return kinds.Contains(item.MediaKind) && (item.MediaKind != MediaKind.Music || item.IsAlbum);
         }
 
         // The Arr apps send every ID they know, in one request. A file matches when any ID it
@@ -197,9 +218,36 @@ namespace NzbDrone.Core.PeerIndexer
 
         private IEnumerable<PeerCatalogItem> ByText(CandidateQuery query, List<MediaKind> kinds)
         {
-            var found = kinds.Count > 0 ? ByWords(query.Text, kinds) : Enumerable.Empty<PeerCatalogItem>();
+            var others = kinds.Where(k => k != MediaKind.Music).ToList();
+            var found = others.Count > 0 && query.Text.IsNotNullOrWhiteSpace() ? ByWords(query.Text, others) : Enumerable.Empty<PeerCatalogItem>();
+
+            if (query.IncludeMusic)
+            {
+                found = found.Concat(Albums(query.MusicText));
+            }
 
             return query.IncludeAdult ? found.Concat(ScenesAndFilms(query.Text)) : found;
+        }
+
+        // Lidarr searches by artist and album. An album is found when every word of both is in
+        // its artist, title, year or release title. Lidarr reads the title to judge the rest.
+        private IEnumerable<PeerCatalogItem> Albums(string text)
+        {
+            var words = Words(text).Take(MaxWords).ToList();
+
+            if (words.Count == 0)
+            {
+                return Enumerable.Empty<PeerCatalogItem>();
+            }
+
+            return _items.FindAlbumsByText(words.OrderByDescending(w => w.Length).First())
+                .Where(i => i.IsAlbum)
+                .Where(i =>
+                {
+                    var haystack = Words($"{i.Artist} {i.Title} {i.Year} {i.ReleaseTitle}").ToList();
+
+                    return words.All(w => haystack.Any(h => h.Contains(w)));
+                });
         }
 
         // Adult content by Whisparr's text search. A query with a day in it is narrowed by that
@@ -255,39 +303,41 @@ namespace NzbDrone.Core.PeerIndexer
 
             spec.FilterExpressions.Add(i => peerIds.Contains(i.PeerId));
 
-            // Adult content only when asked for, and on its own when nothing else is.
+            // Adult content only when asked for, and otherwise only the kinds of file asked for.
+            // Albums, and any kind of file from a newer node, are never listed for Sonarr or Radarr.
             if (!query.IncludeAdult)
             {
                 spec.FilterExpressions.Add(i => i.IsAdult == false);
             }
-            else if (kinds.Count == 0)
-            {
-                spec.FilterExpressions.Add(i => i.IsAdult == true);
-            }
 
-            if (kinds.Count == 1)
-            {
-                var kind = kinds[0];
-
-                if (query.IncludeAdult)
-                {
-                    spec.FilterExpressions.Add(i => i.IsAdult == true || i.MediaKind == kind);
-                }
-                else
-                {
-                    spec.FilterExpressions.Add(i => i.MediaKind == kind);
-                }
-            }
-            else if (kinds.Count > 1)
-            {
-                // Albums, and any kind of file from a newer node, only when asked for.
-                spec.FilterExpressions.Add(i => i.MediaKind == MediaKind.Tv || i.MediaKind == MediaKind.Movie);
-            }
+            spec.FilterExpressions.Add(OfKinds(kinds, query.IncludeAdult));
 
             var page = _items.GetPaged(spec);
 
             // Copies that fall on the same page are shown once. The count is of every copy.
             return new CandidateResult { Total = page.TotalRecords, Items = OnePerFile(page.Records.Where(i => i.CandidateId != null)).ToList() };
+        }
+
+        // i => i.MediaKind == one of kinds || (adult && i.IsAdult), written out as the comparisons
+        // the database query builder reads. An album that cannot be fetched is listed as nothing.
+        private static Expression<Func<PeerCatalogItem, bool>> OfKinds(List<MediaKind> kinds, bool adult)
+        {
+            var item = Expression.Parameter(typeof(PeerCatalogItem), "i");
+            Expression body = adult ? Expression.Equal(Expression.Property(item, nameof(PeerCatalogItem.IsAdult)), Expression.Constant(true)) : null;
+
+            foreach (var kind in kinds)
+            {
+                Expression match = Expression.Equal(Expression.Convert(Expression.Property(item, nameof(PeerCatalogItem.MediaKind)), typeof(int)), Expression.Constant((int)kind));
+
+                if (kind == MediaKind.Music)
+                {
+                    match = Expression.AndAlso(match, Expression.NotEqual(Expression.Property(item, nameof(PeerCatalogItem.Tracks)), Expression.Constant(null, typeof(string))));
+                }
+
+                body = body == null ? match : Expression.OrElse(body, match);
+            }
+
+            return Expression.Lambda<Func<PeerCatalogItem, bool>>(body ?? Expression.Equal(Expression.Property(item, nameof(PeerCatalogItem.Id)), Expression.Constant(-1)), item);
         }
 
         public List<PeerCatalogItem> Copies(string blake3)

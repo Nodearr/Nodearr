@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Slices L1 (Lidarr's library in the catalog) and L2 (sharing and comparing albums) built and checked on 2026-10-15. Slices L3 to L5 follow.
+Accepted. All five slices built and checked on 2026-10-15: L1 (Lidarr's library in the catalog), L2 (sharing and comparing albums), L3 (moving an album), L4 (the indexer) and L5 (the live test).
 
 ## Context
 
@@ -41,15 +41,38 @@ Three tables beside the series and movie ones: `CatalogArtists`, `CatalogAlbums`
 
 ### L3: a transfer of several files
 
-A transfer job gets parts. The parts of an album arrive one after another into `incomplete/<download id>/`, each verified as a single file is now (ADR 0016). The folder moves into `complete` only when every part is verified, so Lidarr never sees half an album. A part that fails fails the album. Resuming works per part.
+- A transfer of an album has parts, its tracks in the order offered. The album's size and progress count all of them.
+- The parts arrive one after another into `incomplete/<download id>/`, named by the release title and numbered in order, such as `Slint - Spiderland (1991) [FLAC] - 01.flac`, each verified as a single file is (ADR 0016) and each with its own three attempts. Lidarr identifies the tracks by their tags. A Lidarr that does not rename tracks, which is its default, keeps these names and puts every album's tracks straight into the artist's folder, so each album's names have to be its own. Bare `01.flac` names were tried first and would have collided.
+- The folder moves into `complete` only when the last part is verified, so Lidarr never sees half an album.
+- A part that fails for good fails the album, and nothing of it is kept. A part that does not match its hash starts over, and the parts before it are kept.
+- Each part is its own transfer in the transport, `<download id>-<n>`, so nothing of one can be taken for another. The sidecar needs no change: a file's name is opaque to it.
+- An album stays with the node it came from. It does not move to another node that offers one of its tracks.
+- The sending node checks each part as it checks any file: the track is offered only while its album is whole and its artist shared.
 
 ### L4: the indexer
 
-`t=music` and `t=search` with an audio category are answered by text, artist and album words, as Whisparr's scenes are (ADR 0015). Release titles are Lidarr's own scene name where it kept one, or `Artist - Album (Year) [Quality]`.
+- The caps offer `audio-search` with `q,artist,album`, which is what Lidarr needs to search by artist and album, and the Audio categories 3000, 3010 (MP3) and 3040 (Lossless).
+- `t=music`, and `t=search` in an audio category, are answered by text: every word of the artist, the album and any query has to be in an album's artist, title, year or release title. Lidarr reads the title to judge the rest, as Whisparr does for a scene (ADR 0015).
+- Albums are found only when an audio category is asked for, never by a search that names none, so Sonarr and Radarr never see them. Lidarr's browse (its RSS sync and connection test) lists only albums, with a stand-in when there are none yet.
+- An album is filed under 3040 when its quality is lossless (FLAC, ALAC, APE, WavPack, WAV), and 3010 otherwise.
+- Its release title is the name Lidarr kept for the release where there is one, or `Artist - Album (Year) [Quality]` as Lidarr names folders, with Lidarr's MP3-320 written MP3 320.
 
 ### L5: a live test
 
-Two Lidarr instances, as for every other app: an album missing on one is found, grabbed, moved and imported, with identical tracks at both ends.
+Two Lidarr 3.1.0.4875 instances (checked against the hash Lidarr's update service publishes) and two fresh Nodearr nodes on one machine, with Slint added to both. A held *Spiderland*, the six-track CD release, as six silent FLACs tagged with its MusicBrainz IDs and each track's length. B held none of it.
+
+- Registration: Lidarr took the indexer (3000, 3010, 3040, pinned to Nodearr's download client), the download client on `music`, and the webhook.
+- B's Nodearr showed A's album as missing, six tracks, FLAC.
+- Lidarr B's interactive search listed `Slint - Spiderland (1991) [FLAC]` from Nodearr, approved.
+- Its automatic search grabbed it. The six tracks arrived and were verified in about 8 seconds, and Lidarr imported all six at its next check of finished downloads, about a minute later.
+- Each imported track was byte for byte the one A holds, in order.
+- Lidarr's webhook had B's Nodearr read the artist again, and A's album then showed as held.
+
+The first run named the parts `01.flac` and so on, and Lidarr, which does not rename by default, put them straight into the artist's folder under those names. The parts are now named by the release as well (L3), and a second run from fresh data imported them as `Slint - Spiderland (1991) [FLAC] - 01.flac` and so on.
+
+## Follow-up work
+
+- Sending each track's title, as an episode's title is sent, would let a Lidarr that does not rename keep names such as `01 - Breadcrumb Trail.flac`. Lidarr's track titles are not in the catalog yet.
 
 ## Consequences
 

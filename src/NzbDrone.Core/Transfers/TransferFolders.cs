@@ -50,6 +50,16 @@ namespace NzbDrone.Core.Transfers
         {
             var extension = job.Extension != null && ExtensionRegex.IsMatch(job.Extension) ? job.Extension : DefaultExtension;
 
+            // An album's tracks are named by the release and numbered in the order Lidarr listed
+            // them. Lidarr reads the rest from their tags. A Lidarr that does not rename keeps these
+            // names, all in the artist's folder, so each album's have to be its own.
+            if (job.HasParts)
+            {
+                var width = job.GetParts().Count >= 100 ? 3 : 2;
+
+                return Path.Combine(IncompleteFolder(job), $"{SafeName(job.Title)} - {(job.PartIndex + 1).ToString().PadLeft(width, '0')}{extension}");
+            }
+
             return Path.Combine(IncompleteFolder(job), SafeName(job.Title) + extension);
         }
 
