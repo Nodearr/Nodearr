@@ -41,6 +41,12 @@ namespace NzbDrone.Core.Applications
         public abstract string Name { get; }
         protected abstract Version MinimumVersion { get; }
 
+        // The name the app gives itself in /system/status. Whisparr v3 calls itself Whisparr.
+        protected virtual string ReportedAppName => Name;
+
+        // The first version this kind of app is not, where a later one needs adding as another kind.
+        protected virtual Version BelowVersion => null;
+
         // The download client field that holds the category: tvCategory in Sonarr, movieCategory in Radarr.
         protected abstract string CategoryField { get; }
 
@@ -70,11 +76,14 @@ namespace NzbDrone.Core.Applications
         {
             get
             {
+                // Where this Nodearr is listening, as an app on the same machine would reach it.
+                var settings = new TSettings { NodearrUrl = $"http://localhost:{_configFileProvider.Port}" };
+
                 yield return new ApplicationDefinition
                 {
                     SyncLevel = ApplicationSyncLevel.FullSync,
                     Implementation = GetType().Name,
-                    Settings = new TSettings()
+                    Settings = settings
                 };
             }
         }
@@ -85,7 +94,7 @@ namespace NzbDrone.Core.Applications
 
             try
             {
-                failures.AddIfNotNull(_proxy.TestConnection(Settings, Name, MinimumVersion));
+                failures.AddIfNotNull(_proxy.TestConnection(Settings, ReportedAppName, MinimumVersion, BelowVersion));
             }
             catch (HttpException ex) when (ex.Response.StatusCode == HttpStatusCode.Unauthorized)
             {

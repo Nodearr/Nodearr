@@ -236,7 +236,7 @@ namespace NzbDrone.Core.PeerCatalog
         {
             for (var attempt = 0; attempt < MaxAttempts; attempt++)
             {
-                var first = _peerService.Ask(peer, new PeerMessage { Type = PeerMessageTypes.Catalog, CatalogKnownVersion = knownVersion, CatalogAcceptsChanges = acceptChanges });
+                var first = _peerService.Ask(peer, new PeerMessage { Type = PeerMessageTypes.Catalog, CatalogKnownVersion = knownVersion, CatalogAcceptsChanges = acceptChanges, CatalogAcceptsMusic = true });
 
                 if (first is not { Ok: true })
                 {

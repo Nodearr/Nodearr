@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Messaging;
 using NzbDrone.Core.Datastore;
@@ -54,6 +56,27 @@ namespace NzbDrone.Core.PeerCatalog
         // and empty otherwise. One number for each in EpisodeNumbers, comma separated.
         public int? SceneSeasonNumber { get; set; }
         public string SceneEpisodeNumbers { get; set; }
+
+        // From a peer's Whisparr: adult content, which only an adult search finds, and what a
+        // scene is searched for by. Null and false for everything else. See OfferItem.
+        public bool IsAdult { get; set; }
+        public string ItemType { get; set; }
+        public string Studio { get; set; }
+        public string ReleaseDate { get; set; }
+        public string Code { get; set; }
+        public string ForeignId { get; set; }
+        public string StashId { get; set; }
+        public string TpdbId { get; set; }
+
+        public bool IsScene => IsAdult && ItemType == "scene";
+
+        // From a peer's Lidarr: an album, by its artist and MusicBrainz IDs, and its tracks as
+        // JSON, each with the peer's name for it. See OfferItem.
+        public string Artist { get; set; }
+        public string ForeignArtistId { get; set; }
+        public string ForeignAlbumId { get; set; }
+        public string AlbumType { get; set; }
+        public string Tracks { get; set; }
         public string SceneName { get; set; }
         public string Edition { get; set; }
         public string Extension { get; set; }
@@ -87,6 +110,11 @@ namespace NzbDrone.Core.PeerCatalog
         public List<string> GetAirDates()
         {
             return (AirDates ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries).ToList();
+        }
+
+        public List<OfferTrack> GetTracks()
+        {
+            return Tracks.IsNullOrWhiteSpace() ? new List<OfferTrack>() : JsonSerializer.Deserialize<List<OfferTrack>>(Tracks);
         }
 
         public bool HasSceneNumbers => SceneSeasonNumber.HasValue && SceneEpisodeNumbers.IsNotNullOrWhiteSpace();
@@ -123,8 +151,29 @@ namespace NzbDrone.Core.PeerCatalog
                    DateTime.TryParseExact(value, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out _);
         }
 
+        // An album with tracks that would not do is kept as the peer sent it, so the catalog still
+        // adds up to the peer's version, but has no tracks here and is never found or fetched.
+        public bool IsAlbum => MediaKind == MediaKind.Music && Tracks.IsNotNullOrWhiteSpace();
+
+        // An album's tracks name files to ask for and to write, so each has to be sensible: an ID,
+        // an extension the way offers spell one, a size, and a hash only in the expected form.
+        private static bool AreTracks(List<OfferTrack> tracks)
+        {
+            return tracks is { Count: > 0 and <= MaxTracks } &&
+                   tracks.All(t => t.Id is { Length: > 0 and <= 64 } && t.Id.All(c => c is >= '!' and <= '~') &&
+                                   t.Extension != null && ExtensionPattern.IsMatch(t.Extension) &&
+                                   t.Size > 0 &&
+                                   (t.Blake3 == null || IsHex(t.Blake3, 64))) &&
+                   tracks.Select(t => t.Id).Distinct(StringComparer.Ordinal).Count() == tracks.Count;
+        }
+
+        private const int MaxTracks = 1000;
+        private static readonly Regex ExtensionPattern = new(@"^\.[a-z0-9]{1,5}$", RegexOptions.Compiled);
+
         public static PeerCatalogItem FromOffer(int peerId, OfferItem offer)
         {
+            var isMusic = offer.Kind == MediaKind.Music && AreTracks(offer.Tracks);
+
             return new PeerCatalogItem
             {
                 PeerId = peerId,
@@ -141,6 +190,21 @@ namespace NzbDrone.Core.PeerCatalog
                 AirDates = string.Join(",", (offer.AirDates ?? new List<string>()).Where(IsAirDate)),
                 SceneSeasonNumber = AreSceneNumbers(offer) ? offer.SceneSeasonNumber : null,
                 SceneEpisodeNumbers = AreSceneNumbers(offer) ? string.Join(",", offer.SceneEpisodeNumbers) : null,
+
+                // Only a movie can be adult content, and only a film or a scene is one.
+                IsAdult = offer.Adult == true && offer.Kind == MediaKind.Movie,
+                ItemType = offer.Adult == true && offer.Kind == MediaKind.Movie ? (offer.ItemType == "scene" ? "scene" : "movie") : null,
+                Studio = offer.Studio,
+                ReleaseDate = IsAirDate(offer.ReleaseDate) ? offer.ReleaseDate : null,
+                Code = offer.Code,
+                ForeignId = offer.ForeignId,
+                StashId = offer.StashId,
+                TpdbId = offer.TpdbId,
+                Artist = isMusic ? offer.Artist : null,
+                ForeignArtistId = isMusic ? offer.ForeignArtistId : null,
+                ForeignAlbumId = isMusic ? offer.ForeignAlbumId?.ToLowerInvariant() : null,
+                AlbumType = isMusic ? offer.AlbumType : null,
+                Tracks = isMusic ? JsonSerializer.Serialize(offer.Tracks.Select(t => new OfferTrack { Id = t.Id, Extension = t.Extension, Size = t.Size, Quality = t.Quality, Blake3 = t.Blake3 })) : null,
                 SceneName = offer.SceneName,
                 Edition = offer.Edition,
                 Extension = offer.Extension,

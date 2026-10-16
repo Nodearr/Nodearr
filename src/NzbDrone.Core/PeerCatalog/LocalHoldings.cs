@@ -20,13 +20,19 @@ namespace NzbDrone.Core.PeerCatalog
         private readonly ICatalogMovieRepository _movies;
         private readonly ICatalogMovieFileRepository _movieFiles;
         private readonly ICatalogQualityProfileRepository _profiles;
+        private readonly ICatalogArtistRepository _artists;
+        private readonly ICatalogAlbumRepository _albums;
+        private readonly ICatalogTrackFileRepository _trackFiles;
 
         public LocalHoldingsFactory(ICatalogSeriesRepository series,
                                     ICatalogEpisodeRepository episodes,
                                     ICatalogEpisodeFileRepository episodeFiles,
                                     ICatalogMovieRepository movies,
                                     ICatalogMovieFileRepository movieFiles,
-                                    ICatalogQualityProfileRepository profiles)
+                                    ICatalogQualityProfileRepository profiles,
+                                    ICatalogArtistRepository artists,
+                                    ICatalogAlbumRepository albums,
+                                    ICatalogTrackFileRepository trackFiles)
         {
             _series = series;
             _episodes = episodes;
@@ -34,16 +40,19 @@ namespace NzbDrone.Core.PeerCatalog
             _movies = movies;
             _movieFiles = movieFiles;
             _profiles = profiles;
+            _artists = artists;
+            _albums = albums;
+            _trackFiles = trackFiles;
         }
 
         public LocalHoldings Load()
         {
-            return new LocalHoldings(_series.All(), _episodes.All(), _episodeFiles.All(), _movies.All(), _movieFiles.All(), _profiles.All());
+            return new LocalHoldings(_series.All(), _episodes.All(), _episodeFiles.All(), _movies.All(), _movieFiles.All(), _profiles.All(), _artists.All(), _albums.All(), _trackFiles.All());
         }
     }
 
     // A snapshot of what the local Arr apps hold, arranged for comparing a peer's files against it.
-    // Matching is by the IDs the Arr apps use for the series or movie, never by title.
+    // Matching is by the IDs the Arr apps use for the series, movie or album, never by title.
     public class LocalHoldings
     {
         private static readonly Dictionary<string, int> SourceRanks = new(StringComparer.OrdinalIgnoreCase)
@@ -65,6 +74,14 @@ namespace NzbDrone.Core.PeerCatalog
         private readonly ILookup<string, CatalogMovie> _moviesByExternalId;
         private readonly Dictionary<(int, int), CatalogMovieFile> _movieFiles;
 
+        // Whisparr's scenes by studio and release date. Whisparr v2 and v3 know a scene by different
+        // IDs, and agree on these.
+        private readonly ILookup<string, CatalogMovie> _scenesByStudioAndDay;
+
+        // Lidarr's albums by MusicBrainz release group, each with its artist's quality profile and
+        // one of its track files, the one of the quality most of them have.
+        private readonly ILookup<string, (CatalogAlbum Album, int ProfileId, CatalogFile File)> _albumsByReleaseGroup;
+
         // By application and the Arr app's profile ID. Only profiles whose ranking has been read.
         private readonly Dictionary<(int, int), QualityRanking> _rankings;
 
@@ -73,7 +90,10 @@ namespace NzbDrone.Core.PeerCatalog
                              IEnumerable<CatalogEpisodeFile> episodeFiles,
                              IEnumerable<CatalogMovie> movies,
                              IEnumerable<CatalogMovieFile> movieFiles,
-                             IEnumerable<CatalogQualityProfile> profiles = null)
+                             IEnumerable<CatalogQualityProfile> profiles = null,
+                             IEnumerable<CatalogArtist> artists = null,
+                             IEnumerable<CatalogAlbum> albums = null,
+                             IEnumerable<CatalogTrackFile> trackFiles = null)
         {
             _rankings = (profiles ?? Enumerable.Empty<CatalogQualityProfile>())
                 .Where(p => p.MissingSince == null)
@@ -94,22 +114,77 @@ namespace NzbDrone.Core.PeerCatalog
                 .ToDictionary(f => (f.ApplicationId, f.ArrId));
 
             _moviesByExternalId = movies.Where(m => m.MissingSince == null)
-                .SelectMany(m => ExternalIds(0, m.TmdbId, m.ImdbId).Select(id => (id, m)))
+                .SelectMany(m => WhisparrIds(m.ForeignId, m.StashId, m.TpdbId).Concat(ExternalIds(0, m.TmdbId, m.ImdbId)).Select(id => (id, m)))
                 .ToLookup(x => x.id, x => x.m);
 
             _movieFiles = movieFiles.Where(f => f.MissingSince == null)
                 .ToDictionary(f => (f.ApplicationId, f.ArrId));
+
+            var profileOfArtist = (artists ?? Enumerable.Empty<CatalogArtist>())
+                .Where(a => a.MissingSince == null)
+                .ToDictionary(a => (a.ApplicationId, a.ArrId), a => a.QualityProfileId);
+
+            var tracks = (trackFiles ?? Enumerable.Empty<CatalogTrackFile>())
+                .Where(f => f.MissingSince == null)
+                .ToLookup(f => (f.ApplicationId, f.ArrAlbumId));
+
+            _albumsByReleaseGroup = (albums ?? Enumerable.Empty<CatalogAlbum>())
+                .Where(a => a.MissingSince == null && a.ForeignAlbumId.IsNotNullOrWhiteSpace() && profileOfArtist.ContainsKey((a.ApplicationId, a.ArrArtistId)))
+                .ToLookup(
+                    a => a.ForeignAlbumId.ToLowerInvariant(),
+                    a => (a, profileOfArtist[(a.ApplicationId, a.ArrArtistId)], (CatalogFile)tracks[(a.ApplicationId, a.ArrId)].GroupBy(f => f.Quality).OrderByDescending(g => g.Count()).Select(g => g.First()).FirstOrDefault()));
+
+            _scenesByStudioAndDay = movies
+                .Where(m => m.MissingSince == null && m.ItemType == "scene" && StudioAndDay(m.Studio, m.ReleaseDate) != null)
+                .ToLookup(m => StudioAndDay(m.Studio, m.ReleaseDate));
         }
 
         public PeerItemStatus Classify(PeerCatalogItem item)
         {
-            return item.MediaKind == MediaKind.Movie ? ClassifyMovie(item) : ClassifyEpisodes(item);
+            return item.MediaKind switch
+            {
+                MediaKind.Movie => ClassifyMovie(item),
+                MediaKind.Tv => ClassifyEpisodes(item),
+                MediaKind.Music when item.IsAlbum => ClassifyAlbum(item),
+
+                // A kind of file from a newer node, or an album that could not be fetched.
+                _ => PeerItemStatus.NotInLibrary
+            };
+        }
+
+        // Lidarr knows an album by its release group, whichever edition of it it holds. It is
+        // held only when every track is, as Lidarr takes a release only when it is the whole album.
+        private PeerItemStatus ClassifyAlbum(PeerCatalogItem item)
+        {
+            var albums = item.ForeignAlbumId.IsNullOrWhiteSpace() ? new List<(CatalogAlbum Album, int ProfileId, CatalogFile File)>() : _albumsByReleaseGroup[item.ForeignAlbumId].ToList();
+
+            if (albums.Count == 0)
+            {
+                return PeerItemStatus.NotInLibrary;
+            }
+
+            var files = albums
+                .Where(a => a.Album.IsWhole && a.File != null)
+                .Select(a => (a.File, Ranking: RankingFor(a.Album.ApplicationId, a.ProfileId)))
+                .ToList();
+
+            // Only an album held whole counts. One held in part is missing, as Lidarr sees it.
+            return Compare(item, files);
         }
 
         private PeerItemStatus ClassifyMovie(PeerCatalogItem item)
         {
-            // Radarr knows a movie by its TMDb ID. The IMDb ID is the fallback.
-            var movies = Find(_moviesByExternalId, ExternalIds(0, item.TmdbId, item.ImdbId));
+            // Radarr knows a movie by its TMDb ID. The IMDb ID is the fallback. Whisparr knows a
+            // film or a scene by its own IDs first.
+            var movies = Find(_moviesByExternalId, WhisparrIds(item.ForeignId, item.StashId, item.TpdbId).Concat(ExternalIds(0, item.TmdbId, item.ImdbId)));
+
+            // A scene from the other version of Whisparr, known here by other IDs.
+            if (movies.Count == 0 && item.IsScene)
+            {
+                var key = StudioAndDay(item.Studio, item.ReleaseDate);
+
+                movies = key == null ? movies : _scenesByStudioAndDay[key].ToList();
+            }
 
             if (movies.Count == 0)
             {
@@ -204,6 +279,32 @@ namespace NzbDrone.Core.PeerCatalog
             }
 
             return new List<T>();
+        }
+
+        // Couch Casting-X and CouchCastingX are one studio. Null when either is not known.
+        private static string StudioAndDay(string studio, string releaseDate)
+        {
+            var letters = new string((studio ?? string.Empty).RemoveDiacritics().ToLowerInvariant().Where(char.IsLetterOrDigit).ToArray());
+
+            return letters.Length == 0 || releaseDate.IsNullOrWhiteSpace() ? null : $"{letters}|{releaseDate}";
+        }
+
+        private static IEnumerable<string> WhisparrIds(string foreignId, string stashId, string tpdbId)
+        {
+            if (foreignId.IsNotNullOrWhiteSpace())
+            {
+                yield return "foreign:" + foreignId.ToLowerInvariant();
+            }
+
+            if (stashId.IsNotNullOrWhiteSpace())
+            {
+                yield return "stash:" + stashId.ToLowerInvariant();
+            }
+
+            if (tpdbId.IsNotNullOrWhiteSpace())
+            {
+                yield return "tpdb:" + tpdbId.ToLowerInvariant();
+            }
         }
 
         private static IEnumerable<string> ExternalIds(int tvdbId, int tmdbId, string imdbId)

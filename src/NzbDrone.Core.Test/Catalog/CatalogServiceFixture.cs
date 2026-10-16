@@ -30,6 +30,9 @@ namespace NzbDrone.Core.Test.Catalog
             Mocker.SetConstant<ICatalogEpisodeFileRepository>(Mocker.Resolve<CatalogEpisodeFileRepository>());
             Mocker.SetConstant<ICatalogMovieRepository>(Mocker.Resolve<CatalogMovieRepository>());
             Mocker.SetConstant<ICatalogMovieFileRepository>(Mocker.Resolve<CatalogMovieFileRepository>());
+            Mocker.SetConstant<ICatalogArtistRepository>(Mocker.Resolve<CatalogArtistRepository>());
+            Mocker.SetConstant<ICatalogAlbumRepository>(Mocker.Resolve<CatalogAlbumRepository>());
+            Mocker.SetConstant<ICatalogTrackFileRepository>(Mocker.Resolve<CatalogTrackFileRepository>());
             Mocker.SetConstant<ICatalogSyncStatusRepository>(Mocker.Resolve<CatalogSyncStatusRepository>());
 
             _catalog = GivenCatalog();
@@ -278,6 +281,37 @@ namespace NzbDrone.Core.Test.Catalog
             files.Single(f => f.ArrId == 703).MissingSince.Should().BeNull();
             files.Single(f => f.ArrId == 701).MissingSince.Should().NotBeNull();
             files.Single(f => f.ArrId == 702).MissingSince.Should().BeNull();
+        }
+
+        [Test]
+        public void reading_one_artist_again_should_touch_only_that_artist()
+        {
+            _application.SetupGet(a => a.Definition).Returns(new ApplicationDefinition { Id = ApplicationId, Name = "Lidarr", Implementation = "Lidarr" });
+            _catalog = new ApplicationCatalog();
+            _catalog.Artists.Add(new CatalogArtist { ArrId = 7, ForeignArtistId = "low-mbid", Name = "Low" });
+            _catalog.Artists.Add(new CatalogArtist { ArrId = 8, ForeignArtistId = "slint-mbid", Name = "Slint" });
+            _catalog.Albums.Add(new CatalogAlbum { ArrId = 70, ArrArtistId = 7, ForeignAlbumId = "things-we-lost", Title = "Things We Lost in the Fire", Year = 2001 });
+            _catalog.Albums.Add(new CatalogAlbum { ArrId = 80, ArrArtistId = 8, ForeignAlbumId = "spiderland", Title = "Spiderland", Year = 1991 });
+            _catalog.TrackFiles.Add(new CatalogTrackFile { ArrId = 701, ArrArtistId = 7, ArrAlbumId = 70, Path = "/music/Low/01.mp3", Size = 1, Quality = "MP3-320" });
+            _catalog.TrackFiles.Add(new CatalogTrackFile { ArrId = 801, ArrArtistId = 8, ArrAlbumId = 80, Path = "/music/Slint/01.flac", Size = 1, Quality = "FLAC" });
+            Subject.Refresh(null, false);
+
+            // Lidarr upgraded the album to FLAC: a new track file in place of the old one.
+            var low = new ApplicationCatalog();
+            low.Artists.Add(new CatalogArtist { ArrId = 7, ForeignArtistId = "low-mbid", Name = "Low" });
+            low.Albums.Add(new CatalogAlbum { ArrId = 70, ArrArtistId = 7, ForeignAlbumId = "things-we-lost", Title = "Things We Lost in the Fire", Year = 2001 });
+            low.TrackFiles.Add(new CatalogTrackFile { ArrId = 702, ArrArtistId = 7, ArrAlbumId = 70, Path = "/music/Low/01.flac", Size = 2, Quality = "FLAC" });
+            _application.Setup(a => a.FetchTitle(7)).Returns(low);
+
+            Subject.RefreshTitle(ApplicationId, 7);
+
+            var files = Mocker.Resolve<ICatalogTrackFileRepository>().ForApplication(ApplicationId);
+
+            files.Single(f => f.ArrId == 702).MissingSince.Should().BeNull();
+            files.Single(f => f.ArrId == 701).MissingSince.Should().NotBeNull();
+            files.Single(f => f.ArrId == 801).MissingSince.Should().BeNull();
+            Mocker.Resolve<ICatalogAlbumRepository>().ForApplication(ApplicationId).Should().OnlyContain(a => a.MissingSince == null);
+            Mocker.Resolve<ICatalogArtistRepository>().ForApplication(ApplicationId).Should().HaveCount(2);
         }
     }
 }

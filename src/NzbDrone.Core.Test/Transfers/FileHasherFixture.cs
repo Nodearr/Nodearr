@@ -34,7 +34,7 @@ namespace NzbDrone.Core.Test.Transfers
             Mocker.SetConstant<IFileHashRepository>(Mocker.Resolve<FileHashRepository>());
 
             Mocker.GetMock<IPeerRepository>().Setup(p => p.All()).Returns(() => _offers.Keys.ToList());
-            Mocker.GetMock<ISharingService>().Setup(s => s.BuildOffer(It.IsAny<Peer>())).Returns((Peer peer) => new Offer { Items = _offers[peer] });
+            Mocker.GetMock<ISharingService>().Setup(s => s.BuildOffer(It.IsAny<Peer>(), It.IsAny<bool>())).Returns((Peer peer, bool _) => new Offer { Items = _offers[peer] });
             Mocker.GetMock<ICatalogFileLocator>()
                   .Setup(l => l.Locate(It.IsAny<IEnumerable<string>>()))
                   .Returns((IEnumerable<string> ids) => ids.ToDictionary(id => id, id => _unreadable.Contains(id)
@@ -135,7 +135,7 @@ namespace NzbDrone.Core.Test.Transfers
             Subject.HashShared(CancellationToken.None);
 
             _read.Should().BeEmpty();
-            Mocker.GetMock<ISharingService>().Verify(s => s.BuildOffer(It.IsAny<Peer>()), Times.Never());
+            Mocker.GetMock<ISharingService>().Verify(s => s.BuildOffer(It.IsAny<Peer>(), It.IsAny<bool>()), Times.Never());
         }
 
         [Test]

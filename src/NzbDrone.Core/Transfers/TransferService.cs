@@ -7,6 +7,7 @@ using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Nodes;
 using NzbDrone.Core.Nodes.Transport;
 using NzbDrone.Core.PeerIndexer;
+using NzbDrone.Core.Sharing;
 
 namespace NzbDrone.Core.Transfers
 {
@@ -40,6 +41,10 @@ namespace NzbDrone.Core.Transfers
     //
     // The transport does the moving and the checking. This decides what to ask of it, and keeps
     // the record the Arr apps read through the download client API.
+    //
+    // An album is one transfer of several parts, its tracks. They arrive one after another into
+    // the same folder, each verified as a single file is, and each with its own attempts. The
+    // folder moves into place only once the last one is verified (ADR 0020).
     public class TransferService : ITransferService, IHandle<PeerStateChangedEvent>, IHandle<PeerDeletedEvent>
     {
         public const int MaxConcurrent = 3;
@@ -104,7 +109,17 @@ namespace NzbDrone.Core.Transfers
                 // Only a day the file really has an episode for changes the title.
                 airDate = airDate != null && candidate.GetAirDates().Contains(airDate) ? airDate : null;
 
-                var job = _jobs.Insert(new TransferJob
+                var parts = candidate.IsAlbum
+                    ? candidate.GetTracks().Select(t => new TransferPart { RemoteId = t.Id, Extension = t.Extension, Size = t.Size }).ToList()
+                    : null;
+
+                // An album offered without the tracks to fetch has nothing that can be fetched.
+                if (candidate.MediaKind == MediaKind.Music && parts == null)
+                {
+                    return null;
+                }
+
+                var job = new TransferJob
                 {
                     DownloadId = "SABnzbd_nzo_" + Guid.NewGuid().ToString("N")[..12],
                     CandidateId = candidateId,
@@ -120,7 +135,20 @@ namespace NzbDrone.Core.Transfers
                     Blake3 = candidate.Blake3,
                     State = TransferState.Queued,
                     Added = DateTime.UtcNow
-                });
+                };
+
+                if (parts != null)
+                {
+                    job.SetParts(parts);
+                    job.RemoteId = parts[0].RemoteId;
+                    job.Extension = parts[0].Extension;
+                    job.Size = parts.Sum(p => p.Size);
+
+                    // The hash is each part's. The album as a whole has none.
+                    job.Blake3 = null;
+                }
+
+                job = _jobs.Insert(job);
 
                 _logger.Info("Queued {0} from {1} as {2}", job.Title, peer.Name, job.DownloadId);
                 Changed();
@@ -219,7 +247,7 @@ namespace NzbDrone.Core.Transfers
 
                 foreach (var job in active.Where(j => j.State == TransferState.Downloading))
                 {
-                    changed |= Follow(job, progress.GetValueOrDefault(job.DownloadId));
+                    changed |= Follow(job, progress.GetValueOrDefault(job.TransportId));
                 }
 
                 var running = active.Count(j => j.State == TransferState.Downloading);
@@ -320,7 +348,7 @@ namespace NzbDrone.Core.Transfers
             {
                 _transport.Start(new FileTransferRequest
                 {
-                    Id = job.DownloadId,
+                    Id = job.TransportId,
                     Peer = peer.ToAddress(),
                     File = job.RemoteId,
                     Destination = _folders.IncompleteFile(job),
@@ -357,7 +385,8 @@ namespace NzbDrone.Core.Transfers
 
             var before = (job.BytesDone, job.Size, job.Hash);
 
-            if (progress.Size > 0)
+            // An album's size is all of its parts', as offered.
+            if (progress.Size > 0 && !job.HasParts)
             {
                 job.Size = progress.Size;
             }
@@ -366,13 +395,20 @@ namespace NzbDrone.Core.Transfers
             // already holds stays on show until the transport says where it carried on from.
             if (progress.State != FileTransferState.Connecting)
             {
-                job.BytesDone = progress.BytesDone;
+                job.BytesDone = PartsDone(job) + progress.BytesDone;
             }
 
             job.Hash = progress.Hash ?? job.Hash;
 
             switch (progress.State)
             {
+                case FileTransferState.Completed when job.HasParts && job.PartIndex < job.GetParts().Count - 1:
+                    Forget(job);
+                    NextPart(job);
+                    AttemptEnded(job, TransferFailure.None);
+
+                    return true;
+
                 case FileTransferState.Completed:
                     Forget(job);
                     Complete(job);
@@ -402,6 +438,29 @@ namespace NzbDrone.Core.Transfers
 
                     return true;
             }
+        }
+
+        // The bytes of an album's parts that have already arrived and been verified.
+        private static long PartsDone(TransferJob job)
+        {
+            return job.HasParts ? job.GetParts().Take(job.PartIndex).Sum(p => p.Size) : 0;
+        }
+
+        // One part of an album is verified. The next is fetched as soon as a slot is free, with
+        // attempts of its own.
+        private void NextPart(TransferJob job)
+        {
+            var parts = job.GetParts();
+
+            job.PartIndex++;
+            job.RemoteId = parts[job.PartIndex].RemoteId;
+            job.Extension = parts[job.PartIndex].Extension;
+            job.Hash = null;
+            job.BytesDone = PartsDone(job);
+            job.Attempts = 0;
+            job.State = TransferState.Queued;
+            job.NextAttempt = null;
+            _jobs.Update(job);
         }
 
         // The file is verified. It appears under complete/ in one step, or not at all.
@@ -450,10 +509,19 @@ namespace NzbDrone.Core.Transfers
 
                 if (startsOver)
                 {
-                    // The transport has already thrown the file away. Nothing here is worth resuming from.
-                    DeleteFolder(_folders.IncompleteFolder(job));
+                    // The transport has already thrown the file away. Nothing here is worth
+                    // resuming from, but an album's parts that were verified are kept.
+                    if (job.HasParts)
+                    {
+                        DeleteFile(_folders.IncompleteFile(job));
+                    }
+                    else
+                    {
+                        DeleteFolder(_folders.IncompleteFolder(job));
+                    }
+
                     job.Hash = null;
-                    job.BytesDone = 0;
+                    job.BytesDone = PartsDone(job);
                 }
 
                 job.State = TransferState.Queued;
@@ -475,11 +543,13 @@ namespace NzbDrone.Core.Transfers
         //
         // A file that did not match its hash is tried again from the same node first, since that
         // node is the one that must work its hash out again. A disk error here is no node's doing.
+        //
+        // An album stays with the node it came from, whose parts it is made of.
         private bool SwitchToAnotherCopy(TransferJob job, TransferFailure failure, string detail)
         {
             var hash = job.Hash ?? job.Blake3;
 
-            if (hash == null || failure is TransferFailure.None or TransferFailure.VerificationFailed or TransferFailure.DiskError)
+            if (hash == null || job.HasParts || failure is TransferFailure.None or TransferFailure.VerificationFailed or TransferFailure.DiskError)
             {
                 return false;
             }
@@ -562,11 +632,26 @@ namespace NzbDrone.Core.Transfers
         {
             try
             {
-                _transport.Cancel(job.DownloadId);
+                _transport.Cancel(job.TransportId);
             }
             catch (TransportException ex)
             {
-                _logger.Debug(ex, "Unable to stop transfer {0} in the transport", job.DownloadId);
+                _logger.Debug(ex, "Unable to stop transfer {0} in the transport", job.TransportId);
+            }
+        }
+
+        private void DeleteFile(string file)
+        {
+            try
+            {
+                if (File.Exists(file))
+                {
+                    File.Delete(file);
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                _logger.Warn(ex, "Unable to remove {0}", file);
             }
         }
 

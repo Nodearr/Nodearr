@@ -55,6 +55,9 @@ namespace NzbDrone.Core.Test.LargeLibrary
             Mocker.SetConstant<ICatalogEpisodeFileRepository>(Mocker.Resolve<CatalogEpisodeFileRepository>());
             Mocker.SetConstant<ICatalogMovieRepository>(Mocker.Resolve<CatalogMovieRepository>());
             Mocker.SetConstant<ICatalogMovieFileRepository>(Mocker.Resolve<CatalogMovieFileRepository>());
+            Mocker.SetConstant<ICatalogArtistRepository>(Mocker.Resolve<CatalogArtistRepository>());
+            Mocker.SetConstant<ICatalogAlbumRepository>(Mocker.Resolve<CatalogAlbumRepository>());
+            Mocker.SetConstant<ICatalogTrackFileRepository>(Mocker.Resolve<CatalogTrackFileRepository>());
             Mocker.SetConstant<IPeerCatalogRepository>(Mocker.Resolve<PeerCatalogRepository>());
             Mocker.SetConstant<IFileHashRepository>(Mocker.Resolve<FileHashRepository>());
             Mocker.SetConstant<ILocalHoldingsFactory>(Mocker.Resolve<LocalHoldingsFactory>());
@@ -174,8 +177,8 @@ namespace NzbDrone.Core.Test.LargeLibrary
             Mocker.SetConstant<IOfferRecordRepository>(Mocker.Resolve<OfferRecordRepository>());
             Mocker.SetConstant<IOfferExchange>(Mocker.Resolve<OfferExchange>());
 
-            var offer = Time("build the offer for a node that is shared everything", () => Subject.BuildOffer(_bob));
-            Time("build it again", () => Subject.BuildOffer(_bob));
+            var offer = Time("build the offer for a node that is shared everything", () => Subject.BuildOffer(_bob, true));
+            Time("build it again", () => Subject.BuildOffer(_bob, true));
             Time("check one file request against the sharing rule", () => Subject.IsOffered(_bob, "e-1-1"));
 
             var exchange = Mocker.Resolve<IOfferExchange>();

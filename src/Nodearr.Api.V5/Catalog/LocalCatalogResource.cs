@@ -12,6 +12,9 @@ public class LocalCatalogSummaryResource
     public int EpisodeFiles { get; set; }
     public int Movies { get; set; }
     public int MovieFiles { get; set; }
+    public int Artists { get; set; }
+    public int Albums { get; set; }
+    public int TrackFiles { get; set; }
     public int MissingFiles { get; set; }
     public DateTime? LastSyncStarted { get; set; }
     public DateTime? LastSyncCompleted { get; set; }
@@ -29,6 +32,9 @@ public class LocalCatalogSummaryResource
             EpisodeFiles = summary.EpisodeFiles,
             Movies = summary.Movies,
             MovieFiles = summary.MovieFiles,
+            Artists = summary.Artists,
+            Albums = summary.Albums,
+            TrackFiles = summary.TrackFiles,
             MissingFiles = summary.MissingFiles,
             LastSyncStarted = summary.LastSyncStarted,
             LastSyncCompleted = summary.LastSyncCompleted,

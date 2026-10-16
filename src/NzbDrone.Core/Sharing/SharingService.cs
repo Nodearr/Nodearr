@@ -22,7 +22,9 @@ namespace NzbDrone.Core.Sharing
         // The seasons and episodes of one series, for choosing among them.
         List<ShareableSeason> GetSeasons(int applicationId, int seriesArrId);
         Peer SetShareAll(int peerId, bool shareAll);
-        Offer BuildOffer(Peer peer);
+
+        // Albums only for a node that can take them. An older one would take an album for a movie.
+        Offer BuildOffer(Peer peer, bool includeMusic);
 
         // Whether a peer is offered a file right now, by the name its offer gives the file.
         bool IsOffered(Peer peer, string offerFileId);
@@ -33,10 +35,10 @@ namespace NzbDrone.Core.Sharing
     //   2. Anything on the Hidden list is offered to nobody.
     //   3. A peer marked "share everything" is offered the rest.
     //   4. Otherwise a peer is offered what is on the share lists it has been given.
-    // A list holds whole series, seasons, single episodes and movies, the way Sonarr monitors. An
+    // A list holds whole series, seasons, single episodes, movies and artists. An
     // episode is covered by its series, its season, or itself. A file holding several episodes is
     // offered only when every one of them is, as Sonarr wants a release only when every episode
-    // in it is monitored.
+    // in it is monitored. An album is offered only when Lidarr holds every track of it.
     // The filtering happens here, before anything is sent. A peer never receives an item and a
     // flag saying not to show it.
     public class SharingService : ISharingService,
@@ -55,6 +57,9 @@ namespace NzbDrone.Core.Sharing
         private readonly ICatalogEpisodeFileRepository _episodeFiles;
         private readonly ICatalogMovieRepository _movies;
         private readonly ICatalogMovieFileRepository _movieFiles;
+        private readonly ICatalogArtistRepository _artists;
+        private readonly ICatalogAlbumRepository _albums;
+        private readonly ICatalogTrackFileRepository _trackFiles;
         private readonly IFileHashRepository _fileHashes;
         private readonly IEventAggregator _eventAggregator;
 
@@ -68,6 +73,9 @@ namespace NzbDrone.Core.Sharing
                               ICatalogEpisodeFileRepository episodeFiles,
                               ICatalogMovieRepository movies,
                               ICatalogMovieFileRepository movieFiles,
+                              ICatalogArtistRepository artists,
+                              ICatalogAlbumRepository albums,
+                              ICatalogTrackFileRepository trackFiles,
                               IFileHashRepository fileHashes,
                               IEventAggregator eventAggregator)
         {
@@ -83,6 +91,9 @@ namespace NzbDrone.Core.Sharing
             _episodeFiles = episodeFiles;
             _movies = movies;
             _movieFiles = movieFiles;
+            _artists = artists;
+            _albums = albums;
+            _trackFiles = trackFiles;
         }
 
         public List<ShareListDetails> All()
@@ -184,7 +195,17 @@ namespace NzbDrone.Core.Sharing
                 Files = movieFiles[(m.ApplicationId, m.ArrId)].Count()
             });
 
-            return series.Concat(movies).OrderBy(t => t.Title).ToList();
+            var trackFiles = _trackFiles.All().Where(f => f.MissingSince == null).ToLookup(f => (f.ApplicationId, f.ArrArtistId));
+
+            var artists = _artists.All().Where(a => a.MissingSince == null).Select(a => new ShareableTitle
+            {
+                Key = new TitleKey(MediaKind.Music, a.ApplicationId, a.ArrId),
+                ApplicationName = applications.GetValueOrDefault(a.ApplicationId),
+                Title = a.Name,
+                Files = trackFiles[(a.ApplicationId, a.ArrId)].Count()
+            });
+
+            return series.Concat(movies).Concat(artists).OrderBy(t => t.Title).ToList();
         }
 
         public List<ShareableSeason> GetSeasons(int applicationId, int seriesArrId)
@@ -218,7 +239,7 @@ namespace NzbDrone.Core.Sharing
             return peer;
         }
 
-        public Offer BuildOffer(Peer peer)
+        public Offer BuildOffer(Peer peer, bool includeMusic)
         {
             if (peer is not { State: PeerState.Trusted })
             {
@@ -288,8 +309,26 @@ namespace NzbDrone.Core.Sharing
                     item.ImdbId = parent.ImdbId;
                     item.Title = parent.Title;
                     item.Year = parent.Year;
+
+                    if (parent.IsAdult)
+                    {
+                        item.Adult = true;
+                        item.ItemType = parent.ItemType;
+                        item.Studio = parent.Studio;
+                        item.ReleaseDate = parent.ReleaseDate;
+                        item.Code = parent.Code;
+                        item.ForeignId = parent.ForeignId;
+                        item.StashId = parent.StashId;
+                        item.TpdbId = parent.TpdbId;
+                    }
+
                     offered.Add(item);
                 }
+            }
+
+            if (includeMusic && rule.SharesAnyMusic)
+            {
+                offered.AddRange(Albums(rule));
             }
 
             // The hash, where it has been worked out for a file the size the Arr app says it is.
@@ -303,10 +342,81 @@ namespace NzbDrone.Core.Sharing
                     {
                         item.Blake3 = hash.Blake3;
                     }
+
+                    foreach (var track in item.Tracks ?? Enumerable.Empty<OfferTrack>())
+                    {
+                        if (hashes.TryGetValue(track.Id, out var trackHash) && trackHash.Size == track.Size)
+                        {
+                            track.Blake3 = trackHash.Blake3;
+                        }
+                    }
                 }
             }
 
             return Seal(offered);
+        }
+
+        // Each whole album of the artists the rule shares, with its tracks in Lidarr's order. The
+        // album's quality is the one most of its tracks have.
+        private IEnumerable<OfferItem> Albums(SharingRule rule)
+        {
+            var artists = _artists.All()
+                .Where(a => a.MissingSince == null && rule.SharesArtist(a.ApplicationId, a.ArrId))
+                .ToDictionary(a => (a.ApplicationId, a.ArrId));
+
+            if (artists.Count == 0)
+            {
+                yield break;
+            }
+
+            var tracks = _trackFiles.All()
+                .Where(f => f.MissingSince == null && artists.ContainsKey((f.ApplicationId, f.ArrArtistId)))
+                .ToLookup(f => (f.ApplicationId, f.ArrAlbumId));
+
+            foreach (var album in _albums.All().Where(a => a.MissingSince == null && a.IsWhole))
+            {
+                if (!artists.TryGetValue((album.ApplicationId, album.ArrArtistId), out var artist))
+                {
+                    continue;
+                }
+
+                var files = tracks[(album.ApplicationId, album.ArrId)]
+                    .OrderBy(f => f.RelativePath ?? f.Path, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                // The catalog says the album is whole, and its track files must say so too.
+                if (files.Count < album.TrackCount || files.Any(f => f.Size <= 0 || ExtensionOf(f.Path) == null))
+                {
+                    continue;
+                }
+
+                var item = Describe(files[0], MediaKind.Music, $"a-{album.ApplicationId}-{album.ArrId}");
+                var sceneNames = files.Select(f => f.SceneName).Distinct().ToList();
+
+                item.Title = album.Title;
+                item.Year = album.Year;
+                item.ReleaseDate = album.ReleaseDate;
+                item.Artist = artist.Name;
+                item.ForeignArtistId = artist.ForeignArtistId;
+                item.ForeignAlbumId = album.ForeignAlbumId;
+                item.AlbumType = album.AlbumType;
+
+                // Lidarr gives each track the name of the release it came in, when it kept one.
+                item.SceneName = sceneNames.Count == 1 && sceneNames[0].IsNotNullOrWhiteSpace() ? sceneNames[0] : null;
+                item.Extension = null;
+                item.Quality = files.GroupBy(f => f.Quality).OrderByDescending(g => g.Count()).First().Key;
+                item.Size = files.Sum(f => f.Size);
+                item.DateAdded = files.Max(f => f.DateAdded);
+                item.Tracks = files.Select(f => new OfferTrack
+                {
+                    Id = $"t-{f.ApplicationId}-{f.ArrId}",
+                    Extension = ExtensionOf(f.Path),
+                    Size = f.Size,
+                    Quality = f.Quality
+                }).ToList();
+
+                yield return item;
+            }
         }
 
         // The same answer as looking for the file in BuildOffer(peer), from the file's own rows. It
@@ -328,6 +438,15 @@ namespace NzbDrone.Core.Sharing
                        RuleFor(peer).SharesFile(_episodes.ForFiles(applicationId, new[] { arrFileId }).Where(e => e.MissingSince == null).ToList());
             }
 
+            if (kind == MediaKind.Music)
+            {
+                var track = _trackFiles.ForArrIds(applicationId, new[] { arrFileId }).FirstOrDefault(f => f.MissingSince == null);
+                var album = track == null ? null : _albums.ForArrIds(applicationId, new[] { track.ArrAlbumId }).FirstOrDefault(a => a.MissingSince == null && a.IsWhole);
+                var artist = album == null ? null : _artists.ForArrIds(applicationId, new[] { album.ArrArtistId }).FirstOrDefault(a => a.MissingSince == null);
+
+                return artist != null && RuleFor(peer).SharesArtist(applicationId, artist.ArrId);
+            }
+
             var movieFile = _movieFiles.ForArrIds(applicationId, new[] { arrFileId }).FirstOrDefault(f => f.MissingSince == null);
             var movie = movieFile == null ? null : _movies.ForArrIds(applicationId, new[] { movieFile.ArrMovieId }).FirstOrDefault(m => m.MissingSince == null);
 
@@ -344,12 +463,13 @@ namespace NzbDrone.Core.Sharing
             return new SharingRule(hidden, listed, peer.ShareAll);
         }
 
-        // What a list may hold: a movie whole, and a series whole, by season or by episode. A
+        // What a list may hold: a movie or an artist whole, and a series whole, by season or by episode. A
         // narrower item under a whole series on the same list says nothing more, so it is dropped.
         private static List<ShareKey> Tidy(IEnumerable<ShareKey> items)
         {
             var keys = (items ?? Enumerable.Empty<ShareKey>())
-                .Select(k => k.Kind == MediaKind.Movie ? new ShareKey(MediaKind.Movie, k.ApplicationId, k.ArrId) : k)
+                .Where(k => Enum.IsDefined(k.Kind))
+                .Select(k => k.Kind != MediaKind.Tv ? new ShareKey(k.Kind, k.ApplicationId, k.ArrId) : k)
                 .Where(k => k.SeasonNumber is null or >= 0 && !(k.SeasonNumber.HasValue && k.EpisodeArrId.HasValue))
                 .Distinct()
                 .ToList();
@@ -373,6 +493,14 @@ namespace NzbDrone.Core.Sharing
             }
 
             public bool SharesAnyTv => _shareAll || _listed.Any(k => k.Kind == MediaKind.Tv);
+            public bool SharesAnyMusic => _shareAll || _listed.Any(k => k.Kind == MediaKind.Music);
+
+            public bool SharesArtist(int applicationId, int artistArrId)
+            {
+                var key = ShareKey.Artist(applicationId, artistArrId);
+
+                return !_hidden.Contains(key) && (_shareAll || _listed.Contains(key));
+            }
 
             public bool SharesMovie(int applicationId, int movieArrId)
             {
@@ -399,8 +527,9 @@ namespace NzbDrone.Core.Sharing
             }
         }
 
-        // An offer names a file e-{application}-{file} or m-{application}-{file}, and nothing else
-        // names the same file.
+        // An offer names a file e-{application}-{file} or m-{application}-{file}, and an album's
+        // track t-{application}-{file}. Nothing else names the same file. An album itself,
+        // a-{application}-{album}, is not a file.
         private static bool TryParseFileId(string offerFileId, out MediaKind kind, out int applicationId, out int arrFileId)
         {
             kind = MediaKind.Tv;
@@ -409,12 +538,12 @@ namespace NzbDrone.Core.Sharing
 
             var parts = (offerFileId ?? string.Empty).Split('-');
 
-            if (parts.Length != 3 || parts[0] is not ("e" or "m") || !int.TryParse(parts[1], out applicationId) || !int.TryParse(parts[2], out arrFileId))
+            if (parts.Length != 3 || parts[0] is not ("e" or "m" or "t") || !int.TryParse(parts[1], out applicationId) || !int.TryParse(parts[2], out arrFileId))
             {
                 return false;
             }
 
-            kind = parts[0] == "e" ? MediaKind.Tv : MediaKind.Movie;
+            kind = parts[0] switch { "e" => MediaKind.Tv, "t" => MediaKind.Music, _ => MediaKind.Movie };
 
             return offerFileId == $"{parts[0]}-{applicationId}-{arrFileId}";
         }

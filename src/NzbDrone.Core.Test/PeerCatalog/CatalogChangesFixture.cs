@@ -41,7 +41,7 @@ namespace NzbDrone.Core.Test.PeerCatalog
 
             // Alice's side. What she offers is whatever _offered holds when she is asked.
             var sharing = new Mock<ISharingService>();
-            sharing.Setup(s => s.BuildOffer(It.IsAny<Peer>())).Returns(() => Offer.Seal(_offered.Select(Copy).ToList()));
+            sharing.Setup(s => s.BuildOffer(It.IsAny<Peer>(), It.IsAny<bool>())).Returns(() => Offer.Seal(_offered.Select(Copy).ToList()));
             _exchange = new OfferExchange(sharing.Object, Mocker.Resolve<IOfferRecordRepository>());
 
             Mocker.GetMock<IPeerService>()

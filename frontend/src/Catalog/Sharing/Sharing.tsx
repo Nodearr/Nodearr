@@ -376,10 +376,14 @@ function Hashing() {
 
 function describeTitle(title: ShareableTitle) {
   const name = title.year ? `${title.title} (${title.year})` : title.title;
+  // An artist's files are its albums' tracks.
+  const isMusic = title.mediaKind === 'music';
+  const one = isMusic ? 'SharingOneTrack' : 'SharingOneFile';
+  const many = isMusic ? 'SharingTrackCount' : 'SharingFileCount';
   const files =
     title.files === 1
-      ? translate('SharingOneFile')
-      : translate('SharingFileCount', { count: title.files });
+      ? translate(one)
+      : translate(many, { count: title.files });
 
   return `${name} - ${files}`;
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Messaging;
 using NzbDrone.Core.Datastore;
 
@@ -74,6 +75,19 @@ namespace NzbDrone.Core.Catalog
         public int QualityProfileId { get; set; }
         public bool Monitored { get; set; }
         public int ArrMovieFileId { get; set; }
+
+        // Whisparr's, which Radarr's movies leave empty. ItemType says the item is adult content
+        // at all: "movie" for a film or "scene" for a scene. Whisparr searches for a scene by its
+        // studio, release date, title and code, and knows it by IDs from StashDB and ThePornDB.
+        public string ItemType { get; set; }
+        public string Studio { get; set; }
+        public string ReleaseDate { get; set; }
+        public string Code { get; set; }
+        public string ForeignId { get; set; }
+        public string StashId { get; set; }
+        public string TpdbId { get; set; }
+
+        public bool IsAdult => ItemType.IsNotNullOrWhiteSpace();
     }
 
     public abstract class CatalogFile : CatalogModel
@@ -110,6 +124,45 @@ namespace NzbDrone.Core.Catalog
         public string Edition { get; set; }
     }
 
+    // Lidarr's: an artist, by its MusicBrainz ID.
+    public class CatalogArtist : CatalogModel
+    {
+        public string ForeignArtistId { get; set; }
+        public string Name { get; set; }
+        public string SortName { get; set; }
+        public string Path { get; set; }
+        public int QualityProfileId { get; set; }
+        public bool Monitored { get; set; }
+    }
+
+    // An album, by its MusicBrainz release group. Lidarr grabs and imports a whole album at once,
+    // as a folder of tracks.
+    public class CatalogAlbum : CatalogModel
+    {
+        public int ArrArtistId { get; set; }
+        public string ForeignAlbumId { get; set; }
+        public string Title { get; set; }
+        public string AlbumType { get; set; }
+
+        // As yyyy-MM-dd.
+        public string ReleaseDate { get; set; }
+        public int Year { get; set; }
+        public bool Monitored { get; set; }
+
+        // How many tracks the release Lidarr chose has, and how many of them it holds a file for.
+        // An album is whole when the two are the same.
+        public int TrackCount { get; set; }
+        public int TrackFileCount { get; set; }
+
+        public bool IsWhole => TrackCount > 0 && TrackFileCount >= TrackCount;
+    }
+
+    public class CatalogTrackFile : CatalogFile
+    {
+        public int ArrArtistId { get; set; }
+        public int ArrAlbumId { get; set; }
+    }
+
     // Everything one Arr app reported in one refresh.
     public class ApplicationCatalog
     {
@@ -119,6 +172,9 @@ namespace NzbDrone.Core.Catalog
         public List<CatalogEpisodeFile> EpisodeFiles { get; } = new();
         public List<CatalogMovie> Movies { get; } = new();
         public List<CatalogMovieFile> MovieFiles { get; } = new();
+        public List<CatalogArtist> Artists { get; } = new();
+        public List<CatalogAlbum> Albums { get; } = new();
+        public List<CatalogTrackFile> TrackFiles { get; } = new();
     }
 
     // Raised after an application's catalog was refreshed successfully.

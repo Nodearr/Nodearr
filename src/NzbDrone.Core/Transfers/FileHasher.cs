@@ -282,9 +282,18 @@ namespace NzbDrone.Core.Transfers
 
             foreach (var peer in _peers.All().Where(p => p.State == PeerState.Trusted))
             {
-                foreach (var item in _sharing.BuildOffer(peer).Items)
+                foreach (var item in _sharing.BuildOffer(peer, true).Items)
                 {
-                    offered.TryAdd(item.Id, item.DateAdded);
+                    // An album is not a file. Its tracks are.
+                    if (item.Tracks == null)
+                    {
+                        offered.TryAdd(item.Id, item.DateAdded);
+                    }
+
+                    foreach (var track in item.Tracks ?? Enumerable.Empty<OfferTrack>())
+                    {
+                        offered.TryAdd(track.Id, item.DateAdded);
+                    }
                 }
             }
 

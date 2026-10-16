@@ -3,7 +3,7 @@ import useApiQuery from 'Helpers/Hooks/useApiQuery';
 import fetchJson, { ApiError } from 'Utilities/Fetch/fetchJson';
 import getQueryPath from 'Utilities/Fetch/getQueryPath';
 
-export type MediaKind = 'tv' | 'movie';
+export type MediaKind = 'tv' | 'movie' | 'music';
 
 export interface TitleKey {
   mediaKind: MediaKind;
@@ -70,6 +70,8 @@ export interface PeerCatalogItem {
   seasonNumber: number;
   episodeNumbers: number[];
   episodeTitles?: string;
+  artist?: string;
+  trackCount: number;
   releaseTitle?: string;
   quality?: string;
   resolution: number;

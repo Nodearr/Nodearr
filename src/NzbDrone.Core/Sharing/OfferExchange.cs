@@ -39,7 +39,7 @@ namespace NzbDrone.Core.Sharing
 
             if (request.CatalogPage <= 0)
             {
-                var offer = _sharingService.BuildOffer(peer);
+                var offer = _sharingService.BuildOffer(peer, request.CatalogAcceptsMusic);
 
                 if (offer.Version == request.CatalogKnownVersion)
                 {

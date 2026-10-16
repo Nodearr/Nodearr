@@ -86,6 +86,30 @@ function describe(file: LocalCatalogFile) {
   return `${file.title} - S${pad(file.seasonNumber ?? 0)}${episodes}`;
 }
 
+// What an app's library holds, in its own terms.
+function countsText(application: LocalCatalogSummary) {
+  switch (application.implementation) {
+    case 'Radarr':
+    case 'WhisparrV3':
+    case 'WhisparrV2':
+      return `${application.movies} ${translate('Movies')}, ${
+        application.movieFiles
+      } ${translate('MovieFiles')}`;
+    case 'Lidarr':
+      return `${application.artists} ${translate('Artists')}, ${
+        application.albums
+      } ${translate('Albums')}, ${application.trackFiles} ${translate(
+        'TrackFiles'
+      )}`;
+    default:
+      return `${application.series} ${translate('Series')}, ${
+        application.episodes
+      } ${translate('Episodes')}, ${application.episodeFiles} ${translate(
+        'EpisodeFiles'
+      )}`;
+  }
+}
+
 function LocalCatalog() {
   const [mediaType, setMediaType] = useState<LocalCatalogMediaType>('episode');
   const [page, setPage] = useState(1);
@@ -223,17 +247,7 @@ function LocalCatalog() {
                 {application.applicationName}
               </div>
 
-              <div className={styles.counts}>
-                {application.implementation === 'Radarr'
-                  ? `${application.movies} ${translate('Movies')}, ${
-                      application.movieFiles
-                    } ${translate('MovieFiles')}`
-                  : `${application.series} ${translate('Series')}, ${
-                      application.episodes
-                    } ${translate('Episodes')}, ${
-                      application.episodeFiles
-                    } ${translate('EpisodeFiles')}`}
-              </div>
+              <div className={styles.counts}>{countsText(application)}</div>
 
               <div className={styles.counts}>
                 {translate('CatalogLastSync')}:{' '}

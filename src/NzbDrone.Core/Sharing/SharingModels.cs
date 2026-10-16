@@ -12,21 +12,26 @@ namespace NzbDrone.Core.Sharing
     public enum MediaKind
     {
         Tv = 0,
-        Movie = 1
+        Movie = 1,
+
+        // An album from Lidarr. Its files are the album's tracks (ADR 0020).
+        Music = 2
     }
 
-    // A series or a movie in the local catalog, named the way the catalog keys it.
+    // A series, a movie or an artist in the local catalog, named the way the catalog keys it.
     public readonly record struct TitleKey(MediaKind Kind, int ApplicationId, int ArrId);
 
     // What a share list can hold, at the levels Sonarr monitors: a whole series, one season of
     // it, or one episode. A whole series or season takes in episodes that arrive later. A movie
-    // is always whole. ArrId is the series or the movie.
+    // is always whole, and so is an artist, with all its albums. ArrId is the series, the movie or
+    // the artist.
     public readonly record struct ShareKey(MediaKind Kind, int ApplicationId, int ArrId, int? SeasonNumber = null, int? EpisodeArrId = null)
     {
         public static ShareKey Series(int applicationId, int seriesArrId) => new(MediaKind.Tv, applicationId, seriesArrId);
         public static ShareKey Season(int applicationId, int seriesArrId, int seasonNumber) => new(MediaKind.Tv, applicationId, seriesArrId, seasonNumber);
         public static ShareKey Episode(int applicationId, int seriesArrId, int episodeArrId) => new(MediaKind.Tv, applicationId, seriesArrId, null, episodeArrId);
         public static ShareKey Movie(int applicationId, int movieArrId) => new(MediaKind.Movie, applicationId, movieArrId);
+        public static ShareKey Artist(int applicationId, int artistArrId) => new(MediaKind.Music, applicationId, artistArrId);
 
         public bool IsWhole => SeasonNumber == null && EpisodeArrId == null;
         public TitleKey Title => new(Kind, ApplicationId, ArrId);
@@ -123,9 +128,55 @@ namespace NzbDrone.Core.Sharing
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<int> SceneEpisodeNumbers { get; set; }
 
+        // A file from Whisparr: adult content, which only an adult search finds. With it, a film
+        // or a scene's ItemType, and what Whisparr searches for a scene by and knows it by. Left
+        // out for every other file, so an offer without them is the same as it ever was.
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public bool? Adult { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string ItemType { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string Studio { get; set; }
+
+        // As yyyy-MM-dd.
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string ReleaseDate { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string Code { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string ForeignId { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string StashId { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string TpdbId { get; set; }
+
         // The name the release had when the Arr app grabbed it, when the Arr app kept one.
         public string SceneName { get; set; }
         public string Edition { get; set; }
+
+        // An album from Lidarr: its artist, the MusicBrainz IDs Lidarr knows both by, the kind of
+        // release, and its tracks, in Lidarr's order. Title, Year and ReleaseDate are the album's,
+        // and the quality and size are the whole album's. Left out for every other file.
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string Artist { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string ForeignArtistId { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string ForeignAlbumId { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string AlbumType { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<OfferTrack> Tracks { get; set; }
 
         // Such as .mkv. A transfer has to write a file the Arr app will recognise.
         public string Extension { get; set; }
@@ -151,6 +202,19 @@ namespace NzbDrone.Core.Sharing
         // about the file does.
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string Fingerprint { get; set; }
+    }
+
+    // One track of an offered album. Like a file, it says nothing of its name or where it lives.
+    // Its ID is what a transfer asks for.
+    public class OfferTrack
+    {
+        public string Id { get; set; }
+        public string Extension { get; set; }
+        public long Size { get; set; }
+        public string Quality { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string Blake3 { get; set; }
     }
 
     // What this node last sent one peer: the version, and each file's fingerprint by its ID.

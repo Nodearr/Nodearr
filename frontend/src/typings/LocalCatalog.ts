@@ -7,6 +7,9 @@ export interface LocalCatalogSummary {
   episodeFiles: number;
   movies: number;
   movieFiles: number;
+  artists: number;
+  albums: number;
+  trackFiles: number;
   missingFiles: number;
   lastSyncStarted?: string;
   lastSyncCompleted?: string;

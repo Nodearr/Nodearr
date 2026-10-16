@@ -87,6 +87,7 @@ function Overview({ identity, trusted, applications }: OverviewProps) {
   const upgrades = peerSummaries.reduce((sum, peer) => sum + peer.upgrade, 0);
   const movies = library.reduce((sum, app) => sum + app.movieFiles, 0);
   const episodes = library.reduce((sum, app) => sum + app.episodeFiles, 0);
+  const tracks = library.reduce((sum, app) => sum + app.trackFiles, 0);
   const network = networkSummary(identity);
   const problems = health.filter((item) => item.type !== 'ok');
 
@@ -134,6 +135,9 @@ function Overview({ identity, trusted, applications }: OverviewProps) {
         <div className={styles.stats}>
           <Stat value={movies} label={translate('HomeMovieFilesLabel')} />
           <Stat value={episodes} label={translate('HomeEpisodeFilesLabel')} />
+          {tracks > 0 ? (
+            <Stat value={tracks} label={translate('HomeTrackFilesLabel')} />
+          ) : null}
         </div>
         <div className={styles.muted}>
           {translate('HomeLibraryFrom', {

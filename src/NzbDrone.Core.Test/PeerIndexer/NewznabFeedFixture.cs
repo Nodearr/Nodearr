@@ -165,14 +165,58 @@ namespace NzbDrone.Core.Test.PeerIndexer
         [Test]
         public void the_stand_in_should_cover_each_kind_asked_for_in_a_category_asked_for()
         {
-            var both = NewznabFeed.ConnectionTestItems(true, true, Array.Empty<int>(), "http://nodearr").ToList();
-            var tv = NewznabFeed.ConnectionTestItems(true, false, new[] { 5030, 5040 }, "http://nodearr").ToList();
+            var both = NewznabFeed.ConnectionTestItems(true, true, false, Array.Empty<int>(), "http://nodearr").ToList();
+            var tv = NewznabFeed.ConnectionTestItems(true, false, false, new[] { 5030, 5040 }, "http://nodearr").ToList();
 
             both.Should().HaveCount(2);
             both.Select(i => i.Element("guid").Value).Should().OnlyHaveUniqueItems();
             tv.Should().ContainSingle();
             tv[0].Element("title").Value.Should().Be(NewznabFeed.ConnectionTestTitle);
             tv[0].Elements(Newznab + "attr").Where(a => (string)a.Attribute("name") == "category").Select(a => (string)a.Attribute("value")).Should().Equal("5000", "5030");
+        }
+
+        private static PeerCatalogItem Album(string quality)
+        {
+            return new PeerCatalogItem
+            {
+                CandidateId = "fedcba9876543210fedcba9876543210", RemoteId = "a-3-70", PeerId = 3, MediaKind = MediaKind.Music, Artist = "Low",
+                Title = "Things We Lost in the Fire", Year = 2001, Quality = quality, Size = 300, Tracks = "[]",
+                ReleaseTitle = $"Low - Things We Lost in the Fire (2001) [{quality}]", DateAdded = new DateTime(2024, 3, 2, 10, 30, 0, DateTimeKind.Utc)
+            };
+        }
+
+        [Test]
+        public void lidarr_should_be_told_it_can_search_by_artist_and_album()
+        {
+            var caps = NewznabFeed.Caps("http://nodearr");
+
+            caps.Element("searching").Element("audio-search").Attribute("supportedParams").Value.Split(',').Should().BeEquivalentTo("q", "artist", "album");
+            caps.Element("categories").Elements("category").Select(c => (string)c.Attribute("id")).Should().Contain("3000");
+        }
+
+        [TestCase("FLAC", "3040")]
+        [TestCase("FLAC 24bit", "3040")]
+        [TestCase("MP3-320", "3010")]
+        [TestCase(null, "3010")]
+        public void an_album_should_be_filed_as_audio_by_whether_it_is_lossless(string quality, string category)
+        {
+            var item = NewznabFeed.Item(Album(quality), "http://nodearr/newznab/api?t=get&id=x");
+
+            item.Element("title").Value.Should().StartWith("Low - Things We Lost in the Fire (2001)");
+            item.Elements(Newznab + "attr").Where(a => (string)a.Attribute("name") == "category").Select(a => (string)a.Attribute("value")).Should().Equal("3000", category);
+            Attr(item, "artist").Should().Be("Low");
+            Attr(item, "tvdbid").Should().BeNull();
+            Attr(item, "season").Should().BeNull();
+        }
+
+        [Test]
+        public void the_stand_in_should_cover_lidarr_when_it_asks()
+        {
+            var music = NewznabFeed.ConnectionTestItems(false, false, false, true, new[] { 3000, 3010, 3040 }, "http://nodearr").ToList();
+
+            music.Should().ContainSingle();
+            music[0].Element("category").Value.Should().Be("Audio");
+            music[0].Elements(Newznab + "attr").Where(a => (string)a.Attribute("name") == "category").Select(a => (string)a.Attribute("value")).Should().Equal("3000", "3000");
         }
     }
 }

@@ -38,6 +38,10 @@ public class PeerCatalogItemResource
     public List<int> EpisodeNumbers { get; set; } = new();
     public string? EpisodeTitles { get; set; }
     public List<string> AirDates { get; set; } = new();
+
+    // An album's artist and how many tracks it has.
+    public string? Artist { get; set; }
+    public int TrackCount { get; set; }
     public string? ReleaseTitle { get; set; }
     public string? Quality { get; set; }
     public int Resolution { get; set; }
@@ -127,6 +131,8 @@ public class PeerCatalogController : Controller
             EpisodeNumbers = item.GetEpisodeNumbers(),
             EpisodeTitles = item.EpisodeTitles,
             AirDates = item.GetAirDates(),
+            Artist = item.Artist,
+            TrackCount = item.IsAlbum ? item.GetTracks().Count : 0,
             ReleaseTitle = item.ReleaseTitle,
             Quality = item.Quality,
             Resolution = item.Resolution,

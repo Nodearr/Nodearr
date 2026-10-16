@@ -39,6 +39,9 @@ namespace NzbDrone.Core.Test.Sharing
             Mocker.SetConstant<ICatalogEpisodeFileRepository>(Mocker.Resolve<CatalogEpisodeFileRepository>());
             Mocker.SetConstant<ICatalogMovieRepository>(Mocker.Resolve<CatalogMovieRepository>());
             Mocker.SetConstant<ICatalogMovieFileRepository>(Mocker.Resolve<CatalogMovieFileRepository>());
+            Mocker.SetConstant<ICatalogArtistRepository>(Mocker.Resolve<CatalogArtistRepository>());
+            Mocker.SetConstant<ICatalogAlbumRepository>(Mocker.Resolve<CatalogAlbumRepository>());
+            Mocker.SetConstant<ICatalogTrackFileRepository>(Mocker.Resolve<CatalogTrackFileRepository>());
             Mocker.SetConstant<IFileHashRepository>(Mocker.Resolve<FileHashRepository>());
 
             Mocker.GetMock<IApplicationFactory>()
@@ -86,7 +89,7 @@ namespace NzbDrone.Core.Test.Sharing
 
         private List<string> OfferedTo(Peer peer)
         {
-            return Subject.BuildOffer(Mocker.Resolve<IPeerRepository>().Get(peer.Id)).Items.Select(i => i.Id).ToList();
+            return Subject.BuildOffer(Mocker.Resolve<IPeerRepository>().Get(peer.Id), true).Items.Select(i => i.Id).ToList();
         }
 
         [Test]
@@ -167,7 +170,7 @@ namespace NzbDrone.Core.Test.Sharing
         {
             Subject.SetShareAll(_bob.Id, true);
 
-            var offer = Subject.BuildOffer(Mocker.Resolve<IPeerRepository>().Get(_bob.Id));
+            var offer = Subject.BuildOffer(Mocker.Resolve<IPeerRepository>().Get(_bob.Id), true);
             var json = JsonSerializer.Serialize(offer);
 
             // Not the folders, and not the file names either. Only the extension is sent.
@@ -187,7 +190,7 @@ namespace NzbDrone.Core.Test.Sharing
         {
             Subject.SetShareAll(_bob.Id, true);
 
-            var offer = Subject.BuildOffer(Mocker.Resolve<IPeerRepository>().Get(_bob.Id));
+            var offer = Subject.BuildOffer(Mocker.Resolve<IPeerRepository>().Get(_bob.Id), true);
 
             offer.Items.Should().OnlyContain(i => i.Extension == ".mkv");
         }
@@ -238,7 +241,7 @@ namespace NzbDrone.Core.Test.Sharing
             {
                 foreach (var peer in Mocker.Resolve<IPeerRepository>().All())
                 {
-                    var offered = Subject.BuildOffer(peer).Items.Select(i => i.Id).ToHashSet();
+                    var offered = Subject.BuildOffer(peer, true).Items.Select(i => i.Id).ToHashSet();
 
                     foreach (var name in names)
                     {
@@ -394,7 +397,7 @@ namespace NzbDrone.Core.Test.Sharing
 
             Subject.SetShareAll(_bob.Id, true);
 
-            var items = Subject.BuildOffer(Mocker.Resolve<IPeerRepository>().Get(_bob.Id)).Items;
+            var items = Subject.BuildOffer(Mocker.Resolve<IPeerRepository>().Get(_bob.Id), true).Items;
             var multi = items.Single(i => i.Id == "e-1-502");
 
             multi.SeasonNumber.Should().Be(1);
@@ -419,7 +422,7 @@ namespace NzbDrone.Core.Test.Sharing
             hashes.Insert(new FileHash { Path = "/tv/b.mkv", OfferFileId = "e-1-601", Size = 999, ModifiedNs = 1, Blake3 = new string('b', 64), Hashed = DateTime.UtcNow });
             Subject.SetShareAll(_bob.Id, true);
 
-            var items = Subject.BuildOffer(Mocker.Resolve<IPeerRepository>().Get(_bob.Id)).Items;
+            var items = Subject.BuildOffer(Mocker.Resolve<IPeerRepository>().Get(_bob.Id), true).Items;
 
             items.Single(i => i.Id == "e-1-501").Blake3.Should().Be(new string('a', 64));
 
@@ -434,7 +437,7 @@ namespace NzbDrone.Core.Test.Sharing
         {
             Subject.SetShareAll(_bob.Id, true);
 
-            var item = Subject.BuildOffer(Mocker.Resolve<IPeerRepository>().Get(_bob.Id)).Items.Single(i => i.Id == "e-1-502");
+            var item = Subject.BuildOffer(Mocker.Resolve<IPeerRepository>().Get(_bob.Id), true).Items.Single(i => i.Id == "e-1-502");
 
             item.EpisodeNumbers.Should().Equal(4, 5);
             item.EpisodeTitles.Should().Equal("The New Arrival", "Pingu Goes Fishing");
@@ -449,13 +452,13 @@ namespace NzbDrone.Core.Test.Sharing
             Subject.SetShareAll(_bob.Id, true);
 
             var peer = Mocker.Resolve<IPeerRepository>().Get(_bob.Id);
-            var first = Subject.BuildOffer(peer).Version;
+            var first = Subject.BuildOffer(peer, true).Version;
 
-            Subject.BuildOffer(peer).Version.Should().Be(first);
+            Subject.BuildOffer(peer, true).Version.Should().Be(first);
 
             Subject.Update(Hidden.List.Id, null, new[] { Bluey }, null);
 
-            Subject.BuildOffer(peer).Version.Should().NotBe(first);
+            Subject.BuildOffer(peer, true).Version.Should().NotBe(first);
         }
 
         [Test]

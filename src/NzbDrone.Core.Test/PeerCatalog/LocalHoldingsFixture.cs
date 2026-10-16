@@ -147,5 +147,22 @@ namespace NzbDrone.Core.Test.PeerCatalog
 
             Classify(item).Should().Be(PeerItemStatus.NotInLibrary);
         }
+
+        // Whisparr v2 and v3 know a scene by different IDs. They agree on its studio and its day.
+        [TestCase("ATK Girlfriends", "2022-11-28", PeerItemStatus.Missing)]
+        [TestCase("ATKGirlfriends", "2022-11-28", PeerItemStatus.Missing)]
+        [TestCase("ATK Girlfriends", "2022-11-29", PeerItemStatus.NotInLibrary)]
+        public void a_scene_from_the_other_whisparr_should_be_found_by_its_studio_and_day(string studio, string day, PeerItemStatus expected)
+        {
+            _movies.Add(new CatalogMovie { ApplicationId = 3, ArrId = 50, ItemType = "scene", Studio = "ATK Girlfriends", ReleaseDate = "2022-11-28", ForeignId = "whisparr2:9001" });
+
+            var scene = new PeerCatalogItem
+            {
+                MediaKind = MediaKind.Movie, IsAdult = true, ItemType = "scene", Studio = studio, ReleaseDate = day,
+                ForeignId = "0025f120-38cf-4e8c-a002-240b9416a439", StashId = "0025f120-38cf-4e8c-a002-240b9416a439", Resolution = 1080
+            };
+
+            Classify(scene).Should().Be(expected);
+        }
     }
 }

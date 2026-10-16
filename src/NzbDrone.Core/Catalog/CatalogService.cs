@@ -22,6 +22,9 @@ namespace NzbDrone.Core.Catalog
         public int EpisodeFiles { get; set; }
         public int Movies { get; set; }
         public int MovieFiles { get; set; }
+        public int Artists { get; set; }
+        public int Albums { get; set; }
+        public int TrackFiles { get; set; }
         public int MissingFiles { get; set; }
         public DateTime? LastSyncStarted { get; set; }
         public DateTime? LastSyncCompleted { get; set; }
@@ -32,7 +35,7 @@ namespace NzbDrone.Core.Catalog
     {
         void Refresh(int? applicationId, bool purgeMissing);
 
-        // Reads one series or movie again, and nothing else of the Arr app's library.
+        // Reads one series, movie or artist again, and nothing else of the Arr app's library.
         void RefreshTitle(int applicationId, int arrId);
         List<CatalogApplicationSummary> GetSummaries();
         PagingSpec<CatalogEpisodeFile> PagedEpisodeFiles(PagingSpec<CatalogEpisodeFile> pagingSpec);
@@ -61,6 +64,9 @@ namespace NzbDrone.Core.Catalog
         private readonly ICatalogEpisodeFileRepository _episodeFiles;
         private readonly ICatalogMovieRepository _movies;
         private readonly ICatalogMovieFileRepository _movieFiles;
+        private readonly ICatalogArtistRepository _artists;
+        private readonly ICatalogAlbumRepository _albums;
+        private readonly ICatalogTrackFileRepository _trackFiles;
         private readonly ICatalogSyncStatusRepository _syncStatus;
         private readonly IEventAggregator _eventAggregator;
         private readonly Logger _logger;
@@ -73,6 +79,9 @@ namespace NzbDrone.Core.Catalog
                               ICatalogEpisodeFileRepository episodeFiles,
                               ICatalogMovieRepository movies,
                               ICatalogMovieFileRepository movieFiles,
+                              ICatalogArtistRepository artists,
+                              ICatalogAlbumRepository albums,
+                              ICatalogTrackFileRepository trackFiles,
                               ICatalogSyncStatusRepository syncStatus,
                               IEventAggregator eventAggregator,
                               Logger logger)
@@ -85,6 +94,9 @@ namespace NzbDrone.Core.Catalog
             _episodeFiles = episodeFiles;
             _movies = movies;
             _movieFiles = movieFiles;
+            _artists = artists;
+            _albums = albums;
+            _trackFiles = trackFiles;
             _syncStatus = syncStatus;
             _eventAggregator = eventAggregator;
             _logger = logger;
@@ -127,6 +139,13 @@ namespace NzbDrone.Core.Catalog
                 return;
             }
 
+            if (((ApplicationDefinition)application.Definition).RefreshesWhole)
+            {
+                Refresh(application, false);
+
+                return;
+            }
+
             ApplicationCatalog catalog;
 
             try
@@ -144,10 +163,18 @@ namespace NzbDrone.Core.Catalog
             var now = DateTime.UtcNow;
             var purgeBefore = now - MissingRetention;
 
+            var definition = (ApplicationDefinition)application.Definition;
+
             lock (RefreshLock)
             {
                 // Only this title's rows are compared, so everything else the Arr app has is left alone.
-                if (application.Definition.Implementation == "Radarr")
+                if (definition.HoldsMusic)
+                {
+                    Merge(_artists, applicationId, catalog.Artists, now, purgeBefore, a => a.ArrId == arrId);
+                    Merge(_albums, applicationId, catalog.Albums, now, purgeBefore, a => a.ArrArtistId == arrId);
+                    Merge(_trackFiles, applicationId, catalog.TrackFiles, now, purgeBefore, f => f.ArrArtistId == arrId);
+                }
+                else if (definition.HoldsMovies)
                 {
                     Merge(_movies, applicationId, catalog.Movies, now, purgeBefore, m => m.ArrId == arrId);
                     Merge(_movieFiles, applicationId, catalog.MovieFiles, now, purgeBefore, f => f.ArrMovieId == arrId);
@@ -162,7 +189,7 @@ namespace NzbDrone.Core.Catalog
 
             _eventAggregator.PublishEvent(new CatalogRefreshedEvent(applicationId));
 
-            _logger.Debug("Read {0} {1} again from {2}: {3} files", application.Definition.Implementation == "Radarr" ? "movie" : "series", arrId, application.Definition.Name, catalog.EpisodeFiles.Count + catalog.MovieFiles.Count);
+            _logger.Debug("Read {0} {1} again from {2}: {3} files", definition.HoldsMusic ? "artist" : definition.HoldsMovies ? "movie" : "series", arrId, application.Definition.Name, catalog.EpisodeFiles.Count + catalog.MovieFiles.Count + catalog.TrackFiles.Count);
         }
 
         public void Handle(ProviderDeletedEvent<IApplication> message)
@@ -186,7 +213,10 @@ namespace NzbDrone.Core.Catalog
                     EpisodeFiles = _episodeFiles.Count(definition.Id, false),
                     Movies = _movies.Count(definition.Id, false),
                     MovieFiles = _movieFiles.Count(definition.Id, false),
-                    MissingFiles = _episodeFiles.Count(definition.Id, true) + _movieFiles.Count(definition.Id, true),
+                    Artists = _artists.Count(definition.Id, false),
+                    Albums = _albums.Count(definition.Id, false),
+                    TrackFiles = _trackFiles.Count(definition.Id, false),
+                    MissingFiles = _episodeFiles.Count(definition.Id, true) + _movieFiles.Count(definition.Id, true) + _trackFiles.Count(definition.Id, true),
                     LastSyncStarted = status?.LastSyncStarted,
                     LastSyncCompleted = status?.LastSyncCompleted,
                     LastSyncError = status?.LastSyncError
@@ -255,19 +285,25 @@ namespace NzbDrone.Core.Catalog
             Merge(_episodeFiles, applicationId, catalog.EpisodeFiles, now, purgeBefore);
             Merge(_movies, applicationId, catalog.Movies, now, purgeBefore);
             Merge(_movieFiles, applicationId, catalog.MovieFiles, now, purgeBefore);
+            Merge(_artists, applicationId, catalog.Artists, now, purgeBefore);
+            Merge(_albums, applicationId, catalog.Albums, now, purgeBefore);
+            Merge(_trackFiles, applicationId, catalog.TrackFiles, now, purgeBefore);
 
             status.LastSyncCompleted = now;
             status.LastSyncError = null;
             _syncStatus.Upsert(status);
             _eventAggregator.PublishEvent(new CatalogRefreshedEvent(applicationId));
 
-            _logger.Info("Catalog for {0} refreshed: {1} series, {2} episodes, {3} episode files, {4} movies, {5} movie files",
+            _logger.Info("Catalog for {0} refreshed: {1} series, {2} episodes, {3} episode files, {4} movies, {5} movie files, {6} artists, {7} albums, {8} track files",
                 application.Definition.Name,
                 catalog.Series.Count,
                 catalog.Episodes.Count,
                 catalog.EpisodeFiles.Count,
                 catalog.Movies.Count,
-                catalog.MovieFiles.Count);
+                catalog.MovieFiles.Count,
+                catalog.Artists.Count,
+                catalog.Albums.Count,
+                catalog.TrackFiles.Count);
         }
 
         // Inserts what is new, updates what changed, and marks what the Arr app stopped reporting.
@@ -353,6 +389,9 @@ namespace NzbDrone.Core.Catalog
             _episodeFiles.DeleteForApplication(applicationId);
             _movies.DeleteForApplication(applicationId);
             _movieFiles.DeleteForApplication(applicationId);
+            _artists.DeleteForApplication(applicationId);
+            _albums.DeleteForApplication(applicationId);
+            _trackFiles.DeleteForApplication(applicationId);
 
             var status = _syncStatus.ForApplication(applicationId);
 
