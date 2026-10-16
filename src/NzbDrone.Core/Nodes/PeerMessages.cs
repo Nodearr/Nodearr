@@ -40,6 +40,9 @@ namespace NzbDrone.Core.Nodes
         // say so, and is always sent the whole catalog.
         public bool CatalogAcceptsChanges { get; set; }
 
+        // The asker knows albums (ADR 0020). An older node does not say so, and is sent none.
+        public bool CatalogAcceptsMusic { get; set; }
+
         public byte[] ToBytes()
         {
             return JsonSerializer.SerializeToUtf8Bytes(this, JsonOptions);

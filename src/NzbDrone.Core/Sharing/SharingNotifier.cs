@@ -59,7 +59,7 @@ namespace NzbDrone.Core.Sharing
                     continue;
                 }
 
-                var offered = _sharing.BuildOffer(peer).Items.Select(i => i.Id).ToHashSet(StringComparer.Ordinal);
+                var offered = _sharing.BuildOffer(peer, true).Items.Select(i => i.Id).ToHashSet(StringComparer.Ordinal);
 
                 if (sent.Keys.All(offered.Contains))
                 {

@@ -22,7 +22,7 @@ namespace NzbDrone.Core.Test.Sharing
             _offered = new List<string> { "e-1-1", "e-1-2" };
 
             Mocker.GetMock<IPeerRepository>().Setup(p => p.All()).Returns(() => new List<Peer> { _bob });
-            Mocker.GetMock<ISharingService>().Setup(s => s.BuildOffer(It.IsAny<Peer>())).Returns(() => new Offer { Items = _offered.Select(id => new OfferItem { Id = id }).ToList() });
+            Mocker.GetMock<ISharingService>().Setup(s => s.BuildOffer(It.IsAny<Peer>(), It.IsAny<bool>())).Returns(() => new Offer { Items = _offered.Select(id => new OfferItem { Id = id }).ToList() });
             GivenSent("e-1-1", "e-1-2");
         }
 

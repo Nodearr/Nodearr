@@ -93,6 +93,16 @@ function pad(value: number) {
 }
 
 function describe(item: PeerCatalogItem) {
+  if (item.mediaKind === 'music') {
+    const album = item.year ? `${item.title} (${item.year})` : item.title;
+    const tracks =
+      item.trackCount === 1
+        ? translate('SharingOneTrack')
+        : translate('SharingTrackCount', { count: item.trackCount });
+
+    return `${item.artist} - ${album}, ${tracks}`;
+  }
+
   if (item.mediaKind === 'movie') {
     return item.year ? `${item.title} (${item.year})` : item.title;
   }

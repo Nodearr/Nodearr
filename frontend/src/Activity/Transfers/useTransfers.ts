@@ -9,7 +9,7 @@ export interface Transfer {
   id: number;
   downloadId: string;
   title: string;
-  mediaKind: 'tv' | 'movie';
+  mediaKind: 'tv' | 'movie' | 'music';
   category?: string;
   peerId: number;
   peerName?: string;

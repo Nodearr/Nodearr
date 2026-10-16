@@ -282,7 +282,7 @@ namespace NzbDrone.Core.Transfers
 
             foreach (var peer in _peers.All().Where(p => p.State == PeerState.Trusted))
             {
-                foreach (var item in _sharing.BuildOffer(peer).Items)
+                foreach (var item in _sharing.BuildOffer(peer, true).Items)
                 {
                     offered.TryAdd(item.Id, item.DateAdded);
                 }

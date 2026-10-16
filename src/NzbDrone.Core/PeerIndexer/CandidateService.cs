@@ -278,6 +278,11 @@ namespace NzbDrone.Core.PeerIndexer
                     spec.FilterExpressions.Add(i => i.MediaKind == kind);
                 }
             }
+            else if (kinds.Count > 1)
+            {
+                // Albums, and any kind of file from a newer node, only when asked for.
+                spec.FilterExpressions.Add(i => i.MediaKind == MediaKind.Tv || i.MediaKind == MediaKind.Movie);
+            }
 
             var page = _items.GetPaged(spec);
 

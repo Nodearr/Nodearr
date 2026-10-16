@@ -17,7 +17,7 @@ namespace NzbDrone.Core.Test.Sharing
         private void GivenOffer(string version, int items)
         {
             Mocker.GetMock<ISharingService>()
-                  .Setup(s => s.BuildOffer(_peer))
+                  .Setup(s => s.BuildOffer(_peer, It.IsAny<bool>()))
                   .Returns(new Offer { Version = version, Items = Enumerable.Range(0, items).Select(i => new OfferItem { Id = "e-1-" + i }).ToList() });
         }
 
@@ -70,7 +70,7 @@ namespace NzbDrone.Core.Test.Sharing
             GivenOffer("v2", 1);
 
             Ask(1, first.CatalogVersion).CatalogItems.Should().HaveCount(5);
-            Mocker.GetMock<ISharingService>().Verify(s => s.BuildOffer(_peer), Times.Once());
+            Mocker.GetMock<ISharingService>().Verify(s => s.BuildOffer(_peer, It.IsAny<bool>()), Times.Once());
         }
 
         [Test]

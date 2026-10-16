@@ -66,7 +66,9 @@ namespace NzbDrone.Core.PeerIndexer
 
             // Whisparr reads a scene's own release name, studio and date first, better than anything
             // built here.
-            if (item.IsScene)
+            // Lidarr reads a release's own name for its artist and album, and so does Whisparr for
+            // a scene's studio and date, better than anything built here.
+            if (item.IsScene || item.MediaKind == MediaKind.Music)
             {
                 return true;
             }
@@ -102,6 +104,11 @@ namespace NzbDrone.Core.PeerIndexer
 
         public static string Build(PeerCatalogItem item, string airDate)
         {
+            if (item.MediaKind == MediaKind.Music)
+            {
+                return Album(item);
+            }
+
             var parts = new List<string>();
 
             if (item.IsScene)
@@ -164,6 +171,39 @@ namespace NzbDrone.Core.PeerIndexer
             var group = new string((item.ReleaseGroup ?? string.Empty).Where(c => char.IsLetterOrDigit(c) || c == '_').ToArray());
 
             return group.Length > 0 ? $"{title}-{group}" : title;
+        }
+
+        // As Lidarr names an album's folder, which its parser reads back: Artist - Album (Year)
+        // [Quality]. Lidarr's MP3-320 is written MP3 320, the way release names write it.
+        private static string Album(PeerCatalogItem item)
+        {
+            var title = $"{Words(item.Artist)} - {Words(item.Title)}";
+
+            if (item.Year > 0)
+            {
+                title += $" ({item.Year.ToString(CultureInfo.InvariantCulture)})";
+            }
+
+            var quality = Words((item.Quality ?? string.Empty).Replace('-', ' '));
+
+            if (quality != "Unknown")
+            {
+                title += $" [{quality}]";
+            }
+
+            return title.Length > MaxLength ? title[..MaxLength].TrimEnd() : title;
+        }
+
+        // Free text kept as words, without anything a title or a folder name cannot hold.
+        private static string Words(string value)
+        {
+            var words = (value ?? string.Empty)
+                .Select(c => char.IsControl(c) || c is '/' or '\\' or ':' or '*' or '?' or '"' or '<' or '>' or '|' or '[' or ']' ? ' ' : c)
+                .ToArray();
+
+            var text = string.Join(" ", new string(words).Split(' ', StringSplitOptions.RemoveEmptyEntries));
+
+            return text.Length > 0 ? text : "Unknown";
         }
 
         // What an Arr app calls a quality, written the way release names write it.

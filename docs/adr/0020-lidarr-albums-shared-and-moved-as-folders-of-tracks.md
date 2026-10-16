@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Slice L1 (Lidarr's library in the catalog) built and checked on 2026-10-15. Slices L2 to L5 follow.
+Accepted. Slices L1 (Lidarr's library in the catalog) and L2 (sharing and comparing albums) built and checked on 2026-10-15. Slices L3 to L5 follow.
 
 ## Context
 
@@ -31,7 +31,13 @@ Three tables beside the series and movie ones: `CatalogArtists`, `CatalogAlbums`
 
 ### L2: sharing and offers by album
 
-An offer lists albums, by release group and artist ID, each with its tracks' names, sizes and qualities. An album is offered only when Lidarr holds every one of its track files. A peer's album is compared with the local library by release group: missing, an upgrade, or held.
+- A share list holds whole artists, as it holds whole movies. An artist takes in albums that arrive later. Albums are not put on a list one by one.
+- An offer lists albums, `a-{application}-{album}`. Each says its artist, title, year, release day, kind of release, both MusicBrainz IDs, and its tracks in Lidarr's order. A track says its extension, size and quality, and nothing of its name or path, as a file does (ADR 0014). Its ID, `t-{application}-{track file}`, is what a transfer asks for. The album's quality is the one most of its tracks have, and its size is all of theirs.
+- An album is offered only when Lidarr holds every track of it: the album's statistics say as many track files as tracks, and the catalog holds that many.
+- A node says it knows albums when it asks for a catalog (`CatalogAcceptsMusic`). An older node does not, and is sent none, as it would take an album for a movie.
+- A peer's album is compared with the local Lidarr by release group: not in the library, missing (no tracks, or only some), an upgrade by the artist's quality profile, or held.
+- An album whose tracks will not do, or a kind of file this node does not know, is kept as it was sent, so the catalog still adds up to the peer's version, but is never matched, searched for or fetched.
+- Sonarr and Radarr are never shown an album, whatever they ask.
 
 ### L3: a transfer of several files
 
