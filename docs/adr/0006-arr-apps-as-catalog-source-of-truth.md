@@ -71,3 +71,18 @@ Rejected for core scope. Media servers consume the imported library but do not d
   - Several events about one title close together, such as a season imported file by file, become one read, because Sonarr's command queue merges identical commands that are waiting.
   - The whole library is still read on a schedule, now every 12 hours as Sonarr refreshes its series, to catch anything a webhook missed, for example while Nodearr was down.
   - Checked by unit tests and by `acceptance/Run-S5Sharing.ps1` against a real Sonarr: a file deleted in Sonarr left the other node in 1.1 seconds with nobody asking, and a file imported again was in the catalog 1.0 second after the import was started.
+- 2026-10-16: **a large Sonarr, measured.** Sonarr 4.0.20.3014 on Windows, its database filled with 2,000 series, 174,044 episodes and 101,223 episode files (multi-episode files, media info and release names included, no metadata fetched), read by a fresh Nodearr on the same machine:
+
+  | What | Time |
+  | --- | --- |
+  | Adding Sonarr: the test, and registering the download client, indexer and webhook | 0.1 s |
+  | The first full read, two requests per series | 36 s |
+  | A full read with nothing changed, as every 12 hours | 32 s |
+  | One series again from the webhook, the largest (166 episodes) | 1.0 s |
+  | Catalog > Local, first page | 0.25 s |
+  | Catalog > Sharing, every title | 0.56 s |
+
+  Most of a read is Sonarr answering 4,000 requests one after another: its own `/series` took 1.5 s, and the largest series' episodes and files 0.02 s and 0.13 s. Nodearr's working set rose from 159 MB to about 600 MB at its peak, during the reads and the Sharing page, and settled at 382 MB once .NET gave memory back, about two minutes later, with the whole catalog in place. Sonarr peaked at 240 MB. Nodearr's database came to 53 MB.
+
+  This is a library larger than most. Nothing needed changing. A Sonarr on slower disks, or across a network, makes each request slower, and so the read longer, but it runs in the background and the webhook keeps the catalog current in between.
+
