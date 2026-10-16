@@ -40,6 +40,7 @@ dotnet test src/Nodearr.sln
 - **The user guide** ([`docs/user-guide/`](docs/user-guide/README.md)), when it changes something a person sees or does.
 - **The changelog** ([CHANGELOG.md](CHANGELOG.md)), under Unreleased.
 - **The third-party notices**, when it adds, removes or updates a dependency: `pwsh build/Build-Notices.ps1`, and commit the result ([releases](docs/guides/releases.md#licences)).
+- **The API description**, when it changes the API: `pwsh build/Build-OpenApi.ps1`, and commit `src/Nodearr.Api.V5/openapi.json` and `src/Nodearr.Api.V3/openapi.json`.
 - **The V1 plan** ([`docs/plans/v1-implementation-plan.md`](docs/plans/v1-implementation-plan.md)): a line for the slice, and anything it leaves open under "What is still open".
 
 ## Branches and commits

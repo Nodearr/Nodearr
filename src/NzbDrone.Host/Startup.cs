@@ -119,11 +119,11 @@ namespace NzbDrone.Host
                 {
                     Version = "3.0.0",
                     Title = "Nodearr",
-                    Description = "Nodearr API docs - The v3 API docs apply to both v3 and v4 versions of Nodearr. Some functionality may only be available in v4 of the Nodearr application.",
+                    Description = "Nodearr's v3 API: Sonarr's, kept for compatibility and deprecated. Nodearr's own API is v5.",
                     License = new OpenApiLicense
                     {
                         Name = "GPL-3.0",
-                        Url = new Uri("https://github.com/Nodearr/Nodearr/blob/develop/LICENSE")
+                        Url = new Uri("https://github.com/Nodearr/Nodearr/blob/main/LICENSE")
                     }
                 });
 
@@ -131,11 +131,11 @@ namespace NzbDrone.Host
                 {
                     Version = "5.0.0",
                     Title = "Nodearr",
-                    Description = "Nodearr API docs - The v5 API docs apply to Nodearr v5 only.",
+                    Description = "Nodearr's API: the Arr apps it works with, its catalogs, nodes, invites, sharing and transfers, and the system pages.",
                     License = new OpenApiLicense
                     {
                         Name = "GPL-3.0",
-                        Url = new Uri("https://github.com/Nodearr/Nodearr/blob/develop/LICENSE")
+                        Url = new Uri("https://github.com/Nodearr/Nodearr/blob/main/LICENSE")
                     }
                 });
 

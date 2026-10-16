@@ -118,6 +118,8 @@ GET /api/v5/system/status     API key required
 
 Send the key as an `X-Api-Key` header or an `apikey` query parameter. It is generated on first run and stored as `ApiKey` in `config.xml`.
 
+The whole API is described in [`src/Nodearr.Api.V5/openapi.json`](src/Nodearr.Api.V5/openapi.json), generated from the code by `pwsh build/Build-OpenApi.ps1`. A debug build also serves it at `/docs/v5/openapi.json`. It still lists the TV endpoints inherited from Sonarr, which answer but which nothing in Nodearr uses.
+
 ### Tests
 
 - Unit tests: `dotnet test src/Nodearr.sln`. CI runs them on Linux and Windows ([release guide](docs/guides/releases.md#continuous-integration)).

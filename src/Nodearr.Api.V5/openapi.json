@@ -2,10 +2,10 @@
   "openapi": "3.0.4",
   "info": {
     "title": "Nodearr",
-    "description": "Nodearr API docs - The v5 API docs apply to Nodearr v5 only.",
+    "description": "Nodearr's API: the Arr apps it works with, its catalogs, nodes, invites, sharing and transfers, and the system pages.",
     "license": {
       "name": "GPL-3.0",
-      "url": "https://github.com/Nodearr/Nodearr/blob/develop/LICENSE"
+      "url": "https://github.com/Nodearr/Nodearr/blob/main/LICENSE"
     },
     "version": "5.0.0"
   },
@@ -21,7 +21,7 @@
           ]
         },
         "hostpath": {
-          "default": "localhost:8989"
+          "default": "localhost:6633"
         }
       }
     }
@@ -35,6 +35,380 @@
         "responses": {
           "200": {
             "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v5/applications": {
+      "get": {
+        "tags": [
+          "Application"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ApplicationResource"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Application"
+        ],
+        "parameters": [
+          {
+            "name": "skipTesting",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "skipValidation",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/SkipValidation"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplicationResource"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationResource"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v5/applications/{id}": {
+      "put": {
+        "tags": [
+          "Application"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "skipTesting",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "skipValidation",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/SkipValidation"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplicationResource"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationResource"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Application"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Application"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationResource"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v5/applications/bulk": {
+      "put": {
+        "tags": [
+          "Application"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplicationBulkResource"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ApplicationResource"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Application"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplicationBulkResource"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/v5/applications/schema": {
+      "get": {
+        "tags": [
+          "Application"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ApplicationResource"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v5/applications/test": {
+      "post": {
+        "tags": [
+          "Application"
+        ],
+        "parameters": [
+          {
+            "name": "skipValidation",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/SkipValidation"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplicationResource"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/v5/applications/testall": {
+      "post": {
+        "tags": [
+          "Application"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProviderTestAllResult"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProviderTestAllResult"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v5/applications/action/{name}": {
+      "post": {
+        "tags": [
+          "Application"
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplicationResource"
+              }
+            }
+          }
+        },
+        "responses": {
+          "400": {
+            "description": "Bad Request"
+          }
+        }
+      }
+    },
+    "/api/v5/arr/webhook/{applicationId}": {
+      "post": {
+        "tags": [
+          "ArrWebhook"
+        ],
+        "parameters": [
+          {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted"
+          },
+          "400": {
+            "description": "Bad Request"
           }
         }
       }
@@ -3397,6 +3771,105 @@
         }
       }
     },
+    "/api/v5/nodes/invites": {
+      "get": {
+        "tags": [
+          "Invite"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InviteResource"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Invite"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInviteResource"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteResource"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v5/nodes/invites/redeem": {
+      "post": {
+        "tags": [
+          "Invite"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RedeemInviteResource"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeerResource"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v5/nodes/invites/{id}": {
+      "delete": {
+        "tags": [
+          "Invite"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
     "/api/v5/language": {
       "get": {
         "tags": [
@@ -3448,6 +3921,150 @@
           },
           "404": {
             "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v5/catalog/local": {
+      "get": {
+        "tags": [
+          "LocalCatalog"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LocalCatalogSummaryResource"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v5/catalog/local/episodefile": {
+      "get": {
+        "tags": [
+          "LocalCatalog"
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          },
+          {
+            "name": "sortKey",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortDirection",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/SortDirection"
+            }
+          },
+          {
+            "name": "applicationId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocalCatalogFileResourcePagingResource"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v5/catalog/local/moviefile": {
+      "get": {
+        "tags": [
+          "LocalCatalog"
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          },
+          {
+            "name": "sortKey",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortDirection",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/SortDirection"
+            }
+          },
+          {
+            "name": "applicationId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocalCatalogFileResourcePagingResource"
+                }
+              }
+            }
           }
         }
       }
@@ -4432,6 +5049,141 @@
         }
       }
     },
+    "/newznab/api": {
+      "get": {
+        "tags": [
+          "Newznab"
+        ],
+        "parameters": [
+          {
+            "name": "t",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "apikey",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v5/nodes/identity": {
+      "get": {
+        "tags": [
+          "NodeIdentity"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NodeIdentityResource"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v5/settings/node": {
+      "get": {
+        "tags": [
+          "NodeSettings"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NodeSettingsResource"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v5/settings/node/{id}": {
+      "put": {
+        "tags": [
+          "NodeSettings"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NodeSettingsResource"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NodeSettingsResource"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "NodeSettings"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NodeSettingsResource"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
     "/api/v5/parse": {
       "get": {
         "tags": [
@@ -4460,6 +5212,307 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ParseResource"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v5/nodes/peers/{id}/shareall": {
+      "put": {
+        "tags": [
+          "Peer"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShareAllResource"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeerResource"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v5/nodes/peers": {
+      "get": {
+        "tags": [
+          "Peer"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PeerResource"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v5/nodes/peers/{id}/ping": {
+      "post": {
+        "tags": [
+          "Peer"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeerResource"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v5/nodes/peers/{id}/block": {
+      "post": {
+        "tags": [
+          "Peer"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeerResource"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v5/nodes/peers/{id}/unblock": {
+      "post": {
+        "tags": [
+          "Peer"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeerResource"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v5/nodes/peers/{id}/revoke": {
+      "post": {
+        "tags": [
+          "Peer"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeerResource"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v5/nodes/peers/{id}": {
+      "delete": {
+        "tags": [
+          "Peer"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/v5/catalog/peers": {
+      "get": {
+        "tags": [
+          "PeerCatalog"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PeerCatalogSummaryResource"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v5/catalog/peers/items": {
+      "get": {
+        "tags": [
+          "PeerCatalog"
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          },
+          {
+            "name": "sortKey",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortDirection",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/SortDirection"
+            }
+          },
+          {
+            "name": "peerId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/PeerItemStatus"
+            }
+          },
+          {
+            "name": "mediaKind",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/MediaKind"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeerCatalogItemResourcePagingResource"
                 }
               }
             }
@@ -5797,6 +6850,88 @@
         }
       }
     },
+    "/sabnzbd/api": {
+      "get": {
+        "tags": [
+          "Sabnzbd"
+        ],
+        "parameters": [
+          {
+            "name": "mode",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "value",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "apikey",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Sabnzbd"
+        ],
+        "parameters": [
+          {
+            "name": "mode",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "value",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "apikey",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v5/seasonpass": {
       "post": {
         "tags": [
@@ -6224,6 +7359,197 @@
         }
       }
     },
+    "/api/v5/sharing/hashing": {
+      "get": {
+        "tags": [
+          "Sharing"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HashingStatusResource"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v5/sharing/lists": {
+      "get": {
+        "tags": [
+          "Sharing"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ShareListResource"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Sharing"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShareListResource"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShareListResource"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v5/sharing/lists/{id}": {
+      "put": {
+        "tags": [
+          "Sharing"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShareListResource"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShareListResource"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Sharing"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/v5/sharing/titles/{applicationId}/{arrId}/seasons": {
+      "get": {
+        "tags": [
+          "Sharing"
+        ],
+        "parameters": [
+          {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "arrId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ShareableSeasonResource"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v5/sharing/titles": {
+      "get": {
+        "tags": [
+          "Sharing"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ShareableTitleResource"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/content/{path}": {
       "get": {
         "tags": [
@@ -6636,6 +7962,112 @@
         }
       }
     },
+    "/api/v5/transfers": {
+      "get": {
+        "tags": [
+          "Transfer"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TransferResource"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v5/transfers/uploads": {
+      "get": {
+        "tags": [
+          "Transfer"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UploadResource"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v5/transfers/{downloadId}": {
+      "delete": {
+        "tags": [
+          "Transfer"
+        ],
+        "parameters": [
+          {
+            "name": "downloadId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "deleteFiles",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v5/transfers/{downloadId}/retry": {
+      "post": {
+        "tags": [
+          "Transfer"
+        ],
+        "parameters": [
+          {
+            "name": "downloadId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v5/settings/ui": {
       "get": {
         "tags": [
@@ -6936,6 +8368,105 @@
           }
         },
         "additionalProperties": false
+      },
+      "ApplicationBulkResource": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "applyTags": {
+            "$ref": "#/components/schemas/ApplyTags"
+          },
+          "syncLevel": {
+            "$ref": "#/components/schemas/ApplicationSyncLevel"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ApplicationResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Field"
+            },
+            "nullable": true
+          },
+          "implementationName": {
+            "type": "string",
+            "nullable": true
+          },
+          "implementation": {
+            "type": "string",
+            "nullable": true
+          },
+          "configContract": {
+            "type": "string",
+            "nullable": true
+          },
+          "infoLink": {
+            "type": "string",
+            "nullable": true
+          },
+          "message": {
+            "$ref": "#/components/schemas/ProviderMessage"
+          },
+          "tags": {
+            "uniqueItems": true,
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "presets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApplicationResource"
+            },
+            "nullable": true
+          },
+          "syncLevel": {
+            "$ref": "#/components/schemas/ApplicationSyncLevel"
+          },
+          "testCommand": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ApplicationSyncLevel": {
+        "enum": [
+          "disabled",
+          "addOnly",
+          "fullSync"
+        ],
+        "type": "string"
       },
       "ApplyTags": {
         "enum": [
@@ -7381,6 +8912,14 @@
         ],
         "type": "string"
       },
+      "ConnectionPath": {
+        "enum": [
+          "unknown",
+          "direct",
+          "relay"
+        ],
+        "type": "string"
+      },
       "ConnectionResource": {
         "type": "object",
         "properties": {
@@ -7522,6 +9061,23 @@
           "testCommand": {
             "type": "string",
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateInviteResource": {
+        "type": "object",
+        "properties": {
+          "validHours": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "shareAll": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -8353,6 +9909,39 @@
           "backupRetention": {
             "type": "integer",
             "format": "int32"
+          },
+          "fixedByEnvironment": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "HashingStatusResource": {
+        "type": "object",
+        "properties": {
+          "shared": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hashed": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "current": {
+            "type": "string",
+            "nullable": true
+          },
+          "waitingForUploads": {
+            "type": "boolean"
+          },
+          "lastPass": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -8367,6 +9956,8 @@
           "downloadClientSorting",
           "downloadClientStatusAllClients",
           "downloadClientStatusSingleClient",
+          "downloadFolderNotShared",
+          "downloadFolderNotWritable",
           "importListRootFolderMissing",
           "importListRootFolderMultipleMissing",
           "importListStatusAllUnavailable",
@@ -8385,11 +9976,17 @@
           "indexerSearchNoInteractive",
           "indexerStatusAllUnavailable",
           "indexerStatusUnavailable",
+          "libraryNotReadable",
           "minimumApiKeyLength",
           "mountSeries",
           "notificationStatusAll",
           "notificationStatusSingle",
           "package",
+          "pairAttempts",
+          "peerNetworkNoUdp",
+          "peerNetworkVaryingPort",
+          "peerRelayOnly",
+          "peerTransportNotRunning",
           "proxyBadRequest",
           "proxyFailed",
           "proxyResolveIp",
@@ -9039,6 +10636,44 @@
         },
         "additionalProperties": false
       },
+      "InviteResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          },
+          "created": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expires": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "redeemedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "redeemedByNodeId": {
+            "type": "string",
+            "nullable": true
+          },
+          "shareAll": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "Language": {
         "type": "object",
         "properties": {
@@ -9080,6 +10715,229 @@
           "keepAndTag"
         ],
         "type": "string"
+      },
+      "LocalCatalogFileResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "mediaType": {
+            "type": "string",
+            "nullable": true
+          },
+          "applicationId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "applicationName": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "year": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "tvdbId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "tmdbId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "imdbId": {
+            "type": "string",
+            "nullable": true
+          },
+          "seasonNumber": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "episodeNumbers": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "episodeTitles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "path": {
+            "type": "string",
+            "nullable": true
+          },
+          "relativePath": {
+            "type": "string",
+            "nullable": true
+          },
+          "localPath": {
+            "type": "string",
+            "nullable": true
+          },
+          "readable": {
+            "type": "boolean"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "quality": {
+            "type": "string",
+            "nullable": true
+          },
+          "resolution": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "languages": {
+            "type": "string",
+            "nullable": true
+          },
+          "customFormats": {
+            "type": "string",
+            "nullable": true
+          },
+          "releaseGroup": {
+            "type": "string",
+            "nullable": true
+          },
+          "sceneName": {
+            "type": "string",
+            "nullable": true
+          },
+          "videoCodec": {
+            "type": "string",
+            "nullable": true
+          },
+          "audioCodec": {
+            "type": "string",
+            "nullable": true
+          },
+          "dateAdded": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "missingSince": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LocalCatalogFileResourcePagingResource": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sortKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "sortDirection": {
+            "$ref": "#/components/schemas/SortDirection"
+          },
+          "totalRecords": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LocalCatalogFileResource"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LocalCatalogSummaryResource": {
+        "type": "object",
+        "properties": {
+          "applicationId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "applicationName": {
+            "type": "string",
+            "nullable": true
+          },
+          "implementation": {
+            "type": "string",
+            "nullable": true
+          },
+          "series": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "episodes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "episodeFiles": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "movies": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "movieFiles": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "artists": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "albums": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "trackFiles": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "missingFiles": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lastSyncStarted": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastSyncCompleted": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastSyncError": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
       },
       "LocalizationLanguageResource": {
         "type": "object",
@@ -9546,6 +11404,14 @@
         },
         "additionalProperties": false
       },
+      "MediaKind": {
+        "enum": [
+          "tv",
+          "movie",
+          "music"
+        ],
+        "type": "string"
+      },
       "MediaManagementSettingsResource": {
         "type": "object",
         "properties": {
@@ -9825,6 +11691,119 @@
         ],
         "type": "string"
       },
+      "NodeIdentityResource": {
+        "type": "object",
+        "properties": {
+          "transportRunning": {
+            "type": "boolean"
+          },
+          "nodeId": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "relayUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "ipAddresses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "udp": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "mappingVaries": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "publicAddress": {
+            "type": "string",
+            "nullable": true
+          },
+          "captivePortal": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "dockerDesktop": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "NodeSettingsResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "nodeName": {
+            "type": "string",
+            "nullable": true
+          },
+          "relay": {
+            "$ref": "#/components/schemas/RelayMode"
+          },
+          "relayUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "port": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "portMapping": {
+            "type": "boolean"
+          },
+          "directTimeoutSeconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "downloadFolder": {
+            "type": "string",
+            "nullable": true
+          },
+          "uploadLimitKbps": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "catalogSyncInterval": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "fixedByEnvironment": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "defaultNodeName": {
+            "type": "string",
+            "nullable": true
+          },
+          "defaultDownloadFolder": {
+            "type": "string",
+            "nullable": true
+          },
+          "transportRunning": {
+            "type": "boolean"
+          },
+          "transportRestarted": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "OverrideReleaseResource": {
         "type": "object",
         "properties": {
@@ -10083,6 +12062,264 @@
           }
         },
         "additionalProperties": false
+      },
+      "PeerCatalogItemResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "peerId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "peerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "mediaKind": {
+            "$ref": "#/components/schemas/MediaKind"
+          },
+          "localStatus": {
+            "$ref": "#/components/schemas/PeerItemStatus"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "year": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "tvdbId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "tmdbId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "imdbId": {
+            "type": "string",
+            "nullable": true
+          },
+          "seasonNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "episodeNumbers": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "episodeTitles": {
+            "type": "string",
+            "nullable": true
+          },
+          "airDates": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "artist": {
+            "type": "string",
+            "nullable": true
+          },
+          "trackCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "releaseTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "quality": {
+            "type": "string",
+            "nullable": true
+          },
+          "resolution": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "languages": {
+            "type": "string",
+            "nullable": true
+          },
+          "releaseGroup": {
+            "type": "string",
+            "nullable": true
+          },
+          "dateAdded": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "blake3": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PeerCatalogItemResourcePagingResource": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sortKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "sortDirection": {
+            "$ref": "#/components/schemas/SortDirection"
+          },
+          "totalRecords": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PeerCatalogItemResource"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PeerCatalogSummaryResource": {
+        "type": "object",
+        "properties": {
+          "peerId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "peerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "catalogVersion": {
+            "type": "string",
+            "nullable": true
+          },
+          "catalogSyncedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "catalogError": {
+            "type": "string",
+            "nullable": true
+          },
+          "notInLibrary": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "missing": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "upgrade": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "have": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PeerItemStatus": {
+        "enum": [
+          "notInLibrary",
+          "missing",
+          "upgrade",
+          "have"
+        ],
+        "type": "string"
+      },
+      "PeerResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "nodeId": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "state": {
+            "$ref": "#/components/schemas/PeerState"
+          },
+          "stateReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "added": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "stateChanged": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastSeen": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastError": {
+            "type": "string",
+            "nullable": true
+          },
+          "connectionPath": {
+            "$ref": "#/components/schemas/ConnectionPath"
+          },
+          "connectionAddress": {
+            "type": "string",
+            "nullable": true
+          },
+          "connectionChecked": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "shareAll": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PeerState": {
+        "enum": [
+          "pending",
+          "trusted",
+          "blocked",
+          "revoked"
+        ],
+        "type": "string"
       },
       "PingResource": {
         "type": "object",
@@ -10596,10 +12833,28 @@
         },
         "additionalProperties": false
       },
+      "RedeemInviteResource": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "RejectionType": {
         "enum": [
           "permanent",
           "temporary"
+        ],
+        "type": "string"
+      },
+      "RelayMode": {
+        "enum": [
+          "n0",
+          "custom",
+          "disabled"
         ],
         "type": "string"
       },
@@ -11732,6 +13987,145 @@
         ],
         "type": "string"
       },
+      "ShareAllResource": {
+        "type": "object",
+        "properties": {
+          "shareAll": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ShareKeyResource": {
+        "type": "object",
+        "properties": {
+          "mediaKind": {
+            "$ref": "#/components/schemas/MediaKind"
+          },
+          "applicationId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "arrId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "seasonNumber": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "episodeArrId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ShareListResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "isHidden": {
+            "type": "boolean"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShareKeyResource"
+            },
+            "nullable": true
+          },
+          "peerIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ShareableEpisodeResource": {
+        "type": "object",
+        "properties": {
+          "episodeArrId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "episodeNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasFile": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ShareableSeasonResource": {
+        "type": "object",
+        "properties": {
+          "seasonNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "episodes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShareableEpisodeResource"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ShareableTitleResource": {
+        "type": "object",
+        "properties": {
+          "mediaKind": {
+            "$ref": "#/components/schemas/MediaKind"
+          },
+          "applicationId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "arrId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "applicationName": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "year": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "files": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
       "SkipValidation": {
         "enum": [
           "none",
@@ -12058,6 +14452,110 @@
         },
         "additionalProperties": false
       },
+      "TransferFailure": {
+        "enum": [
+          "none",
+          "noDirectRoute",
+          "directPathLost",
+          "connectionLost",
+          "peerUnreachable",
+          "notAuthorized",
+          "revoked",
+          "blocked",
+          "notFound",
+          "verificationFailed",
+          "diskError",
+          "failed"
+        ],
+        "type": "string"
+      },
+      "TransferResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "downloadId": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "mediaKind": {
+            "$ref": "#/components/schemas/MediaKind"
+          },
+          "category": {
+            "type": "string",
+            "nullable": true
+          },
+          "peerId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "peerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "state": {
+            "$ref": "#/components/schemas/TransferState"
+          },
+          "failure": {
+            "$ref": "#/components/schemas/TransferFailure"
+          },
+          "failureMessage": {
+            "type": "string",
+            "nullable": true
+          },
+          "size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "bytesDone": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "attempts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "nextAttempt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "outputPath": {
+            "type": "string",
+            "nullable": true
+          },
+          "added": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "started": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "ended": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TransferState": {
+        "enum": [
+          "queued",
+          "downloading",
+          "completed",
+          "failed"
+        ],
+        "type": "string"
+      },
       "UiSettingsResource": {
         "type": "object",
         "properties": {
@@ -12237,6 +14735,61 @@
         },
         "additionalProperties": false
       },
+      "UploadResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "peerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "state": {
+            "$ref": "#/components/schemas/UploadState"
+          },
+          "failure": {
+            "type": "string",
+            "nullable": true
+          },
+          "failureMessage": {
+            "type": "string",
+            "nullable": true
+          },
+          "size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "bytesSent": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "started": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ended": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UploadState": {
+        "enum": [
+          "preparing",
+          "sending",
+          "completed",
+          "failed"
+        ],
+        "type": "string"
+      },
       "ValidationFailure": {
         "type": "object",
         "properties": {
@@ -12304,6 +14857,12 @@
   "tags": [
     {
       "name": "ApiInfo"
+    },
+    {
+      "name": "Application"
+    },
+    {
+      "name": "ArrWebhook"
     },
     {
       "name": "Authentication"
@@ -12378,7 +14937,13 @@
       "name": "IndexerSettings"
     },
     {
+      "name": "Invite"
+    },
+    {
       "name": "Language"
+    },
+    {
+      "name": "LocalCatalog"
     },
     {
       "name": "Localization"
@@ -12405,7 +14970,22 @@
       "name": "NamingSettings"
     },
     {
+      "name": "Newznab"
+    },
+    {
+      "name": "NodeIdentity"
+    },
+    {
+      "name": "NodeSettings"
+    },
+    {
       "name": "Parse"
+    },
+    {
+      "name": "Peer"
+    },
+    {
+      "name": "PeerCatalog"
     },
     {
       "name": "Ping"
@@ -12450,6 +15030,9 @@
       "name": "RootFolder"
     },
     {
+      "name": "Sabnzbd"
+    },
+    {
       "name": "SeasonPass"
     },
     {
@@ -12468,6 +15051,9 @@
       "name": "SeriesLookup"
     },
     {
+      "name": "Sharing"
+    },
+    {
       "name": "System"
     },
     {
@@ -12478,6 +15064,9 @@
     },
     {
       "name": "Task"
+    },
+    {
+      "name": "Transfer"
     },
     {
       "name": "UiSettings"

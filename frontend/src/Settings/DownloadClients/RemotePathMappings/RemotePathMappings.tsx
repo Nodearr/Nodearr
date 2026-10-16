@@ -35,12 +35,7 @@ function RemotePathMappings() {
         isPopulated={isFetched}
       >
         <Alert kind={kinds.INFO}>
-          <InlineMarkdown
-            data={translate('RemotePathMappingsInfo', {
-              wikiLink:
-                'https://wiki.servarr.com/nodearr/settings#remote-path-mappings',
-            })}
-          />
+          <InlineMarkdown data={translate('RemotePathMappingsInfo')} />
         </Alert>
 
         <div className={styles.remotePathMappingsHeader}>

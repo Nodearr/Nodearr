@@ -1,11 +1,11 @@
 {
-  "openapi": "3.0.1",
+  "openapi": "3.0.4",
   "info": {
     "title": "Nodearr",
-    "description": "Nodearr API docs - The v3 API docs apply to both v3 and v4 versions of Nodearr. Some functionality may only be available in v4 of the Nodearr application.",
+    "description": "Nodearr's v3 API: Sonarr's, kept for compatibility and deprecated. Nodearr's own API is v5.",
     "license": {
       "name": "GPL-3.0",
-      "url": "https://github.com/Nodearr/Nodearr/blob/develop/LICENSE"
+      "url": "https://github.com/Nodearr/Nodearr/blob/main/LICENSE"
     },
     "version": "3.0.0"
   },
@@ -21,7 +21,7 @@
           ]
         },
         "hostpath": {
-          "default": "localhost:8989"
+          "default": "localhost:6633"
         }
       }
     }
@@ -264,6 +264,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -610,6 +613,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -773,6 +779,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -928,6 +937,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -1083,6 +1095,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -1257,6 +1272,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -1412,6 +1430,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -1645,6 +1666,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -1883,6 +1907,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -2043,6 +2070,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -2214,6 +2244,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -2236,7 +2269,8 @@
           "200": {
             "description": "OK"
           }
-        }
+        },
+        "deprecated": true
       }
     },
     "/api/v3/episodefile/bulk": {
@@ -2761,6 +2795,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -2915,6 +2952,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -3153,6 +3193,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -3362,6 +3405,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -3547,6 +3593,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -3785,6 +3834,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -3891,6 +3943,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -4030,6 +4085,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -4118,6 +4176,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -4434,6 +4495,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -4588,6 +4652,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -4791,6 +4858,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -4906,6 +4976,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -5005,6 +5078,34 @@
           },
           {
             "name": "resourceName",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/newznab/api": {
+      "get": {
+        "tags": [
+          "Newznab"
+        ],
+        "parameters": [
+          {
+            "name": "t",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "apikey",
             "in": "query",
             "schema": {
               "type": "string"
@@ -5168,6 +5269,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -5421,6 +5525,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -5683,6 +5790,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -6339,6 +6449,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -6551,6 +6664,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -6575,6 +6691,41 @@
             "schema": {
               "type": "integer",
               "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RenameEpisodeResource"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v3/rename/bulk": {
+      "get": {
+        "tags": [
+          "RenameEpisode"
+        ],
+        "parameters": [
+          {
+            "name": "seriesIds",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int32"
+              }
             }
           }
         ],
@@ -6700,6 +6851,91 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/sabnzbd/api": {
+      "get": {
+        "tags": [
+          "Sabnzbd"
+        ],
+        "parameters": [
+          {
+            "name": "mode",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "value",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "apikey",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Sabnzbd"
+        ],
+        "parameters": [
+          {
+            "name": "mode",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "value",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "apikey",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
           }
         }
       }
@@ -7366,6 +7602,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -7418,6 +7657,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -7486,6 +7728,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -7562,6 +7807,9 @@
                 }
               }
             }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -7715,7 +7963,8 @@
       "AuthenticationRequiredType": {
         "enum": [
           "enabled",
-          "disabledForLocalAddresses"
+          "disabledForLocalAddresses",
+          "disabledForLocalhost"
         ],
         "type": "string"
       },
@@ -8095,7 +8344,8 @@
         "enum": [
           "unknown",
           "successful",
-          "unsuccessful"
+          "unsuccessful",
+          "indeterminate"
         ],
         "type": "string"
       },
@@ -8674,16 +8924,6 @@
           "unverifiedSceneNumbering": {
             "type": "boolean"
           },
-          "endTime": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
-          "grabDate": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          },
           "series": {
             "$ref": "#/components/schemas/SeriesResource"
           },
@@ -8863,7 +9103,8 @@
             "nullable": true
           },
           "wikiUrl": {
-            "$ref": "#/components/schemas/HttpUri"
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -9041,6 +9282,10 @@
             "type": "string",
             "nullable": true
           },
+          "sslKeyPath": {
+            "type": "string",
+            "nullable": true
+          },
           "sslCertPassword": {
             "type": "string",
             "nullable": true
@@ -9113,48 +9358,6 @@
           },
           "trustCgnatIpAddresses": {
             "type": "boolean"
-          }
-        },
-        "additionalProperties": false
-      },
-      "HttpUri": {
-        "type": "object",
-        "properties": {
-          "fullUri": {
-            "type": "string",
-            "nullable": true,
-            "readOnly": true
-          },
-          "scheme": {
-            "type": "string",
-            "nullable": true,
-            "readOnly": true
-          },
-          "host": {
-            "type": "string",
-            "nullable": true,
-            "readOnly": true
-          },
-          "port": {
-            "type": "integer",
-            "format": "int32",
-            "nullable": true,
-            "readOnly": true
-          },
-          "path": {
-            "type": "string",
-            "nullable": true,
-            "readOnly": true
-          },
-          "query": {
-            "type": "string",
-            "nullable": true,
-            "readOnly": true
-          },
-          "fragment": {
-            "type": "string",
-            "nullable": true,
-            "readOnly": true
           }
         },
         "additionalProperties": false
@@ -9431,6 +9634,11 @@
             "nullable": true
           },
           "priority": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "seasonSearchMaximumSingleEpisodeAge": {
             "type": "integer",
             "format": "int32",
             "nullable": true
@@ -10128,6 +10336,17 @@
           },
           "enableMediaInfo": {
             "type": "boolean"
+          },
+          "userRejectedExtensions": {
+            "type": "string",
+            "nullable": true
+          },
+          "seasonPackUpgrade": {
+            "$ref": "#/components/schemas/SeasonPackUpgradeType"
+          },
+          "seasonPackUpgradeThreshold": {
+            "type": "number",
+            "format": "double"
           }
         },
         "additionalProperties": false
@@ -11146,11 +11365,27 @@
           "ignored": {
             "nullable": true
           },
+          "airDateRestriction": {
+            "type": "boolean"
+          },
+          "airDateGracePeriod": {
+            "type": "integer",
+            "format": "int32"
+          },
           "indexerId": {
             "type": "integer",
             "format": "int32"
           },
           "tags": {
+            "uniqueItems": true,
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "excludedTags": {
             "uniqueItems": true,
             "type": "array",
             "items": {
@@ -11550,6 +11785,11 @@
             "format": "int64",
             "nullable": true
           },
+          "totalSpace": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
           "unmappedFolders": {
             "type": "array",
             "items": {
@@ -11565,6 +11805,14 @@
           "console",
           "service",
           "tray"
+        ],
+        "type": "string"
+      },
+      "SeasonPackUpgradeType": {
+        "enum": [
+          "all",
+          "threshold",
+          "any"
         ],
         "type": "string"
       },
@@ -12100,6 +12348,9 @@
           "isDocker": {
             "type": "boolean"
           },
+          "isContainerized": {
+            "type": "boolean"
+          },
           "mode": {
             "$ref": "#/components/schemas/RuntimeMode"
           },
@@ -12195,6 +12446,14 @@
             "nullable": true
           },
           "restrictionIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "excludedReleaseProfileIds": {
             "type": "array",
             "items": {
               "type": "integer",
@@ -12355,6 +12614,10 @@
             "type": "string",
             "nullable": true
           },
+          "timeZone": {
+            "type": "string",
+            "nullable": true
+          },
           "showRelativeDates": {
             "type": "boolean"
           },
@@ -12493,6 +12756,221 @@
     },
     {
       "apikey": [ ]
+    }
+  ],
+  "tags": [
+    {
+      "name": "ApiInfo"
+    },
+    {
+      "name": "Authentication"
+    },
+    {
+      "name": "StaticResource"
+    },
+    {
+      "name": "AutoTagging"
+    },
+    {
+      "name": "Backup"
+    },
+    {
+      "name": "Blocklist"
+    },
+    {
+      "name": "Calendar"
+    },
+    {
+      "name": "CalendarFeed"
+    },
+    {
+      "name": "Command"
+    },
+    {
+      "name": "CustomFilter"
+    },
+    {
+      "name": "CustomFormat"
+    },
+    {
+      "name": "Cutoff"
+    },
+    {
+      "name": "DelayProfile"
+    },
+    {
+      "name": "DiskSpace"
+    },
+    {
+      "name": "DownloadClient"
+    },
+    {
+      "name": "DownloadClientConfig"
+    },
+    {
+      "name": "Episode"
+    },
+    {
+      "name": "EpisodeFile"
+    },
+    {
+      "name": "FileSystem"
+    },
+    {
+      "name": "Health"
+    },
+    {
+      "name": "History"
+    },
+    {
+      "name": "HostConfig"
+    },
+    {
+      "name": "ImportList"
+    },
+    {
+      "name": "ImportListConfig"
+    },
+    {
+      "name": "ImportListExclusion"
+    },
+    {
+      "name": "Indexer"
+    },
+    {
+      "name": "IndexerConfig"
+    },
+    {
+      "name": "IndexerFlag"
+    },
+    {
+      "name": "Language"
+    },
+    {
+      "name": "LanguageProfile"
+    },
+    {
+      "name": "LanguageProfileSchema"
+    },
+    {
+      "name": "Localization"
+    },
+    {
+      "name": "Log"
+    },
+    {
+      "name": "LogFile"
+    },
+    {
+      "name": "ManualImport"
+    },
+    {
+      "name": "MediaCover"
+    },
+    {
+      "name": "MediaManagementConfig"
+    },
+    {
+      "name": "Metadata"
+    },
+    {
+      "name": "Missing"
+    },
+    {
+      "name": "NamingConfig"
+    },
+    {
+      "name": "Newznab"
+    },
+    {
+      "name": "Notification"
+    },
+    {
+      "name": "Parse"
+    },
+    {
+      "name": "Ping"
+    },
+    {
+      "name": "QualityDefinition"
+    },
+    {
+      "name": "QualityProfile"
+    },
+    {
+      "name": "QualityProfileSchema"
+    },
+    {
+      "name": "Queue"
+    },
+    {
+      "name": "QueueAction"
+    },
+    {
+      "name": "QueueDetails"
+    },
+    {
+      "name": "QueueStatus"
+    },
+    {
+      "name": "Release"
+    },
+    {
+      "name": "ReleaseProfile"
+    },
+    {
+      "name": "ReleasePush"
+    },
+    {
+      "name": "RemotePathMapping"
+    },
+    {
+      "name": "RenameEpisode"
+    },
+    {
+      "name": "RootFolder"
+    },
+    {
+      "name": "Sabnzbd"
+    },
+    {
+      "name": "SeasonPass"
+    },
+    {
+      "name": "Series"
+    },
+    {
+      "name": "SeriesEditor"
+    },
+    {
+      "name": "SeriesFolder"
+    },
+    {
+      "name": "SeriesImport"
+    },
+    {
+      "name": "SeriesLookup"
+    },
+    {
+      "name": "System"
+    },
+    {
+      "name": "Tag"
+    },
+    {
+      "name": "TagDetails"
+    },
+    {
+      "name": "Task"
+    },
+    {
+      "name": "UiConfig"
+    },
+    {
+      "name": "Update"
+    },
+    {
+      "name": "UpdateLogFile"
     }
   ]
 }

@@ -127,6 +127,8 @@ Not yet run:
 - **Release packages that have not been started:** macOS on Intel and Apple silicon (needs a Mac), linux-musl-arm64, and 32-bit ARM on a real board. The image has not been pulled back from GHCR.
 - **A blocking firewall rule that did not block.** In the home-to-home runs the receiving machine had a rule blocking `nodearr-transport`, and both runs connected. Most likely because that side opened the connections. Not checked.
 - **Sonarr import on a large library**, at two requests per series, against a real Sonarr that large.
+- **Relay bytes when a direct path is lost part way.** The sidecar resets the stream, and a connection has survived a firewall change, but nobody has counted what the relay carried in that case (ADR 0011).
+- **The systemd unit** in the user guide, modelled on Sonarr's, has not been run.
 
 Not built:
 
@@ -134,3 +136,5 @@ Not built:
 - A FreeBSD package and a macOS app bundle (`docs/guides/releases.md`). No updater, by design (ADR 0018).
 - Inherited pages that no route leads to still hold links to pages that do not exist.
 - The S1 spike harness no longer runs on later branches. The acceptance scripts replaced it.
+- Lidarr's track titles in the offer, so a Lidarr that does not rename keeps names such as `01 - Breadcrumb Trail.flac` (ADR 0020).
+- The web UI still holds Sonarr's error reporting code, pointed at `sentry.nodearr.com`. It never runs, because analytics is always off (ADR 0018), but it should go.
