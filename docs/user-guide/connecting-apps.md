@@ -104,7 +104,7 @@ Nodearr reads artists, albums and track files. You share whole artists. An album
 
 Lidarr searches by artist and album, as text, in the Audio categories. Albums are only ever found by those searches. An album's release title is the name Lidarr kept for the release, or `Artist - Album (Year) [Quality]`.
 
-Lidarr does not rename tracks by default, and then keeps the names they arrive with: the release title and a track number, such as `Slint - Spiderland (1991) [FLAC] - 01.flac`, straight in the artist's folder. Turn on Rename Tracks in Lidarr's Settings > Media Management for names of your own choosing.
+Tracks arrive named as Lidarr names its own by default, such as `Slint - Spiderland - 01 - Breadcrumb Trail.flac`, or `1-01` and so on for an album on several discs. Lidarr does not rename tracks unless told to, and then keeps those names, straight in the artist's folder. Turn on Rename Tracks in Lidarr's Settings > Media Management for folders and names of your own choosing.
 
 ### Prowlarr
 

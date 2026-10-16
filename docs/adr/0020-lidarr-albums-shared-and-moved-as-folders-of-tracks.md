@@ -42,7 +42,7 @@ Three tables beside the series and movie ones: `CatalogArtists`, `CatalogAlbums`
 ### L3: a transfer of several files
 
 - A transfer of an album has parts, its tracks in the order offered. The album's size and progress count all of them.
-- The parts arrive one after another into `incomplete/<download id>/`, named by the release title and numbered in order, such as `Slint - Spiderland (1991) [FLAC] - 01.flac`, each verified as a single file is (ADR 0016) and each with its own three attempts. Lidarr identifies the tracks by their tags. A Lidarr that does not rename tracks, which is its default, keeps these names and puts every album's tracks straight into the artist's folder, so each album's names have to be its own. Bare `01.flac` names were tried first and would have collided.
+- The parts arrive one after another into `incomplete/<download id>/`, named as Lidarr names its own files, such as `Slint - Spiderland - 01 - Breadcrumb Trail.flac` (amendment of 2026-10-16), each verified as a single file is (ADR 0016) and each with its own three attempts. Lidarr identifies the tracks by their tags. A Lidarr that does not rename tracks, which is its default, keeps these names and puts every album's tracks straight into the artist's folder, so each album's names have to be its own. Bare `01.flac` names were tried first and would have collided.
 - The folder moves into `complete` only when the last part is verified, so Lidarr never sees half an album.
 - A part that fails for good fails the album, and nothing of it is kept. A part that does not match its hash starts over, and the parts before it are kept.
 - Each part is its own transfer in the transport, `<download id>-<n>`, so nothing of one can be taken for another. The sidecar needs no change: a file's name is opaque to it.
@@ -72,7 +72,16 @@ The first run named the parts `01.flac` and so on, and Lidarr, which does not re
 
 ## Follow-up work
 
-- Sending each track's title, as an episode's title is sent, would let a Lidarr that does not rename keep names such as `01 - Breadcrumb Trail.flac`. Lidarr's track titles are not in the catalog yet.
+- ~~Sending each track's title, as an episode's title is sent, would let a Lidarr that does not rename keep names such as `01 - Breadcrumb Trail.flac`. Lidarr's track titles are not in the catalog yet.~~ Done, see the amendment of 2026-10-16.
+
+## Amendments
+
+- 2026-10-16: **tracks are named as Lidarr names its own.** A track arrived as `Slint - Spiderland (1991) [FLAC] - 01.flac`: unique, but nothing of which song it is. Now:
+  - Nodearr reads each artist's tracks from Lidarr (`/track?artistId=`, one more request per artist) and keeps each track file's title, its number on its disc, and the disc.
+  - An offered track says them, as an episode's title and number are said. Like those, they are what Lidarr knows the track as, not the file's name. A track Lidarr has not matched says nothing more than before. The album's tracks are in Lidarr's order, by disc and number, where every file is matched.
+  - A friend's title is kept only when it is at most 300 characters with nothing a file name cannot hold. Otherwise the title alone is dropped and the album kept.
+  - A track arrives as Lidarr's own default names it, `Artist - Album - 01 - Title`, and `Artist - Album - 1-01 - Title` for an album on several discs. Two tracks of an album named alike get ` (2)` and so on, and a name is cut at 150 characters for Windows' path limit. A track with no title keeps the name it had. A Lidarr that does not rename puts these straight into the artist's folder, and the artist and album in each name keep them apart.
+  - Run again between two Lidarr 3.1.0.4875 instances from fresh data: Lidarr B imported the six tracks of *Spiderland* as `Slint - Spiderland - 01 - Breadcrumb Trail.flac` to `Slint - Spiderland - 06 - Good Morning, Captain.flac`, straight into the artist's folder, each byte for byte the one A holds. Lidarr handed the same ticket over twice, four seconds apart, and was given the same download back both times, so the album was fetched once (ADR 0010, finding 9).
 
 ## Consequences
 

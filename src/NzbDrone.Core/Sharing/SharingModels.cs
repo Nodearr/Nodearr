@@ -204,14 +204,25 @@ namespace NzbDrone.Core.Sharing
         public string Fingerprint { get; set; }
     }
 
-    // One track of an offered album. Like a file, it says nothing of its name or where it lives.
-    // Its ID is what a transfer asks for.
+    // One track of an offered album. Like a file, it says nothing of its name or where it lives,
+    // only which track it is, as an episode's title and number are sent. Its ID is what a transfer
+    // asks for.
     public class OfferTrack
     {
         public string Id { get; set; }
         public string Extension { get; set; }
         public long Size { get; set; }
         public string Quality { get; set; }
+
+        // The track's title, its number on its disc, and the disc, where Lidarr knows them.
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string Title { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? Number { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? Disc { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string Blake3 { get; set; }

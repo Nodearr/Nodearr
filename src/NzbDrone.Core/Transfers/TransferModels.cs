@@ -129,6 +129,10 @@ namespace NzbDrone.Core.Transfers
         public string RemoteId { get; set; }
         public string Extension { get; set; }
         public long Size { get; set; }
+
+        // What the file is called when it arrives, without its extension: Artist - Album - 01 -
+        // Title, as Lidarr names its own. Null when the peer did not say the track's title.
+        public string Name { get; set; }
     }
 
     // Raised when any transfer was added, removed, or moved on.

@@ -433,6 +433,15 @@ namespace NzbDrone.Core.Applications
         public int TrackFileCount { get; set; }
     }
 
+    // One track of an album's release, and the file Lidarr holds for it, if any.
+    public class LidarrTrackResource
+    {
+        public int TrackFileId { get; set; }
+        public int AbsoluteTrackNumber { get; set; }
+        public int MediumNumber { get; set; }
+        public string Title { get; set; }
+    }
+
     public class LidarrTrackFileResource : ArrFileResource
     {
         public int ArtistId { get; set; }

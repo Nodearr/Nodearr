@@ -21,6 +21,7 @@ What changed in each release, newest first. Each item links to the decision reco
 - Every package and the image carry **third-party notices** for everything they contain, and the .NET runtime's own licence and notices.
 - The assembly copyright credits Sonarr again.
 - The API description, `openapi.json`, is generated from the code, and covers Nodearr's own endpoints. It was Sonarr's.
+- An album's tracks arrive named as Lidarr names its own, `Artist - Album - 01 - Title`, from the track titles a friend's Lidarr knows ([ADR 0020](docs/adr/0020-lidarr-albums-shared-and-moved-as-folders-of-tracks.md), amendments).
 
 ### Fixed
 

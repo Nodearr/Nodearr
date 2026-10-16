@@ -159,5 +159,39 @@ namespace NzbDrone.Core.Test.Sharing
 
             Subject.All().Single(l => l.List.Id == list.List.Id).Items.Should().Equal(Low);
         }
+
+        [Test]
+        public void a_track_should_say_which_track_it_is_and_the_album_be_in_lidarrs_order()
+        {
+            var tracks = Mocker.Resolve<ICatalogTrackFileRepository>();
+
+            // Lidarr numbers Dinosaur Act first, whatever the files are called.
+            foreach (var (id, title, number) in new[] { (701, "Sunflower", 2), (702, "Dinosaur Act", 1) })
+            {
+                var file = tracks.ForArrIds(3, new[] { id }).Single();
+
+                file.TrackTitle = title;
+                file.TrackNumber = number;
+                file.DiscNumber = 1;
+                tracks.Update(file);
+            }
+
+            GivenShared(Low);
+
+            var album = Subject.BuildOffer(Bob, true).Items.Single();
+
+            album.Tracks.Select(t => t.Id).Should().Equal("t-3-702", "t-3-701");
+            album.Tracks[0].Should().Match<OfferTrack>(t => t.Title == "Dinosaur Act" && t.Number == 1 && t.Disc == 1);
+        }
+
+        [Test]
+        public void a_track_lidarr_has_not_matched_should_say_nothing_of_which_it_is()
+        {
+            GivenShared(Low);
+
+            var json = System.Text.Json.JsonSerializer.Serialize(Subject.BuildOffer(Bob, true).Items.Single().Tracks[0]);
+
+            json.Should().NotContain("Title").And.NotContain("Number").And.NotContain("Disc");
+        }
     }
 }
