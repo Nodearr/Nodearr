@@ -89,7 +89,7 @@ There is no lookup service. Nodes learn each other's relay URL and addresses fro
 - With relays disabled, a node's addresses change on every restart, and a peer that was offline at that moment has stale ones until the two meet again. With a relay the relay URL stays valid, which is one more reason coordinated mode is the default (ADR 0011).
 - There is no lookup service, so two nodes that both lose track of each other must pair again. n0's DNS-based lookup would fix that at the cost of publishing node addresses to a third party. Not decided.
 - The node's display name is the machine name for now. There is no setting yet.
-- Pair attempts are not rate limited. A stranger who knows a node's ID and can reach it can try secrets. The secret is 256 bits, so this costs log noise, not security.
+- ~~Pair attempts are not rate limited.~~ They are now: see the amendment of 2026-10-15.
 - The acceptance run used one machine with relays off. Pairing across the internet depends on the same connectivity that S2's cross-NAT run has yet to confirm.
 
 ## Follow-up work
@@ -98,3 +98,15 @@ There is no lookup service. Nodes learn each other's relay URL and addresses fro
 - S7: cancel a peer's transfers on block and revoke, and apply the same authorization to every transfer request.
 - S8: ship the sidecar in the Docker image, and settings for relay mode, relay URL and port mapping (today they are `Nodearr__Transport__*` environment variables).
 - A setting for the node's display name.
+
+## Amendments
+
+### 2026-10-15: pair attempts are limited
+
+A stranger who knows a node's ID and can reach it could try invite secrets without end. The secret is 256 bits, so nothing can be guessed, but each attempt cost a lookup and a warning in the log, and node IDs cost nothing to make.
+
+- A node that fails to pair five times in 15 minutes is turned away for the rest of that time, without its invite being looked at, even when it brings a real one. It is told `TooManyAttempts`, which says nothing about which invites exist, and the node redeeming the invite says to try again in 15 minutes. A node that pairs starts again from nothing.
+- Pairing is never closed to everyone. A limit for all nodes at once would let one stranger keep a friend from pairing.
+- The first ten failures in 15 minutes are logged one by one. One more warning says the rest are only counted, and they are logged at debug level.
+- System > Status warns when a node has been turned away, or after 20 failures in an hour, and says how many and from how many node IDs.
+- Everything is kept in memory, at most 10,000 node IDs. A restart forgets it, which costs nothing.

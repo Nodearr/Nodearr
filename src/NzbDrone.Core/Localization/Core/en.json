@@ -1799,6 +1799,7 @@
   "PagerGoToNextPage": "Go to next page",
   "PagerGoToPage": "Go to page {page} of {totalPages}",
   "PagerGoToPreviousPage": "Go to previous page",
+  "PairAttemptsCheckMessage": "Nodes this node does not know tried to pair {failures} times in the hour before {time}, from {nodes} node IDs, with invites that do not work. Each node that kept trying is turned away for 15 minutes. An invite cannot be guessed, but if this goes on, check who has this node's invites and whether the node should be reachable from where they are.",
   "Parse": "Parse",
   "ParseModalErrorParsing": "Error parsing, please try again.",
   "ParseModalHelpText": "Enter a release title in the input above",

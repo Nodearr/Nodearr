@@ -77,10 +77,12 @@ namespace NzbDrone.Core.Nodes
         private readonly Logger _logger;
         private readonly INodeSettingsProvider _settings;
         private readonly IContainerEnvironment _container;
+        private readonly IPairAttemptLimiter _pairAttempts;
 
-        public PeerService(IPeerRepository peers, IPeerInviteRepository invites, IPeerTransport transport, IOfferExchange offerExchange, IEventAggregator eventAggregator, Logger logger, INodeSettingsProvider settings = null, IContainerEnvironment container = null)
+        public PeerService(IPeerRepository peers, IPeerInviteRepository invites, IPeerTransport transport, IOfferExchange offerExchange, IEventAggregator eventAggregator, Logger logger, IPairAttemptLimiter pairAttempts, INodeSettingsProvider settings = null, IContainerEnvironment container = null)
         {
             _container = container;
+            _pairAttempts = pairAttempts;
             _peers = peers;
             _invites = invites;
             _transport = transport;
@@ -256,13 +258,17 @@ namespace NzbDrone.Core.Nodes
 
             if (reply is not { Ok: true })
             {
+                var tooMany = reply?.Error == PairRefusals.TooManyAttempts;
+
                 if (!alreadyTrusted)
                 {
-                    peer.LastError = "The other node did not accept the invite";
+                    peer.LastError = tooMany ? "The other node turned away too many invites from this node lately" : "The other node did not accept the invite";
                     SaveContact(peer);
                 }
 
-                throw new PeerException("The other node did not accept this invite. It may have expired or already been used");
+                throw new PeerException(tooMany
+                    ? $"The other node has turned away too many invites from this node lately. Try again in {PairAttemptLimiter.Window.TotalMinutes} minutes"
+                    : "The other node did not accept this invite. It may have expired or already been used");
             }
 
             peer.Name = reply.Name.IsNotNullOrWhiteSpace() ? reply.Name : peer.Name;
@@ -434,17 +440,39 @@ namespace NzbDrone.Core.Nodes
 
         private PeerReply Pair(string remoteNodeId, Peer peer, PeerMessage message)
         {
+            var now = DateTime.UtcNow;
+
+            // A node that keeps failing is not listened to for a while. Saying so tells it nothing
+            // about which invites exist.
+            if (_pairAttempts.IsLimited(remoteNodeId, now))
+            {
+                _logger.Debug("Turned away a pair attempt from node {0}, which has failed too often lately", remoteNodeId);
+
+                return new PeerReply { Ok = false, Error = PairRefusals.TooManyAttempts };
+            }
+
             var invite = _invites.FindBySecretHash(InviteCode.HashSecret(message.InviteSecret));
 
             // One answer for every kind of bad invite, so a stranger learns nothing by guessing.
-            if (invite == null || invite.RedeemedAt.HasValue || invite.Expires <= DateTime.UtcNow)
+            if (invite == null || invite.RedeemedAt.HasValue || invite.Expires <= now)
             {
-                _logger.Warn("Node {0} tried to pair with an invite that is unknown, used or expired", remoteNodeId);
+                switch (_pairAttempts.Failed(remoteNodeId, now))
+                {
+                    case PairFailureLogging.Log:
+                        _logger.Warn("Node {0} tried to pair with an invite that is unknown, used or expired", remoteNodeId);
+                        break;
+                    case PairFailureLogging.StopLogging:
+                        _logger.Warn("More than {0} failed pair attempts in {1} minutes. Further ones are counted, not logged one by one. System > Status says how many", PairAttemptLimiter.LoggedFailures, PairAttemptLimiter.Window.TotalMinutes);
+                        break;
+                    default:
+                        _logger.Debug("Node {0} tried to pair with an invite that is unknown, used or expired", remoteNodeId);
+                        break;
+                }
 
-                return new PeerReply { Ok = false, Error = "InviteInvalid" };
+                return new PeerReply { Ok = false, Error = PairRefusals.InviteInvalid };
             }
 
-            var now = DateTime.UtcNow;
+            _pairAttempts.Succeeded(remoteNodeId);
 
             invite.RedeemedAt = now;
             invite.RedeemedByNodeId = remoteNodeId;

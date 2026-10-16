@@ -121,6 +121,58 @@ namespace NzbDrone.Core.Test.Nodes
             ExceptionVerification.ExpectedWarns(1);
         }
 
+        private void GivenGuesses(TestNode guesser, TestNode target, int count)
+        {
+            for (var i = 0; i < count; i++)
+            {
+                var forged = new InviteCode { NodeId = target.NodeId, Secret = InviteCode.NewSecret(), ExpiresUnix = DateTimeOffset.UtcNow.AddHours(1).ToUnixTimeSeconds() };
+
+                Assert.Throws<PeerException>(() => guesser.Service.RedeemInvite(forged.Encode()));
+            }
+        }
+
+        [Test]
+        public void a_node_that_keeps_guessing_should_be_turned_away_even_with_a_real_invite()
+        {
+            GivenGuesses(_bob, _alice, PairAttemptLimiter.FailuresPerNode);
+
+            var code = _alice.Service.CreateInvite(TimeSpan.FromHours(1), null).Code;
+            var refused = Assert.Throws<PeerException>(() => _bob.Service.RedeemInvite(code));
+
+            refused.Message.Should().Contain("too many invites");
+            _bob.PeerFor(_alice).LastError.Should().Contain("too many invites");
+            _alice.PeerFor(_bob).Should().BeNull();
+            _alice.Invites.Last().RedeemedAt.Should().BeNull("the invite was never looked at");
+
+            ExceptionVerification.ExpectedWarns(PairAttemptLimiter.FailuresPerNode);
+        }
+
+        [Test]
+        public void another_node_should_still_pair_while_one_is_turned_away()
+        {
+            GivenGuesses(_bob, _alice, PairAttemptLimiter.FailuresPerNode);
+
+            GivenPaired(_alice, _carol);
+
+            _alice.PeerFor(_carol).State.Should().Be(PeerState.Trusted);
+
+            ExceptionVerification.ExpectedWarns(PairAttemptLimiter.FailuresPerNode);
+        }
+
+        [Test]
+        public void a_flood_of_failures_should_be_counted_and_not_logged_one_by_one()
+        {
+            var strangers = Enumerable.Range(0, 4).Select(i => new TestNode(_network, $"Stranger{i}", TestLogger)).ToList();
+
+            foreach (var stranger in strangers)
+            {
+                GivenGuesses(stranger, _alice, PairAttemptLimiter.FailuresPerNode);
+            }
+
+            // One warning each for the first ones, one saying the rest are counted, and nothing more.
+            ExceptionVerification.ExpectedWarns(PairAttemptLimiter.LoggedFailures + 1);
+        }
+
         [Test]
         public void a_node_should_not_redeem_its_own_invite()
         {
@@ -456,7 +508,7 @@ namespace NzbDrone.Core.Test.Nodes
             private readonly string _name;
 
             public NamedPeerService(string name, IPeerRepository peers, IPeerInviteRepository invites, IPeerTransport transport, IOfferExchange offers, IEventAggregator eventAggregator, Logger logger)
-                : base(peers, invites, transport, offers, eventAggregator, logger)
+                : base(peers, invites, transport, offers, eventAggregator, logger, new PairAttemptLimiter(eventAggregator))
             {
                 _name = name;
             }
