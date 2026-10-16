@@ -41,10 +41,11 @@ Downloads are on the [Releases](https://github.com/Nodearr/Nodearr/releases) pag
 
 Then open `http://localhost:6633`. The first page takes you through connecting your apps, naming your node and inviting a friend.
 
-What each package holds and what a machine needs is in [the release guide](docs/guides/releases.md).
+The [user guide](docs/user-guide/README.md) has the rest: [installing](docs/user-guide/installing.md), [connecting your apps](docs/user-guide/connecting-apps.md), [friends and sharing](docs/user-guide/friends-and-sharing.md), and [troubleshooting](docs/user-guide/troubleshooting.md).
 
 ## Documentation
 
+- [User guide](docs/user-guide/README.md): installing, connecting apps, friends and sharing, troubleshooting, every setting, backups, and privacy and security.
 - [Overview](docs/overview-end-to-end-design.md): what Nodearr is and how the parts fit together.
 - [Releases](docs/guides/releases.md): what a release holds, and how one is made.
 - [Testing between two machines](docs/guides/two-machine-test.md), and [on Windows](docs/guides/two-machine-test-windows.md).
@@ -126,4 +127,4 @@ A release is made by pushing a tag ([release guide](docs/guides/releases.md#maki
 
 ## Licence and origin
 
-Nodearr is licensed under [GPL-3.0](LICENSE). Most of its backend and frontend is derived from [Sonarr](https://github.com/Sonarr/Sonarr), and the Arr Apps settings are adapted from [Prowlarr](https://github.com/Prowlarr/Prowlarr), both GPL-3.0 (see [NOTICE.md](NOTICE.md)). A release also carries other open-source software under its own licences, listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). Nodearr is not affiliated with or endorsed by the Sonarr, Radarr, Lidarr, Whisparr, Prowlarr or Servarr projects.
+Nodearr is licensed under [GPL-3.0](LICENSE). Most of its backend and frontend is derived from [Sonarr](https://github.com/Sonarr/Sonarr), and the Arr Apps settings are adapted from [Prowlarr](https://github.com/Prowlarr/Prowlarr), both GPL-3.0 (see [NOTICE.md](NOTICE.md)). A release also carries other open-source software under its own licences, listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md). To report a security problem, see [SECURITY.md](SECURITY.md). Nodearr is not affiliated with or endorsed by the Sonarr, Radarr, Lidarr, Whisparr, Prowlarr or Servarr projects.

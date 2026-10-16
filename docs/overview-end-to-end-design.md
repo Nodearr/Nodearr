@@ -92,7 +92,7 @@ A whole series, season or artist takes in what arrives later.
 
 Each node asks each friend for their **offer**: what that friend shares with this node, and nothing else ([ADR 0014](adr/0014-sharing-rules-and-catalog-exchange.md)). An offer says what each file is (its IDs, title, season and episodes, or album and tracks), how good it is (quality, resolution, codecs, size, release name) and its BLAKE3 hash where the sender has worked it out. It says nothing of where the file is or what it is called, apart from its extension.
 
-The offer is fetched every 15 minutes by default, and at once when a friend says theirs changed. After the first time, only what changed is sent, 500 files to a page.
+The offer is fetched every 15 minutes by default, and at once when a friend takes something back, so what is no longer shared disappears within seconds. After the first time, only what changed is sent, 500 files to a page.
 
 The peer catalog marks each file against the local library: **not in the library**, **missing**, an **upgrade** (one the Arr app's own quality profile would take in place of the one it has), or **have**. Catalog > Peer Catalog shows them. See [catalog exchange](diagrams/catalog-exchange-trusted-nodes.md).
 
