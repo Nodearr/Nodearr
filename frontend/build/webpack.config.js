@@ -67,7 +67,11 @@ module.exports = (env) => {
       path: distFolder,
       publicPath: 'auto',
       filename: isProduction ? '[name]-[contenthash].js' : '[name].js',
-      sourceMapFilename: '[file].map'
+      sourceMapFilename: '[file].map',
+
+      // Only this build's files, so nothing from an earlier one is packaged or listed in the
+      // third-party notices.
+      clean: true
     },
 
     optimization: {

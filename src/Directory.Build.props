@@ -71,7 +71,8 @@
   <PropertyGroup Condition="'$(NodearrProject)'=='true'">
     <Product>Nodearr</Product>
     <Company>nodearr.com</Company>
-    <Copyright>Copyright 2014-$([System.DateTime]::Now.ToString('yyyy')) nodearr.com (GNU General Public v3)</Copyright>
+    <!-- Sonarr's notice is kept, as the GPL asks: most of Nodearr is derived from Sonarr (NOTICE.md). -->
+    <Copyright>Copyright 2014-$([System.DateTime]::Now.ToString('yyyy')) sonarr.tv, and Nodearr's contributors (GNU General Public v3)</Copyright>
     
     <!-- Should be replaced by CI -->
     <AssemblyVersion>10.0.0.*</AssemblyVersion>

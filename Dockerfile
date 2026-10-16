@@ -77,6 +77,8 @@ RUN apt-get update && \
 COPY --from=backend /build/_output/net10.0 /app/bin
 COPY --from=frontend /build/_output/UI /app/bin/UI
 COPY --from=transport /nodearr-transport /app/bin/nodearr-transport
+# The base image carries the .NET runtime's own licence and notices.
+COPY LICENSE NOTICE.md THIRD-PARTY-NOTICES.md /app/
 COPY docker/entrypoint.sh /usr/local/bin/nodearr-entrypoint
 RUN chmod 0755 /usr/local/bin/nodearr-entrypoint /app/bin/nodearr-transport
 
