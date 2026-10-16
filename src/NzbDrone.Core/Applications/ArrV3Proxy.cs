@@ -22,7 +22,7 @@ namespace NzbDrone.Core.Applications
 
     public interface IArrV3Proxy
     {
-        ValidationFailure TestConnection(IArrConnection settings, string appName, Version minimumVersion);
+        ValidationFailure TestConnection(IArrConnection settings, string appName, Version minimumVersion, Version belowVersion = null);
         T Get<T>(IArrConnection settings, string resource)
             where T : new();
         JArray GetArray(IArrConnection settings, string resource);
@@ -41,7 +41,7 @@ namespace NzbDrone.Core.Applications
             _httpClient = httpClient;
         }
 
-        public ValidationFailure TestConnection(IArrConnection settings, string appName, Version minimumVersion)
+        public ValidationFailure TestConnection(IArrConnection settings, string appName, Version minimumVersion, Version belowVersion = null)
         {
             var status = JObject.Parse(Execute(settings, "/system/status", HttpMethod.Get, null));
             var reportedName = status.Value<string>("appName");
@@ -60,6 +60,12 @@ namespace NzbDrone.Core.Applications
             if (version < minimumVersion)
             {
                 return new ValidationFailure(string.Empty, $"{appName} version should be at least {minimumVersion.ToString(3)}. Version reported is {reportedVersion}");
+            }
+
+            // Whisparr v2 and v3 call themselves the same, and only the version tells them apart.
+            if (belowVersion != null && version >= belowVersion)
+            {
+                return new ValidationFailure(string.Empty, $"This is {appName} {reportedVersion}. Add it as {appName} v{version.Major}.");
             }
 
             return null;

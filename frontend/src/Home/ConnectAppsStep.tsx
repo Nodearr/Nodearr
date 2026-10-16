@@ -18,6 +18,7 @@ const APPS = [
   { implementation: 'Sonarr', label: 'Sonarr' },
   { implementation: 'Radarr', label: 'Radarr' },
   { implementation: 'WhisparrV3', label: 'Whisparr v3' },
+  { implementation: 'WhisparrV2', label: 'Whisparr v2' },
 ];
 
 interface ConnectButtonProps {

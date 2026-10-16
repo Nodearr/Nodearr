@@ -127,6 +127,13 @@ namespace NzbDrone.Core.Catalog
                 return;
             }
 
+            if (((ApplicationDefinition)application.Definition).RefreshesWhole)
+            {
+                Refresh(application, false);
+
+                return;
+            }
+
             ApplicationCatalog catalog;
 
             try

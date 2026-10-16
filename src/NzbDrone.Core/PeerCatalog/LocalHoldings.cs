@@ -65,6 +65,10 @@ namespace NzbDrone.Core.PeerCatalog
         private readonly ILookup<string, CatalogMovie> _moviesByExternalId;
         private readonly Dictionary<(int, int), CatalogMovieFile> _movieFiles;
 
+        // Whisparr's scenes by studio and release date. Whisparr v2 and v3 know a scene by different
+        // IDs, and agree on these.
+        private readonly ILookup<string, CatalogMovie> _scenesByStudioAndDay;
+
         // By application and the Arr app's profile ID. Only profiles whose ranking has been read.
         private readonly Dictionary<(int, int), QualityRanking> _rankings;
 
@@ -99,6 +103,10 @@ namespace NzbDrone.Core.PeerCatalog
 
             _movieFiles = movieFiles.Where(f => f.MissingSince == null)
                 .ToDictionary(f => (f.ApplicationId, f.ArrId));
+
+            _scenesByStudioAndDay = movies
+                .Where(m => m.MissingSince == null && m.ItemType == "scene" && StudioAndDay(m.Studio, m.ReleaseDate) != null)
+                .ToLookup(m => StudioAndDay(m.Studio, m.ReleaseDate));
         }
 
         public PeerItemStatus Classify(PeerCatalogItem item)
@@ -111,6 +119,14 @@ namespace NzbDrone.Core.PeerCatalog
             // Radarr knows a movie by its TMDb ID. The IMDb ID is the fallback. Whisparr knows a
             // film or a scene by its own IDs first.
             var movies = Find(_moviesByExternalId, WhisparrIds(item.ForeignId, item.StashId, item.TpdbId).Concat(ExternalIds(0, item.TmdbId, item.ImdbId)));
+
+            // A scene from the other version of Whisparr, known here by other IDs.
+            if (movies.Count == 0 && item.IsScene)
+            {
+                var key = StudioAndDay(item.Studio, item.ReleaseDate);
+
+                movies = key == null ? movies : _scenesByStudioAndDay[key].ToList();
+            }
 
             if (movies.Count == 0)
             {
@@ -205,6 +221,14 @@ namespace NzbDrone.Core.PeerCatalog
             }
 
             return new List<T>();
+        }
+
+        // Couch Casting-X and CouchCastingX are one studio. Null when either is not known.
+        private static string StudioAndDay(string studio, string releaseDate)
+        {
+            var letters = new string((studio ?? string.Empty).RemoveDiacritics().ToLowerInvariant().Where(char.IsLetterOrDigit).ToArray());
+
+            return letters.Length == 0 || releaseDate.IsNullOrWhiteSpace() ? null : $"{letters}|{releaseDate}";
         }
 
         private static IEnumerable<string> WhisparrIds(string foreignId, string stashId, string tpdbId)

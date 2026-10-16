@@ -101,6 +101,7 @@ Then a settings page. ADR 0019. Branch `v1/s10-node-settings`.
 - Prowlarr can be added in Settings > Apps. Nodearr adds itself to it as an indexer, to be searched there, with a sync profile that switches off the copies Prowlarr makes in Sonarr and Radarr, which would not be pinned to Nodearr's download client. Prowlarr holds no library and Nodearr reads nothing from it (ADR 0007, amendments). Run against a real Prowlarr managing a real Radarr. Branch `v1/s41-prowlarr`.
 - A Windows installer, as Sonarr has: Nodearr in Program Files, starting from the tray at sign-in, as a Windows service, or not at all. Installing adds a firewall rule for the transport, which a service could not otherwise get, and uninstalling removes it. The tray app's icon has every size Windows asks for. Built by the release workflow with Inno Setup (`docs/guides/releases.md`). Branch `v1/s42-windows-service-tray`.
 - Whisparr v3 (Eros) can be added, as Radarr can. Its films are found by ID and its scenes by Whisparr's text search, studio, date, title and code (ADR 0015, amendments). Adult content is found only by an adult search, never by Radarr's. Run end to end between two Whisparr 3.6.5 instances. Whisparr v2 and Lidarr are next; Readarr is not, as it was archived in June 2025. Branch `v1/s44-whisparr-v3`.
+- Whisparr v2 can be added as well, its scenes kept as v3 keeps them, so a v2 and a v3 find each other's scenes. Run end to end between two v2 instances and between a v2 and a v3 (ADR 0015, amendments). Branch `v1/s45-whisparr-v2`.
 
 ## Where V1 stands
 

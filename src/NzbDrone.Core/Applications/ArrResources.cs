@@ -301,6 +301,59 @@ namespace NzbDrone.Core.Applications
         }
     }
 
+    // Whisparr v2 is built on Sonarr: a site is a series, and a scene is an episode with a release
+    // date and no episode number. Nodearr keeps each scene as Whisparr v3 keeps one, a movie marked
+    // as a scene with the site as its studio, so both versions are searched and compared alike.
+    public class WhisparrV2SiteResource
+    {
+        public int Id { get; set; }
+        public string Title { get; set; }
+        public string Path { get; set; }
+        public int QualityProfileId { get; set; }
+        public int TvdbId { get; set; }
+    }
+
+    public class WhisparrV2SceneResource
+    {
+        public int Id { get; set; }
+        public int SeriesId { get; set; }
+
+        // The scene's ID in Whisparr v2's metadata, in the field Sonarr keeps TVDB's in.
+        public int TvdbId { get; set; }
+        public int EpisodeFileId { get; set; }
+        public string Title { get; set; }
+
+        // As yyyy-MM-dd.
+        public string ReleaseDate { get; set; }
+        public bool Monitored { get; set; }
+
+        // The file, in the same shape as Radarr's, which Whisparr v2 sends when asked for it.
+        public RadarrMovieFileResource EpisodeFile { get; set; }
+
+        public CatalogMovie ToCatalog(WhisparrV2SiteResource site)
+        {
+            var released = DateTime.TryParse(ReleaseDate, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AdjustToUniversal, out var day) ? day : (DateTime?)null;
+
+            return new CatalogMovie
+            {
+                ArrId = Id,
+                Title = Title,
+                SortTitle = Title?.ToLowerInvariant(),
+                Year = released?.Year ?? 0,
+                Path = site.Path,
+                QualityProfileId = site.QualityProfileId,
+                Monitored = Monitored,
+                ArrMovieFileId = EpisodeFile?.Id ?? EpisodeFileId,
+                ItemType = "scene",
+                Studio = site.Title,
+                ReleaseDate = released?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
+
+                // Only another Whisparr v2 knows a scene by this number.
+                ForeignId = TvdbId > 0 ? $"whisparr2:{TvdbId}" : null
+            };
+        }
+    }
+
     public class RadarrMovieFileResource : ArrFileResource
     {
         public int MovieId { get; set; }

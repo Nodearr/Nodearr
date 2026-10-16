@@ -44,6 +44,9 @@ namespace NzbDrone.Core.Applications
         // The name the app gives itself in /system/status. Whisparr v3 calls itself Whisparr.
         protected virtual string ReportedAppName => Name;
 
+        // The first version this kind of app is not, where a later one needs adding as another kind.
+        protected virtual Version BelowVersion => null;
+
         // The download client field that holds the category: tvCategory in Sonarr, movieCategory in Radarr.
         protected abstract string CategoryField { get; }
 
@@ -91,7 +94,7 @@ namespace NzbDrone.Core.Applications
 
             try
             {
-                failures.AddIfNotNull(_proxy.TestConnection(Settings, ReportedAppName, MinimumVersion));
+                failures.AddIfNotNull(_proxy.TestConnection(Settings, ReportedAppName, MinimumVersion, BelowVersion));
             }
             catch (HttpException ex) when (ex.Response.StatusCode == HttpStatusCode.Unauthorized)
             {
