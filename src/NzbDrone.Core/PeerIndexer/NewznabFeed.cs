@@ -13,6 +13,9 @@ namespace NzbDrone.Core.PeerIndexer
     {
         public const int TvCategory = 5000;
         public const int MovieCategory = 2000;
+
+        // Newznab's XXX family, which Whisparr searches. Adult content is only ever filed here.
+        public const int AdultCategory = 6000;
         public const string CandidateMetaType = "x-nodearr-candidate";
         public const string AirDateMetaType = "x-nodearr-airdate";
         public const string ConnectionTestTitle = "Nodearr connection test, not a release";
@@ -37,7 +40,8 @@ namespace NzbDrone.Core.PeerIndexer
                     new XElement("movie-search", new XAttribute("available", "yes"), new XAttribute("supportedParams", "imdbid,tmdbid"))),
                 new XElement("categories",
                     Category(MovieCategory, "Movies", (2030, "SD"), (2040, "HD"), (2045, "UHD")),
-                    Category(TvCategory, "TV", (5030, "SD"), (5040, "HD"), (5045, "UHD"), (5070, "Anime"))));
+                    Category(TvCategory, "TV", (5030, "SD"), (5040, "HD"), (5045, "UHD"), (5070, "Anime")),
+                    Category(AdultCategory, "XXX", (6040, "x264"), (6045, "UHD"), (6080, "SD"), (6090, "WEB-DL"))));
         }
 
         public static XElement Rss(string baseUrl, int offset, int total, IEnumerable<XElement> items)
@@ -70,7 +74,7 @@ namespace NzbDrone.Core.PeerIndexer
         public static XElement Item(PeerCatalogItem item, string link, string airDate)
         {
             var isMovie = item.MediaKind == MediaKind.Movie;
-            var family = isMovie ? MovieCategory : TvCategory;
+            var family = item.IsAdult ? AdultCategory : isMovie ? MovieCategory : TvCategory;
             var published = PublishedAt(item).ToString("r");
             var title = TitleFor(item, airDate);
 
@@ -79,12 +83,17 @@ namespace NzbDrone.Core.PeerIndexer
                 new XElement("guid", new XAttribute("isPermaLink", "false"), GuidPrefix + item.CandidateId),
                 new XElement("link", link),
                 new XElement("pubDate", published),
-                new XElement("category", isMovie ? "Movies" : "TV"),
+                new XElement("category", item.IsAdult ? "XXX" : isMovie ? "Movies" : "TV"),
                 new XElement("description", title),
                 new XElement("enclosure", new XAttribute("url", link), new XAttribute("length", item.Size), new XAttribute("type", "application/x-nzb")),
                 Attr("category", family));
 
-            if (item.Resolution > 0)
+            if (item.IsAdult)
+            {
+                // XXX has no 30. Its SD is 80.
+                element.Add(Attr("category", family + (item.Resolution >= 2160 ? 45 : item.Resolution >= 720 || item.Resolution == 0 ? 40 : 80)));
+            }
+            else if (item.Resolution > 0)
             {
                 element.Add(Attr("category", family + (item.Resolution >= 2160 ? 45 : item.Resolution >= 720 ? 40 : 30)));
             }
@@ -123,17 +132,17 @@ namespace NzbDrone.Core.PeerIndexer
         // The Arr apps refuse to save an indexer whose test query comes back empty (ADR 0010,
         // finding 1). One stand-in per kind asked for gets a new node past that. Its title matches
         // no series or movie, and its link leads nowhere.
-        public static IEnumerable<XElement> ConnectionTestItems(bool tv, bool movies, IReadOnlyCollection<int> requestedCategories, string baseUrl)
+        public static IEnumerable<XElement> ConnectionTestItems(bool tv, bool movies, bool adult, IReadOnlyCollection<int> requestedCategories, string baseUrl)
         {
-            foreach (var family in new[] { TvCategory, MovieCategory })
+            foreach (var family in new[] { TvCategory, MovieCategory, AdultCategory })
             {
-                if (family == TvCategory ? !tv : !movies)
+                if (family == TvCategory ? !tv : family == MovieCategory ? !movies : !adult)
                 {
                     continue;
                 }
 
                 var asked = requestedCategories.Where(c => c / 1000 * 1000 == family).ToList();
-                var kind = family == TvCategory ? "tv" : "movie";
+                var kind = family == TvCategory ? "tv" : family == MovieCategory ? "movie" : "adult";
                 var published = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc).ToString("r");
                 var link = $"{baseUrl}/newznab/api?t=get&id=connection-test";
 
@@ -142,7 +151,7 @@ namespace NzbDrone.Core.PeerIndexer
                     new XElement("guid", new XAttribute("isPermaLink", "false"), $"{GuidPrefix}connection-test:{kind}"),
                     new XElement("link", link),
                     new XElement("pubDate", published),
-                    new XElement("category", family == TvCategory ? "TV" : "Movies"),
+                    new XElement("category", family == TvCategory ? "TV" : family == MovieCategory ? "Movies" : "XXX"),
                     new XElement("description", ConnectionTestTitle),
                     new XElement("enclosure", new XAttribute("url", link), new XAttribute("length", 1), new XAttribute("type", "application/x-nzb")),
                     Attr("category", family),

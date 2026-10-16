@@ -288,6 +288,19 @@ namespace NzbDrone.Core.Sharing
                     item.ImdbId = parent.ImdbId;
                     item.Title = parent.Title;
                     item.Year = parent.Year;
+
+                    if (parent.IsAdult)
+                    {
+                        item.Adult = true;
+                        item.ItemType = parent.ItemType;
+                        item.Studio = parent.Studio;
+                        item.ReleaseDate = parent.ReleaseDate;
+                        item.Code = parent.Code;
+                        item.ForeignId = parent.ForeignId;
+                        item.StashId = parent.StashId;
+                        item.TpdbId = parent.TpdbId;
+                    }
+
                     offered.Add(item);
                 }
             }

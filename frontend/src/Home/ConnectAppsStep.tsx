@@ -13,10 +13,16 @@ import translate from 'Utilities/String/translate';
 import SetupStep from './SetupStep';
 import styles from './Home.css';
 
-const APPS = ['Sonarr', 'Radarr'];
+// The apps whose libraries Nodearr reads, by implementation, and what each is called.
+const APPS = [
+  { implementation: 'Sonarr', label: 'Sonarr' },
+  { implementation: 'Radarr', label: 'Radarr' },
+  { implementation: 'WhisparrV3', label: 'Whisparr v3' },
+];
 
 interface ConnectButtonProps {
   app: string;
+  label: string;
   isPrimary: boolean;
   isDisabled: boolean;
   onPress: (app: string) => void;
@@ -24,6 +30,7 @@ interface ConnectButtonProps {
 
 function ConnectButton({
   app,
+  label,
   isPrimary,
   isDisabled,
   onPress,
@@ -38,7 +45,7 @@ function ConnectButton({
       isDisabled={isDisabled}
       onPress={handlePress}
     >
-      {translate('HomeConnectApp', { app })}
+      {translate('HomeConnectApp', { app: label })}
     </Button>
   );
 }
@@ -84,17 +91,18 @@ function ConnectAppsStep({
   const isDone = applications.length > 0;
   const connected = new Set(applications.map((app) => app.implementation));
 
-  const connectButtons = APPS.filter((app) => !connected.has(app)).map(
-    (app) => (
-      <ConnectButton
-        key={app}
-        app={app}
-        isPrimary={!isDone}
-        isDisabled={!isSchemaPopulated}
-        onPress={handleConnectPress}
-      />
-    )
-  );
+  const connectButtons = APPS.filter(
+    (app) => !connected.has(app.implementation)
+  ).map((app) => (
+    <ConnectButton
+      key={app.implementation}
+      app={app.implementation}
+      label={app.label}
+      isPrimary={!isDone}
+      isDisabled={!isSchemaPopulated}
+      onPress={handleConnectPress}
+    />
+  ));
 
   return (
     <>

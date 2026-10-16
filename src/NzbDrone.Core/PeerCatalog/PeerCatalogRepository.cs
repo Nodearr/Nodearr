@@ -14,6 +14,9 @@ namespace NzbDrone.Core.PeerCatalog
         List<PeerCatalogItem> FindByMediaIds(MediaKind kind, int tvdbId, int tmdbId, string imdbId);
         List<PeerCatalogItem> FindByText(string word);
 
+        // The adult content released on a day, given as yyyy-MM-dd. Whisparr searches for a scene by its day.
+        List<PeerCatalogItem> FindAdultByReleaseDate(string releaseDate);
+
         // Every peer's copy of the file with this hash.
         List<PeerCatalogItem> FindByBlake3(string blake3);
         void DeleteForPeer(int peerId);
@@ -66,7 +69,12 @@ namespace NzbDrone.Core.PeerCatalog
 
         public List<PeerCatalogItem> FindByText(string word)
         {
-            return Query(i => i.ReleaseTitle.Contains(word) || i.Title.Contains(word));
+            return Query(i => i.ReleaseTitle.Contains(word) || i.Title.Contains(word) || i.Studio.Contains(word) || i.Code.Contains(word));
+        }
+
+        public List<PeerCatalogItem> FindAdultByReleaseDate(string releaseDate)
+        {
+            return releaseDate == null ? new List<PeerCatalogItem>() : Query(i => i.IsAdult && i.ReleaseDate == releaseDate);
         }
 
         public List<PeerCatalogItem> FindByBlake3(string blake3)

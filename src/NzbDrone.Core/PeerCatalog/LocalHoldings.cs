@@ -94,7 +94,7 @@ namespace NzbDrone.Core.PeerCatalog
                 .ToDictionary(f => (f.ApplicationId, f.ArrId));
 
             _moviesByExternalId = movies.Where(m => m.MissingSince == null)
-                .SelectMany(m => ExternalIds(0, m.TmdbId, m.ImdbId).Select(id => (id, m)))
+                .SelectMany(m => WhisparrIds(m.ForeignId, m.StashId, m.TpdbId).Concat(ExternalIds(0, m.TmdbId, m.ImdbId)).Select(id => (id, m)))
                 .ToLookup(x => x.id, x => x.m);
 
             _movieFiles = movieFiles.Where(f => f.MissingSince == null)
@@ -108,8 +108,9 @@ namespace NzbDrone.Core.PeerCatalog
 
         private PeerItemStatus ClassifyMovie(PeerCatalogItem item)
         {
-            // Radarr knows a movie by its TMDb ID. The IMDb ID is the fallback.
-            var movies = Find(_moviesByExternalId, ExternalIds(0, item.TmdbId, item.ImdbId));
+            // Radarr knows a movie by its TMDb ID. The IMDb ID is the fallback. Whisparr knows a
+            // film or a scene by its own IDs first.
+            var movies = Find(_moviesByExternalId, WhisparrIds(item.ForeignId, item.StashId, item.TpdbId).Concat(ExternalIds(0, item.TmdbId, item.ImdbId)));
 
             if (movies.Count == 0)
             {
@@ -204,6 +205,24 @@ namespace NzbDrone.Core.PeerCatalog
             }
 
             return new List<T>();
+        }
+
+        private static IEnumerable<string> WhisparrIds(string foreignId, string stashId, string tpdbId)
+        {
+            if (foreignId.IsNotNullOrWhiteSpace())
+            {
+                yield return "foreign:" + foreignId.ToLowerInvariant();
+            }
+
+            if (stashId.IsNotNullOrWhiteSpace())
+            {
+                yield return "stash:" + stashId.ToLowerInvariant();
+            }
+
+            if (tpdbId.IsNotNullOrWhiteSpace())
+            {
+                yield return "tpdb:" + tpdbId.ToLowerInvariant();
+            }
         }
 
         private static IEnumerable<string> ExternalIds(int tvdbId, int tmdbId, string imdbId)

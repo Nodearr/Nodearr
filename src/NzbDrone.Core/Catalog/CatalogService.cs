@@ -147,7 +147,7 @@ namespace NzbDrone.Core.Catalog
             lock (RefreshLock)
             {
                 // Only this title's rows are compared, so everything else the Arr app has is left alone.
-                if (application.Definition.Implementation == "Radarr")
+                if (((ApplicationDefinition)application.Definition).HoldsMovies)
                 {
                     Merge(_movies, applicationId, catalog.Movies, now, purgeBefore, m => m.ArrId == arrId);
                     Merge(_movieFiles, applicationId, catalog.MovieFiles, now, purgeBefore, f => f.ArrMovieId == arrId);
@@ -162,7 +162,7 @@ namespace NzbDrone.Core.Catalog
 
             _eventAggregator.PublishEvent(new CatalogRefreshedEvent(applicationId));
 
-            _logger.Debug("Read {0} {1} again from {2}: {3} files", application.Definition.Implementation == "Radarr" ? "movie" : "series", arrId, application.Definition.Name, catalog.EpisodeFiles.Count + catalog.MovieFiles.Count);
+            _logger.Debug("Read {0} {1} again from {2}: {3} files", ((ApplicationDefinition)application.Definition).HoldsMovies ? "movie" : "series", arrId, application.Definition.Name, catalog.EpisodeFiles.Count + catalog.MovieFiles.Count);
         }
 
         public void Handle(ProviderDeletedEvent<IApplication> message)

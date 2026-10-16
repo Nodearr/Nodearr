@@ -54,6 +54,19 @@ namespace NzbDrone.Core.PeerCatalog
         // and empty otherwise. One number for each in EpisodeNumbers, comma separated.
         public int? SceneSeasonNumber { get; set; }
         public string SceneEpisodeNumbers { get; set; }
+
+        // From a peer's Whisparr: adult content, which only an adult search finds, and what a
+        // scene is searched for by. Null and false for everything else. See OfferItem.
+        public bool IsAdult { get; set; }
+        public string ItemType { get; set; }
+        public string Studio { get; set; }
+        public string ReleaseDate { get; set; }
+        public string Code { get; set; }
+        public string ForeignId { get; set; }
+        public string StashId { get; set; }
+        public string TpdbId { get; set; }
+
+        public bool IsScene => IsAdult && ItemType == "scene";
         public string SceneName { get; set; }
         public string Edition { get; set; }
         public string Extension { get; set; }
@@ -141,6 +154,16 @@ namespace NzbDrone.Core.PeerCatalog
                 AirDates = string.Join(",", (offer.AirDates ?? new List<string>()).Where(IsAirDate)),
                 SceneSeasonNumber = AreSceneNumbers(offer) ? offer.SceneSeasonNumber : null,
                 SceneEpisodeNumbers = AreSceneNumbers(offer) ? string.Join(",", offer.SceneEpisodeNumbers) : null,
+
+                // Only a movie can be adult content, and only a film or a scene is one.
+                IsAdult = offer.Adult == true && offer.Kind == MediaKind.Movie,
+                ItemType = offer.Adult == true && offer.Kind == MediaKind.Movie ? (offer.ItemType == "scene" ? "scene" : "movie") : null,
+                Studio = offer.Studio,
+                ReleaseDate = IsAirDate(offer.ReleaseDate) ? offer.ReleaseDate : null,
+                Code = offer.Code,
+                ForeignId = offer.ForeignId,
+                StashId = offer.StashId,
+                TpdbId = offer.TpdbId,
                 SceneName = offer.SceneName,
                 Edition = offer.Edition,
                 Extension = offer.Extension,

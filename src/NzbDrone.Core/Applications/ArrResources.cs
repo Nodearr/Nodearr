@@ -271,6 +271,36 @@ namespace NzbDrone.Core.Applications
         }
     }
 
+    // Whisparr v3 (Eros) is built on Radarr: a film or a scene is a movie, with one file. What it
+    // adds is what Whisparr searches for a scene by, and the IDs it knows it by.
+    public class WhisparrMovieResource : RadarrMovieResource
+    {
+        public string ItemType { get; set; }
+        public string StudioTitle { get; set; }
+        public DateTime? ReleaseDate { get; set; }
+        public string Code { get; set; }
+        public string ForeignId { get; set; }
+        public string StashId { get; set; }
+        public string TpdbId { get; set; }
+
+        public new CatalogMovie ToCatalog()
+        {
+            var movie = base.ToCatalog();
+
+            // Whatever Whisparr says, this is adult content. Only a scene or a film is expected, by
+            // name or by its number in Whisparr's ItemType, where Scene is 1.
+            movie.ItemType = string.Equals(ItemType, "scene", StringComparison.OrdinalIgnoreCase) || ItemType == "1" ? "scene" : "movie";
+            movie.Studio = StudioTitle;
+            movie.ReleaseDate = ReleaseDate?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+            movie.Code = Code;
+            movie.ForeignId = ForeignId;
+            movie.StashId = StashId;
+            movie.TpdbId = TpdbId;
+
+            return movie;
+        }
+    }
+
     public class RadarrMovieFileResource : ArrFileResource
     {
         public int MovieId { get; set; }

@@ -15,6 +15,10 @@ namespace NzbDrone.Core.PeerIndexer
     {
         public bool IncludeTv { get; set; } = true;
         public bool IncludeMovies { get; set; } = true;
+
+        // Adult content, from peers' Whisparr. Found only when asked for by its own categories, and
+        // never by a search for movies or TV.
+        public bool IncludeAdult { get; set; }
         public int TvdbId { get; set; }
         public int TmdbId { get; set; }
         public string ImdbId { get; set; }
@@ -60,7 +64,8 @@ namespace NzbDrone.Core.PeerIndexer
         List<PeerCatalogItem> Copies(string blake3);
     }
 
-    // Answers the Arr apps from what trusted peers currently offer. Media is matched by ID only.
+    // Answers the Arr apps from what trusted peers currently offer. Media is matched by ID, except
+    // where the Arr app has no ID to send: Whisparr searches for a scene by text (SceneQuery).
     // Quality, custom formats and upgrades are for the Arr app to judge from the release title.
     public class CandidateService : ICandidateService
     {
@@ -87,22 +92,23 @@ namespace NzbDrone.Core.PeerIndexer
             var trusted = TrustedPeerIds();
             var kinds = Kinds(query);
 
-            if (trusted.Count == 0 || kinds.Count == 0)
+            if (trusted.Count == 0 || (kinds.Count == 0 && !query.IncludeAdult))
             {
                 return new CandidateResult();
             }
 
             if (query.IsBrowse)
             {
-                return Newest(kinds, trusted, offset, limit);
+                return Newest(query, kinds, trusted, offset, limit);
             }
 
-            var found = query.HasIds ? ByIds(query, kinds) : ByText(query.Text, kinds);
+            var found = query.HasIds ? ByIds(query, FetchKinds(query, kinds)) : ByText(query, kinds);
 
             var airDates = new Dictionary<string, string>();
 
             var matches = OnePerFile(found)
                 .Where(i => trusted.Contains(i.PeerId) && i.CandidateId != null)
+                .Where(i => IsAsked(i, query, kinds))
                 .Where(i =>
                 {
                     if (!MatchesEpisode(i, query, out var airDate))
@@ -168,6 +174,18 @@ namespace NzbDrone.Core.PeerIndexer
             return kinds;
         }
 
+        // Adult content is kept as movies, so finding it means looking among movies.
+        private static List<MediaKind> FetchKinds(CandidateQuery query, List<MediaKind> kinds)
+        {
+            return query.IncludeAdult && !kinds.Contains(MediaKind.Movie) ? kinds.Append(MediaKind.Movie).ToList() : kinds;
+        }
+
+        // Adult content only for an adult search, and nothing else for one.
+        private static bool IsAsked(PeerCatalogItem item, CandidateQuery query, List<MediaKind> kinds)
+        {
+            return item.IsAdult ? query.IncludeAdult : kinds.Contains(item.MediaKind);
+        }
+
         // The Arr apps send every ID they know, in one request. A file matches when any ID it
         // carries agrees, because not every Arr app knows every ID for a title.
         private IEnumerable<PeerCatalogItem> ByIds(CandidateQuery query, List<MediaKind> kinds)
@@ -177,7 +195,32 @@ namespace NzbDrone.Core.PeerIndexer
             return kinds.SelectMany(kind => _items.FindByMediaIds(kind, kind == MediaKind.Tv ? query.TvdbId : 0, query.TmdbId, imdbId));
         }
 
-        private IEnumerable<PeerCatalogItem> ByText(string text, List<MediaKind> kinds)
+        private IEnumerable<PeerCatalogItem> ByText(CandidateQuery query, List<MediaKind> kinds)
+        {
+            var found = kinds.Count > 0 ? ByWords(query.Text, kinds) : Enumerable.Empty<PeerCatalogItem>();
+
+            return query.IncludeAdult ? found.Concat(ScenesAndFilms(query.Text)) : found;
+        }
+
+        // Adult content by Whisparr's text search. A query with a day in it is narrowed by that
+        // day, and any other by its longest word, before every word is checked.
+        private IEnumerable<PeerCatalogItem> ScenesAndFilms(string text)
+        {
+            var scene = SceneQuery.Parse(text);
+
+            if (scene.IsEmpty)
+            {
+                return Enumerable.Empty<PeerCatalogItem>();
+            }
+
+            var narrowed = scene.ReleaseDate != null
+                ? _items.FindAdultByReleaseDate(scene.ReleaseDate)
+                : _items.FindByText(scene.Words.OrderByDescending(w => w.Length).First());
+
+            return narrowed.Where(scene.Matches);
+        }
+
+        private IEnumerable<PeerCatalogItem> ByWords(string text, List<MediaKind> kinds)
         {
             var words = Words(text).Take(MaxWords).ToList();
 
@@ -188,7 +231,7 @@ namespace NzbDrone.Core.PeerIndexer
 
             // The database narrows by the longest word, and the rest are checked here.
             return _items.FindByText(words.OrderByDescending(w => w.Length).First())
-                .Where(i => kinds.Contains(i.MediaKind))
+                .Where(i => !i.IsAdult && kinds.Contains(i.MediaKind))
                 .Where(i =>
                 {
                     var haystack = Words($"{i.ReleaseTitle} {i.Title} {i.Year}").ToList();
@@ -197,7 +240,7 @@ namespace NzbDrone.Core.PeerIndexer
                 });
         }
 
-        private CandidateResult Newest(List<MediaKind> kinds, HashSet<int> trusted, int offset, int limit)
+        private CandidateResult Newest(CandidateQuery query, List<MediaKind> kinds, HashSet<int> trusted, int offset, int limit)
         {
             var peerIds = trusted.ToList();
 
@@ -212,11 +255,28 @@ namespace NzbDrone.Core.PeerIndexer
 
             spec.FilterExpressions.Add(i => peerIds.Contains(i.PeerId));
 
+            // Adult content only when asked for, and on its own when nothing else is.
+            if (!query.IncludeAdult)
+            {
+                spec.FilterExpressions.Add(i => i.IsAdult == false);
+            }
+            else if (kinds.Count == 0)
+            {
+                spec.FilterExpressions.Add(i => i.IsAdult == true);
+            }
+
             if (kinds.Count == 1)
             {
                 var kind = kinds[0];
 
-                spec.FilterExpressions.Add(i => i.MediaKind == kind);
+                if (query.IncludeAdult)
+                {
+                    spec.FilterExpressions.Add(i => i.IsAdult == true || i.MediaKind == kind);
+                }
+                else
+                {
+                    spec.FilterExpressions.Add(i => i.MediaKind == kind);
+                }
             }
 
             var page = _items.GetPaged(spec);

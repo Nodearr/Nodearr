@@ -64,6 +64,13 @@ namespace NzbDrone.Core.PeerIndexer
                 return false;
             }
 
+            // Whisparr reads a scene's own release name, studio and date first, better than anything
+            // built here.
+            if (item.IsScene)
+            {
+                return true;
+            }
+
             if (item.MediaKind == MediaKind.Movie)
             {
                 // Radarr reads a movie title up to its year.
@@ -95,23 +102,46 @@ namespace NzbDrone.Core.PeerIndexer
 
         public static string Build(PeerCatalogItem item, string airDate)
         {
-            var parts = new List<string> { CleanTitle(item.Title) };
+            var parts = new List<string>();
 
-            if (item.MediaKind == MediaKind.Movie)
+            if (item.IsScene)
             {
+                // As scenes are released: the studio run together, the day as yy.MM.dd, the title.
+                parts.Add(RunTogether(item.Studio));
+
+                if (DateTime.TryParseExact(item.ReleaseDate, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var released))
+                {
+                    parts.Add(released.ToString("yy.MM.dd", CultureInfo.InvariantCulture));
+                }
+
+                parts.Add(CleanTitle(item.Title));
+                parts.Add("XXX");
+            }
+            else if (item.MediaKind == MediaKind.Movie)
+            {
+                parts.Add(CleanTitle(item.Title));
+
                 if (item.Year > 0)
                 {
                     parts.Add(item.Year.ToString(CultureInfo.InvariantCulture));
                 }
 
                 parts.AddRange(Tokens(item.Edition));
+
+                if (item.IsAdult)
+                {
+                    parts.Add("XXX");
+                }
             }
             else if (airDate != null)
             {
+                parts.Add(CleanTitle(item.Title));
                 parts.Add(airDate.Replace('-', '.'));
             }
             else
             {
+                parts.Add(CleanTitle(item.Title));
+
                 // Sonarr reads the numbers in an indexer's title as the scene's, for a series that has them.
                 var episodes = item.GetTitleEpisodeNumbers();
 
@@ -167,6 +197,12 @@ namespace NzbDrone.Core.PeerIndexer
                             !l.Equals("Unknown", StringComparison.OrdinalIgnoreCase) &&
                             !l.Equals("Original", StringComparison.OrdinalIgnoreCase))
                 .SelectMany(Tokens);
+        }
+
+        // Couch Casting-X as CouchCastingX, the way studios are written in release names.
+        private static string RunTogether(string studio)
+        {
+            return string.Concat(Tokens(studio, keepDashes: false).Select(w => char.ToUpperInvariant(w[0]) + w[1..]));
         }
 
         private static string CleanTitle(string title)

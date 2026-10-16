@@ -165,8 +165,8 @@ namespace NzbDrone.Core.Test.PeerIndexer
         [Test]
         public void the_stand_in_should_cover_each_kind_asked_for_in_a_category_asked_for()
         {
-            var both = NewznabFeed.ConnectionTestItems(true, true, Array.Empty<int>(), "http://nodearr").ToList();
-            var tv = NewznabFeed.ConnectionTestItems(true, false, new[] { 5030, 5040 }, "http://nodearr").ToList();
+            var both = NewznabFeed.ConnectionTestItems(true, true, false, Array.Empty<int>(), "http://nodearr").ToList();
+            var tv = NewznabFeed.ConnectionTestItems(true, false, false, new[] { 5030, 5040 }, "http://nodearr").ToList();
 
             both.Should().HaveCount(2);
             both.Select(i => i.Element("guid").Value).Should().OnlyHaveUniqueItems();

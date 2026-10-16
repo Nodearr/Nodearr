@@ -224,7 +224,8 @@ function LocalCatalog() {
               </div>
 
               <div className={styles.counts}>
-                {application.implementation === 'Radarr'
+                {application.implementation === 'Radarr' ||
+                application.implementation === 'WhisparrV3'
                   ? `${application.movies} ${translate('Movies')}, ${
                       application.movieFiles
                     } ${translate('MovieFiles')}`

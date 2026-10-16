@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Messaging;
 using NzbDrone.Core.Datastore;
 
@@ -74,6 +75,19 @@ namespace NzbDrone.Core.Catalog
         public int QualityProfileId { get; set; }
         public bool Monitored { get; set; }
         public int ArrMovieFileId { get; set; }
+
+        // Whisparr's, which Radarr's movies leave empty. ItemType says the item is adult content
+        // at all: "movie" for a film or "scene" for a scene. Whisparr searches for a scene by its
+        // studio, release date, title and code, and knows it by IDs from StashDB and ThePornDB.
+        public string ItemType { get; set; }
+        public string Studio { get; set; }
+        public string ReleaseDate { get; set; }
+        public string Code { get; set; }
+        public string ForeignId { get; set; }
+        public string StashId { get; set; }
+        public string TpdbId { get; set; }
+
+        public bool IsAdult => ItemType.IsNotNullOrWhiteSpace();
     }
 
     public abstract class CatalogFile : CatalogModel

@@ -10,5 +10,8 @@ namespace NzbDrone.Core.Applications
 
         // Sonarr and Radarr hold a library Nodearr reads. Prowlarr holds none (ADR 0007).
         public bool HoldsLibrary => Implementation != nameof(Prowlarr.Prowlarr);
+
+        // Radarr and Whisparr v3 hold movies, each with one file. Sonarr holds series.
+        public bool HoldsMovies => Implementation is nameof(Radarr.Radarr) or nameof(Whisparr.WhisparrV3);
     }
 }

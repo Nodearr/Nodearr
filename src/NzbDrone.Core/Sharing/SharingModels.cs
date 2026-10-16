@@ -123,6 +123,34 @@ namespace NzbDrone.Core.Sharing
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<int> SceneEpisodeNumbers { get; set; }
 
+        // A file from Whisparr: adult content, which only an adult search finds. With it, a film
+        // or a scene's ItemType, and what Whisparr searches for a scene by and knows it by. Left
+        // out for every other file, so an offer without them is the same as it ever was.
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public bool? Adult { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string ItemType { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string Studio { get; set; }
+
+        // As yyyy-MM-dd.
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string ReleaseDate { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string Code { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string ForeignId { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string StashId { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string TpdbId { get; set; }
+
         // The name the release had when the Arr app grabbed it, when the Arr app kept one.
         public string SceneName { get; set; }
         public string Edition { get; set; }
