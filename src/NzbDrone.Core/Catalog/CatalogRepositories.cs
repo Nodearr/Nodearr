@@ -136,6 +136,42 @@ namespace NzbDrone.Core.Catalog
         }
     }
 
+    public interface ICatalogArtistRepository : ICatalogRepository<CatalogArtist>
+    {
+    }
+
+    public class CatalogArtistRepository : CatalogRepository<CatalogArtist>, ICatalogArtistRepository
+    {
+        public CatalogArtistRepository(IMainDatabase database, IEventAggregator eventAggregator)
+            : base(database, eventAggregator)
+        {
+        }
+    }
+
+    public interface ICatalogAlbumRepository : ICatalogRepository<CatalogAlbum>
+    {
+    }
+
+    public class CatalogAlbumRepository : CatalogRepository<CatalogAlbum>, ICatalogAlbumRepository
+    {
+        public CatalogAlbumRepository(IMainDatabase database, IEventAggregator eventAggregator)
+            : base(database, eventAggregator)
+        {
+        }
+    }
+
+    public interface ICatalogTrackFileRepository : ICatalogRepository<CatalogTrackFile>
+    {
+    }
+
+    public class CatalogTrackFileRepository : CatalogRepository<CatalogTrackFile>, ICatalogTrackFileRepository
+    {
+        public CatalogTrackFileRepository(IMainDatabase database, IEventAggregator eventAggregator)
+            : base(database, eventAggregator)
+        {
+        }
+    }
+
     public interface ICatalogSyncStatusRepository : IBasicRepository<CatalogSyncStatus>
     {
         CatalogSyncStatus ForApplication(int applicationId);

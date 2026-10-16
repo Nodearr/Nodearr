@@ -19,6 +19,7 @@ const APPS = [
   { implementation: 'Radarr', label: 'Radarr' },
   { implementation: 'WhisparrV3', label: 'Whisparr v3' },
   { implementation: 'WhisparrV2', label: 'Whisparr v2' },
+  { implementation: 'Lidarr', label: 'Lidarr' },
 ];
 
 interface ConnectButtonProps {

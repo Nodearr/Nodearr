@@ -367,4 +367,95 @@ namespace NzbDrone.Core.Applications
             return file;
         }
     }
+
+    // Lidarr's v1 API. An artist holds albums, and an album's tracks are files of their own.
+    public class LidarrArtistResource
+    {
+        public int Id { get; set; }
+        public string ForeignArtistId { get; set; }
+        public string ArtistName { get; set; }
+        public string SortName { get; set; }
+        public string Path { get; set; }
+        public int QualityProfileId { get; set; }
+        public bool Monitored { get; set; }
+
+        public CatalogArtist ToCatalog()
+        {
+            return new CatalogArtist
+            {
+                ArrId = Id,
+                ForeignArtistId = ForeignArtistId,
+                Name = ArtistName,
+                SortName = SortName,
+                Path = Path,
+                QualityProfileId = QualityProfileId,
+                Monitored = Monitored
+            };
+        }
+    }
+
+    public class LidarrAlbumResource
+    {
+        public int Id { get; set; }
+        public int ArtistId { get; set; }
+
+        // The MusicBrainz release group, which every edition of the album shares.
+        public string ForeignAlbumId { get; set; }
+        public string Title { get; set; }
+        public string AlbumType { get; set; }
+        public DateTime? ReleaseDate { get; set; }
+        public bool Monitored { get; set; }
+        public LidarrAlbumStatisticsResource Statistics { get; set; }
+
+        public CatalogAlbum ToCatalog()
+        {
+            var released = ReleaseDate?.ToUniversalTime();
+
+            return new CatalogAlbum
+            {
+                ArrId = Id,
+                ArrArtistId = ArtistId,
+                ForeignAlbumId = ForeignAlbumId,
+                Title = Title,
+                AlbumType = AlbumType,
+                ReleaseDate = released?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
+                Year = released?.Year ?? 0,
+                Monitored = Monitored,
+                TrackCount = Statistics?.TrackCount ?? 0,
+                TrackFileCount = Statistics?.TrackFileCount ?? 0
+            };
+        }
+    }
+
+    public class LidarrAlbumStatisticsResource
+    {
+        public int TrackCount { get; set; }
+        public int TrackFileCount { get; set; }
+    }
+
+    public class LidarrTrackFileResource : ArrFileResource
+    {
+        public int ArtistId { get; set; }
+        public int AlbumId { get; set; }
+
+        // Lidarr sends only the full path. The part below the artist's folder stands in for the
+        // relative path Sonarr and Radarr send.
+        public CatalogTrackFile ToCatalog(string artistPath)
+        {
+            var file = new CatalogTrackFile { ArrArtistId = ArtistId, ArrAlbumId = AlbumId };
+            Fill(file);
+
+            if (file.RelativePath == null && file.Path != null && artistPath != null)
+            {
+                var root = artistPath.TrimEnd('/', '\\');
+
+                if (file.Path.StartsWith(root, StringComparison.OrdinalIgnoreCase) && file.Path.Length > root.Length + 1)
+                {
+                    file.RelativePath = file.Path.Substring(root.Length + 1);
+                }
+            }
+
+            return file;
+        }
+    }
 }

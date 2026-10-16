@@ -126,6 +126,9 @@ namespace NzbDrone.Core.Datastore
             Mapper.Entity<CatalogEpisodeFile>("CatalogEpisodeFiles").RegisterModel();
             Mapper.Entity<CatalogMovie>("CatalogMovies").RegisterModel();
             Mapper.Entity<CatalogMovieFile>("CatalogMovieFiles").RegisterModel();
+            Mapper.Entity<CatalogArtist>("CatalogArtists").RegisterModel();
+            Mapper.Entity<CatalogAlbum>("CatalogAlbums").RegisterModel();
+            Mapper.Entity<CatalogTrackFile>("CatalogTrackFiles").RegisterModel();
             Mapper.Entity<CatalogSyncStatus>("CatalogSyncStatus").RegisterModel();
 
             Mapper.Entity<Peer>("Peers").RegisterModel();

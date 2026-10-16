@@ -44,8 +44,10 @@ namespace NzbDrone.Core.Applications
         [FieldDefinition(6, Label = "ApplicationSettingsSyncCategories", Type = FieldType.Select, SelectOptions = typeof(NewznabCategoryFieldConverter), Advanced = true, HelpText = "ApplicationSettingsSyncCategoriesHelpText")]
         public IEnumerable<int> SyncCategories { get; set; }
 
-        // Not a setting: kept out of what is saved and shown.
-        string IArrConnection.ApiRoute => "/api/v3";
+        // Not a setting: kept out of what is saved and shown. Lidarr's API is /api/v1.
+        string IArrConnection.ApiRoute => ApiRoute;
+
+        protected virtual string ApiRoute => "/api/v3";
 
         public NzbDroneValidationResult Validate()
         {

@@ -6,11 +6,11 @@ namespace NzbDrone.Core.Catalog
 {
     public interface IArrWebhookService
     {
-        // What a Sonarr or Radarr webhook sent. False when the body is not one Nodearr understands.
+        // What an Arr app's webhook sent. False when the body is not one Nodearr understands.
         bool Receive(int applicationId, string body);
     }
 
-    // Takes the Arr apps' own webhook. Its body names the series or movie the event was about, and
+    // Takes the Arr apps' own webhook. Its body names the series, movie or artist the event was about, and
     // that is all Nodearr reads: the title is then read again from the Arr app itself, so the
     // catalog holds what the Arr app says now, whatever the event was.
     public class ArrWebhookService : IArrWebhookService
@@ -50,11 +50,11 @@ namespace NzbDrone.Core.Catalog
                 return true;
             }
 
-            var arrId = IdOf(root, "series") ?? IdOf(root, "movie");
+            var arrId = IdOf(root, "series") ?? IdOf(root, "movie") ?? IdOf(root, "artist");
 
             if (arrId == null)
             {
-                _logger.Debug("Ignored a {0} event from application {1} that names no series or movie", eventType.GetString(), applicationId);
+                _logger.Debug("Ignored a {0} event from application {1} that names no series, movie or artist", eventType.GetString(), applicationId);
 
                 return true;
             }

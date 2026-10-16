@@ -37,6 +37,14 @@ namespace NzbDrone.Core.Test.Catalog
             VerifyQueued(2, 20);
         }
 
+        [Test]
+        public void a_lidarr_import_should_have_its_artist_read_again()
+        {
+            Subject.Receive(3, """{ "eventType": "Download", "artist": { "id": 7, "name": "Low" }, "albums": [ { "id": 70 } ], "isUpgrade": false }""").Should().BeTrue();
+
+            VerifyQueued(3, 7);
+        }
+
         // Sent when the connection is saved. It must be answered, and changes nothing.
         [Test]
         public void a_test_should_be_answered_and_change_nothing()
