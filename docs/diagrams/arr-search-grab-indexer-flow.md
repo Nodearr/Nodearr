@@ -2,9 +2,9 @@
 
 Nodearr is a Newznab indexer and a SABnzbd-compatible download client to the Arr apps. A search returns peer candidates. A grab returns a small NZB that is only a ticket naming one candidate. The Arr app hands that ticket to Nodearr's download client surface, which is where the transfer job is created.
 
-The messages below are the ones recorded in the S1 spike against Sonarr 4.0.20, Radarr 6.4.4 and Prowlarr 2.6.5, with the API key removed. See [ADR 0010](../adr/0010-arr-contract-newznab-indexer-and-sabnzbd-download-client.md).
+The messages below were first recorded in the S1 spike against Sonarr 4.0.20, Radarr 6.4.4 and Prowlarr 2.6.5, with the API key removed, and are what the real indexer and download client answer today ([ADR 0010](../adr/0010-arr-contract-newznab-indexer-and-sabnzbd-download-client.md)). Results come from what trusted nodes share, matched by ID ([ADR 0015](../adr/0015-the-indexer-id-matching-release-titles-and-candidate-ids.md)). The transfer behind a grab is in [the transfer flow](direct-transfer-download-client-flow.md).
 
-Since S6 the search half is real: results come from what trusted nodes share, matched by ID. See [ADR 0015](../adr/0015-the-indexer-id-matching-release-titles-and-candidate-ids.md) and the diagram before the last one here. The download half is still the S1 stub until S7.
+Each app is registered on its own categories: Sonarr on TV (5030, 5040, 5045, and 5070 for anime), Radarr on Movies (2030, 2040, 2045), Whisparr on XXX (6000 and its subcategories), and Lidarr on Audio (3000, 3010, 3040). Whisparr and Lidarr search by text, below.
 
 ## Direct: the Arr app has Nodearr as its indexer
 
@@ -17,7 +17,7 @@ sequenceDiagram
     participant Jobs as Nodearr transfer jobs
     participant Files as Shared /downloads
 
-    Note over Arr,Sab: Registration, when the indexer and download client are saved
+    Note over Arr,Sab: Registration: Nodearr adds a download client, a pinned indexer and a webhook to the app
     Arr->>Sab: mode=version, then mode=get_config
     Sab-->>Arr: version, complete_dir, categories tv and movies
     Arr->>Newznab: t=caps
@@ -50,9 +50,34 @@ sequenceDiagram
     Arr->>Sab: mode=history&name=delete&del_files=1&archive=1
 ```
 
+## Searched by text: Whisparr's scenes and Lidarr's albums
+
+A scene and an album have no ID the app can send, so these apps search by text, and Nodearr matches every word against what friends share. Only these categories ever find adult content or albums ([ADR 0015](../adr/0015-the-indexer-id-matching-release-titles-and-candidate-ids.md), amendments, and [ADR 0020](../adr/0020-lidarr-albums-shared-and-moved-as-folders-of-tracks.md)).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant W as Whisparr
+    participant L as Lidarr
+    participant Newznab as Nodearr /newznab/api
+
+    W->>Newznab: t=search&cat=6000,...&q=CouchCastingX 24.10.13
+    Newznab->>Newznab: Scenes on that day, whose studio, title or code hold every word
+    Newznab-->>W: CouchCastingX.24.10.13.Scene.Title.XXX.1080p.WEB-DL
+    W->>Newznab: t=movie&cat=6000,...&tmdbid=4242
+    Newznab-->>W: The film with that ID, from friends' Whisparr only
+    L->>Newznab: t=caps
+    Newznab-->>L: audio-search: q, artist, album. Categories 3000, 3010, 3040
+    L->>Newznab: t=music&cat=3000,3010,3040&q=&artist=Slint&album=Spiderland
+    Newznab->>Newznab: Albums whose artist, title, year or release title hold every word
+    Newznab-->>L: Slint - Spiderland (1991) [FLAC], category 3040
+```
+
 ## Through Prowlarr
 
-Prowlarr relays the search. The Arr app still fetches the ticket from Nodearr itself, because Prowlarr answers the download link with a redirect by default, and it still uses Nodearr as its download client.
+Nodearr adds itself to Prowlarr as an indexer, so it can be searched there with the user's others. Prowlarr copies it into each app it manages, and Nodearr switches those copies off, because they are not pinned to Nodearr's download client: the apps use the indexer Nodearr adds to them directly ([ADR 0007](../adr/0007-prowlarr-as-downstream-indexer-consumer.md), amendments).
+
+What follows is the S1 spike's record of a search relayed through such a copy. The Arr app still fetches the ticket from Nodearr itself, because Prowlarr answers the download link with a redirect by default, and it still uses Nodearr as its download client.
 
 ```mermaid
 sequenceDiagram

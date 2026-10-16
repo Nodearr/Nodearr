@@ -94,10 +94,10 @@ There is no lookup service. Nodes learn each other's relay URL and addresses fro
 
 ## Follow-up work
 
-- S5: purge a peer's cached catalog on block and revoke.
-- S7: cancel a peer's transfers on block and revoke, and apply the same authorization to every transfer request.
-- S8: ship the sidecar in the Docker image, and settings for relay mode, relay URL and port mapping (today they are `Nodearr__Transport__*` environment variables).
-- A setting for the node's display name.
+- ~~S5: purge a peer's cached catalog on block and revoke.~~ Done: S5 (ADR 0014).
+- ~~S7: cancel a peer's transfers on block and revoke, and apply the same authorization to every transfer request.~~ Done: ADR 0016.
+- ~~S8: ship the sidecar in the Docker image, and settings for relay mode, relay URL and port mapping (today they are `Nodearr__Transport__*` environment variables).~~ Done: ADR 0017 and ADR 0019.
+- ~~A setting for the node's display name.~~ Done: Settings > Node (ADR 0019).
 
 ## Amendments
 

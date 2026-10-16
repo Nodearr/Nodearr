@@ -84,3 +84,26 @@ sequenceDiagram
 ```
 
 The same shape holds for every failure in ADR 0016. Those that may pass, such as a lost connection, are tried again up to three times first, carrying on from what had arrived.
+
+## Carrying on from another friend
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Local as Ryan's Nodearr
+    participant John as John's Nodearr
+    participant Ann as Ann's Nodearr
+
+    Note over Local,John: 10 MB of 21 MB has arrived from John
+    John--xLocal: John goes offline: PeerUnreachable
+    Local->>Local: Does another trusted node offer a file with the same hash and size?
+    Local->>Ann: Ann does. Ask for her copy: I hold 10 MB of the file with this hash
+    Ann-->>Local: Same hash. Carrying on from 10 MB.
+    Local->>Local: Completed, and the whole file matches
+```
+
+Each node is moved to once, and has its own three attempts. A node that is directly reachable is tried first. A file that did not match its hash is tried again from the same node first, since it is that node that must work its hash out again.
+
+## An album
+
+An album from Lidarr arrives as its tracks, one transfer after another into the same folder under `incomplete`, each checked against its own hash and each with its own attempts. The folder moves into `complete` only once the last track is checked, so Lidarr never sees half an album. An album stays with the node it came from. See [ADR 0020](../adr/0020-lidarr-albums-shared-and-moved-as-folders-of-tracks.md).

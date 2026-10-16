@@ -53,6 +53,8 @@ The [user guide](docs/user-guide/README.md) has the rest: [installing](docs/user
 - [Sequence diagrams](docs/diagrams/).
 - [The V1 plan](docs/plans/v1-implementation-plan.md): what was built, in what order, and what is still open.
 - [Research notes](docs/research/), including [what Nodearr inherited from Sonarr](docs/research/inherited-sonarr-features.md).
+- [Changelog](CHANGELOG.md): what changed in each release.
+- [Contributing](CONTRIBUTING.md): how work on Nodearr is done.
 
 ## Working on Nodearr
 

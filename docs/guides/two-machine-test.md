@@ -55,7 +55,7 @@ A blocked firewall and a router that needs a port forwarded look the same from i
 
 On both sides, in Nodearr at `http://localhost:6633`:
 
-1. **Settings > Applications.** Add Sonarr and Radarr. Nodearr adds itself to each as an indexer and a download client.
+1. **Settings > Apps.** Add Sonarr and Radarr. Nodearr adds itself to each as an indexer and a download client.
 2. **Catalog > Local.** Refresh. Your files should be listed and readable.
 3. **System > Status.** There should be no warnings. Two matter here. One says Nodearr cannot read the library, which means the other person's transfers would be refused. The other says Sonarr or Radarr cannot see Nodearr's download folder, which means nothing would ever be imported. Fix either before going on.
 4. **Nodes > Trusted Nodes.** The box at the top says what Nodearr has worked out about your network. If it says the network uses a different public port for every destination, expect to need a forwarded port.

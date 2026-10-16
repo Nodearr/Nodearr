@@ -1,5 +1,7 @@
 # Arr Architecture Reconnaissance Notes
 
+> Research from before Nodearr was built, kept as it was. What Nodearr took from these projects, and how, is in [NOTICE.md](../../NOTICE.md) and the [decision records](../adr/).
+
 Date: 2026-05-21
 
 Scope:

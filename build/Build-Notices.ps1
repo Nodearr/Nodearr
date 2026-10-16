@@ -36,7 +36,7 @@ $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $UiFolder = $UiFolder ? $UiFolder : (Join-Path $repo '_output/UI')
 $Output = $Output ? $Output : (Join-Path $repo 'THIRD-PARTY-NOTICES.md')
 $notices = Join-Path $PSScriptRoot 'notices'
-$temp = New-Item -ItemType Directory -Force (Join-Path $repo '_temp/notices')
+$temp = New-Item -ItemType Directory -Force (Join-Path ([IO.Path]::GetTempPath()) 'nodearr-notices')
 
 if (-not (Get-Command cargo-about -ErrorAction SilentlyContinue)) { throw 'cargo-about is missing: cargo install cargo-about --locked --features cli' }
 if (-not (Get-ChildItem $UiFolder -Filter '*.js.map' -ErrorAction SilentlyContinue)) { throw "No source maps in $UiFolder. Build the UI first: yarn build --env production" }

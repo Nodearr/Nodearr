@@ -54,8 +54,8 @@ Rejected as the core model. That would push transfer policy, trust, verification
 
 ## Follow-up work
 
-- Define transfer job lifecycle states.
-- Define the first download-client-compatible queue/status endpoints.
-- Define completed path behavior and import handoff.
-- Define how failed transfers are represented to Arr apps and users.
+- ~~Define transfer job lifecycle states.~~ Done: ADR 0016.
+- ~~Define the first download-client-compatible queue/status endpoints.~~ Done: SABnzbd's API, ADR 0010 and ADR 0016.
+- ~~Define completed path behavior and import handoff.~~ Done: ADR 0016.
+- ~~Define how failed transfers are represented to Arr apps and users.~~ Done: ADR 0016.
 

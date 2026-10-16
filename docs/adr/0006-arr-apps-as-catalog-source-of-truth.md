@@ -57,11 +57,11 @@ Rejected for core scope. Media servers consume the imported library but do not d
 
 ## Follow-up work
 
-- Define Sonarr import fields and sync behavior.
-- Define Radarr import fields and sync behavior.
-- Define normalized catalog schema.
-- Define stale/deleted item handling.
-- Define future source contracts for Lidarr, Readarr, Whisparr / Eros, and other Arr-like applications.
+- ~~Define Sonarr import fields and sync behavior.~~ Done: S3, and the [catalog import diagram](../diagrams/catalog-import-sonarr-radarr.md).
+- ~~Define Radarr import fields and sync behavior.~~ Done: S3.
+- ~~Define normalized catalog schema.~~ Done: S3.
+- ~~Define stale/deleted item handling.~~ Done: an item the app stops reporting is marked missing and removed after 7 days (S3).
+- ~~Define future source contracts for Lidarr, Readarr, Whisparr / Eros, and other Arr-like applications.~~ Done for Whisparr v2 and v3 (ADR 0015, amendments) and Lidarr (ADR 0020). Readarr was archived in June 2025 and is not supported.
 
 ## Amendments
 

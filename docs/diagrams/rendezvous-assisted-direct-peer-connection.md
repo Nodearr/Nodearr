@@ -1,30 +1,43 @@
-# Rendezvous-assisted direct peer connection
+# How two nodes reach each other
 
-Rendezvous helps trusted peers find each other and exchange connection hints. The media transfer path is a direct encrypted peer connection, not an official Nodearr relay.
+Each node's sidecar keeps a connection open to its relay. The relay tells it its public address, passes on the first messages between two nodes, and helps them make a direct connection by both sending at once. Files then move only over that direct connection. See [ADR 0011](../adr/0011-direct-only-media-over-iroh-with-relay-for-coordination.md).
 
 ```mermaid
 sequenceDiagram
     autonumber
-    participant NodeA as John Nodearr
-    participant Rendezvous as Rendezvous Service
-    participant NodeB as Ryan Nodearr
+    participant A as John's sidecar
+    participant Relay as Relay (n0's, or your own)
+    participant B as Ryan's sidecar
 
-    NodeA->>Rendezvous: Publish node ID and observed address hints
-    NodeB->>Rendezvous: Publish node ID and observed address hints
-    NodeA->>Rendezvous: Request session hints for Ryan
-    Rendezvous-->>NodeA: Ryan hints and temporary session metadata
-    Rendezvous-->>NodeB: John hints and temporary session metadata
-    par Simultaneous outbound attempt
-        NodeA->>NodeB: Dial encrypted QUIC connection
-    and Simultaneous outbound attempt
-        NodeB->>NodeA: Dial encrypted QUIC connection
-    end
-    alt Direct path established
-        NodeA-->>NodeB: Authenticated direct peer session
-        NodeB-->>NodeA: Authenticated direct peer session
-    else Direct path not established
-        NodeA->>NodeA: Report connection failure to transfer job
-    end
+    Note over A,B: Before anything: each keeps a connection to its relay
+    A->>Relay: Connected, as John's node ID
+    Relay-->>A: Your public address is ...
+    B->>Relay: Connected, as Ryan's node ID
+    Relay-->>B: Your public address is ...
 
-    Note over Rendezvous: Rendezvous carries connection metadata only, not media bytes.
+    Note over A,B: John's node wants Ryan's (pairing, a catalog, a file)
+    A->>Relay: For Ryan's node ID: QUIC handshake
+    Relay->>B: Forwarded, still encrypted
+    B-->>Relay: Handshake reply
+    Relay-->>A: Forwarded
+    Note over A,B: Each proves it holds the key for its node ID. Small messages can already flow, through the relay.
+    A->>Relay: My addresses: public and local
+    Relay->>B: Forwarded
+    B->>Relay: Mine
+    Relay->>A: Forwarded
+    par Both send at once ("hole punching")
+        A->>B: UDP to Ryan's addresses
+    and
+        B->>A: UDP to John's addresses
+    end
+    alt Each router lets the other's packets in, as replies
+        A-->>B: Direct path selected
+        Note over A,B: Messages and files go directly from now on
+    else No direct path
+        Note over A,B: Messages keep going through the relay. A file is never sent.
+    end
 ```
+
+- The relay sees two node IDs, their addresses, and when they talk. It cannot read what passes through it.
+- A sidecar also asks the router to open its port (UPnP, NAT-PMP or PCP) unless that is turned off, which makes a direct path likelier.
+- With no relay (Settings > Node), nodes can only use addresses they already know for each other, such as on the same network or a forwarded port.

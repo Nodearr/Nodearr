@@ -33,7 +33,7 @@ Checks, against pinned Sonarr and Radarr containers:
 
 Nodearr runs on the host on port 6633. The containers come from `spikes/arr-contract/docker-compose.yml` with `docker-compose.library.yml` layered on top, which puts the Arr libraries on the host so Nodearr can read them. They publish on 127.0.0.1 only, on ports 18989 and 17878.
 
-The Arr apps get their files by "downloading" them through the S1 stub transfer, which copies synthetic ffmpeg test patterns. The real indexer and download client arrive in S6 and S7.
+The Arr apps get their files from `Library.ps1`, which has them import synthetic ffmpeg test patterns (see "How the scripts fill a library" below).
 
 Options:
 
@@ -207,4 +207,14 @@ Needs Docker and the transport sidecar, and takes about three minutes. One real 
 
 ## Between two machines
 
-`docs/guides/two-machine-test.md`. No script can do this one.
+`docs/guides/two-machine-test.md`, and for two Windows machines with nothing set up, `docs/guides/two-machine-test-windows.md`. No script here can do this one.
+
+## What the scripts do not cover
+
+These were checked by hand against real apps, each recorded where it was decided, and have no script here:
+
+- **Prowlarr**: adding Nodearr to Prowlarr and switching its copies off (ADR 0007, amendments).
+- **Whisparr v3 and v2**: films and scenes read, shared, found by text and imported, including a v2 and a v3 finding each other's scenes (ADR 0015, amendments).
+- **Lidarr**: albums read, shared, found, moved as folders of tracks and imported, between two Lidarr 3.1 instances (ADR 0020).
+- **The Windows installer, tray app and service** (`docs/guides/releases.md`).
+- **The pairing limit**: covered by the unit tests only (ADR 0013, amendments).

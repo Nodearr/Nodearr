@@ -59,8 +59,8 @@ Rejected. It conflicts with Nodearr's infrastructure and abuse-risk model.
 
 ## Follow-up work
 
-- Define rendezvous metadata format.
-- Define direct-connectivity diagnostics.
-- Define transfer failure reasons for no route, auth failure, policy failure, and verification failure.
-- Decide how self-hosted relay or alternate network path options would be represented if added later.
+- ~~Define rendezvous metadata format.~~ Done: iroh's endpoint addresses, and the invite code (ADR 0013).
+- ~~Define direct-connectivity diagnostics.~~ Done: ADR 0018.
+- ~~Define transfer failure reasons for no route, auth failure, policy failure, and verification failure.~~ Done: ADR 0016.
+- ~~Decide how self-hosted relay or alternate network path options would be represented if added later.~~ Done: a relay of your own, or none, on Settings > Node (ADR 0019).
 

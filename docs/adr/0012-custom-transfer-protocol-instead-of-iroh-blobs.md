@@ -57,6 +57,6 @@ The door stays open. The root hash `iroh-blobs` uses for a blob is the plain BLA
 
 ## Follow-up work
 
-- S7: define the real request (candidate ID and authorization context instead of the spike's single file), range requests for resume, and cancellation.
-- S7: decide where the sidecar boundary sits (plan decision 4): the spike binary already has the provide and fetch halves that the .NET host would supervise.
+- ~~S7: define the real request (candidate ID and authorization context instead of the spike's single file), range requests for resume, and cancellation.~~ Done: ADR 0016.
+- ~~S7: decide where the sidecar boundary sits (plan decision 4): the spike binary already has the provide and fetch halves that the .NET host would supervise.~~ Done: ADR 0013, "The sidecar boundary".
 - Revisit `iroh-blobs` when it declares a production-quality release on Iroh 1.x.

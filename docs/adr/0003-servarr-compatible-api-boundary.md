@@ -59,10 +59,10 @@ Deferred. Nodearr should first be searchable and grabbable as an indexer, not re
 
 ## Follow-up work
 
-- Define exact Torznab/Newznab parameters and response formats required by Sonarr and Radarr.
-- Define category mapping for TV and movies.
-- Define future category expansion for Lidarr, Readarr, Whisparr / Eros, and other Arr-like applications.
-- Define release candidate GUID format.
-- Define grab endpoint behavior and error responses.
-- Build compatibility tests against local Sonarr/Radarr/Prowlarr expectations.
+- ~~Define exact Torznab/Newznab parameters and response formats required by Sonarr and Radarr.~~ Done: ADR 0010 and ADR 0015. Only Newznab is served.
+- ~~Define category mapping for TV and movies.~~ Done: ADR 0015.
+- ~~Define future category expansion for Lidarr, Readarr, Whisparr / Eros, and other Arr-like applications.~~ Done for Whisparr (ADR 0015, amendments) and Lidarr (ADR 0020). Readarr was archived in June 2025 and is not supported.
+- ~~Define release candidate GUID format.~~ Done: ADR 0015.
+- ~~Define grab endpoint behavior and error responses.~~ Done: ADR 0010 and ADR 0015.
+- ~~Build compatibility tests against local Sonarr/Radarr/Prowlarr expectations.~~ Done: the S1 spike and the acceptance scripts in `acceptance/`.
 

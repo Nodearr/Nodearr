@@ -1,8 +1,10 @@
-# Nodearr beside Sonarr and Radarr.
+# Nodearr beside Sonarr and Radarr. Whisparr and Lidarr go beside them the same way: the same
+# /downloads, and their library mounted read-only into Nodearr at the path the app uses.
 #
 #   docker compose -f docker/docker-compose.yml up -d
 #
-# Build the image first, from the repository root:  docker build -t nodearr .
+# The image is the published one. To build your own from the repository root instead, run
+# docker build -t nodearr . and set image: nodearr below.
 #
 # The three things that matter:
 #
@@ -14,7 +16,7 @@
 
 services:
   nodearr:
-    image: nodearr
+    image: ghcr.io/nodearr/nodearr:latest
     container_name: nodearr
     restart: unless-stopped
     environment:
@@ -35,6 +37,7 @@ services:
       - ./downloads:/downloads
       - /path/to/tv:/tv:ro
       - /path/to/movies:/movies:ro
+      # - /path/to/music:/music:ro     with Lidarr
 
     # Networking, option A: the host's own network. Linux only. Best chance of a direct
     # connection, and the only way the router can be asked for a port mapping (UPnP).
@@ -87,7 +90,9 @@ services:
 
 # Then, in Nodearr at http://localhost:6633:
 #
-#   Settings > Applications: add Sonarr and Radarr. Each asks for two addresses: where the Arr
+#   Home takes you through it on the first start. Or, by hand:
+#
+#   Settings > Apps: add Sonarr and Radarr. Each asks for two addresses: where the Arr
 #   app finds Nodearr, and where Nodearr finds the Arr app.
 #     With option A, Nodearr's address for them is http://host.docker.internal:6633, because
 #     "localhost" inside the Sonarr container is the Sonarr container. Theirs are
@@ -96,3 +101,5 @@ services:
 #     http://radarr:7878.
 #   Nodes > Invites: create an invite and send it to the person you want to share with.
 #   Catalog > Sharing: choose what they are offered. Nothing is shared until you do.
+#
+# The user guide, docs/user-guide/, has the rest.

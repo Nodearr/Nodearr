@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Built and checked in S8 on 2026-10-10, on one machine. The run between two machines on different networks is still to be done (see `docs/guides/two-machine-test.md`).
+Accepted. Built and checked in S8 on 2026-10-10, on one machine, and run between two machines on different networks from 2026-10-12 (ADR 0011, "Runs between two machines").
 
 ## Context
 
@@ -83,6 +83,6 @@ A node's name, as other nodes see it, is set with `Nodearr__Transport__NodeName`
 
 ## Follow-up work
 
-- The two-machine run.
-- A published image, built for amd64 and arm64.
-- A settings page for the transport options.
+- ~~The two-machine run.~~ Done: ADR 0011, "Runs between two machines".
+- ~~A published image, built for amd64 and arm64.~~ Done: `ghcr.io/nodearr/nodearr`, built by the release workflow ([releases](../guides/releases.md)).
+- ~~A settings page for the transport options.~~ Done: Settings > Node (ADR 0019).

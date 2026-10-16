@@ -137,7 +137,7 @@ Nodearr reports paths as it sees them. When the Arr app sees the download folder
 
 ## Follow-up work
 
-- S8: package the sidecar, the image and the shared `/downloads` layout, and run all of this between two machines on different networks, including a transfer with no direct route.
+- ~~S8: package the sidecar, the image and the shared `/downloads` layout, and run all of this between two machines on different networks, including a transfer with no direct route.~~ Done: ADR 0017, and the runs between machines in ADR 0011.
 - ~~Later: background hashing.~~ Done, see the amendments.
 
 ## Amendments

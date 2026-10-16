@@ -116,11 +116,11 @@ These came out of the spike and were not known beforehand.
 
 ## Follow-up work
 
-- S3: decide how auto-registration copes with an empty catalog (finding 1), and pin the indexer to the download client.
-- S6: ID matching semantics (finding 2), whether to advertise `q` (finding 3), stable `pubDate` and size (finding 4), signed opaque GUIDs, and what an ID-less query returns.
-- S6: guidance for Prowlarr users on pinning the synced indexer and on RSS (finding 6).
-- S7: idempotent `addfile`, real job persistence, and failure messages written for the Arr history (finding 9).
-- Replace the stub in `src/Nodearr.Http/ArrContractSpike/` with the real implementation. It is not production code: jobs are in memory and candidates come from a JSON file.
+- ~~S3: decide how auto-registration copes with an empty catalog (finding 1), and pin the indexer to the download client.~~ Done: S3, see the amendments.
+- ~~S6: ID matching semantics (finding 2), whether to advertise `q` (finding 3), stable `pubDate` and size (finding 4), signed opaque GUIDs, and what an ID-less query returns.~~ Done: ADR 0015.
+- ~~S6: guidance for Prowlarr users on pinning the synced indexer and on RSS (finding 6).~~ Done: Nodearr now manages its indexer in Prowlarr and switches Prowlarr's copies off (ADR 0007, amendments).
+- ~~S7: idempotent `addfile`, real job persistence, and failure messages written for the Arr history (finding 9).~~ Done: ADR 0016.
+- ~~Replace the stub in `src/Nodearr.Http/ArrContractSpike/` with the real implementation. It is not production code: jobs are in memory and candidates come from a JSON file.~~ Done: S6 and S7. The stub is gone.
 
 ## Amendments
 
