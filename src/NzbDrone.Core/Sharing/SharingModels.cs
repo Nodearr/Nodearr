@@ -46,6 +46,9 @@ namespace NzbDrone.Core.Sharing
     {
         public string Name { get; set; }
         public bool IsHidden { get; set; }
+
+        // Set on the list that what is sent to one friend goes on (SendService).
+        public int? SentToPeerId { get; set; }
     }
 
     public class ShareListItem : ModelBase

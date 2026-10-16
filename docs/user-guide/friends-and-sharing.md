@@ -80,6 +80,32 @@ Anything on the **Hidden** list is offered to nobody, whatever else says so: not
 
 Having been offered something earlier counts for nothing: every request for a file is checked against what is shared at that moment.
 
+## Sending something to a friend
+
+"I have that, let me send it to you": on **Catalog > Sharing**, under **Send to a friend**:
+
+1. Find the title, and pick it. For a series you can then narrow it to seasons or episodes, and for an artist to albums, as on a list.
+2. Under **To**, pick the friend. Or pick **Someone new, with an invite** if they are not a friend yet, and how long the invite works.
+3. **Send**.
+
+What you send is shared with that friend on a list of their own, **Sent to** and their name, which you will see among your lists and can change like any other. Their Nodearr is told, and fetches your catalog at once, so it is there for them straight away. Their Home shows **"<your name> sent you <title>"**.
+
+If nothing of it can be sent, Nodearr says so: there is no file of it in your library yet, or it is on your Hidden list.
+
+**To someone new**, Nodearr makes an invite for this alone and shows you the code. Send it to them. When they use it in their Nodearr, the two of you are friends, they are offered what you sent and nothing else, and their Home shows it. The invite is also listed on Nodes > Invites, labelled **For** and the title.
+
+The **Sent** list under the form says how each send stands:
+
+- **Told**: their Nodearr knows.
+- **Shared, not told yet**: it is shared with them, and their Nodearr will be told the next time yours reaches it, within 15 minutes of it being online. An older Nodearr is never told, but finds what you sent in its catalog.
+- **Invite not used yet**, or **Invite expired or deleted**.
+
+The cross on a send forgets it. What it shared stays shared until you change the list. For a send whose invite was not used, it deletes the invite too.
+
+## When a friend sends you something
+
+Home shows it at the top, above everything else. **See it in their catalog** opens Catalog > Peer Catalog, where you can see what it is. **Put away** clears the card. Your Arr app finds what was sent when it searches, as for anything a friend shares. A button to add it to your Arr app and search for it is coming next.
+
 ### Hashing
 
 Each file you share is read once ahead of time to work out its hash, so a friend who asks for it does not wait while a large file is read. Catalog > Sharing shows how far that has got. It pauses while your node is sending, and a file is read again only when it changes. The hash also lets a friend's node tell that two friends have the same file, and fetch it from the other if one goes away.

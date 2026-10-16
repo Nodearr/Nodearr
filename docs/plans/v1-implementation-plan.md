@@ -108,6 +108,7 @@ Then a settings page. ADR 0019. Branch `v1/s10-node-settings`.
 - A large Sonarr was measured: 2,000 series, 174,044 episodes and 101,223 files read in 36 s, 32 s with nothing changed, one series from a webhook in 1 s, and Nodearr settled at 382 MB with the catalog in place. Nothing needed changing (ADR 0006, amendments). Branch `v1/s49-large-sonarr`.
 - An album's tracks arrive named as Lidarr names its own, `Artist - Album - 01 - Title`, from the titles a friend's Lidarr knows, and a Lidarr that does not rename keeps them so (ADR 0020, amendments). Branch `v1/s50-lidarr-track-titles`.
 - Albums can be shared or hidden one by one, under their artist, as seasons and episodes are under a series. A node can no longer end up with two Hidden lists, and one that had two is mended (ADR 0020 and ADR 0014, amendments). Branch `v1/s51-album-sharing`.
+- A title, or parts of it, can be sent to a friend, or to someone new with an invite made for it alone. It is shared with them on a list of their own, their node is told with a new `sent` message and fetches the catalog at once, and their Home shows what arrived. Adding it to their Arr app with a Get it button is the next slice (ADR 0021). Branch `v1/s52-send-to-friend`.
 
 ## Where V1 stands
 

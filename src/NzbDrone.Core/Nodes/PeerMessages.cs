@@ -11,6 +11,9 @@ namespace NzbDrone.Core.Nodes
         public const string Revoke = "revoke";
         public const string Catalog = "catalog";
         public const string CatalogChanged = "catalogChanged";
+
+        // A friend sent something to this node. An older node does not know it, and refuses it.
+        public const string Sent = "sent";
     }
 
     // What one node says to another on the control channel. The transport has already verified
@@ -42,6 +45,9 @@ namespace NzbDrone.Core.Nodes
 
         // The asker knows albums (ADR 0020). An older node does not say so, and is sent none.
         public bool CatalogAcceptsMusic { get; set; }
+
+        // Sent only.
+        public SentMessage Sent { get; set; }
 
         public byte[] ToBytes()
         {

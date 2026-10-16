@@ -11,6 +11,7 @@ interface CssExports {
   'columns': string;
   'error': string;
   'inlineCheck': string;
+  'inviteCode': string;
   'movieCheck': string;
   'muted': string;
   'nested': string;

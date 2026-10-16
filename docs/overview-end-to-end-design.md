@@ -88,6 +88,8 @@ Nothing is shared until its owner says so ([ADR 0014](adr/0014-sharing-rules-and
 
 A whole series, season or artist takes in what arrives later.
 
+Something can also be **sent**: one title, or parts of it, to one friend, or to someone new with an invite made for it alone. It is shared with them on a list of their own, and their node is told, so their Home shows what arrived ([ADR 0021](adr/0021-sending-a-title-to-a-friend.md)).
+
 ### 4. Seeing what friends have
 
 Each node asks each friend for their **offer**: what that friend shares with this node, and nothing else ([ADR 0014](adr/0014-sharing-rules-and-catalog-exchange.md)). An offer says what each file is (its IDs, title, season and episodes, or album and tracks), how good it is (quality, resolution, codecs, size, release name) and its BLAKE3 hash where the sender has worked it out. It says nothing of where the file is or what it is called, apart from its extension.
@@ -140,10 +142,10 @@ This has worked between two home networks with no port forwarded, and between a 
 
 | Page | What it is for |
 | --- | --- |
-| Home | The first-run steps, then an overview: what needs attention, what friends have, the library, friends and the network. |
+| Home | What friends sent, the first-run steps, then an overview: what needs attention, what friends have, the library, friends and the network. |
 | Catalog > Local | What the Arr apps say this node has. |
 | Catalog > Peer Catalog | What friends share, against the local library. |
-| Catalog > Sharing | Share lists, Hidden, and what each friend is offered. |
+| Catalog > Sharing | Sending something to a friend, share lists, Hidden, and what each friend is offered. |
 | Nodes > Trusted Nodes | Trusted, revoked and blocked nodes, and how each is reached. |
 | Nodes > Invites | Creating invites and using a friend's. |
 | Activity > Transfers | What is being fetched, and what failed and why. |
@@ -158,7 +160,7 @@ One image for Docker, and packages for Linux, macOS and Windows like Sonarr's, i
 
 ## Further reading
 
-- [Decision records](adr/), 0001 to 0020.
+- [Decision records](adr/), 0001 to 0021.
 - [Sequence diagrams](diagrams/).
 - [The V1 plan](plans/v1-implementation-plan.md): what was built, slice by slice, and what is still open.
 - [What Nodearr inherited from Sonarr](research/inherited-sonarr-features.md).

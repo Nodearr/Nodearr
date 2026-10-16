@@ -260,6 +260,27 @@ namespace NzbDrone.Core.Test.Nodes
         }
 
         [Test]
+        public void something_a_friend_sent_should_be_raised_for_keeping()
+        {
+            GivenPaired(_alice, _bob);
+
+            var reply = _bob.Service.Ask(_bob.PeerFor(_alice), new PeerMessage { Type = PeerMessageTypes.Sent, Sent = new SentMessage { SendId = "s1", Title = "Pingu", OfferIds = new List<string> { "e-1-501" } } });
+
+            reply.Ok.Should().BeTrue();
+            _alice.Events.Verify(e => e.PublishEvent(It.Is<TitlesSentEvent>(t => t.Peer.Id == _alice.PeerFor(_bob).Id && t.Sent.SendId == "s1")), Times.Once());
+        }
+
+        [Test]
+        public void using_an_invite_should_say_which_invite_it_was()
+        {
+            var created = _alice.Service.CreateInvite(TimeSpan.FromHours(1), "For Pingu");
+
+            _bob.Service.RedeemInvite(created.Code);
+
+            _alice.Events.Verify(e => e.PublishEvent(It.Is<InviteRedeemedEvent>(r => r.Invite.Id == created.Invite.Id && r.Peer.NodeId == _bob.NodeId)), Times.Once());
+        }
+
+        [Test]
         public void a_trusted_node_should_answer_a_ping()
         {
             GivenPaired(_alice, _bob);

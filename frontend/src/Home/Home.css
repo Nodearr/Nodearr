@@ -289,3 +289,29 @@
 .cardLink {
   font-size: 13px;
 }
+
+/* What friends sent */
+
+.received {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+  padding: 14px 20px;
+  border: 1px solid var(--borderColor);
+  border-left: 4px solid var(--successColor);
+  border-radius: 4px;
+  background-color: var(--cardBackgroundColor);
+  gap: 10px;
+}
+
+.receivedText {
+  font-size: 15px;
+}
+
+.receivedButtons {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}

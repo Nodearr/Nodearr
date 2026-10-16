@@ -428,6 +428,12 @@ namespace NzbDrone.Core.Nodes
 
                     return new PeerReply { Ok = true }.ToBytes();
 
+                // Something this friend sent. It is kept for the person to act on (ReceivedService).
+                case PeerMessageTypes.Sent when peer is { State: PeerState.Trusted } && message.Sent?.SendId != null:
+                    _eventAggregator.PublishEvent(new TitlesSentEvent(peer, message.Sent));
+
+                    return new PeerReply { Ok = true }.ToBytes();
+
                 case PeerMessageTypes.Revoke when peer is { State: PeerState.Trusted }:
                     ChangeState(peer, PeerState.Revoked, "Revoked by the other node");
 
@@ -490,6 +496,7 @@ namespace NzbDrone.Core.Nodes
             _peers.SetFields(peer, p => p.ShareAll);
 
             _logger.Info("Paired with {0} ({1})", peer.Name, remoteNodeId);
+            _eventAggregator.PublishEvent(new InviteRedeemedEvent(invite, peer));
 
             return new PeerReply { Ok = true, Name = LocalName };
         }

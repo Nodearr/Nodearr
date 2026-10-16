@@ -6953,6 +6953,122 @@
         }
       }
     },
+    "/api/v5/sharing/sends": {
+      "get": {
+        "tags": [
+          "Send"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SentTitleResource"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Send"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSendResource"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SentTitleResource"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v5/sharing/sends/{id}": {
+      "delete": {
+        "tags": [
+          "Send"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/v5/sharing/sends/received": {
+      "get": {
+        "tags": [
+          "Send"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReceivedTitleResource"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v5/sharing/sends/received/{id}/dismiss": {
+      "post": {
+        "tags": [
+          "Send"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
     "/api/v5/series": {
       "get": {
         "tags": [
@@ -9120,6 +9236,28 @@
           },
           "shareAll": {
             "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateSendResource": {
+        "type": "object",
+        "properties": {
+          "peerId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShareKeyResource"
+            },
+            "nullable": true
+          },
+          "validHours": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
@@ -12875,6 +13013,49 @@
         },
         "additionalProperties": false
       },
+      "ReceivedTitleResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "peerId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "peerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "summary": {
+            "type": "string",
+            "nullable": true
+          },
+          "mediaKind": {
+            "$ref": "#/components/schemas/MediaKind"
+          },
+          "isWhole": {
+            "type": "boolean"
+          },
+          "offerIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "received": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
       "RedeemInviteResource": {
         "type": "object",
         "properties": {
@@ -13639,6 +13820,82 @@
             "format": "int32"
           },
           "hint": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SendStatus": {
+        "enum": [
+          "waitingForInvite",
+          "inviteLapsed",
+          "notTold",
+          "told"
+        ],
+        "type": "string"
+      },
+      "SentTitleResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "peerId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "peerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "inviteId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "inviteExpires": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "status": {
+            "$ref": "#/components/schemas/SendStatus"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "summary": {
+            "type": "string",
+            "nullable": true
+          },
+          "mediaKind": {
+            "$ref": "#/components/schemas/MediaKind"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShareKeyResource"
+            },
+            "nullable": true
+          },
+          "created": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deliveredAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastError": {
+            "type": "string",
+            "nullable": true
+          },
+          "inviteCode": {
             "type": "string",
             "nullable": true
           }
@@ -15106,6 +15363,9 @@
     },
     {
       "name": "SeasonPass"
+    },
+    {
+      "name": "Send"
     },
     {
       "name": "Series"

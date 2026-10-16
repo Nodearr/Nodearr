@@ -14,7 +14,9 @@ namespace NzbDrone.Core.Sharing
     public interface ISharingService
     {
         List<ShareListDetails> All();
-        ShareListDetails Create(string name);
+
+        // A list made for what is sent to one friend says which friend (SendService).
+        ShareListDetails Create(string name, int? sentToPeerId = null);
         ShareListDetails Update(int id, string name, IEnumerable<ShareKey> items, IEnumerable<int> peerIds);
         void Delete(int id);
         List<ShareableTitle> GetTitles();
@@ -28,6 +30,9 @@ namespace NzbDrone.Core.Sharing
 
         // Albums only for a node that can take them. An older one would take an album for a movie.
         Offer BuildOffer(Peer peer, bool includeMusic);
+
+        // The files these would offer, by the names offers give them, whoever they are sent to.
+        List<string> OfferIdsFor(IEnumerable<ShareKey> items);
 
         // Whether a peer is offered a file right now, by the name its offer gives the file.
         bool IsOffered(Peer peer, string offerFileId);
@@ -120,14 +125,14 @@ namespace NzbDrone.Core.Sharing
                 .ToList();
         }
 
-        public ShareListDetails Create(string name)
+        public ShareListDetails Create(string name, int? sentToPeerId = null)
         {
             if (name.IsNullOrWhiteSpace())
             {
                 throw new ArgumentException("A share list needs a name", nameof(name));
             }
 
-            return new ShareListDetails { List = _lists.Insert(new ShareList { Name = name.Trim() }) };
+            return new ShareListDetails { List = _lists.Insert(new ShareList { Name = name.Trim(), SentToPeerId = sentToPeerId }) };
         }
 
         public ShareListDetails Update(int id, string name, IEnumerable<ShareKey> items, IEnumerable<int> peerIds)
@@ -261,7 +266,21 @@ namespace NzbDrone.Core.Sharing
                 return Seal(new List<OfferItem>());
             }
 
-            var rule = RuleFor(peer);
+            return BuildOffer(RuleFor(peer), includeMusic);
+        }
+
+        // The files these would offer, by the names offers give them, whoever they are sent to.
+        // The Hidden list still keeps back what is on it.
+        public List<string> OfferIdsFor(IEnumerable<ShareKey> items)
+        {
+            var hidden = All().Where(l => l.List.IsHidden).SelectMany(l => l.Items).ToHashSet();
+            var rule = new SharingRule(hidden, Tidy(items).ToHashSet(), false);
+
+            return BuildOffer(rule, true).Items.Select(i => i.Id).ToList();
+        }
+
+        private Offer BuildOffer(SharingRule rule, bool includeMusic)
+        {
             var offered = new List<OfferItem>();
 
             if (rule.SharesAnyTv)

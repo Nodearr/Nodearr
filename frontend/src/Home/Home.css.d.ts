@@ -28,6 +28,9 @@ interface CssExports {
   'panelText': string;
   'panelTitle': string;
   'progress': string;
+  'received': string;
+  'receivedButtons': string;
+  'receivedText': string;
   'relay': string;
   'split': string;
   'statLabel': string;

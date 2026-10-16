@@ -12,6 +12,7 @@ What changed in each release, newest first. Each item links to the decision reco
 - **A Windows installer**, as Sonarr has: Nodearr in Program Files, started in the tray at sign-in, as a service, or not at all, with the firewall rules it needs.
 - **A first run that sets itself up.** A welcome, sign-in set up first, and three steps on Home: connect your apps, name your node, connect with a friend. Home then becomes an overview.
 - **System pages:** Tasks, Backup, Events and Log Files. A backup holds the node's key, so a restored node is the one its friends know ([ADR 0013](docs/adr/0013-node-identity-pairing-and-trust.md), amendments). Where backups go, how often and for how long are on Settings > General.
+- **Send to a friend.** "I have that, let me send it to you": pick a title, or some seasons, episodes or albums of it, and a friend, or someone new, who is sent an invite made for it alone. It is shared with them on a list of their own, and their Home shows what arrived ([ADR 0021](docs/adr/0021-sending-a-title-to-a-friend.md)).
 - **Pairing attempts are limited.** A node that keeps failing is turned away for 15 minutes, and System > Status warns of it ([ADR 0013](docs/adr/0013-node-identity-pairing-and-trust.md), amendments).
 - **A user guide** in `docs/user-guide/`, and `SECURITY.md`.
 

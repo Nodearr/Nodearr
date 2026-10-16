@@ -233,3 +233,87 @@ export const useSetShareAll = () => {
     },
   });
 };
+
+export type SendStatus =
+  | 'waitingForInvite'
+  | 'inviteLapsed'
+  | 'notTold'
+  | 'told';
+
+export interface SentTitle {
+  id: number;
+  peerId?: number;
+  peerName?: string;
+  inviteId?: number;
+  inviteExpires?: string;
+  status: SendStatus;
+  title?: string;
+  summary?: string;
+  mediaKind: MediaKind;
+  items: ShareKey[];
+  created: string;
+  deliveredAt?: string;
+  lastError?: string;
+  inviteCode?: string;
+}
+
+export interface ReceivedTitle {
+  id: number;
+  peerId: number;
+  peerName?: string;
+  title?: string;
+  summary?: string;
+  mediaKind: MediaKind;
+  isWhole: boolean;
+  offerIds: string[];
+  received: string;
+}
+
+const SENDS_PATH = '/sharing/sends';
+const RECEIVED_PATH = '/sharing/sends/received';
+
+export const useSends = () => useApiQuery<SentTitle[]>({ path: SENDS_PATH });
+
+export const useReceived = () =>
+  useApiQuery<ReceivedTitle[]>({ path: RECEIVED_PATH });
+
+// To a friend, or, without one, to someone new with an invite of its own.
+export const useSendTitle = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    SentTitle,
+    ApiError,
+    { peerId?: number; items: ShareKey[]; validHours?: number }
+  >({
+    mutationFn: (body) => send<SentTitle>('POST', SENDS_PATH, body),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: [SENDS_PATH] });
+      queryClient.invalidateQueries({ queryKey: [LISTS_PATH] });
+      queryClient.invalidateQueries({ queryKey: ['/nodes/invites'] });
+    },
+  });
+};
+
+export const useForgetSend = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<unknown, ApiError, number>({
+    mutationFn: (id) => send('DELETE', `${SENDS_PATH}/${id}`),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: [SENDS_PATH] });
+      queryClient.invalidateQueries({ queryKey: ['/nodes/invites'] });
+    },
+  });
+};
+
+export const useDismissReceived = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<unknown, ApiError, number>({
+    mutationFn: (id) => send('POST', `${RECEIVED_PATH}/${id}/dismiss`),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: [RECEIVED_PATH] });
+    },
+  });
+};

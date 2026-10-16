@@ -143,10 +143,12 @@ The marks are worked out again whenever the local catalog is refreshed.
   - Profiles are read with their order of qualities, lowest first as Sonarr and Radarr list them, and the cutoff as a rank. Checked against a real Radarr 6.4.4: its default HD-1080p profile came back with the WEB 1080p group at one rank, the cutoff at Bluray-1080p, and upgrades off, so nothing is an upgrade under it, as Radarr would have it.
   - Until a profile is next read after updating, the old rule stands in: a higher resolution, or the same resolution from a better source.
 
+- 2026-10-16: **one Hidden list.** The Hidden list is made the first time the lists are asked for, and two requests at once, such as a friend's catalog request and the Sharing page, could each make one. A node was found with two. Everything on either was still kept from everyone, but the second was easy to miss. It is now made under a lock, and migration 250 moves whatever was on a second Hidden list to the first, deletes the rest, and adds a unique index so the database holds at most one.
+
+- 2026-10-16 (ADR 0021): **sending.** A list can be made for one friend, to hold what is sent to them ("Sent to" and their name). It is an ordinary list in every other way, and the rule is unchanged: the Hidden list still wins over it.
+
 ## Follow-up work
 
 - ~~S6: turn peer catalog rows into indexer results, with the opaque file identifier inside a signed GUID.~~ Done: ADR 0015.
 - ~~S7: authorize every transfer request against the same sharing rule, so a file that is no longer offered cannot be fetched with an old identifier.~~ Done: ADR 0016.
 - ~~A cheaper update path for large catalogs, if it is needed. Measured on 2026-10-13, see the amendments: building is cheap, and the cost that remains is sending a large changed offer whole.~~ Done: only what changed is sent, see the amendment of 2026-10-14.
-- 2026-10-16: **one Hidden list.** The Hidden list is made the first time the lists are asked for, and two requests at once, such as a friend's catalog request and the Sharing page, could each make one. A node was found with two. Everything on either was still kept from everyone, but the second was easy to miss. It is now made under a lock, and migration 250 moves whatever was on a second Hidden list to the first, deletes the rest, and adds a unique index so the database holds at most one.
-
