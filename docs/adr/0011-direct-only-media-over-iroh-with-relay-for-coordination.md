@@ -87,10 +87,10 @@ Strict mode gives the stronger guarantee and cannot meet the goal of working wit
 
 ## Follow-up work
 
-- Run the cross-NAT scenarios on two machines and record the results here.
-- S7: carry the gating rule and the typed failures into the real transfer provider.
-- S8: measure relayed bytes when the direct path is blocked mid-transfer.
-- S8: a settings page for the port-mapping switch (risk 3).
+- ~~Run the cross-NAT scenarios on two machines and record the results here.~~ Done: see "Runs between two machines" above.
+- ~~S7: carry the gating rule and the typed failures into the real transfer provider.~~ Done: ADR 0016.
+- Measure relayed bytes when the direct path is blocked mid-transfer. Still open: the sidecar resets the stream when the path stops being direct, and run 3 above shows a connection surviving a rule change, but nobody has counted relay bytes in that case.
+- ~~S8: a settings page for the port-mapping switch (risk 3).~~ Done: Settings > Node (ADR 0019).
 
 ## Runs between two machines
 

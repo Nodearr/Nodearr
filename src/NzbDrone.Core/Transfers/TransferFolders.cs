@@ -23,6 +23,10 @@ namespace NzbDrone.Core.Transfers
     {
         private const string DefaultExtension = ".mkv";
 
+        // Long enough for any real title, short enough for Windows' 260-character paths once the
+        // folders before a file are counted.
+        private const int MaxFileNameLength = 150;
+
         private static readonly Regex ExtensionRegex = new(@"^\.[A-Za-z0-9]{1,5}$", RegexOptions.Compiled);
 
         // Not allowed in a file name on Windows. Left out everywhere, because the Arr app that
@@ -55,9 +59,18 @@ namespace NzbDrone.Core.Transfers
             // names, all in the artist's folder, so each album's have to be its own.
             if (job.HasParts)
             {
-                var width = job.GetParts().Count >= 100 ? 3 : 2;
+                var parts = job.GetParts();
+                var name = parts[job.PartIndex].Name;
 
-                return Path.Combine(IncompleteFolder(job), $"{SafeName(job.Title)} - {(job.PartIndex + 1).ToString().PadLeft(width, '0')}{extension}");
+                // A track whose title the peer did not say is named by the release and its place.
+                if (name == null)
+                {
+                    var width = parts.Count >= 100 ? 3 : 2;
+
+                    name = $"{job.Title} - {(job.PartIndex + 1).ToString().PadLeft(width, '0')}";
+                }
+
+                return Path.Combine(IncompleteFolder(job), Shorten(SafeName(name)) + extension);
             }
 
             return Path.Combine(IncompleteFolder(job), SafeName(job.Title) + extension);
@@ -67,6 +80,11 @@ namespace NzbDrone.Core.Transfers
         public string CompleteFolder(TransferJob job)
         {
             return Path.Combine(Complete, SafeName(job.Category.IsNullOrWhiteSpace() ? "default" : job.Category), SafeName(job.Title));
+        }
+
+        private static string Shorten(string name)
+        {
+            return name.Length <= MaxFileNameLength ? name : name[..MaxFileNameLength].TrimEnd(' ', '.');
         }
 
         private static string SafeName(string name)

@@ -81,11 +81,11 @@ Rejected for the initial application stack. Rust may still be useful for transfe
 
 ## Follow-up work
 
-- Continue shaping project names and layering around Nodearr domains.
-- Add Docker-first development workflow.
-- Add initial SQLite persistence boundary.
-- Define transfer-provider integration points.
-- Validate Iroh integration feasibility behind a Nodearr abstraction.
+- Continue shaping project names and layering around Nodearr domains. Partly done: Nodearr's own code is in its Catalog, Nodes, Sharing, PeerCatalog, PeerIndexer and Transfers namespaces, and the inherited projects keep Sonarr's `NzbDrone` names (NOTICE.md).
+- ~~Add Docker-first development workflow.~~ Done: the image (ADR 0017) and the acceptance scripts, which run the Arr apps in Docker.
+- ~~Add initial SQLite persistence boundary.~~ Done: Sonarr's datastore, kept.
+- ~~Define transfer-provider integration points.~~ Done: the transport behind `IPeerTransport` and `IFileTransport` (ADR 0013, ADR 0016).
+- ~~Validate Iroh integration feasibility behind a Nodearr abstraction.~~ Done: the S2 spike, ADR 0011.
 
 ## Amendments
 

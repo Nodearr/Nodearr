@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using FluentAssertions;
 using NUnit.Framework;
 using NzbDrone.Core.Catalog;
@@ -165,6 +166,29 @@ namespace NzbDrone.Core.Test.PeerCatalog
             item.Title = "Who Made Who: [Live]";
 
             ReleaseTitleBuilder.For(item).Should().Be("AC DC - Who Made Who Live (2001) [FLAC]");
+        }
+
+        [Test]
+        public void a_tracks_title_and_place_should_be_kept()
+        {
+            var item = PeerCatalogItem.FromOffer(1, Offer("things-we-lost", tracks: new List<OfferTrack> { new() { Id = "t-3-701", Extension = ".flac", Size = 10, Title = " Sunflower ", Number = 1, Disc = 1 } }));
+
+            item.GetTracks().Single().Should().Match<OfferTrack>(t => t.Title == "Sunflower" && t.Number == 1 && t.Disc == 1);
+        }
+
+        [Test]
+        public void a_title_or_number_that_would_not_do_should_be_dropped_and_the_album_kept()
+        {
+            var tracks = new List<OfferTrack>
+            {
+                new() { Id = "t-3-701", Extension = ".flac", Size = 10, Title = "Sun\u0007flower", Number = -1, Disc = 500 },
+                new() { Id = "t-3-702", Extension = ".flac", Size = 10, Title = new string('x', 301), Number = 10000 }
+            };
+
+            var item = PeerCatalogItem.FromOffer(1, Offer("things-we-lost", tracks: tracks));
+
+            item.IsAlbum.Should().BeTrue();
+            item.GetTracks().Should().OnlyContain(t => t.Title == null && t.Number == null && t.Disc == null);
         }
 
         // Lidarr's profile: MP3-320, then FLAC, upgrades on, cutoff FLAC.

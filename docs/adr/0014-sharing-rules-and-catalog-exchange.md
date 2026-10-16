@@ -145,6 +145,6 @@ The marks are worked out again whenever the local catalog is refreshed.
 
 ## Follow-up work
 
-- S6: turn peer catalog rows into indexer results, with the opaque file identifier inside a signed GUID.
-- S7: authorize every transfer request against the same sharing rule, so a file that is no longer offered cannot be fetched with an old identifier.
-- A cheaper update path for large catalogs, if it is needed. Measured on 2026-10-13, see the amendments: building is cheap, and the cost that remains is sending a large changed offer whole.
+- ~~S6: turn peer catalog rows into indexer results, with the opaque file identifier inside a signed GUID.~~ Done: ADR 0015.
+- ~~S7: authorize every transfer request against the same sharing rule, so a file that is no longer offered cannot be fetched with an old identifier.~~ Done: ADR 0016.
+- ~~A cheaper update path for large catalogs, if it is needed. Measured on 2026-10-13, see the amendments: building is cheap, and the cost that remains is sending a large changed offer whole.~~ Done: only what changed is sent, see the amendment of 2026-10-14.

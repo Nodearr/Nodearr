@@ -56,11 +56,80 @@ namespace NzbDrone.Core.Test.Transfers
 
             Mocker.GetMock<ICandidateService>().Setup(c => c.Copies(It.IsAny<string>())).Returns(new List<PeerCatalogItem>());
 
+            const string Titled = "[{\"Id\":\"t-3-801\",\"Extension\":\".flac\",\"Size\":10,\"Title\":\"Breadcrumb Trail\",\"Number\":1,\"Disc\":1}," +
+                "{\"Id\":\"t-3-802\",\"Extension\":\".flac\",\"Size\":10,\"Title\":\"Nosferatu Man\",\"Number\":2,\"Disc\":1}," +
+                "{\"Id\":\"t-3-803\",\"Extension\":\".flac\",\"Size\":10,\"Number\":3,\"Disc\":1}]";
+
+            const string Deluxe = "[{\"Id\":\"t-3-901\",\"Extension\":\".flac\",\"Size\":10,\"Title\":\"Breadcrumb Trail\",\"Number\":1,\"Disc\":1}," +
+                "{\"Id\":\"t-3-902\",\"Extension\":\".flac\",\"Size\":10,\"Title\":\"Nosferatu Man (demo)\",\"Number\":1,\"Disc\":2}," +
+                "{\"Id\":\"t-3-903\",\"Extension\":\".flac\",\"Size\":10,\"Title\":\"Interlude\",\"Number\":2,\"Disc\":2}," +
+                "{\"Id\":\"t-3-904\",\"Extension\":\".flac\",\"Size\":10,\"Title\":\"Interlude\",\"Number\":2,\"Disc\":2}]";
+
+            GivenAlbum("titled", "Slint", "Spiderland", Titled);
+            GivenAlbum("deluxe", "Slint", "Spiderland", Deluxe);
+            GivenAlbum("unsafe", "AC/DC", "Who Made Who?", "[{\"Id\":\"t-3-951\",\"Extension\":\".flac\",\"Size\":10,\"Title\":\"Shake <Your> Foundations: Live\",\"Number\":1}]");
+
             _progress = new List<FileTransferProgress>();
             _started = new List<FileTransferRequest>();
 
             Mocker.GetMock<IFileTransport>().Setup(t => t.List()).Returns(() => _progress.ToList());
             Mocker.GetMock<IFileTransport>().Setup(t => t.Start(It.IsAny<FileTransferRequest>())).Callback<FileTransferRequest>(_started.Add);
+        }
+
+        private void GivenAlbum(string candidateId, string artist, string album, string tracks)
+        {
+            Mocker.GetMock<ICandidateService>()
+                  .Setup(c => c.Find(candidateId))
+                  .Returns(new PeerCatalogItem
+                  {
+                      PeerId = _alice.Id, CandidateId = candidateId, RemoteId = "a-" + candidateId, MediaKind = MediaKind.Music, Artist = artist, Title = album,
+                      ReleaseTitle = $"{artist} - {album} (1991) [FLAC]", Size = 1, Tracks = tracks
+                  });
+        }
+
+        private List<string> FileNames(string candidateId)
+        {
+            var job = Subject.Add(candidateId, "music");
+
+            return job.GetParts().Select((_, i) =>
+            {
+                job.PartIndex = i;
+
+                return Path.GetFileName(_folders.IncompleteFile(job));
+            }).ToList();
+        }
+
+        [Test]
+        public void tracks_should_be_named_as_lidarr_names_its_own()
+        {
+            FileNames("titled").Should().Equal(
+                "Slint - Spiderland - 01 - Breadcrumb Trail.flac",
+                "Slint - Spiderland - 02 - Nosferatu Man.flac",
+                "Slint - Spiderland (1991) [FLAC] - 03.flac");
+        }
+
+        [Test]
+        public void tracks_of_an_album_on_several_discs_should_be_numbered_by_disc_and_never_named_alike()
+        {
+            FileNames("deluxe").Should().Equal(
+                "Slint - Spiderland - 1-01 - Breadcrumb Trail.flac",
+                "Slint - Spiderland - 2-01 - Nosferatu Man (demo).flac",
+                "Slint - Spiderland - 2-02 - Interlude.flac",
+                "Slint - Spiderland - 2-02 - Interlude (2).flac");
+        }
+
+        [Test]
+        public void a_track_name_should_hold_nothing_a_file_name_cannot()
+        {
+            FileNames("unsafe").Should().Equal("ACDC - Who Made Who - 01 - Shake Your Foundations Live.flac");
+        }
+
+        [Test]
+        public void a_very_long_track_name_should_be_cut_short()
+        {
+            GivenAlbum("long", "Artist", "Album", "[{\"Id\":\"t-3-961\",\"Extension\":\".flac\",\"Size\":10,\"Title\":\"" + new string('x', 290) + "\",\"Number\":1}]");
+
+            FileNames("long").Single().Length.Should().Be(150 + ".flac".Length);
         }
 
         [TearDown]

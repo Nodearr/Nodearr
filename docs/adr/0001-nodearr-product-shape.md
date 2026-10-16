@@ -67,8 +67,8 @@ Rejected. An indexer-only interface can expose candidates but cannot own transfe
 
 ## Follow-up work
 
-- Define native API resource boundaries.
-- Define compatibility behavior for Sonarr and Radarr.
-- Define transfer job states.
-- Define the first local/simple transfer provider before replacing it with real P2P transport.
+- ~~Define native API resource boundaries.~~ Done: the v5 API, ADR 0003.
+- ~~Define compatibility behavior for Sonarr and Radarr.~~ Done: ADR 0010.
+- ~~Define transfer job states.~~ Done: ADR 0016.
+- ~~Define the first local/simple transfer provider before replacing it with real P2P transport.~~ Not needed: the S2 spike went straight to iroh (ADR 0011, ADR 0012).
 

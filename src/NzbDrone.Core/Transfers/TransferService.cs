@@ -6,6 +6,7 @@ using NLog;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Nodes;
 using NzbDrone.Core.Nodes.Transport;
+using NzbDrone.Core.PeerCatalog;
 using NzbDrone.Core.PeerIndexer;
 using NzbDrone.Core.Sharing;
 
@@ -109,9 +110,7 @@ namespace NzbDrone.Core.Transfers
                 // Only a day the file really has an episode for changes the title.
                 airDate = airDate != null && candidate.GetAirDates().Contains(airDate) ? airDate : null;
 
-                var parts = candidate.IsAlbum
-                    ? candidate.GetTracks().Select(t => new TransferPart { RemoteId = t.Id, Extension = t.Extension, Size = t.Size }).ToList()
-                    : null;
+                var parts = candidate.IsAlbum ? Parts(candidate) : null;
 
                 // An album offered without the tracks to fetch has nothing that can be fetched.
                 if (candidate.MediaKind == MediaKind.Music && parts == null)
@@ -438,6 +437,38 @@ namespace NzbDrone.Core.Transfers
 
                     return true;
             }
+        }
+
+        // An album's tracks, each named as Lidarr names its own files: the artist, the album, the
+        // track's number, with its disc's when the album has more than one, and its title. A
+        // Lidarr that does not rename keeps these names, every album's in the artist's folder.
+        private static List<TransferPart> Parts(PeerCatalogItem album)
+        {
+            var tracks = album.GetTracks();
+            var discs = tracks.Select(t => t.Disc ?? 1).Distinct().Count();
+            var width = tracks.Count >= 100 ? 3 : 2;
+            var taken = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            return tracks.Select((track, index) =>
+            {
+                string name = null;
+
+                if (track.Title != null)
+                {
+                    var number = (track.Number ?? index + 1).ToString().PadLeft(width, '0');
+                    var place = discs > 1 ? $"{track.Disc ?? 1}-{number}" : number;
+
+                    name = $"{album.Artist} - {album.Title} - {place} - {track.Title}";
+
+                    // Two tracks of one album named alike would overwrite each other.
+                    for (var copy = 2; !taken.Add(name); copy++)
+                    {
+                        name = $"{album.Artist} - {album.Title} - {place} - {track.Title} ({copy})";
+                    }
+                }
+
+                return new TransferPart { RemoteId = track.Id, Extension = track.Extension, Size = track.Size, Name = name };
+            }).ToList();
         }
 
         // The bytes of an album's parts that have already arrived and been verified.

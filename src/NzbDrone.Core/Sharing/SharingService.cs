@@ -380,9 +380,12 @@ namespace NzbDrone.Core.Sharing
                     continue;
                 }
 
-                var files = tracks[(album.ApplicationId, album.ArrId)]
-                    .OrderBy(f => f.RelativePath ?? f.Path, StringComparer.OrdinalIgnoreCase)
-                    .ToList();
+                // In Lidarr's order, by disc and track, where it has matched every file to a track.
+                var files = tracks[(album.ApplicationId, album.ArrId)].ToList();
+
+                files = files.All(f => f.TrackNumber > 0)
+                    ? files.OrderBy(f => f.DiscNumber).ThenBy(f => f.TrackNumber).ToList()
+                    : files.OrderBy(f => f.RelativePath ?? f.Path, StringComparer.OrdinalIgnoreCase).ToList();
 
                 // The catalog says the album is whole, and its track files must say so too.
                 if (files.Count < album.TrackCount || files.Any(f => f.Size <= 0 || ExtensionOf(f.Path) == null))
@@ -412,7 +415,10 @@ namespace NzbDrone.Core.Sharing
                     Id = $"t-{f.ApplicationId}-{f.ArrId}",
                     Extension = ExtensionOf(f.Path),
                     Size = f.Size,
-                    Quality = f.Quality
+                    Quality = f.Quality,
+                    Title = f.TrackTitle.IsNotNullOrWhiteSpace() ? f.TrackTitle : null,
+                    Number = f.TrackNumber > 0 ? f.TrackNumber : null,
+                    Disc = f.DiscNumber > 0 ? f.DiscNumber : null
                 }).ToList();
 
                 yield return item;

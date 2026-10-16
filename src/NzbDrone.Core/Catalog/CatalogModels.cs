@@ -161,6 +161,12 @@ namespace NzbDrone.Core.Catalog
     {
         public int ArrArtistId { get; set; }
         public int ArrAlbumId { get; set; }
+
+        // The track this file is, as Lidarr has it: its title, its number on its disc, and the
+        // disc. Empty and zero for a file Lidarr has not matched to a track.
+        public string TrackTitle { get; set; }
+        public int TrackNumber { get; set; }
+        public int DiscNumber { get; set; }
     }
 
     // Everything one Arr app reported in one refresh.

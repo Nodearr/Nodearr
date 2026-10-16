@@ -2,6 +2,9 @@
 *
 
 !Dockerfile
+!LICENSE
+!NOTICE.md
+!THIRD-PARTY-NOTICES.md
 !docker/entrypoint.sh
 !.editorconfig
 !package.json

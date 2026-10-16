@@ -5,8 +5,9 @@
 
 .DESCRIPTION
     Publishes the application self-contained for the runtime, so the machine it runs on needs no
-    .NET. Puts it in a folder named Nodearr with the web UI, the transport sidecar, the licence
-    and the notices, and archives that folder: Nodearr.<version>.<runtime>.tar.gz, or .zip for
+    .NET. Puts it in a folder named Nodearr with the web UI, the transport sidecar, the licence,
+    Nodearr's notices, the third-party notices (Build-Notices.ps1) and the .NET runtime's own
+    licence and notices, and archives that folder: Nodearr.<version>.<runtime>.tar.gz, or .zip for
     Windows.
 
     Linux and macOS archives carry the executable bit for Nodearr and nodearr-transport. tar on
@@ -105,6 +106,18 @@ Copy-Item $UiFolder (Join-Path $folder 'UI') -Recurse
 Copy-Item $TransportBin (Join-Path $folder "nodearr-transport$($forWindows ? '.exe' : '')")
 Copy-Item (Join-Path $repo 'LICENSE') $folder
 Copy-Item (Join-Path $repo 'NOTICE.md') $folder
+Copy-Item (Join-Path $repo 'THIRD-PARTY-NOTICES.md') $folder
+
+# The package carries the .NET runtime, and so its licence and notices, from the SDK that built it.
+$dotnetRoot = $env:DOTNET_ROOT ? $env:DOTNET_ROOT : (Split-Path (Get-Command dotnet).Source)
+
+foreach ($file in @{ 'LICENSE.txt' = 'dotnet-LICENSE.txt'; 'ThirdPartyNotices.txt' = 'dotnet-THIRD-PARTY-NOTICES.txt' }.GetEnumerator()) {
+    $from = Join-Path $dotnetRoot $file.Key
+
+    if (-not (Test-Path $from)) { throw "No $($file.Key) in $dotnetRoot, which the package needs for the .NET runtime it carries" }
+
+    Copy-Item $from (Join-Path $folder $file.Value)
+}
 
 New-Item -ItemType Directory -Force $OutputDir | Out-Null
 $archiveName = "Nodearr.$Version.$Runtime"

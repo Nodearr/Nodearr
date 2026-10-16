@@ -112,8 +112,8 @@ Amendment, 2026-10-15: adding Prowlarr to Nodearr in Settings > Apps does this s
 
 ## Follow-up work
 
-- S7: the download client reads the candidate ID from the ticket and starts a transfer. Until then a grab is refused with a plain reason.
-- S7: the sending node checks every transfer request against its sharing rule (ADR 0014).
+- ~~S7: the download client reads the candidate ID from the ticket and starts a transfer. Until then a grab is refused with a plain reason.~~ Done: ADR 0016.
+- ~~S7: the sending node checks every transfer request against its sharing rule (ADR 0014).~~ Done: ADR 0016.
 - Later: ~~air dates in the offer for daily shows,~~ ~~scene numbers for series that use them,~~ and revision (PROPER, REPACK).
 
 ## Amendments

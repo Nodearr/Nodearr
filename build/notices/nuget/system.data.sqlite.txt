@@ -1,0 +1,3 @@
+SQLite and System.Data.SQLite are in the public domain. The package says so ("Copyright: Public
+Domain") and carries no licence. See https://www.sqlite.org/copyright.html and
+https://system.data.sqlite.org.

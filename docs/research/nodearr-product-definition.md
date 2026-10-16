@@ -1,5 +1,7 @@
 # Nodearr Product Definition
 
+> Written before Nodearr was built, as the definition it started from. Some of it was built differently or not at all: there was never a local HTTP transfer provider, and Readarr is not supported. What Nodearr is now is in the [overview](../overview-end-to-end-design.md) and the [user guide](../user-guide/README.md).
+
 ## Product one-liner
 
 Nodearr is a self-hosted, Servarr-compatible, trusted peer-to-peer media availability and transfer service.

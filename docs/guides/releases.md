@@ -26,7 +26,7 @@ Each package is one folder, `Nodearr`, holding:
 - the application, published self-contained, so the machine needs no .NET;
 - the web UI;
 - the transport sidecar, `nodearr-transport`;
-- the licence and the notices.
+- the licence and the notices (see "Licences" below).
 
 On Windows it also holds the tray application, `Nodearr.exe`, and `ServiceInstall.exe` / `ServiceUninstall.exe`. On Linux and macOS, start it with `./Nodearr`.
 
@@ -67,6 +67,27 @@ From the zip, `ServiceInstall.exe` and `ServiceUninstall.exe`, run as administra
 - **FreeBSD.** Sonarr and Radarr release for it with a .NET runtime the community builds, from a package source of their own. Nodearr's sidecar is built on iroh, and iroh on FreeBSD has not been tried. Until both have been, there is no FreeBSD package.
 - **A macOS app bundle** (`Nodearr.app`). Sonarr has one. Nodearr has the plain archive for now.
 - **An updater.** Nodearr does not update itself (ADR 0018). A new version is installed over the old one, or pulled as a new image.
+
+### Licences
+
+Nodearr is GPL-3.0, and a release carries other people's work under their own licences. Every package and the image hold:
+
+| File | What it is |
+| --- | --- |
+| `LICENSE` | Nodearr's licence, GPL-3.0. |
+| `NOTICE.md` | What Nodearr is derived from: Sonarr and Prowlarr. |
+| `THIRD-PARTY-NOTICES.md` | Every Rust crate in the sidecar, NuGet package in the application and npm package in the web UI, with the text of each licence. |
+| `dotnet-LICENSE.txt`, `dotnet-THIRD-PARTY-NOTICES.txt` | The .NET runtime's, in the self-contained packages, copied from the SDK that built them. The image is built on Microsoft's `aspnet` image, which carries its own. |
+
+Two entries need more than a licence text, and `THIRD-PARTY-NOTICES.md` gives it: `ffprobe`, a build of FFmpeg under the LGPL 3.0, says where its corresponding source is, and the two packages under the MPL 2.0, `attohttpc` and `IPAddressRange`, say where theirs is.
+
+`THIRD-PARTY-NOTICES.md` is generated, and committed so that a release does not need the tools that make it. Run this whenever a dependency is added, removed or updated, and commit the result:
+
+```sh
+pwsh build/Build-Notices.ps1
+```
+
+It needs cargo-about (`cargo install cargo-about --locked --features cli`), a restored solution, and a fresh production build of the web UI, whose source maps say which npm packages are in it. It stops on a licence it has no text for, or a package that names none, and says what to add under `build/notices/`.
 
 ## Making a release
 

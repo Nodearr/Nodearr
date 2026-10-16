@@ -37,6 +37,10 @@ Nodearr's changes begin on 2026-05-21. The full record is the git history of thi
 
 [docs/research/inherited-sonarr-features.md](docs/research/inherited-sonarr-features.md) lists the inherited Sonarr features and what Nodearr intends to do with each.
 
-## Known attribution gap
+## Third-party software
 
-The rename also changed the assembly copyright string in `src/Directory.Build.props` from `sonarr.tv` to `nodearr.com`, so built assemblies currently carry `Copyright 2014-<year> nodearr.com` and no longer name Sonarr. That string should be corrected to credit the Sonarr copyright holders alongside Nodearr's contributors.
+A release also carries work by others under their own licences: the Rust crates in the transport sidecar, the NuGet packages in the application, the npm packages in the web UI, and the .NET runtime. They are listed, with each licence's text, in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) and, for the .NET runtime, in `dotnet-LICENSE.txt` and `dotnet-THIRD-PARTY-NOTICES.txt` in each self-contained package.
+
+## Assembly copyright
+
+The rename had changed the assembly copyright string in `src/Directory.Build.props` from `sonarr.tv` to `nodearr.com`, so built assemblies no longer named Sonarr. Since 2026-10-15 it reads `Copyright 2014-<year> sonarr.tv, and Nodearr's contributors (GNU General Public v3)`.

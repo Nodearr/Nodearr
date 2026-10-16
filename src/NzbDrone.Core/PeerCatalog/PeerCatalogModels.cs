@@ -167,6 +167,25 @@ namespace NzbDrone.Core.PeerCatalog
                    tracks.Select(t => t.Id).Distinct(StringComparer.Ordinal).Count() == tracks.Count;
         }
 
+        // A track's title and numbers end up in a file name, so only sensible ones are kept. One
+        // that is not is dropped, and the track named by its place in the album instead.
+        private static OfferTrack KeptTrack(OfferTrack track)
+        {
+            var title = track.Title?.Trim();
+
+            return new OfferTrack
+            {
+                Id = track.Id,
+                Extension = track.Extension,
+                Size = track.Size,
+                Quality = track.Quality,
+                Blake3 = track.Blake3,
+                Title = title is { Length: > 0 and <= 300 } && !title.Any(char.IsControl) ? title : null,
+                Number = track.Number is > 0 and < 10000 ? track.Number : null,
+                Disc = track.Disc is > 0 and < 100 ? track.Disc : null
+            };
+        }
+
         private const int MaxTracks = 1000;
         private static readonly Regex ExtensionPattern = new(@"^\.[a-z0-9]{1,5}$", RegexOptions.Compiled);
 
@@ -204,7 +223,7 @@ namespace NzbDrone.Core.PeerCatalog
                 ForeignArtistId = isMusic ? offer.ForeignArtistId : null,
                 ForeignAlbumId = isMusic ? offer.ForeignAlbumId?.ToLowerInvariant() : null,
                 AlbumType = isMusic ? offer.AlbumType : null,
-                Tracks = isMusic ? JsonSerializer.Serialize(offer.Tracks.Select(t => new OfferTrack { Id = t.Id, Extension = t.Extension, Size = t.Size, Quality = t.Quality, Blake3 = t.Blake3 })) : null,
+                Tracks = isMusic ? JsonSerializer.Serialize(offer.Tracks.Select(KeptTrack)) : null,
                 SceneName = offer.SceneName,
                 Edition = offer.Edition,
                 Extension = offer.Extension,

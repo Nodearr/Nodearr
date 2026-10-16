@@ -44,9 +44,9 @@ Rejected. Nodearr should work when configured directly in supported Arr apps.
 
 ## Follow-up work
 
-- Test Nodearr indexer configuration through Prowlarr.
-- Document direct Arr setup and Prowlarr-mediated setup separately.
-- Keep catalog import settings separate from indexer exposure settings.
+- ~~Test Nodearr indexer configuration through Prowlarr.~~ Done: the S1 spike, and the amendment below.
+- ~~Document direct Arr setup and Prowlarr-mediated setup separately.~~ Done: the [user guide](../user-guide/connecting-apps.md#prowlarr).
+- ~~Keep catalog import settings separate from indexer exposure settings.~~ Done: Prowlarr is added as an application that holds no library (amendment below).
 
 ## Amendments
 

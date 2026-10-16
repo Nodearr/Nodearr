@@ -51,7 +51,7 @@ namespace NzbDrone.Core.Applications.Lidarr
             catalog.Artists.AddRange(artists.Select(a => a.ToCatalog()));
             catalog.Albums.AddRange(_proxy.Get<List<LidarrAlbumResource>>(Settings, "/album").Select(a => a.ToCatalog()));
 
-            // Lidarr lists track files only for an artist or an album, so one request per artist.
+            // Lidarr lists tracks and track files only for an artist or an album, so two requests per artist.
             foreach (var artist in artists)
             {
                 AddTrackFiles(catalog, artist);
@@ -77,11 +77,27 @@ namespace NzbDrone.Core.Applications.Lidarr
             return catalog;
         }
 
+        // The artist's track files, each with the track it is. A file Lidarr holds for more than one
+        // track is named after the first.
         private void AddTrackFiles(ApplicationCatalog catalog, LidarrArtistResource artist)
         {
+            var tracks = _proxy.Get<List<LidarrTrackResource>>(Settings, $"/track?artistId={artist.Id}")
+                .Where(t => t.TrackFileId > 0)
+                .GroupBy(t => t.TrackFileId)
+                .ToDictionary(g => g.Key, g => g.OrderBy(t => t.MediumNumber).ThenBy(t => t.AbsoluteTrackNumber).First());
+
             foreach (var file in _proxy.Get<List<LidarrTrackFileResource>>(Settings, $"/trackfile?artistId={artist.Id}"))
             {
-                catalog.TrackFiles.Add(file.ToCatalog(artist.Path));
+                var catalogFile = file.ToCatalog(artist.Path);
+
+                if (tracks.TryGetValue(file.Id, out var track))
+                {
+                    catalogFile.TrackTitle = track.Title;
+                    catalogFile.TrackNumber = track.AbsoluteTrackNumber;
+                    catalogFile.DiscNumber = track.MediumNumber;
+                }
+
+                catalog.TrackFiles.Add(catalogFile);
             }
         }
     }

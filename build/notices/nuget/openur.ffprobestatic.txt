@@ -1,0 +1,14 @@
+The package carries ffprobe, from FFmpeg 8.1.1, built statically for each platform by the Openur
+team with two patches of theirs. It is configured with --enable-version3 and without
+--enable-gpl, so this build of FFmpeg is under the GNU Lesser General Public License, version 3
+or later. Its text is under "The LGPL-3.0-or-later licence" in this part. It also contains dav1d,
+under the BSD 2-Clause licence, whose text is under "The BSD-2-Clause licence".
+
+Corresponding source:
+
+- FFmpeg 8.1.1: https://ffmpeg.org/releases/ (ffmpeg-8.1.1.tar.xz)
+- The build scripts, configure flags and patches, at the commit this package was built from:
+  https://github.com/Openur/ffprobe-static-build/tree/9e8070ec8ea989667b2b24be532c317b9c27c33d
+- dav1d 1.5.3: https://code.videolan.org/videolan/dav1d/-/releases
+
+Nodearr runs ffprobe as a separate program and does not modify it.

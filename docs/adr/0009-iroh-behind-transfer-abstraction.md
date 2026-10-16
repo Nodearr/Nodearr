@@ -60,8 +60,8 @@ Rejected as the core architecture. A torrent-like provider could be explored lat
 
 ## Follow-up work
 
-- Prototype a minimal transfer provider abstraction.
-- Validate Iroh direct connection behavior for common NAT environments.
-- Define direct-only policy enforcement points.
-- Define how transfer progress, cancellation, and failure details flow back to Nodearr jobs.
+- ~~Prototype a minimal transfer provider abstraction.~~ Done: S4 and S7 (ADR 0013, ADR 0016).
+- ~~Validate Iroh direct connection behavior for common NAT environments.~~ Done: the runs between machines in ADR 0011.
+- ~~Define direct-only policy enforcement points.~~ Done: in the sidecar, above iroh (ADR 0011, ADR 0012).
+- ~~Define how transfer progress, cancellation, and failure details flow back to Nodearr jobs.~~ Done: ADR 0016.
 
