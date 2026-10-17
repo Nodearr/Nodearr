@@ -124,25 +124,34 @@ On 2026-10-14 two home networks connected directly and moved a file: two Windows
 
 ## What is still open
 
-V1 is done. What follows is open, and none of it needs a second machine except where it says so.
+V1 is done. What follows is open, most useful first. Each item in the first list is a slice that needs nothing but this machine.
 
-Not yet run:
+### Next, in order
 
+1. **Posters, part 1: a friend's catalog with pictures** (S57). Catalog > Peer Catalog shows titles as text only, which makes a friend's catalog hard to browse. Each node's Arr apps already hold every title's poster and fan art, cached on disk. A node asks its own Arr app for them, which ADR 0018 allows since the owner pointed Nodearr at it, and serves them to trusted friends who ask, as it serves files. The friend's node keeps a copy. No image service is contacted by either node. The offer says only which titles have a poster. Peer Catalog then shows a poster beside each title, and a poster grid to browse by.
+2. **Posters, part 2: everywhere else** (S58). The cards on Home for what was sent, the Send form, the Sharing page and Catalog > Local.
+3. **Node settings: a download limit, and a relay checked before it is saved** (S59, ADR 0019). The download limit sits beside the upload limit, in the sidecar. A relay address that does not answer is refused with the reason, as an Arr app's connection test refuses one.
+4. **PROPER and REPACK** (S60, ADR 0015). An offered file says which revision it is, as the Arr apps record it, and the release title the Arr apps see carries PROPER or REPACK, so they prefer it as they prefer any other proper.
+5. **Clean-up: inherited pages no route leads to, and the S1 spike harness** (S61). The pages still hold links to pages that do not exist; the harness no longer runs on later branches, and the acceptance scripts replaced it.
+6. **Get it for Whisparr v2** (S62, ADR 0021). A v2 sender's catalog names each scene's site by its ID in v2's metadata, so a v2 receiver can add the site and then the scene. Whisparr v2 is the older of the two, so this comes last.
+
+### Needs the owner, a second machine or a Mac
+
+- **A release.** Cut when the GitHub Actions minutes come back. Then pull the image back from GHCR and start it.
 - **Sonarr between two machines.** Every run between two machines used Radarr and one film. What Sonarr adds, sharing by episode, scene numbers and daily shows, is Nodearr's own logic and has been checked against a real Sonarr on one machine.
-- **Living with it** (needs two machines). Every run so far was one pairing and one file. Nothing has run for days: the Catalog Sync Interval, the Arr webhooks, the 12-hour import, restarts on either side, a node going away and coming back.
+- **Living with it.** Every run so far was one pairing and one file. Nothing has run for days: the Catalog Sync Interval, the Arr webhooks, the 12-hour import, restarts on either side, a node going away and coming back.
 - **Large files between networks.** The largest transfer between two networks was 89 MB. Multi-gigabyte files and resuming after a lost connection have been checked on one machine only.
-- **A network that cannot connect directly** (needs two machines), such as a phone's mobile data. It should say "Relay only" and fail as `NoDirectRoute`. That has been seen only against a cloud machine.
-- **Release packages that have not been started:** macOS on Intel and Apple silicon (needs a Mac), linux-musl-arm64, and 32-bit ARM on a real board. The image has not been pulled back from GHCR.
+- **A network that cannot connect directly**, such as a phone's mobile data. It should say "Relay only" and fail as `NoDirectRoute`. That has been seen only against a cloud machine.
 - **A blocking firewall rule that did not block.** In the home-to-home runs the receiving machine had a rule blocking `nodearr-transport`, and both runs connected. Most likely because that side opened the connections. Not checked.
-- **Relay bytes when a direct path is lost part way.** The sidecar resets the stream, and a connection has survived a firewall change, but nobody has counted what the relay carried in that case (ADR 0011).
-- **The systemd unit** in the user guide, modelled on Sonarr's, has not been run.
+- **Relay bytes when a direct path is lost part way.** The sidecar resets the stream, and a connection has survived a firewall change, but nobody has counted what the relay carried in that case (ADR 0011). It needs a firewall rule changed during a transfer, which is the owner's to do.
+- **The systemd unit** in the user guide, modelled on Sonarr's, has not been run. It needs a Linux machine with systemd.
+- **Release packages not yet started:** macOS on Intel and Apple silicon (needs a Mac), linux-musl-arm64 and 32-bit ARM on a real board.
 
-Not built:
+### Waiting on others
 
-- **Posters and thumbnails** for browsing. Catalog > Peer Catalog, the Sharing page and the cards on Home show titles as text only, which makes a friend's catalog hard to browse. The Arr apps hold each title's images (TMDb, TheTVDB, fanart.tv, MusicBrainz cover art), and Sonarr shows them through its own cached copies. To decide first: whether a node fetches images from those services itself, which is a call out ADR 0018 does not allow yet, or a friend's node passes on the ones its Arr app already has; and how large the offer may grow.
-- **Get it for Whisparr v2.** Built on Sonarr, it adds a site and then a scene in it, and a friend's catalog does not name the site by its ID in v2's metadata (ADR 0021).
-- **From the decision records:** check that a relay answers before saving its address, and a download limit beside the upload limit (ADR 0019); PROPER and REPACK releases told apart (ADR 0015); `iroh-blobs` looked at again once it is production quality on iroh 1.x (ADR 0012).
+- `iroh-blobs`, looked at again once it is production quality on iroh 1.x (ADR 0012).
+
+### Not planned
+
 - Custom formats in Nodearr's marks. Upgrades follow the quality profile's qualities, and the Arr apps judge custom formats themselves when they search (decision 2).
 - A FreeBSD package and a macOS app bundle (`docs/guides/releases.md`). No updater, by design (ADR 0018).
-- Inherited pages that no route leads to still hold links to pages that do not exist.
-- The S1 spike harness no longer runs on later branches. The acceptance scripts replaced it.
