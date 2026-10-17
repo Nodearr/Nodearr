@@ -14,28 +14,43 @@ namespace NzbDrone.Core.Sharing
     public interface ISharingService
     {
         List<ShareListDetails> All();
-        ShareListDetails Create(string name);
+
+        // A list made for what is sent to one friend says which friend (SendService).
+        ShareListDetails Create(string name, int? sentToPeerId = null);
         ShareListDetails Update(int id, string name, IEnumerable<ShareKey> items, IEnumerable<int> peerIds);
         void Delete(int id);
         List<ShareableTitle> GetTitles();
 
         // The seasons and episodes of one series, for choosing among them.
         List<ShareableSeason> GetSeasons(int applicationId, int seriesArrId);
+
+        // The albums of one artist, for choosing among them.
+        List<ShareableAlbum> GetAlbums(int applicationId, int artistArrId);
         Peer SetShareAll(int peerId, bool shareAll);
 
         // Albums only for a node that can take them. An older one would take an album for a movie.
         Offer BuildOffer(Peer peer, bool includeMusic);
 
+        // The files these would offer, by the names offers give them, whoever they are sent to.
+        List<string> OfferIdsFor(IEnumerable<ShareKey> items);
+
         // Whether a peer is offered a file right now, by the name its offer gives the file.
         bool IsOffered(Peer peer, string offerFileId);
+
+        // The title an item of the peer's offer belongs to, for its poster. Null when the peer is not
+        // offered the item now.
+        PosterTitle PosterFor(Peer peer, string offerItemId);
     }
+
+    // The series, movie or album a poster is of, as the local Arr app numbers it.
+    public record PosterTitle(int ApplicationId, PosterSubject Subject, int ArrId);
 
     // Decides what each peer is told about. The rule, in order:
     //   1. Nothing is offered to a peer that is not trusted.
     //   2. Anything on the Hidden list is offered to nobody.
     //   3. A peer marked "share everything" is offered the rest.
     //   4. Otherwise a peer is offered what is on the share lists it has been given.
-    // A list holds whole series, seasons, single episodes, movies and artists. An
+    // A list holds whole series, seasons, single episodes, movies, whole artists and single albums. An
     // episode is covered by its series, its season, or itself. A file holding several episodes is
     // offered only when every one of them is, as Sonarr wants a release only when every episode
     // in it is monitored. An album is offered only when Lidarr holds every track of it.
@@ -46,6 +61,8 @@ namespace NzbDrone.Core.Sharing
                                   IHandle<PeerDeletedEvent>
     {
         public const string HiddenListName = "Hidden";
+
+        private static readonly object HiddenListLock = new();
 
         private readonly IShareListRepository _lists;
         private readonly IShareListItemRepository _items;
@@ -115,14 +132,14 @@ namespace NzbDrone.Core.Sharing
                 .ToList();
         }
 
-        public ShareListDetails Create(string name)
+        public ShareListDetails Create(string name, int? sentToPeerId = null)
         {
             if (name.IsNullOrWhiteSpace())
             {
                 throw new ArgumentException("A share list needs a name", nameof(name));
             }
 
-            return new ShareListDetails { List = _lists.Insert(new ShareList { Name = name.Trim() }) };
+            return new ShareListDetails { List = _lists.Insert(new ShareList { Name = name.Trim(), SentToPeerId = sentToPeerId }) };
         }
 
         public ShareListDetails Update(int id, string name, IEnumerable<ShareKey> items, IEnumerable<int> peerIds)
@@ -228,6 +245,16 @@ namespace NzbDrone.Core.Sharing
                 .ToList();
         }
 
+        public List<ShareableAlbum> GetAlbums(int applicationId, int artistArrId)
+        {
+            return _albums.ForApplication(applicationId)
+                .Where(a => a.ArrArtistId == artistArrId && a.MissingSince == null)
+                .OrderBy(a => a.ReleaseDate ?? string.Empty)
+                .ThenBy(a => a.Title)
+                .Select(a => new ShareableAlbum { AlbumArrId = a.ArrId, Title = a.Title, Year = a.Year, AlbumType = a.AlbumType, IsWhole = a.IsWhole })
+                .ToList();
+        }
+
         public Peer SetShareAll(int peerId, bool shareAll)
         {
             var peer = _peers.Get(peerId);
@@ -246,7 +273,21 @@ namespace NzbDrone.Core.Sharing
                 return Seal(new List<OfferItem>());
             }
 
-            var rule = RuleFor(peer);
+            return BuildOffer(RuleFor(peer), includeMusic);
+        }
+
+        // The files these would offer, by the names offers give them, whoever they are sent to.
+        // The Hidden list still keeps back what is on it.
+        public List<string> OfferIdsFor(IEnumerable<ShareKey> items)
+        {
+            var hidden = All().Where(l => l.List.IsHidden).SelectMany(l => l.Items).ToHashSet();
+            var rule = new SharingRule(hidden, Tidy(items).ToHashSet(), false);
+
+            return BuildOffer(rule, true).Items.Select(i => i.Id).ToList();
+        }
+
+        private Offer BuildOffer(SharingRule rule, bool includeMusic)
+        {
             var offered = new List<OfferItem>();
 
             if (rule.SharesAnyTv)
@@ -356,12 +397,12 @@ namespace NzbDrone.Core.Sharing
             return Seal(offered);
         }
 
-        // Each whole album of the artists the rule shares, with its tracks in Lidarr's order. The
-        // album's quality is the one most of its tracks have.
+        // Each whole album the rule shares, with its tracks in Lidarr's order. The album's quality is
+        // the one most of its tracks have.
         private IEnumerable<OfferItem> Albums(SharingRule rule)
         {
             var artists = _artists.All()
-                .Where(a => a.MissingSince == null && rule.SharesArtist(a.ApplicationId, a.ArrId))
+                .Where(a => a.MissingSince == null)
                 .ToDictionary(a => (a.ApplicationId, a.ArrId));
 
             if (artists.Count == 0)
@@ -375,7 +416,7 @@ namespace NzbDrone.Core.Sharing
 
             foreach (var album in _albums.All().Where(a => a.MissingSince == null && a.IsWhole))
             {
-                if (!artists.TryGetValue((album.ApplicationId, album.ArrArtistId), out var artist))
+                if (!artists.TryGetValue((album.ApplicationId, album.ArrArtistId), out var artist) || !rule.SharesAlbum(album.ApplicationId, album.ArrArtistId, album.ArrId))
                 {
                     continue;
                 }
@@ -450,13 +491,49 @@ namespace NzbDrone.Core.Sharing
                 var album = track == null ? null : _albums.ForArrIds(applicationId, new[] { track.ArrAlbumId }).FirstOrDefault(a => a.MissingSince == null && a.IsWhole);
                 var artist = album == null ? null : _artists.ForArrIds(applicationId, new[] { album.ArrArtistId }).FirstOrDefault(a => a.MissingSince == null);
 
-                return artist != null && RuleFor(peer).SharesArtist(applicationId, artist.ArrId);
+                return artist != null && RuleFor(peer).SharesAlbum(applicationId, artist.ArrId, album.ArrId);
             }
 
             var movieFile = _movieFiles.ForArrIds(applicationId, new[] { arrFileId }).FirstOrDefault(f => f.MissingSince == null);
             var movie = movieFile == null ? null : _movies.ForArrIds(applicationId, new[] { movieFile.ArrMovieId }).FirstOrDefault(m => m.MissingSince == null);
 
             return movie != null && RuleFor(peer).SharesMovie(applicationId, movie.ArrId);
+        }
+
+        public PosterTitle PosterFor(Peer peer, string offerItemId)
+        {
+            var parts = (offerItemId ?? string.Empty).Split('-');
+
+            if (peer is not { State: PeerState.Trusted } || parts.Length != 3 || !int.TryParse(parts[1], out var applicationId) || !int.TryParse(parts[2], out var arrId) ||
+                offerItemId != $"{parts[0]}-{applicationId}-{arrId}")
+            {
+                return null;
+            }
+
+            switch (parts[0])
+            {
+                case "e" when IsOffered(peer, offerItemId):
+                    var file = _episodeFiles.ForArrIds(applicationId, new[] { arrId }).First();
+
+                    return new PosterTitle(applicationId, PosterSubject.Series, file.ArrSeriesId);
+
+                case "m" when IsOffered(peer, offerItemId):
+                    var movieFile = _movieFiles.ForArrIds(applicationId, new[] { arrId }).First();
+
+                    return new PosterTitle(applicationId, PosterSubject.Movie, movieFile.ArrMovieId);
+
+                // An album is offered by its own ID, and only whole.
+                case "a":
+                    var album = _albums.ForArrIds(applicationId, new[] { arrId }).FirstOrDefault(a => a.MissingSince == null && a.IsWhole);
+                    var artist = album == null ? null : _artists.ForArrIds(applicationId, new[] { album.ArrArtistId }).FirstOrDefault(a => a.MissingSince == null);
+
+                    return artist != null && RuleFor(peer).SharesAlbum(applicationId, artist.ArrId, album.ArrId)
+                        ? new PosterTitle(applicationId, PosterSubject.Album, album.ArrId)
+                        : null;
+
+                default:
+                    return null;
+            }
         }
 
         // Rules 2 to 4, for one peer that is already known to be trusted.
@@ -469,13 +546,19 @@ namespace NzbDrone.Core.Sharing
             return new SharingRule(hidden, listed, peer.ShareAll);
         }
 
-        // What a list may hold: a movie or an artist whole, and a series whole, by season or by episode. A
-        // narrower item under a whole series on the same list says nothing more, so it is dropped.
+        // What a list may hold: a movie whole, a series whole, by season or by episode, and an artist
+        // whole or by album. A narrower item under a whole series or artist on the same list says
+        // nothing more, so it is dropped.
         private static List<ShareKey> Tidy(IEnumerable<ShareKey> items)
         {
             var keys = (items ?? Enumerable.Empty<ShareKey>())
                 .Where(k => Enum.IsDefined(k.Kind))
-                .Select(k => k.Kind != MediaKind.Tv ? new ShareKey(k.Kind, k.ApplicationId, k.ArrId) : k)
+                .Select(k => k.Kind switch
+                {
+                    MediaKind.Tv => k,
+                    MediaKind.Music => new ShareKey(k.Kind, k.ApplicationId, k.ArrId, null, k.EpisodeArrId),
+                    _ => new ShareKey(k.Kind, k.ApplicationId, k.ArrId)
+                })
                 .Where(k => k.SeasonNumber is null or >= 0 && !(k.SeasonNumber.HasValue && k.EpisodeArrId.HasValue))
                 .Distinct()
                 .ToList();
@@ -501,11 +584,14 @@ namespace NzbDrone.Core.Sharing
             public bool SharesAnyTv => _shareAll || _listed.Any(k => k.Kind == MediaKind.Tv);
             public bool SharesAnyMusic => _shareAll || _listed.Any(k => k.Kind == MediaKind.Music);
 
-            public bool SharesArtist(int applicationId, int artistArrId)
+            // An album is covered by its artist or itself, as an episode is by its series or itself.
+            public bool SharesAlbum(int applicationId, int artistArrId, int albumArrId)
             {
-                var key = ShareKey.Artist(applicationId, artistArrId);
+                var artist = ShareKey.Artist(applicationId, artistArrId);
+                var album = ShareKey.Album(applicationId, artistArrId, albumArrId);
 
-                return !_hidden.Contains(key) && (_shareAll || _listed.Contains(key));
+                return !_hidden.Contains(artist) && !_hidden.Contains(album) &&
+                       (_shareAll || _listed.Contains(artist) || _listed.Contains(album));
             }
 
             public bool SharesMovie(int applicationId, int movieArrId)
@@ -626,11 +712,15 @@ namespace NzbDrone.Core.Sharing
             return Offer.Seal(items);
         }
 
+        // Made the first time it is needed. Two requests at once must not each make one.
         private void EnsureHiddenList()
         {
-            if (!_lists.All().Any(l => l.IsHidden))
+            lock (HiddenListLock)
             {
-                _lists.Insert(new ShareList { Name = HiddenListName, IsHidden = true });
+                if (!_lists.All().Any(l => l.IsHidden))
+                {
+                    _lists.Insert(new ShareList { Name = HiddenListName, IsHidden = true });
+                }
             }
         }
     }

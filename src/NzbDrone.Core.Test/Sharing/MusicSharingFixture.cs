@@ -72,6 +72,16 @@ namespace NzbDrone.Core.Test.Sharing
         }
 
         [Test]
+        public void an_album_poster_should_be_given_only_for_a_whole_album_shared()
+        {
+            GivenShared(Low);
+
+            Subject.PosterFor(Bob, "a-3-70").Should().Be(new PosterTitle(3, PosterSubject.Album, 70));
+            Subject.PosterFor(Bob, "a-3-71").Should().BeNull();
+            Subject.PosterFor(Bob, "a-3-80").Should().BeNull();
+        }
+
+        [Test]
         public void an_artist_should_be_offered_with_its_whole_albums_only()
         {
             GivenShared(Low);
@@ -151,13 +161,65 @@ namespace NzbDrone.Core.Test.Sharing
         }
 
         [Test]
-        public void an_album_should_not_be_put_on_a_list_on_its_own()
+        public void one_album_should_be_shared_on_its_own()
+        {
+            GivenShared(ShareKey.Album(3, 7, 70));
+
+            Subject.BuildOffer(Bob, true).Items.Select(i => i.Id).Should().Equal("a-3-70");
+            Subject.IsOffered(Bob, "t-3-701").Should().BeTrue();
+            Subject.IsOffered(Bob, "t-3-801").Should().BeFalse();
+        }
+
+        [Test]
+        public void an_album_that_is_not_whole_should_not_be_offered_even_on_its_own()
+        {
+            GivenShared(ShareKey.Album(3, 7, 71));
+
+            Subject.BuildOffer(Bob, true).Items.Should().BeEmpty();
+        }
+
+        [Test]
+        public void a_whole_artist_should_take_in_an_album_that_arrives_later()
+        {
+            GivenShared(Slint);
+
+            Mocker.Resolve<ICatalogAlbumRepository>().Insert(new CatalogAlbum { ApplicationId = 3, ArrId = 81, ArrArtistId = 8, ForeignAlbumId = "tweez", Title = "Tweez", Year = 1989, TrackCount = 1, TrackFileCount = 1 });
+            Mocker.Resolve<ICatalogTrackFileRepository>().Insert(new CatalogTrackFile { ApplicationId = 3, ArrId = 811, ArrArtistId = 8, ArrAlbumId = 81, Path = "/music/Slint/Tweez (1989)/01 - Ron.flac", Size = 10, Quality = "FLAC" });
+
+            Subject.BuildOffer(Bob, true).Items.Select(i => i.Id).Should().BeEquivalentTo("a-3-80", "a-3-81");
+        }
+
+        [Test]
+        public void hiding_one_album_should_keep_back_that_album_of_a_shared_artist_and_nothing_else()
+        {
+            Mocker.Resolve<ICatalogAlbumRepository>().Insert(new CatalogAlbum { ApplicationId = 3, ArrId = 81, ArrArtistId = 8, ForeignAlbumId = "tweez", Title = "Tweez", Year = 1989, TrackCount = 1, TrackFileCount = 1 });
+            Mocker.Resolve<ICatalogTrackFileRepository>().Insert(new CatalogTrackFile { ApplicationId = 3, ArrId = 811, ArrArtistId = 8, ArrAlbumId = 81, Path = "/music/Slint/Tweez (1989)/01 - Ron.flac", Size = 10, Quality = "FLAC" });
+
+            GivenShared(Slint);
+            Subject.Update(Subject.All().Single(l => l.List.IsHidden).List.Id, null, new[] { ShareKey.Album(3, 8, 81) }, null);
+
+            Subject.BuildOffer(Bob, true).Items.Select(i => i.Id).Should().Equal("a-3-80");
+            Subject.IsOffered(Bob, "t-3-811").Should().BeFalse();
+        }
+
+        [Test]
+        public void a_list_should_keep_an_album_only_where_its_whole_artist_is_not_on_it()
         {
             var list = Subject.Create("Music");
 
-            Subject.Update(list.List.Id, null, new[] { new ShareKey(MediaKind.Music, 3, 7, 1, 70) }, null);
+            Subject.Update(list.List.Id, null, new[] { ShareKey.Album(3, 7, 70), Low, ShareKey.Album(3, 8, 80) }, null);
 
-            Subject.All().Single(l => l.List.Id == list.List.Id).Items.Should().Equal(Low);
+            Subject.All().Single(l => l.List.Id == list.List.Id).Items.Should().BeEquivalentTo(new[] { Low, ShareKey.Album(3, 8, 80) });
+        }
+
+        [Test]
+        public void the_albums_of_an_artist_should_list_which_can_be_offered()
+        {
+            var albums = Subject.GetAlbums(3, 7);
+
+            albums.Select(a => a.AlbumArrId).Should().BeEquivalentTo(new[] { 70, 71 });
+            albums.Single(a => a.AlbumArrId == 70).IsWhole.Should().BeTrue();
+            albums.Single(a => a.AlbumArrId == 71).IsWhole.Should().BeFalse();
         }
 
         [Test]

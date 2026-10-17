@@ -117,6 +117,19 @@ namespace NzbDrone.Core.Nodes
         public Peer Peer { get; }
     }
 
+    // Raised on the inviting node when someone pairs with one of its invites.
+    public class InviteRedeemedEvent : IEvent
+    {
+        public InviteRedeemedEvent(PeerInvite invite, Peer peer)
+        {
+            Invite = invite;
+            Peer = peer;
+        }
+
+        public PeerInvite Invite { get; }
+        public Peer Peer { get; }
+    }
+
     public class PeerDeletedEvent : IEvent
     {
         public PeerDeletedEvent(int peerId)

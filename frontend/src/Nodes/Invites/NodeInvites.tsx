@@ -88,8 +88,10 @@ function InviteRow({
 function NodeInvites() {
   const [validHours, setValidHours] = useState(24);
   const [label, setLabel] = useState('');
-  const [shareAll, setShareAll] = useState(false);
+  // Friends are offered everything except Hidden unless this is turned off.
+  const [shareAll, setShareAll] = useState(true);
   const [code, setCode] = useState('');
+  const [redeemShareAll, setRedeemShareAll] = useState(true);
 
   const { data: invites = [] } = useInvites();
   const create = useCreateInvite();
@@ -118,13 +120,20 @@ function NodeInvites() {
     setShareAll((current) => !current);
   }, []);
 
+  const handleRedeemShareAllChange = useCallback(() => {
+    setRedeemShareAll((current) => !current);
+  }, []);
+
   const handleCreatePress = useCallback(() => {
     createInvite({ validHours, label, shareAll });
   }, [createInvite, validHours, label, shareAll]);
 
   const handleRedeemPress = useCallback(() => {
-    redeemInvite(code.trim(), { onSuccess: () => setCode('') });
-  }, [redeemInvite, code]);
+    redeemInvite(
+      { code: code.trim(), shareAll: redeemShareAll },
+      { onSuccess: () => setCode('') }
+    );
+  }, [redeemInvite, code, redeemShareAll]);
 
   const handleDelete = useCallback(
     (id: number) => {
@@ -218,6 +227,15 @@ function NodeInvites() {
               {translate('InviteRedeem')}
             </SpinnerButton>
           </div>
+
+          <label className={styles.muted}>
+            <input
+              type="checkbox"
+              checked={redeemShareAll}
+              onChange={handleRedeemShareAllChange}
+            />{' '}
+            {translate('InviteRedeemShareAll')}
+          </label>
 
           {redeem.error ? (
             <Alert kind={kinds.DANGER}>{getErrorMessage(redeem.error)}</Alert>

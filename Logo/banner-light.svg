@@ -1,0 +1,62 @@
+<svg width="1280" height="420" viewBox="0 0 1280 420" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title">
+  <title id="title">Nodearr: get media from your friends' libraries, through the Arr apps you already run</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="420" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#E6F4F2"/>
+    </linearGradient>
+    <linearGradient id="teal" x1="120" y1="112" x2="392" y2="400" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#5EEAD4"/>
+      <stop offset="45%" stop-color="#14B8A6"/>
+      <stop offset="100%" stop-color="#0F766E"/>
+    </linearGradient>
+    <clipPath id="frame">
+      <rect width="1280" height="420" rx="24"/>
+    </clipPath>
+  </defs>
+
+  <rect width="1280" height="420" rx="24" fill="url(#bg)"/>
+
+  <g clip-path="url(#frame)">
+  <g stroke="#0F766E" stroke-width="3" fill="none" opacity="0.16">
+    <line x1="150" y1="120" x2="70" y2="300"/>
+    <line x1="150" y1="120" x2="300" y2="330"/>
+    <line x1="70" y1="300" x2="300" y2="330"/>
+    <line x1="980" y1="90" x2="1130" y2="250"/>
+    <line x1="1130" y1="250" x2="1010" y2="360"/>
+    <line x1="980" y1="90" x2="1010" y2="360"/>
+  </g>
+  <g fill="#0F766E" opacity="0.16">
+    <circle cx="150" cy="120" r="14"/>
+    <circle cx="70" cy="300" r="10"/>
+    <circle cx="300" cy="330" r="12"/>
+    <circle cx="980" cy="90" r="12"/>
+    <circle cx="1130" cy="250" r="14"/>
+    <circle cx="1010" cy="360" r="10"/>
+  </g>
+
+  <!-- The app icon, large and faint, behind the name -->
+  <g transform="translate(225.28 -204.72) scale(1.62)" opacity="0.13">
+    <circle cx="256" cy="256" r="210" fill="none" stroke="#0F766E" stroke-width="6"/>
+    <g stroke="url(#teal)" stroke-width="24" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M150 155 V357"/>
+      <path d="M150 155 L256 256 L362 357"/>
+      <path d="M362 155 V357"/>
+    </g>
+    <g fill="url(#teal)">
+      <circle cx="150" cy="155" r="31"/>
+      <circle cx="150" cy="357" r="31"/>
+      <circle cx="256" cy="256" r="34"/>
+      <circle cx="362" cy="155" r="31"/>
+      <circle cx="362" cy="357" r="31"/>
+    </g>
+  </g>
+  </g>
+
+  <rect x="0.5" y="0.5" width="1279" height="419" rx="23.5" fill="none" stroke="#D0D7DE"/>
+
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif" text-anchor="middle">
+    <text x="640" y="236" font-size="144" font-weight="700" letter-spacing="-4" fill="#0F172A">Node<tspan fill="#0D9488">arr</tspan></text>
+    <text x="640" y="300" font-size="30" font-weight="600" letter-spacing="1.5" fill="#0F766E">YOUR FRIENDS' LIBRARIES, IN YOUR ARR APPS</text>
+  </g>
+</svg>

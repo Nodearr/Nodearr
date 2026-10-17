@@ -16,6 +16,7 @@ import ConnectAppsStep from './ConnectAppsStep';
 import ConnectFriendStep from './ConnectFriendStep';
 import NameNodeStep, { hasChosenName } from './NameNodeStep';
 import Overview from './Overview';
+import Received from './Received';
 import styles from './Home.css';
 
 const APPLICATIONS_PATH = '/applications';
@@ -92,6 +93,8 @@ function Home() {
       <PageContentBody>
         <div className={styles.page}>
           {isLoaded ? null : <LoadingIndicator />}
+
+          {isLoaded ? <Received /> : null}
 
           {isLoaded && !isSetUp ? (
             <>

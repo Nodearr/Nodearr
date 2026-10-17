@@ -338,6 +338,13 @@ function SignalRListener() {
       return;
     }
 
+    if (name === 'sending') {
+      queryClient.invalidateQueries({ queryKey: ['/sharing/sends'] });
+      queryClient.invalidateQueries({ queryKey: ['/sharing/sends/received'] });
+      queryClient.invalidateQueries({ queryKey: ['/sharing/lists'] });
+      return;
+    }
+
     if (name === 'transfers') {
       queryClient.invalidateQueries({ queryKey: ['/transfers'] });
       queryClient.invalidateQueries({ queryKey: ['/transfers/uploads'] });

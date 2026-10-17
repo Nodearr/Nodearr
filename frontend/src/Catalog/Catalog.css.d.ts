@@ -11,6 +11,7 @@ interface CssExports {
   'columns': string;
   'error': string;
   'inlineCheck': string;
+  'inviteCode': string;
   'movieCheck': string;
   'muted': string;
   'nested': string;
@@ -18,9 +19,18 @@ interface CssExports {
   'newListName': string;
   'peerName': string;
   'peerRow': string;
+  'posterCell': string;
+  'posterNone': string;
+  'posterSquare': string;
+  'posterThumb': string;
+  'posterTile': string;
   'release': string;
   'seriesRow': string;
   'summary': string;
+  'tile': string;
+  'tileDetails': string;
+  'tileTitle': string;
+  'tiles': string;
   'title': string;
   'titles': string;
 }

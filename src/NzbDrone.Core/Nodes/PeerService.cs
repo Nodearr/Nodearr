@@ -9,6 +9,7 @@ using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Nodes.Settings;
 using NzbDrone.Core.Nodes.Transport;
 using NzbDrone.Core.PeerCatalog;
+using NzbDrone.Core.Posters;
 using NzbDrone.Core.Sharing;
 
 namespace NzbDrone.Core.Nodes
@@ -49,12 +50,17 @@ namespace NzbDrone.Core.Nodes
         NodeIdentity GetIdentity();
         List<Peer> All();
         List<PeerInvite> Invites();
-        CreatedInvite CreateInvite(TimeSpan validFor, string label, bool shareAll = false);
+
+        // A new friend is offered everything except Hidden unless the invite says otherwise.
+        CreatedInvite CreateInvite(TimeSpan validFor, string label, bool shareAll = true);
 
         // Sends a message to a trusted node and returns its answer.
         PeerReply Ask(Peer peer, PeerMessage message);
         void DeleteInvite(int id);
-        Peer RedeemInvite(string code);
+
+        // Whether this node offers the new friend everything except Hidden, as their invite
+        // may offer it to this node. Trust that already existed keeps what was chosen before.
+        Peer RedeemInvite(string code, bool shareAll = true);
         Peer Ping(int id);
         Peer Block(int id);
         Peer Unblock(int id);
@@ -78,9 +84,11 @@ namespace NzbDrone.Core.Nodes
         private readonly INodeSettingsProvider _settings;
         private readonly IContainerEnvironment _container;
         private readonly IPairAttemptLimiter _pairAttempts;
+        private readonly IPosterExchange _posters;
 
-        public PeerService(IPeerRepository peers, IPeerInviteRepository invites, IPeerTransport transport, IOfferExchange offerExchange, IEventAggregator eventAggregator, Logger logger, IPairAttemptLimiter pairAttempts, INodeSettingsProvider settings = null, IContainerEnvironment container = null)
+        public PeerService(IPeerRepository peers, IPeerInviteRepository invites, IPeerTransport transport, IOfferExchange offerExchange, IEventAggregator eventAggregator, Logger logger, IPairAttemptLimiter pairAttempts, INodeSettingsProvider settings = null, IContainerEnvironment container = null, IPosterExchange posters = null)
         {
+            _posters = posters;
             _container = container;
             _pairAttempts = pairAttempts;
             _peers = peers;
@@ -163,7 +171,7 @@ namespace NzbDrone.Core.Nodes
             return Send(peer, message);
         }
 
-        public CreatedInvite CreateInvite(TimeSpan validFor, string label, bool shareAll = false)
+        public CreatedInvite CreateInvite(TimeSpan validFor, string label, bool shareAll = true)
         {
             var address = _transport.GetLocalAddress();
             var now = DateTime.UtcNow;
@@ -195,7 +203,7 @@ namespace NzbDrone.Core.Nodes
             _invites.Delete(id);
         }
 
-        public Peer RedeemInvite(string code)
+        public Peer RedeemInvite(string code, bool shareAll = true)
         {
             if (!InviteCode.TryDecode(code, out var invite))
             {
@@ -275,7 +283,16 @@ namespace NzbDrone.Core.Nodes
             peer.LastSeen = DateTime.UtcNow;
             peer.LastError = null;
 
-            return ChangeState(peer, PeerState.Trusted, null);
+            if (alreadyTrusted)
+            {
+                return ChangeState(peer, PeerState.Trusted, null);
+            }
+
+            peer.ShareAll = shareAll;
+            peer = ChangeState(peer, PeerState.Trusted, null);
+            _peers.SetFields(peer, p => p.ShareAll);
+
+            return peer;
         }
 
         public Peer Ping(int id)
@@ -422,9 +439,18 @@ namespace NzbDrone.Core.Nodes
                 case PeerMessageTypes.Catalog when peer is { State: PeerState.Trusted }:
                     return _offerExchange.Answer(peer, message).ToBytes();
 
+                case PeerMessageTypes.Poster when peer is { State: PeerState.Trusted } && _posters != null:
+                    return _posters.Answer(peer, message).ToBytes();
+
                 // Only a hint. This node fetches the catalog itself, when it gets to it.
                 case PeerMessageTypes.CatalogChanged when peer is { State: PeerState.Trusted }:
                     _eventAggregator.PublishEvent(new PeerCatalogChangedEvent(peer.Id));
+
+                    return new PeerReply { Ok = true }.ToBytes();
+
+                // Something this friend sent. It is kept for the person to act on (ReceivedService).
+                case PeerMessageTypes.Sent when peer is { State: PeerState.Trusted } && message.Sent?.SendId != null:
+                    _eventAggregator.PublishEvent(new TitlesSentEvent(peer, message.Sent));
 
                     return new PeerReply { Ok = true }.ToBytes();
 
@@ -478,18 +504,26 @@ namespace NzbDrone.Core.Nodes
             invite.RedeemedByNodeId = remoteNodeId;
             _invites.Update(invite);
 
+            var wasTrusted = peer is { State: PeerState.Trusted };
+
             peer ??= new Peer { NodeId = remoteNodeId, Added = now };
             peer.Name = message.SenderName.IsNotNullOrWhiteSpace() ? message.SenderName : remoteNodeId[..12];
             peer.SetAddress(message.SenderRelayUrl, message.SenderIpAddresses);
             peer.LastSeen = now;
             peer.LastError = null;
 
-            // The inviter chose this when creating the invite. Otherwise a new peer is offered nothing.
-            peer.ShareAll = invite.ShareAll;
+            // The inviter chose this when creating the invite. A friend who was trusted already keeps
+            // what was chosen for them before, as on the other side.
+            if (!wasTrusted)
+            {
+                peer.ShareAll = invite.ShareAll;
+            }
+
             ChangeState(peer, PeerState.Trusted, null);
             _peers.SetFields(peer, p => p.ShareAll);
 
             _logger.Info("Paired with {0} ({1})", peer.Name, remoteNodeId);
+            _eventAggregator.PublishEvent(new InviteRedeemedEvent(invite, peer));
 
             return new PeerReply { Ok = true, Name = LocalName };
         }

@@ -110,3 +110,7 @@ A stranger who knows a node's ID and can reach it could try invite secrets witho
 - The first ten failures in 15 minutes are logged one by one. One more warning says the rest are only counted, and they are logged at debug level.
 - System > Status warns when a node has been turned away, or after 20 failures in an hour, and says how many and from how many node IDs.
 - Everything is kept in memory, at most 10,000 node IDs. A restart forgets it, which costs nothing.
+
+### 2026-10-16: an invite can carry a send
+
+An invite can be made for one send (ADR 0021). It is an ordinary invite, labelled "For" and the title, and shares everything except Hidden unless the sender unticks that (ADR 0014, amendment of 2026-10-16). When it is used, the inviting node shares what was sent before it answers the pairing, so the first catalog the new friend asks for holds it. Pairing itself is unchanged. The inviting node now raises an event naming the invite that was used, which is how the send finds its friend.

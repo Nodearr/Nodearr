@@ -5445,6 +5445,66 @@
         }
       }
     },
+    "/api/v5/catalog/peers/titles": {
+      "get": {
+        "tags": [
+          "PeerCatalog"
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          },
+          {
+            "name": "sortKey",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortDirection",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/SortDirection"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/PeerItemStatus"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeerCatalogTitleResourcePagingResource"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v5/catalog/peers/items": {
       "get": {
         "tags": [
@@ -5552,6 +5612,29 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/v5/catalog/posters/peer/{id}": {
+      "get": {
+        "tags": [
+          "Poster"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
           }
         }
       }
@@ -6953,6 +7036,182 @@
         }
       }
     },
+    "/api/v5/sharing/sends": {
+      "get": {
+        "tags": [
+          "Send"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SentTitleResource"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Send"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSendResource"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SentTitleResource"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v5/sharing/sends/{id}": {
+      "delete": {
+        "tags": [
+          "Send"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/v5/sharing/sends/received": {
+      "get": {
+        "tags": [
+          "Send"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReceivedTitleResource"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v5/sharing/sends/received/{id}/dismiss": {
+      "post": {
+        "tags": [
+          "Send"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/v5/sharing/sends/received/{id}/getit": {
+      "get": {
+        "tags": [
+          "Send"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetItPlanResource"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Send"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetItOptionsResource"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
     "/api/v5/series": {
       "get": {
         "tags": [
@@ -7520,6 +7779,48 @@
                   "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/ShareableSeasonResource"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v5/sharing/titles/{applicationId}/{arrId}/albums": {
+      "get": {
+        "tags": [
+          "Sharing"
+        ],
+        "parameters": [
+          {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "arrId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ShareableAlbumResource"
                   }
                 }
               }
@@ -9082,6 +9383,31 @@
         },
         "additionalProperties": false
       },
+      "CreateSendResource": {
+        "type": "object",
+        "properties": {
+          "peerId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShareKeyResource"
+            },
+            "nullable": true
+          },
+          "validHours": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "shareAll": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
       "CustomFilterResource": {
         "type": "object",
         "properties": {
@@ -9915,6 +10241,140 @@
             "items": {
               "type": "string"
             },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "GetItOptionsResource": {
+        "type": "object",
+        "properties": {
+          "applicationId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "rootFolderPath": {
+            "type": "string",
+            "nullable": true
+          },
+          "qualityProfileId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "metadataProfileId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "seriesType": {
+            "type": "string",
+            "nullable": true
+          },
+          "seasonFolder": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "GetItPlanResource": {
+        "type": "object",
+        "properties": {
+          "targets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GetItTargetResource"
+            },
+            "nullable": true
+          },
+          "problem": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "GetItProfileResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "GetItRootFolderResource": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "nullable": true
+          },
+          "freeSpace": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "GetItState": {
+        "enum": [
+          "none",
+          "working",
+          "done",
+          "failed"
+        ],
+        "type": "string"
+      },
+      "GetItTargetResource": {
+        "type": "object",
+        "properties": {
+          "applicationId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "applicationName": {
+            "type": "string",
+            "nullable": true
+          },
+          "implementation": {
+            "type": "string",
+            "nullable": true
+          },
+          "inLibrary": {
+            "type": "boolean"
+          },
+          "rootFolders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GetItRootFolderResource"
+            },
+            "nullable": true
+          },
+          "qualityProfiles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GetItProfileResource"
+            },
+            "nullable": true
+          },
+          "metadataProfiles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GetItProfileResource"
+            },
+            "nullable": true
+          },
+          "defaults": {
+            "$ref": "#/components/schemas/GetItOptionsResource"
+          },
+          "problem": {
+            "type": "string",
             "nullable": true
           }
         },
@@ -12246,6 +12706,97 @@
         },
         "additionalProperties": false
       },
+      "PeerCatalogTitleResource": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "nullable": true
+          },
+          "mediaKind": {
+            "$ref": "#/components/schemas/MediaKind"
+          },
+          "isAdult": {
+            "type": "boolean"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "artist": {
+            "type": "string",
+            "nullable": true
+          },
+          "year": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "peerNames": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "posterItemId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "files": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "missing": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "upgrade": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "notInLibrary": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "have": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PeerCatalogTitleResourcePagingResource": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sortKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "sortDirection": {
+            "$ref": "#/components/schemas/SortDirection"
+          },
+          "totalRecords": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PeerCatalogTitleResource"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "PeerItemStatus": {
         "enum": [
           "notInLibrary",
@@ -12833,9 +13384,66 @@
         },
         "additionalProperties": false
       },
+      "ReceivedTitleResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "peerId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "peerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "summary": {
+            "type": "string",
+            "nullable": true
+          },
+          "mediaKind": {
+            "$ref": "#/components/schemas/MediaKind"
+          },
+          "isWhole": {
+            "type": "boolean"
+          },
+          "offerIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "received": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "year": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "getItState": {
+            "$ref": "#/components/schemas/GetItState"
+          },
+          "getItMessage": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "RedeemInviteResource": {
         "type": "object",
         "properties": {
+          "shareAll": {
+            "type": "boolean"
+          },
           "code": {
             "type": "string",
             "nullable": true
@@ -13603,6 +14211,82 @@
         },
         "additionalProperties": false
       },
+      "SendStatus": {
+        "enum": [
+          "waitingForInvite",
+          "inviteLapsed",
+          "notTold",
+          "told"
+        ],
+        "type": "string"
+      },
+      "SentTitleResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "peerId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "peerName": {
+            "type": "string",
+            "nullable": true
+          },
+          "inviteId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "inviteExpires": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "status": {
+            "$ref": "#/components/schemas/SendStatus"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "summary": {
+            "type": "string",
+            "nullable": true
+          },
+          "mediaKind": {
+            "$ref": "#/components/schemas/MediaKind"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ShareKeyResource"
+            },
+            "nullable": true
+          },
+          "created": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deliveredAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastError": {
+            "type": "string",
+            "nullable": true
+          },
+          "inviteCode": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "SeriesEditorResource": {
         "type": "object",
         "properties": {
@@ -14019,6 +14703,11 @@
             "type": "integer",
             "format": "int32",
             "nullable": true
+          },
+          "albumArrId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -14051,6 +14740,31 @@
               "format": "int32"
             },
             "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ShareableAlbumResource": {
+        "type": "object",
+        "properties": {
+          "albumArrId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "year": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "albumType": {
+            "type": "string",
+            "nullable": true
+          },
+          "isWhole": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -14991,6 +15705,9 @@
       "name": "Ping"
     },
     {
+      "name": "Poster"
+    },
+    {
       "name": "QualityDefinition"
     },
     {
@@ -15034,6 +15751,9 @@
     },
     {
       "name": "SeasonPass"
+    },
+    {
+      "name": "Send"
     },
     {
       "name": "Series"

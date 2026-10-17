@@ -117,4 +117,64 @@ namespace NzbDrone.Core.Sharing
             Delete(p => p.PeerId == peerId);
         }
     }
+
+    public interface ISentTitleRepository : IBasicRepository<SentTitle>
+    {
+        List<SentTitle> WaitingForInvite(int inviteId);
+        List<SentTitle> Undelivered(int peerId);
+        void DeleteForPeer(int peerId);
+    }
+
+    public class SentTitleRepository : BasicRepository<SentTitle>, ISentTitleRepository
+    {
+        public SentTitleRepository(IMainDatabase database, IEventAggregator eventAggregator)
+            : base(database, eventAggregator)
+        {
+        }
+
+        public List<SentTitle> WaitingForInvite(int inviteId)
+        {
+            return Query(s => s.InviteId == inviteId && s.PeerId == null);
+        }
+
+        public List<SentTitle> Undelivered(int peerId)
+        {
+            return Query(s => s.PeerId == peerId && s.DeliveredAt == null);
+        }
+
+        public void DeleteForPeer(int peerId)
+        {
+            Delete(s => s.PeerId == peerId);
+        }
+    }
+
+    public interface IReceivedTitleRepository : IBasicRepository<ReceivedTitle>
+    {
+        ReceivedTitle Find(int peerId, string sendId);
+        int CountWaiting(int peerId);
+        void DeleteForPeer(int peerId);
+    }
+
+    public class ReceivedTitleRepository : BasicRepository<ReceivedTitle>, IReceivedTitleRepository
+    {
+        public ReceivedTitleRepository(IMainDatabase database, IEventAggregator eventAggregator)
+            : base(database, eventAggregator)
+        {
+        }
+
+        public ReceivedTitle Find(int peerId, string sendId)
+        {
+            return Query(r => r.PeerId == peerId && r.SendId == sendId).SingleOrDefault();
+        }
+
+        public int CountWaiting(int peerId)
+        {
+            return Query(r => r.PeerId == peerId && r.Handled == null).Count;
+        }
+
+        public void DeleteForPeer(int peerId)
+        {
+            Delete(r => r.PeerId == peerId);
+        }
+    }
 }

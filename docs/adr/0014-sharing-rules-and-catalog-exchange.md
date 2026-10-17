@@ -27,7 +27,7 @@ The rule, in order:
 3. A peer with "share everything" is offered the rest.
 4. Any other peer is offered the titles on the lists it has been given.
 
-A new peer has no lists and the switch off, so it is offered nothing. The one-click option is a tick box on the invite: whoever redeems that invite gets "share everything" from the start. The redeemer's own sharing is not affected, because each side decides for itself.
+A new peer has no lists and the switch off, so it is offered nothing (changed: the switch now starts on, see the amendment of 2026-10-16). The one-click option is a tick box on the invite: whoever redeems that invite gets "share everything" from the start. The redeemer's own sharing is not affected, because each side decides for itself.
 
 Files the Arr app has stopped reporting are never offered.
 
@@ -142,6 +142,17 @@ The marks are worked out again whenever the local catalog is refreshed.
 - 2026-10-15: **"Better" is decided by the local quality profile.** An offered file is an upgrade only when the quality profile the local Arr app gives that series or movie would take it in place of the local file: its quality is allowed, ranks above the local file's quality in the profile's order, upgrades are on, and the local file is below the profile's cutoff. Qualities in one group count as equal, as the Arr apps treat them. Where several local apps hold a copy, it has to be better under each one's profile. Custom formats are left to the Arr app, which judges them when it searches (plan decision 2).
   - Profiles are read with their order of qualities, lowest first as Sonarr and Radarr list them, and the cutoff as a rank. Checked against a real Radarr 6.4.4: its default HD-1080p profile came back with the WEB 1080p group at one rank, the cutoff at Bluray-1080p, and upgrades off, so nothing is an upgrade under it, as Radarr would have it.
   - Until a profile is next read after updating, the old rule stands in: a higher resolution, or the same resolution from a better source.
+
+- 2026-10-16: **one Hidden list.** The Hidden list is made the first time the lists are asked for, and two requests at once, such as a friend's catalog request and the Sharing page, could each make one. A node was found with two. Everything on either was still kept from everyone, but the second was easy to miss. It is now made under a lock, and migration 250 moves whatever was on a second Hidden list to the first, deletes the rest, and adds a unique index so the database holds at most one.
+
+- 2026-10-16: **sharing everything is the default.** The owner's direction: most friends will want to share their libraries, so it is opt out, not opt in (plan decision 7, changed). The rule above is unchanged; only the switch's starting position is.
+  - An invite shares everything except Hidden with whoever uses it, unless its tick box is unticked. It was unticked.
+  - The node that uses an invite now chooses too, with the same tick box when it pastes the code, ticked. It used to share nothing with the inviter until set. Using another invite between two nodes that already trust each other keeps what was chosen before, on both sides. The inviting side used to take the new invite's box, which with the box ticked by default would have started sharing everything with a friend kept to lists.
+  - A send to someone new (ADR 0021) shares everything except Hidden too, unless the sender unticks it, and then only what was sent.
+  - Friends paired before keep what they have. Nothing is changed for them without the owner.
+  - Checked by unit tests and `acceptance/Run-S5Sharing.ps1`, which now unticks the box to check that a friend paired that way is offered nothing.
+
+- 2026-10-16 (ADR 0021): **sending.** A list can be made for one friend, to hold what is sent to them ("Sent to" and their name). It is an ordinary list in every other way, and the rule is unchanged: the Hidden list still wins over it.
 
 ## Follow-up work
 

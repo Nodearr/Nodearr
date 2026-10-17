@@ -30,9 +30,10 @@ function ConnectFriendStep({
   trusted,
   onWaitingChange,
 }: ConnectFriendStepProps) {
-  // A new friend sees nothing until something is shared with them (V1 plan, decision 7).
-  const [shareAll, setShareAll] = useState(false);
+  // A new friend is offered everything except Hidden unless this is turned off.
+  const [shareAll, setShareAll] = useState(true);
   const [code, setCode] = useState('');
+  const [joinShareAll, setJoinShareAll] = useState(true);
 
   const create = useCreateInvite();
   const redeem = useRedeemInvite();
@@ -41,6 +42,10 @@ function ConnectFriendStep({
 
   const handleShareAllChange = useCallback(() => {
     setShareAll((current) => !current);
+  }, []);
+
+  const handleJoinShareAllChange = useCallback(() => {
+    setJoinShareAll((current) => !current);
   }, []);
 
   const handleCreatePress = useCallback(() => {
@@ -55,8 +60,11 @@ function ConnectFriendStep({
   }, []);
 
   const handleJoinPress = useCallback(() => {
-    redeemInvite(code.trim(), { onSuccess: () => setCode('') });
-  }, [redeemInvite, code]);
+    redeemInvite(
+      { code: code.trim(), shareAll: joinShareAll },
+      { onSuccess: () => setCode('') }
+    );
+  }, [redeemInvite, code, joinShareAll]);
 
   const isDone = trusted.length > 0;
 
@@ -136,6 +144,15 @@ function ConnectFriendStep({
             placeholder="nodearr-invite:..."
             onChange={handleCodeChange}
           />
+
+          <label className={styles.checkbox}>
+            <input
+              type="checkbox"
+              checked={joinShareAll}
+              onChange={handleJoinShareAllChange}
+            />{' '}
+            {translate('HomeInviteShareAll')}
+          </label>
 
           <div className={styles.message}>
             <SpinnerButton

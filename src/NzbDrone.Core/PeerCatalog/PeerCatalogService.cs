@@ -19,6 +19,27 @@ namespace NzbDrone.Core.PeerCatalog
         void Sync(int? peerId);
         List<PeerCatalogSummary> GetSummaries();
         PagingSpec<PeerCatalogItem> Paged(PagingSpec<PeerCatalogItem> pagingSpec);
+
+        // What friends offer by title: a series, a movie, a scene or an album, however many files
+        // of it and from however many friends. Titles with a file of that status only, if given.
+        List<PeerCatalogTitle> GetTitles(PeerItemStatus? status);
+    }
+
+    public class PeerCatalogTitle
+    {
+        // The same for a title whichever friend offers it, as its poster is (PeerPosters.KeyOf).
+        public string Key { get; set; }
+        public MediaKind MediaKind { get; set; }
+        public bool IsAdult { get; set; }
+        public string Title { get; set; }
+        public string Artist { get; set; }
+        public int Year { get; set; }
+        public List<int> PeerIds { get; set; } = new();
+
+        // The item the poster is asked for by.
+        public int PosterItemId { get; set; }
+        public int Files { get; set; }
+        public Dictionary<PeerItemStatus, int> Statuses { get; set; } = new();
     }
 
     // Keeps a copy of what each trusted peer offers, and how it compares with the local catalog.
@@ -81,6 +102,34 @@ namespace NzbDrone.Core.PeerCatalog
                     Upgrade = counts.GetValueOrDefault((p.Id, PeerItemStatus.Upgrade)),
                     Have = counts.GetValueOrDefault((p.Id, PeerItemStatus.Have))
                 })
+                .ToList();
+        }
+
+        public List<PeerCatalogTitle> GetTitles(PeerItemStatus? status)
+        {
+            return _items.All()
+                .GroupBy(Posters.PeerPosters.KeyOf)
+                .Select(g =>
+                {
+                    var first = g.OrderBy(i => i.Id).First();
+
+                    return new PeerCatalogTitle
+                    {
+                        Key = g.Key,
+                        MediaKind = first.MediaKind,
+                        IsAdult = first.IsAdult,
+                        Title = first.Title,
+                        Artist = first.Artist,
+                        Year = first.Year,
+                        PeerIds = g.Select(i => i.PeerId).Distinct().OrderBy(p => p).ToList(),
+                        PosterItemId = first.Id,
+                        Files = g.Count(),
+                        Statuses = g.GroupBy(i => i.LocalStatus).ToDictionary(s => s.Key, s => s.Count())
+                    };
+                })
+                .Where(t => status == null || t.Statuses.ContainsKey(status.Value))
+                .OrderBy(t => t.Artist ?? t.Title, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(t => t.Title, StringComparer.OrdinalIgnoreCase)
                 .ToList();
         }
 

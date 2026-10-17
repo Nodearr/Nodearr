@@ -233,19 +233,39 @@ namespace NzbDrone.Core.Test.Nodes
         }
 
         [Test]
-        public void a_new_peer_should_be_offered_nothing_unless_the_invite_said_otherwise()
+        public void new_friends_should_each_be_offered_everything_except_hidden_unless_they_said_otherwise()
         {
             GivenPaired(_alice, _bob);
 
-            _alice.PeerFor(_bob).ShareAll.Should().BeFalse();
+            _alice.PeerFor(_bob).ShareAll.Should().BeTrue();
+            _bob.PeerFor(_alice).ShareAll.Should().BeTrue();
         }
 
         [Test]
-        public void an_invite_can_share_everything_with_whoever_redeems_it()
+        public void an_invite_can_share_only_what_is_put_on_lists()
         {
-            _bob.Service.RedeemInvite(_alice.Service.CreateInvite(TimeSpan.FromHours(1), null, true).Code);
+            _bob.Service.RedeemInvite(_alice.Service.CreateInvite(TimeSpan.FromHours(1), null, false).Code);
+
+            _alice.PeerFor(_bob).ShareAll.Should().BeFalse();
+            _bob.PeerFor(_alice).ShareAll.Should().BeTrue();
+        }
+
+        [Test]
+        public void whoever_uses_an_invite_can_share_only_what_is_put_on_lists()
+        {
+            _bob.Service.RedeemInvite(_alice.Service.CreateInvite(TimeSpan.FromHours(1), null).Code, false);
 
             _alice.PeerFor(_bob).ShareAll.Should().BeTrue();
+            _bob.PeerFor(_alice).ShareAll.Should().BeFalse();
+        }
+
+        [Test]
+        public void using_another_invite_from_a_friend_should_keep_what_was_chosen_before()
+        {
+            _bob.Service.RedeemInvite(_alice.Service.CreateInvite(TimeSpan.FromHours(1), null, false).Code, false);
+            _bob.Service.RedeemInvite(_alice.Service.CreateInvite(TimeSpan.FromHours(1), null).Code);
+
+            _alice.PeerFor(_bob).ShareAll.Should().BeFalse();
             _bob.PeerFor(_alice).ShareAll.Should().BeFalse();
         }
 
@@ -257,6 +277,27 @@ namespace NzbDrone.Core.Test.Nodes
             _bob.Service.Ask(_bob.PeerFor(_alice), new PeerMessage { Type = PeerMessageTypes.CatalogChanged });
 
             _alice.Events.Verify(e => e.PublishEvent(It.Is<PeerCatalogChangedEvent>(c => c.PeerId == _alice.PeerFor(_bob).Id)), Times.Once());
+        }
+
+        [Test]
+        public void something_a_friend_sent_should_be_raised_for_keeping()
+        {
+            GivenPaired(_alice, _bob);
+
+            var reply = _bob.Service.Ask(_bob.PeerFor(_alice), new PeerMessage { Type = PeerMessageTypes.Sent, Sent = new SentMessage { SendId = "s1", Title = "Pingu", OfferIds = new List<string> { "e-1-501" } } });
+
+            reply.Ok.Should().BeTrue();
+            _alice.Events.Verify(e => e.PublishEvent(It.Is<TitlesSentEvent>(t => t.Peer.Id == _alice.PeerFor(_bob).Id && t.Sent.SendId == "s1")), Times.Once());
+        }
+
+        [Test]
+        public void using_an_invite_should_say_which_invite_it_was()
+        {
+            var created = _alice.Service.CreateInvite(TimeSpan.FromHours(1), "For Pingu");
+
+            _bob.Service.RedeemInvite(created.Code);
+
+            _alice.Events.Verify(e => e.PublishEvent(It.Is<InviteRedeemedEvent>(r => r.Invite.Id == created.Invite.Id && r.Peer.NodeId == _bob.NodeId)), Times.Once());
         }
 
         [Test]

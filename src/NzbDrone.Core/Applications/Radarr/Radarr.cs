@@ -1,12 +1,13 @@
 using System;
 using System.Collections.Generic;
+using Newtonsoft.Json.Linq;
 using NLog;
 using NzbDrone.Core.Catalog;
 using NzbDrone.Core.Configuration;
 
 namespace NzbDrone.Core.Applications.Radarr
 {
-    public class Radarr : ApplicationBase<RadarrSettings>
+    public class Radarr : ApplicationBase<RadarrSettings>, ILibraryAdder, IPosterSource
     {
         public Radarr(IArrV3Proxy proxy, IConfigFileProvider configFileProvider, Logger logger)
             : base(proxy, configFileProvider, logger)
@@ -78,6 +79,31 @@ namespace NzbDrone.Core.Applications.Radarr
             }
 
             return catalog;
+        }
+
+        public LibraryAddChoices GetAddChoices()
+        {
+            return LibraryAdd.Choices(_proxy, Settings, false);
+        }
+
+        public string AddAndSearch(LibraryAddRequest request)
+        {
+            return LibraryAdd.AddMovie(_proxy, Settings, Name, request, () => Lookup(request), GetOrNull<JObject>);
+        }
+
+        private JObject Lookup(LibraryAddRequest request)
+        {
+            if (request.TmdbId > 0)
+            {
+                return GetOrNull<JObject>($"/movie/lookup/tmdb?tmdbId={request.TmdbId}");
+            }
+
+            return string.IsNullOrWhiteSpace(request.ImdbId) ? null : GetOrNull<JObject>($"/movie/lookup/imdb?imdbId={request.ImdbId}");
+        }
+
+        public byte[] GetPoster(PosterSubject subject, int arrId)
+        {
+            return subject == PosterSubject.Movie ? PosterImages.FromMediaCover(_proxy, Settings, $"{arrId}/poster-500.jpg") : null;
         }
     }
 }

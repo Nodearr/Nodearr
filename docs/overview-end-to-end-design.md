@@ -48,7 +48,7 @@ Nodearr is not a shared drive, a media server, a public indexer or a library man
 | Radarr | Movies and their files | Whole movies | TMDb or IMDb ID |
 | Whisparr v3 | Films and scenes, with studio, date, code and IDs | Whole items | Films by ID. Scenes by text: studio, date, title and code |
 | Whisparr v2 | Sites and their scenes, kept as v3 keeps them | Whole items | The same as v3, so a v2 and a v3 find each other's scenes |
-| Lidarr | Artists, albums and track files | Whole artists. An album is offered only when complete | Text: artist and album |
+| Lidarr | Artists, albums and track files | Whole artists, or single albums. An album is offered only when complete | Text: artist and album |
 | Prowlarr | Nothing | Nothing | Nodearr adds itself there as an indexer ([ADR 0007](adr/0007-prowlarr-as-downstream-indexer-consumer.md)) |
 
 Adult content is found only by searches in its own categories, which only Whisparr makes. Albums are found only by searches in the audio categories, which only Lidarr makes. Sonarr and Radarr never see either ([ADR 0015](adr/0015-the-indexer-id-matching-release-titles-and-candidate-ids.md), [ADR 0020](adr/0020-lidarr-albums-shared-and-moved-as-folders-of-tracks.md)).
@@ -80,13 +80,15 @@ Trust can be **revoked** from either side, which ends it on both, or the other n
 
 ### 3. Choosing what to share
 
-Nothing is shared until its owner says so ([ADR 0014](adr/0014-sharing-rules-and-catalog-exchange.md)). On Catalog > Sharing:
+A new friend is offered everything except the Hidden list, unless the invite said otherwise, on either side ([ADR 0014](adr/0014-sharing-rules-and-catalog-exchange.md), amendments). On Catalog > Sharing:
 
-- a **share list** holds whole series, seasons, episodes, movies, Whisparr items and artists, and is given to chosen friends;
-- a friend can instead be marked **share everything**;
+- a **share list** holds whole series, seasons, episodes, movies, Whisparr items, whole artists and single albums, and is given to chosen friends;
+- a friend is marked **share everything**, or not;
 - anything on the **Hidden** list is offered to nobody, whatever else says so.
 
 A whole series, season or artist takes in what arrives later.
+
+Something can also be **sent**: one title, or parts of it, to one friend, or to someone new with an invite made for it alone. It is shared with them on a list of their own, and their node is told, so their Home shows what arrived. **Get it** there adds it to their Arr app, monitors what was sent and searches, and the app fetches it from the friend ([ADR 0021](adr/0021-sending-a-title-to-a-friend.md)).
 
 ### 4. Seeing what friends have
 
@@ -94,7 +96,7 @@ Each node asks each friend for their **offer**: what that friend shares with thi
 
 The offer is fetched every 15 minutes by default, and at once when a friend takes something back, so what is no longer shared disappears within seconds. After the first time, only what changed is sent, 500 files to a page.
 
-The peer catalog marks each file against the local library: **not in the library**, **missing**, an **upgrade** (one the Arr app's own quality profile would take in place of the one it has), or **have**. Catalog > Peer Catalog shows them. See [catalog exchange](diagrams/catalog-exchange-trusted-nodes.md).
+The peer catalog marks each file against the local library: **not in the library**, **missing**, an **upgrade** (one the Arr app's own quality profile would take in place of the one it has), or **have**. Catalog > Peer Catalog shows them, as a list or as a grid of posters. A poster comes from the friend's own Arr app over the same connection, and is kept once fetched ([ADR 0022](adr/0022-posters-from-friends-arr-apps.md)). See [catalog exchange](diagrams/catalog-exchange-trusted-nodes.md).
 
 ### 5. Searching
 
@@ -140,10 +142,10 @@ This has worked between two home networks with no port forwarded, and between a 
 
 | Page | What it is for |
 | --- | --- |
-| Home | The first-run steps, then an overview: what needs attention, what friends have, the library, friends and the network. |
+| Home | What friends sent, the first-run steps, then an overview: what needs attention, what friends have, the library, friends and the network. |
 | Catalog > Local | What the Arr apps say this node has. |
 | Catalog > Peer Catalog | What friends share, against the local library. |
-| Catalog > Sharing | Share lists, Hidden, and what each friend is offered. |
+| Catalog > Sharing | Sending something to a friend, share lists, Hidden, and what each friend is offered. |
 | Nodes > Trusted Nodes | Trusted, revoked and blocked nodes, and how each is reached. |
 | Nodes > Invites | Creating invites and using a friend's. |
 | Activity > Transfers | What is being fetched, and what failed and why. |
@@ -158,7 +160,7 @@ One image for Docker, and packages for Linux, macOS and Windows like Sonarr's, i
 
 ## Further reading
 
-- [Decision records](adr/), 0001 to 0020.
+- [Decision records](adr/), 0001 to 0022.
 - [Sequence diagrams](diagrams/).
 - [The V1 plan](plans/v1-implementation-plan.md): what was built, slice by slice, and what is still open.
 - [What Nodearr inherited from Sonarr](research/inherited-sonarr-features.md).

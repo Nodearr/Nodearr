@@ -100,7 +100,7 @@ Whisparr v2 tells Nodearr which site changed, not which scene, so Nodearr reads 
 
 ### Lidarr
 
-Nodearr reads artists, albums and track files. You share whole artists. An album is offered only when Lidarr holds every track of it, and it is moved as one folder of tracks, which appears for Lidarr only once every track has arrived and been checked.
+Nodearr reads artists, albums and track files. You share a whole artist, or single albums of it. An album is offered only when Lidarr holds every track of it, and it is moved as one folder of tracks, which appears for Lidarr only once every track has arrived and been checked.
 
 Lidarr searches by artist and album, as text, in the Audio categories. Albums are only ever found by those searches. An album's release title is the name Lidarr kept for the release, or `Artist - Album (Year) [Quality]`.
 

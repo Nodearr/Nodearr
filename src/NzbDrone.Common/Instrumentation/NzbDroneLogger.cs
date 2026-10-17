@@ -44,8 +44,6 @@ namespace NzbDrone.Common.Instrumentation
                 RegisterDebugger();
             }
 
-            RegisterSentry(updateApp);
-
             if (updateApp)
             {
                 RegisterUpdateFile(appFolderInfo);
@@ -63,23 +61,6 @@ namespace NzbDrone.Common.Instrumentation
             RegisterAuthLogger();
 
             LogManager.ReconfigExistingLoggers();
-        }
-
-        // Nodearr has no error reporting service. The code this came from sent errors to a Sentry
-        // server, and did so in development builds whatever the setting said. No such target is
-        // registered here, so nothing is sent anywhere. The rules stay, because the order of the
-        // other targets' rules is built around them.
-        private static void RegisterSentry(bool updateClient)
-        {
-            Target target = new NullTarget();
-
-            var loggingRule = new LoggingRule("*", updateClient ? LogLevel.Trace : LogLevel.Warn, target);
-            LogManager.Configuration.AddTarget("sentryTarget", target);
-            LogManager.Configuration.LoggingRules.Add(loggingRule);
-
-            // Events logged to Sentry go only to Sentry.
-            var loggingRuleSentry = new LoggingRule("Sentry", LogLevel.Debug, target) { Final = true };
-            LogManager.Configuration.LoggingRules.Insert(0, loggingRuleSentry);
         }
 
         private static void RegisterDebugger()

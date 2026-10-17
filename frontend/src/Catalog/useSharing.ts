@@ -18,11 +18,21 @@ export interface ShareableTitle extends TitleKey {
   files: number;
 }
 
-// A whole series or movie, one season of a series, or one episode of it, the way
-// Sonarr monitors them. arrId is the series or the movie.
+// A whole series or movie, one season of a series, or one episode of it, a whole
+// artist, or one album of it, the way the Arr apps monitor them. arrId is the
+// series, the movie or the artist.
 export interface ShareKey extends TitleKey {
   seasonNumber?: number | null;
   episodeArrId?: number | null;
+  albumArrId?: number | null;
+}
+
+export interface ShareableAlbum {
+  albumArrId: number;
+  title?: string;
+  year: number;
+  albumType?: string;
+  isWhole: boolean;
 }
 
 export interface ShareableEpisode {
@@ -56,6 +66,23 @@ export interface PeerCatalogSummary {
   notInLibrary: number;
   missing: number;
   upgrade: number;
+  have: number;
+}
+
+// A title a friend offers, with however many of its files, for browsing by poster.
+export interface PeerCatalogTitle {
+  key: string;
+  mediaKind: MediaKind;
+  isAdult: boolean;
+  title?: string;
+  artist?: string;
+  year: number;
+  peerNames: string[];
+  posterItemId: number;
+  files: number;
+  missing: number;
+  upgrade: number;
+  notInLibrary: number;
   have: number;
 }
 
@@ -103,8 +130,16 @@ export function episodeShareId(title: TitleKey, episodeArrId: number) {
   return `${titleId(title)}:e${episodeArrId}`;
 }
 
+export function albumShareId(title: TitleKey, albumArrId: number) {
+  return `${titleId(title)}:a${albumArrId}`;
+}
+
 // One string for each thing a list can hold, so a list can be kept as a Set.
 export function shareId(key: ShareKey) {
+  if (key.albumArrId != null) {
+    return albumShareId(key, key.albumArrId);
+  }
+
   if (key.episodeArrId != null) {
     return episodeShareId(key, key.episodeArrId);
   }
@@ -128,6 +163,8 @@ export function parseShareId(id: string): ShareKey {
     key.seasonNumber = Number(part.slice(1));
   } else if (part?.startsWith('e')) {
     key.episodeArrId = Number(part.slice(1));
+  } else if (part?.startsWith('a')) {
+    key.albumArrId = Number(part.slice(1));
   }
 
   return key;
@@ -159,6 +196,12 @@ export const useShareableTitles = () =>
 export const useShareableSeasons = (title: TitleKey, enabled: boolean) =>
   useApiQuery<ShareableSeason[]>({
     path: `${TITLES_PATH}/${title.applicationId}/${title.arrId}/seasons`,
+    queryOptions: { enabled },
+  });
+
+export const useShareableAlbums = (title: TitleKey, enabled: boolean) =>
+  useApiQuery<ShareableAlbum[]>({
+    path: `${TITLES_PATH}/${title.applicationId}/${title.arrId}/albums`,
     queryOptions: { enabled },
   });
 
@@ -204,6 +247,150 @@ export const useSetShareAll = () => {
       send('PUT', `${PEERS_PATH}/${id}/shareall`, { shareAll }),
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: [PEERS_PATH] });
+    },
+  });
+};
+
+export type SendStatus =
+  | 'waitingForInvite'
+  | 'inviteLapsed'
+  | 'notTold'
+  | 'told';
+
+export interface SentTitle {
+  id: number;
+  peerId?: number;
+  peerName?: string;
+  inviteId?: number;
+  inviteExpires?: string;
+  status: SendStatus;
+  title?: string;
+  summary?: string;
+  mediaKind: MediaKind;
+  items: ShareKey[];
+  created: string;
+  deliveredAt?: string;
+  lastError?: string;
+  inviteCode?: string;
+}
+
+export interface ReceivedTitle {
+  id: number;
+  peerId: number;
+  peerName?: string;
+  title?: string;
+  summary?: string;
+  mediaKind: MediaKind;
+  isWhole: boolean;
+  offerIds: string[];
+  received: string;
+  year: number;
+  getItState: GetItState;
+  getItMessage?: string;
+}
+
+export type GetItState = 'none' | 'working' | 'done' | 'failed';
+
+export interface GetItOptions {
+  applicationId: number;
+  rootFolderPath?: string;
+  qualityProfileId: number;
+  metadataProfileId?: number | null;
+  seriesType?: string | null;
+  seasonFolder: boolean;
+}
+
+export interface GetItProfile {
+  id: number;
+  name?: string;
+}
+
+export interface GetItTarget {
+  applicationId: number;
+  applicationName?: string;
+  implementation?: string;
+  inLibrary: boolean;
+  rootFolders: { path?: string; freeSpace?: number }[];
+  qualityProfiles: GetItProfile[];
+  metadataProfiles: GetItProfile[];
+  defaults?: GetItOptions;
+  problem?: string;
+}
+
+export interface GetItPlan {
+  targets: GetItTarget[];
+  problem?: string;
+}
+
+const SENDS_PATH = '/sharing/sends';
+const RECEIVED_PATH = '/sharing/sends/received';
+
+export const useSends = () => useApiQuery<SentTitle[]>({ path: SENDS_PATH });
+
+export const useReceived = () =>
+  useApiQuery<ReceivedTitle[]>({ path: RECEIVED_PATH });
+
+// To a friend, or, without one, to someone new with an invite of its own.
+export const useSendTitle = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    SentTitle,
+    ApiError,
+    {
+      peerId?: number;
+      items: ShareKey[];
+      validHours?: number;
+      shareAll?: boolean;
+    }
+  >({
+    mutationFn: (body) => send<SentTitle>('POST', SENDS_PATH, body),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: [SENDS_PATH] });
+      queryClient.invalidateQueries({ queryKey: [LISTS_PATH] });
+      queryClient.invalidateQueries({ queryKey: ['/nodes/invites'] });
+    },
+  });
+};
+
+export const useForgetSend = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<unknown, ApiError, number>({
+    mutationFn: (id) => send('DELETE', `${SENDS_PATH}/${id}`),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: [SENDS_PATH] });
+      queryClient.invalidateQueries({ queryKey: ['/nodes/invites'] });
+    },
+  });
+};
+
+export const useDismissReceived = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<unknown, ApiError, number>({
+    mutationFn: (id) => send('POST', `${RECEIVED_PATH}/${id}/dismiss`),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: [RECEIVED_PATH] });
+    },
+  });
+};
+
+// Asked when a card is shown: the Arr apps' root folders and profiles, with the defaults.
+export const useGetItPlan = (id: number, enabled: boolean) =>
+  useApiQuery<GetItPlan>({
+    path: `${RECEIVED_PATH}/${id}/getit`,
+    queryOptions: { enabled },
+  });
+
+export const useGetIt = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<unknown, ApiError, { id: number; options: GetItOptions }>({
+    mutationFn: ({ id, options }) =>
+      send('POST', `${RECEIVED_PATH}/${id}/getit`, options),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: [RECEIVED_PATH] });
     },
   });
 };

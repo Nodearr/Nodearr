@@ -110,8 +110,8 @@ public class CreateInviteResource
     public int ValidHours { get; set; } = 24;
     public string? Label { get; set; }
 
-    // Offer whoever redeems the invite everything except the Hidden list.
-    public bool ShareAll { get; set; }
+    // Offer whoever redeems the invite everything except the Hidden list. On unless turned off.
+    public bool ShareAll { get; set; } = true;
 }
 
 public class ShareAllResource
@@ -121,5 +121,8 @@ public class ShareAllResource
 
 public class RedeemInviteResource
 {
+    // Offer the new friend everything except Hidden. On unless turned off.
+    public bool ShareAll { get; set; } = true;
+
     public string? Code { get; set; }
 }

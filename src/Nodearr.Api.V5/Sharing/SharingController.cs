@@ -15,20 +15,34 @@ public class TitleKeyResource
     public int ArrId { get; set; }
 }
 
-// A series, a season of it, one episode of it, or a movie. ArrId is the series or the movie.
+// A series, a season of it, one episode of it, a movie, an artist, or one album of it. ArrId is
+// the series, the movie or the artist.
 public class ShareKeyResource : TitleKeyResource
 {
     public int? SeasonNumber { get; set; }
     public int? EpisodeArrId { get; set; }
+    public int? AlbumArrId { get; set; }
 
     public ShareKey ToModel()
     {
-        return new ShareKey(MediaKind, ApplicationId, ArrId, SeasonNumber, EpisodeArrId);
+        return MediaKind == MediaKind.Music
+            ? new ShareKey(MediaKind, ApplicationId, ArrId, null, AlbumArrId)
+            : new ShareKey(MediaKind, ApplicationId, ArrId, SeasonNumber, EpisodeArrId);
     }
 
     public static ShareKeyResource FromModel(ShareKey key)
     {
-        return new ShareKeyResource { MediaKind = key.Kind, ApplicationId = key.ApplicationId, ArrId = key.ArrId, SeasonNumber = key.SeasonNumber, EpisodeArrId = key.EpisodeArrId };
+        var music = key.Kind == MediaKind.Music;
+
+        return new ShareKeyResource
+        {
+            MediaKind = key.Kind,
+            ApplicationId = key.ApplicationId,
+            ArrId = key.ArrId,
+            SeasonNumber = music ? null : key.SeasonNumber,
+            EpisodeArrId = music ? null : key.EpisodeArrId,
+            AlbumArrId = music ? key.EpisodeArrId : null
+        };
     }
 }
 
@@ -44,6 +58,15 @@ public class ShareableEpisodeResource
     public int EpisodeNumber { get; set; }
     public string? Title { get; set; }
     public bool HasFile { get; set; }
+}
+
+public class ShareableAlbumResource
+{
+    public int AlbumArrId { get; set; }
+    public string? Title { get; set; }
+    public int Year { get; set; }
+    public string? AlbumType { get; set; }
+    public bool IsWhole { get; set; }
 }
 
 public class ShareListResource
@@ -167,6 +190,21 @@ public class SharingController : Controller
         {
             SeasonNumber = s.SeasonNumber,
             Episodes = s.Episodes.ConvertAll(e => new ShareableEpisodeResource { EpisodeArrId = e.EpisodeArrId, EpisodeNumber = e.EpisodeNumber, Title = e.Title, HasFile = e.HasFile })
+        }));
+    }
+
+    // The albums of one artist, for choosing among them.
+    [HttpGet("titles/{applicationId:int}/{arrId:int}/albums")]
+    [Produces("application/json")]
+    public Ok<List<ShareableAlbumResource>> GetAlbums(int applicationId, int arrId)
+    {
+        return TypedResults.Ok(_sharingService.GetAlbums(applicationId, arrId).ConvertAll(a => new ShareableAlbumResource
+        {
+            AlbumArrId = a.AlbumArrId,
+            Title = a.Title,
+            Year = a.Year,
+            AlbumType = a.AlbumType,
+            IsWhole = a.IsWhole
         }));
     }
 

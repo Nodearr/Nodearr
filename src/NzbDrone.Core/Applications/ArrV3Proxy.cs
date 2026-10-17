@@ -1,4 +1,5 @@
 using System;
+using System.Net;
 using System.Net.Http;
 using FluentValidation.Results;
 using Newtonsoft.Json.Linq;
@@ -28,6 +29,13 @@ namespace NzbDrone.Core.Applications
         JArray GetArray(IArrConnection settings, string resource);
         JObject Post(IArrConnection settings, string resource, JObject body);
         JObject Put(IArrConnection settings, string resource, JObject body);
+
+        // A change to many things at once, which the Arr apps answer with a list of them, or nothing.
+        void PutMany(IArrConnection settings, string resource, JObject body);
+
+        // A file the Arr app serves, such as a poster, or null when it has none. A resource that
+        // starts with the API route is the API's; any other is a path from the app's root.
+        byte[] GetBytes(IArrConnection settings, string resource, bool underApi = true);
         void Delete(IArrConnection settings, string resource);
     }
 
@@ -92,6 +100,18 @@ namespace NzbDrone.Core.Applications
             return JObject.Parse(Execute(settings, resource, HttpMethod.Put, body));
         }
 
+        public void PutMany(IArrConnection settings, string resource, JObject body)
+        {
+            Execute(settings, resource, HttpMethod.Put, body);
+        }
+
+        public byte[] GetBytes(IArrConnection settings, string resource, bool underApi = true)
+        {
+            var response = Send(settings, underApi ? settings.ApiRoute + resource : resource, HttpMethod.Get, null, true);
+
+            return response.StatusCode == HttpStatusCode.NotFound ? null : response.ResponseData;
+        }
+
         public void Delete(IArrConnection settings, string resource)
         {
             Execute(settings, resource, HttpMethod.Delete, null);
@@ -99,8 +119,13 @@ namespace NzbDrone.Core.Applications
 
         private string Execute(IArrConnection settings, string resource, HttpMethod method, JObject body)
         {
+            return Send(settings, settings.ApiRoute + resource, method, body, false).Content;
+        }
+
+        private HttpResponse Send(IArrConnection settings, string path, HttpMethod method, JObject body, bool allowNotFound)
+        {
             var requestBuilder = new HttpRequestBuilder(settings.BaseUrl.TrimEnd('/'))
-                .Resource(settings.ApiRoute + resource)
+                .Resource(path)
                 .Accept(HttpAccept.Json)
                 .SetHeader("X-Api-Key", settings.ApiKey);
 
@@ -120,14 +145,19 @@ namespace NzbDrone.Core.Applications
                 request.SetContent(body.ToString());
             }
 
+            if (allowNotFound)
+            {
+                request.SuppressHttpErrorStatusCodes = new[] { HttpStatusCode.NotFound };
+            }
+
             var response = _httpClient.Execute(request);
 
-            if ((int)response.StatusCode >= 300)
+            if ((int)response.StatusCode >= 300 && !(allowNotFound && response.StatusCode == HttpStatusCode.NotFound))
             {
                 throw new HttpException(response);
             }
 
-            return response.Content;
+            return response;
         }
     }
 }

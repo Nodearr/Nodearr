@@ -85,6 +85,15 @@ function Overview({ identity, trusted, applications }: OverviewProps) {
 
   const missing = peerSummaries.reduce((sum, peer) => sum + peer.missing, 0);
   const upgrades = peerSummaries.reduce((sum, peer) => sum + peer.upgrade, 0);
+  const notInLibrary = peerSummaries.reduce(
+    (sum, peer) => sum + peer.notInLibrary,
+    0
+  );
+  const shared = peerSummaries.reduce(
+    (sum, peer) =>
+      sum + peer.missing + peer.upgrade + peer.notInLibrary + peer.have,
+    0
+  );
   const movies = library.reduce((sum, app) => sum + app.movieFiles, 0);
   const episodes = library.reduce((sum, app) => sum + app.episodeFiles, 0);
   const tracks = library.reduce((sum, app) => sum + app.trackFiles, 0);
@@ -118,8 +127,12 @@ function Overview({ identity, trusted, applications }: OverviewProps) {
         <div className={styles.stats}>
           <Stat value={missing} label={translate('HomeMissingLabel')} />
           <Stat value={upgrades} label={translate('HomeUpgradeLabel')} />
+          <Stat
+            value={notInLibrary}
+            label={translate('HomeNotInLibraryLabel')}
+          />
         </div>
-        {missing + upgrades === 0 ? (
+        {shared === 0 ? (
           <p className={styles.muted}>{translate('HomeFromFriendsEmpty')}</p>
         ) : null}
         <Link className={styles.cardLink} to="/catalog/peers">
