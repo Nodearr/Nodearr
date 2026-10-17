@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Threading;
 using NLog;
 using NzbDrone.Common.Exceptions;
+using NzbDrone.Core.Applications;
 using NzbDrone.Core.Catalog;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Nodes;
@@ -282,6 +283,8 @@ namespace NzbDrone.Core.Sharing
                     }
                 };
 
+                Identify(message.Sent, keys);
+
                 try
                 {
                     var reply = _peerService.Ask(peer, message);
@@ -317,6 +320,62 @@ namespace NzbDrone.Core.Sharing
                     _delivering.Remove(sentTitleId);
                 }
             }
+        }
+
+        // What the friend's Arr app needs to add it: the title's IDs, and the parts sent.
+        private void Identify(SentMessage message, List<ShareKey> keys)
+        {
+            var first = keys[0];
+            var ids = new[] { first.ArrId };
+            var parts = new SentParts();
+
+            switch (first.Kind)
+            {
+                case MediaKind.Tv:
+                    var series = _series.ForArrIds(first.ApplicationId, ids).FirstOrDefault();
+
+                    if (series != null)
+                    {
+                        (message.TvdbId, message.TmdbId, message.ImdbId, message.Year, message.SeriesType) = (series.TvdbId, series.TmdbId, series.ImdbId, series.Year, series.SeriesType);
+                    }
+
+                    parts.Seasons = keys.Where(k => k.SeasonNumber.HasValue).Select(k => k.SeasonNumber.Value).Distinct().OrderBy(n => n).ToList();
+
+                    var episodeIds = keys.Where(k => k.EpisodeArrId.HasValue).Select(k => k.EpisodeArrId.Value).ToHashSet();
+
+                    if (episodeIds.Count > 0)
+                    {
+                        parts.Episodes = _episodes.ForSeries(first.ApplicationId, first.ArrId)
+                            .Where(e => episodeIds.Contains(e.ArrId))
+                            .OrderBy(e => e.SeasonNumber)
+                            .ThenBy(e => e.EpisodeNumber)
+                            .Select(e => new SeasonEpisode { SeasonNumber = e.SeasonNumber, EpisodeNumber = e.EpisodeNumber })
+                            .ToList();
+                    }
+
+                    break;
+
+                case MediaKind.Movie:
+                    var movie = _movies.ForArrIds(first.ApplicationId, ids).FirstOrDefault();
+
+                    if (movie != null)
+                    {
+                        (message.TmdbId, message.ImdbId, message.Year, message.IsAdult) = (movie.TmdbId, movie.ImdbId, movie.Year, movie.IsAdult);
+                    }
+
+                    break;
+
+                case MediaKind.Music:
+                    message.ForeignArtistId = _artists.ForArrIds(first.ApplicationId, ids).FirstOrDefault()?.ForeignArtistId;
+
+                    var albumIds = keys.Where(k => k.EpisodeArrId.HasValue).Select(k => k.EpisodeArrId.Value).ToList();
+
+                    parts.Albums = _albums.ForArrIds(first.ApplicationId, albumIds).Select(a => a.ForeignAlbumId).Where(a => a != null).ToList();
+
+                    break;
+            }
+
+            message.Parts = parts;
         }
 
         private static bool IsWholeTitle(ShareKey key)

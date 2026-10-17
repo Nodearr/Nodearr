@@ -293,16 +293,19 @@
 /* What friends sent */
 
 .received {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
   margin-bottom: 14px;
   padding: 14px 20px;
   border: 1px solid var(--borderColor);
   border-left: 4px solid var(--successColor);
   border-radius: 4px;
   background-color: var(--cardBackgroundColor);
+}
+
+.receivedHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
@@ -314,4 +317,40 @@
   display: flex;
   align-items: center;
   gap: 14px;
+}
+
+.getIt {
+  margin-top: 12px;
+}
+
+.getItChoices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.getItChoice {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.getItLabel {
+  margin-bottom: 4px;
+  font-weight: bold;
+  font-size: 13px;
+}
+
+.getItNote {
+  margin: 8px 0;
+  color: var(--helpTextColor);
+  font-size: 13px;
+}
+
+.getItDone {
+  margin-top: 10px;
+}
+
+.getItError {
+  margin: 8px 0;
+  color: var(--dangerColor);
 }

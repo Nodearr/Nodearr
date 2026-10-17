@@ -355,13 +355,17 @@ namespace NzbDrone.Core.PeerIndexer
         // The same file offered by several trusted nodes is one release to the Arr app, as one
         // release is one release however many indexers list it. The copy shown is always the same
         // one while the same nodes offer it, so its GUID holds still. A transfer of it can carry
-        // on from any of the others. A file whose hash is not known yet stands alone.
+        // on from any of the others. A file whose hash is not known yet stands alone, and so does
+        // the same bytes offered as something else, such as another episode, so that each search
+        // still finds what it asks for.
         private IEnumerable<PeerCatalogItem> OnePerFile(IEnumerable<PeerCatalogItem> items)
         {
             var trusted = TrustedPeerIds();
 
             return items
-                .GroupBy(i => i.Blake3 != null && i.CandidateId != null && trusted.Contains(i.PeerId) ? i.Blake3 : $"{i.PeerId}/{i.Id}")
+                .GroupBy(i => i.Blake3 != null && i.CandidateId != null && trusted.Contains(i.PeerId)
+                    ? $"{i.Blake3}|{(int)i.MediaKind}|{i.TvdbId}|{i.TmdbId}|{i.SeasonNumber}|{i.EpisodeNumbers}|{i.ForeignAlbumId}"
+                    : $"{i.PeerId}/{i.Id}")
                 .Select(g => g.OrderBy(i => i.CandidateId, StringComparer.Ordinal).First());
         }
 

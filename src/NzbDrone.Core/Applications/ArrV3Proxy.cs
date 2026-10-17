@@ -28,6 +28,9 @@ namespace NzbDrone.Core.Applications
         JArray GetArray(IArrConnection settings, string resource);
         JObject Post(IArrConnection settings, string resource, JObject body);
         JObject Put(IArrConnection settings, string resource, JObject body);
+
+        // A change to many things at once, which the Arr apps answer with a list of them, or nothing.
+        void PutMany(IArrConnection settings, string resource, JObject body);
         void Delete(IArrConnection settings, string resource);
     }
 
@@ -90,6 +93,11 @@ namespace NzbDrone.Core.Applications
         public JObject Put(IArrConnection settings, string resource, JObject body)
         {
             return JObject.Parse(Execute(settings, resource, HttpMethod.Put, body));
+        }
+
+        public void PutMany(IArrConnection settings, string resource, JObject body)
+        {
+            Execute(settings, resource, HttpMethod.Put, body);
         }
 
         public void Delete(IArrConnection settings, string resource)

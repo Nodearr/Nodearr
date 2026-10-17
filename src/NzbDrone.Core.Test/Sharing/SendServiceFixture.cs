@@ -160,6 +160,29 @@ namespace NzbDrone.Core.Test.Sharing
             told.Sent.OfferIds.Should().BeEquivalentTo("e-1-501", "e-1-502", "e-1-503");
         }
 
+        [Test]
+        public void the_note_should_say_what_the_arr_apps_know_it_by_and_which_parts()
+        {
+            SendAndDeliver(_bob, ShareKey.Season(1, 10, 2), ShareKey.Episode(1, 10, 104));
+
+            var told = _told.Single().Sent;
+
+            told.Should().Match<SentMessage>(m => m.TvdbId == 75669 && m.Year == 1989);
+            told.Parts.Seasons.Should().Equal(2);
+            told.Parts.Episodes.Select(e => (e.SeasonNumber, e.EpisodeNumber)).Should().Equal((1, 4));
+        }
+
+        [Test]
+        public void the_note_for_albums_should_name_them_by_musicbrainz()
+        {
+            SendAndDeliver(_bob, ShareKey.Album(3, 7, 72));
+
+            var told = _told.Single().Sent;
+
+            told.ForeignArtistId.Should().Be("low-mbid");
+            told.Parts.Albums.Should().Equal("trust");
+        }
+
         [TestCase(new[] { 1 }, new int[0], "Season 1")]
         [TestCase(new[] { 1, 2 }, new int[0], "Seasons 1 and 2")]
         [TestCase(new int[0], new[] { 104 }, "S01E04")]

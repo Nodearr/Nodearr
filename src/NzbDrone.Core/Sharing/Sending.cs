@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text.Json;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Messaging;
+using NzbDrone.Core.Applications;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Nodes;
 
@@ -54,8 +55,45 @@ namespace NzbDrone.Core.Sharing
         public string OfferIds { get; set; }
         public DateTime Received { get; set; }
 
-        // Set when the person acts on it or puts it away.
+        // Set when the person puts it away.
         public DateTime? Handled { get; set; }
+
+        // What the Arr apps know the title by, so it can be added (Get it).
+        public int Year { get; set; }
+        public int TvdbId { get; set; }
+        public int TmdbId { get; set; }
+        public string ImdbId { get; set; }
+        public string ForeignArtistId { get; set; }
+        public bool IsAdult { get; set; }
+        public string SeriesType { get; set; }
+
+        // Which seasons, episodes or albums were sent, as JSON. Empty for a whole title.
+        public string Parts { get; set; }
+
+        public GetItState GetItState { get; set; }
+        public string GetItMessage { get; set; }
+
+        public SentParts GetParts()
+        {
+            return Parts.IsNullOrWhiteSpace() ? new SentParts() : JsonSerializer.Deserialize<SentParts>(Parts) ?? new SentParts();
+        }
+    }
+
+    public enum GetItState
+    {
+        None,
+        Working,
+        Done,
+        Failed
+    }
+
+    // The parts of a title that were sent, by the numbers and IDs every node's Arr apps share:
+    // TVDB's seasons and episodes, and MusicBrainz release groups.
+    public class SentParts
+    {
+        public List<int> Seasons { get; set; } = new();
+        public List<SeasonEpisode> Episodes { get; set; } = new();
+        public List<string> Albums { get; set; } = new();
     }
 
     // What a node says when it sends something, on the control channel.
@@ -67,6 +105,17 @@ namespace NzbDrone.Core.Sharing
         public MediaKind MediaKind { get; set; }
         public bool IsWhole { get; set; }
         public List<string> OfferIds { get; set; } = new();
+
+        // What the Arr apps know the title by, and which parts of it were sent, so the friend's
+        // node can add it to their app. An older sender says none of this.
+        public int Year { get; set; }
+        public int TvdbId { get; set; }
+        public int TmdbId { get; set; }
+        public string ImdbId { get; set; }
+        public string ForeignArtistId { get; set; }
+        public bool IsAdult { get; set; }
+        public string SeriesType { get; set; }
+        public SentParts Parts { get; set; }
     }
 
     // Raised on the receiving node when a trusted friend says it sent something.

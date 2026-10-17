@@ -7069,6 +7069,66 @@
         }
       }
     },
+    "/api/v5/sharing/sends/received/{id}/getit": {
+      "get": {
+        "tags": [
+          "Send"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetItPlanResource"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Send"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetItOptionsResource"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
     "/api/v5/series": {
       "get": {
         "tags": [
@@ -10100,6 +10160,140 @@
         },
         "additionalProperties": false
       },
+      "GetItOptionsResource": {
+        "type": "object",
+        "properties": {
+          "applicationId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "rootFolderPath": {
+            "type": "string",
+            "nullable": true
+          },
+          "qualityProfileId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "metadataProfileId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "seriesType": {
+            "type": "string",
+            "nullable": true
+          },
+          "seasonFolder": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "GetItPlanResource": {
+        "type": "object",
+        "properties": {
+          "targets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GetItTargetResource"
+            },
+            "nullable": true
+          },
+          "problem": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "GetItProfileResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "GetItRootFolderResource": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "nullable": true
+          },
+          "freeSpace": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "GetItState": {
+        "enum": [
+          "none",
+          "working",
+          "done",
+          "failed"
+        ],
+        "type": "string"
+      },
+      "GetItTargetResource": {
+        "type": "object",
+        "properties": {
+          "applicationId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "applicationName": {
+            "type": "string",
+            "nullable": true
+          },
+          "implementation": {
+            "type": "string",
+            "nullable": true
+          },
+          "inLibrary": {
+            "type": "boolean"
+          },
+          "rootFolders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GetItRootFolderResource"
+            },
+            "nullable": true
+          },
+          "qualityProfiles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GetItProfileResource"
+            },
+            "nullable": true
+          },
+          "metadataProfiles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GetItProfileResource"
+            },
+            "nullable": true
+          },
+          "defaults": {
+            "$ref": "#/components/schemas/GetItOptionsResource"
+          },
+          "problem": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "HashingStatusResource": {
         "type": "object",
         "properties": {
@@ -13052,6 +13246,17 @@
           "received": {
             "type": "string",
             "format": "date-time"
+          },
+          "year": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "getItState": {
+            "$ref": "#/components/schemas/GetItState"
+          },
+          "getItMessage": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false

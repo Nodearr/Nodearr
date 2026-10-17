@@ -25,7 +25,7 @@ Readarr is not supported: it was archived in June 2025.
 
 1. You add your Arr apps to Nodearr. Nodearr adds itself to each one as an indexer and a download client, and reads its library.
 2. You create an invite and send it to a friend. When they paste it into their Nodearr, the two nodes trust each other.
-3. You choose what each friend may see. Nothing is shared until you do. Or you send one friend one thing, and their Nodearr shows them what arrived. Someone who is not a friend yet is sent an invite with it.
+3. You choose what each friend may see. Nothing is shared until you do. Or you send one friend one thing, and their Nodearr offers to add it to their app and fetch it. Someone who is not a friend yet is sent an invite with it.
 4. Each node fetches what its friends share, and shows what they have that you are missing, or have better.
 5. When an Arr app searches, Nodearr answers from what your friends share. When it grabs a result, Nodearr fetches the file directly from the friend who has it, checks it, and hands it to the Arr app to import.
 

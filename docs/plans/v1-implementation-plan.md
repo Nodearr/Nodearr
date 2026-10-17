@@ -109,6 +109,7 @@ Then a settings page. ADR 0019. Branch `v1/s10-node-settings`.
 - An album's tracks arrive named as Lidarr names its own, `Artist - Album - 01 - Title`, from the titles a friend's Lidarr knows, and a Lidarr that does not rename keeps them so (ADR 0020, amendments). Branch `v1/s50-lidarr-track-titles`.
 - Albums can be shared or hidden one by one, under their artist, as seasons and episodes are under a series. A node can no longer end up with two Hidden lists, and one that had two is mended (ADR 0020 and ADR 0014, amendments). Branch `v1/s51-album-sharing`.
 - A title, or parts of it, can be sent to a friend, or to someone new with an invite made for it alone. It is shared with them on a list of their own, their node is told with a new `sent` message and fetches the catalog at once, and their Home shows what arrived. Adding it to their Arr app with a Get it button is the next slice (ADR 0021). Branch `v1/s52-send-to-friend`.
+- Get it: a friend's send is added to the receiver's Sonarr, Radarr or Lidarr, with the root folder and quality profile most of the library uses and the sender's series type, then what was sent is monitored, by season, episode or album, and searched for. The app fetches it from the friend through Nodearr and imports it (ADR 0021). Branch `v1/s53-get-it`.
 
 ## Where V1 stands
 

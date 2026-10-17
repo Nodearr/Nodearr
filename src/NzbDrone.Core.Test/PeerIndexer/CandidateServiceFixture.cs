@@ -396,6 +396,16 @@ namespace NzbDrone.Core.Test.PeerIndexer
         }
 
         [Test]
+        public void the_same_bytes_offered_as_two_episodes_should_be_found_as_each()
+        {
+            GivenCopy(_alice, "c-e1", 1, new string('a', 64));
+            GivenCopy(_alice, "c-e2", 2, new string('a', 64));
+
+            Found(Copied("1")).Should().Equal("c-e1");
+            Found(Copied("2")).Should().Equal("c-e2");
+        }
+
+        [Test]
         public void a_file_whose_hash_is_not_known_yet_should_stand_alone()
         {
             GivenCopy(_alice, "c-alice", 1, new string('a', 64));

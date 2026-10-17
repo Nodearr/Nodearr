@@ -104,7 +104,19 @@ The cross on a send forgets it. What it shared stays shared until you change the
 
 ## When a friend sends you something
 
-Home shows it at the top, above everything else. **See it in their catalog** opens Catalog > Peer Catalog, where you can see what it is. **Put away** clears the card. Your Arr app finds what was sent when it searches, as for anything a friend shares. A button to add it to your Arr app and search for it is coming next.
+Home shows it at the top, above everything else, as **"<name> sent you <title>"**.
+
+**Get it** adds it to your Arr app and fetches it:
+
+1. If the app does not have it yet, Nodearr adds it, as you would on the app's Add New page. The card shows the choices it will use, filled in the way most of your library already is: the **Root Folder** most of it is in, the **Quality Profile** most of it uses, and for a series the **Series Type** your friend's Sonarr gives it (Lidarr also asks for a **Metadata Profile**). Change any of them first if you like.
+2. It monitors what was sent, and nothing more: the whole series or artist, the seasons, the episodes, or the albums.
+3. It has the app search for it. The app finds it from your friend, through Nodearr, and the download and import follow as for anything else. Activity > Transfers shows it arriving.
+
+A series goes to Sonarr, a movie to Radarr, music to Lidarr. With two of one kind, such as a second Sonarr for 4K, the card asks which. If the app has it already, Get it only monitors what was sent and searches.
+
+The card then says what was done, such as "Added to Sonarr, monitoring Season 1, and searching", or why it was not, with a way to try again. Nodearr cannot add to Whisparr yet: add it there yourself, and Whisparr finds it from your friend when it searches.
+
+**See it in their catalog** opens Catalog > Peer Catalog. **Put away** clears the card.
 
 ### Hashing
 

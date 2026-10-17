@@ -12,7 +12,7 @@ What changed in each release, newest first. Each item links to the decision reco
 - **A Windows installer**, as Sonarr has: Nodearr in Program Files, started in the tray at sign-in, as a service, or not at all, with the firewall rules it needs.
 - **A first run that sets itself up.** A welcome, sign-in set up first, and three steps on Home: connect your apps, name your node, connect with a friend. Home then becomes an overview.
 - **System pages:** Tasks, Backup, Events and Log Files. A backup holds the node's key, so a restored node is the one its friends know ([ADR 0013](docs/adr/0013-node-identity-pairing-and-trust.md), amendments). Where backups go, how often and for how long are on Settings > General.
-- **Send to a friend.** "I have that, let me send it to you": pick a title, or some seasons, episodes or albums of it, and a friend, or someone new, who is sent an invite made for it alone. It is shared with them on a list of their own, and their Home shows what arrived ([ADR 0021](docs/adr/0021-sending-a-title-to-a-friend.md)).
+- **Send to a friend.** "I have that, let me send it to you": pick a title, or some seasons, episodes or albums of it, and a friend, or someone new, who is sent an invite made for it alone. It is shared with them on a list of their own, and their Home shows what arrived. **Get it** on that card adds it to their Sonarr, Radarr or Lidarr with choices filled in the way most of their library is, monitors what was sent, and searches, so the app fetches it from the friend ([ADR 0021](docs/adr/0021-sending-a-title-to-a-friend.md)).
 - **Pairing attempts are limited.** A node that keeps failing is turned away for 15 minutes, and System > Status warns of it ([ADR 0013](docs/adr/0013-node-identity-pairing-and-trust.md), amendments).
 - **A user guide** in `docs/user-guide/`, and `SECURITY.md`.
 
@@ -25,6 +25,8 @@ What changed in each release, newest first. Each item links to the decision reco
 - An album's tracks arrive named as Lidarr names its own, `Artist - Album - 01 - Title`, from the track titles a friend's Lidarr knows ([ADR 0020](docs/adr/0020-lidarr-albums-shared-and-moved-as-folders-of-tracks.md), amendments).
 
 ### Fixed
+
+- The same bytes offered as two different episodes were shown to the Arr apps as one release, so a search for the other episode found nothing. A file offered by several friends is still one release.
 
 - A node could end up with two Hidden lists, when two requests made one at the same moment. It now has one, and a node that had two keeps everything that was on either.
 - Sonarr, Radarr and Prowlarr were always told to reach Nodearr at port 6633, whatever port it listened on.

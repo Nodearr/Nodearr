@@ -1,12 +1,13 @@
 using System;
 using System.Collections.Generic;
+using Newtonsoft.Json.Linq;
 using NLog;
 using NzbDrone.Core.Catalog;
 using NzbDrone.Core.Configuration;
 
 namespace NzbDrone.Core.Applications.Radarr
 {
-    public class Radarr : ApplicationBase<RadarrSettings>
+    public class Radarr : ApplicationBase<RadarrSettings>, ILibraryAdder
     {
         public Radarr(IArrV3Proxy proxy, IConfigFileProvider configFileProvider, Logger logger)
             : base(proxy, configFileProvider, logger)
@@ -78,6 +79,59 @@ namespace NzbDrone.Core.Applications.Radarr
             }
 
             return catalog;
+        }
+
+        public LibraryAddChoices GetAddChoices()
+        {
+            return LibraryAdd.Choices(_proxy, Settings, false);
+        }
+
+        public string AddAndSearch(LibraryAddRequest request)
+        {
+            var movie = request.ExistingArrId.HasValue ? GetOrNull<JObject>($"/movie/{request.ExistingArrId}") : null;
+            var added = false;
+
+            if (movie == null)
+            {
+                var found = Lookup(request) ?? throw new LibraryAddException("Radarr could not find it on TMDb");
+
+                if (found.Value<int?>("id") is > 0)
+                {
+                    movie = _proxy.Get<JObject>(Settings, $"/movie/{found.Value<int>("id")}");
+                }
+                else
+                {
+                    LibraryAdd.CheckOptions(GetAddChoices(), request, Name);
+
+                    found["qualityProfileId"] = request.QualityProfileId;
+                    found["rootFolderPath"] = request.RootFolderPath;
+                    found["monitored"] = true;
+                    found["minimumAvailability"] = "released";
+                    found["addOptions"] = new JObject { ["monitor"] = "movieOnly", ["searchForMovie"] = true };
+
+                    _proxy.Post(Settings, "/movie", found);
+                    added = true;
+                }
+            }
+
+            if (!added)
+            {
+                movie["monitored"] = true;
+                _proxy.Put(Settings, $"/movie/{movie.Value<int>("id")}", movie);
+                _proxy.Post(Settings, "/command", new JObject { ["name"] = "MoviesSearch", ["movieIds"] = new JArray(movie.Value<int>("id")) });
+            }
+
+            return $"{(added ? "Added to" : "Already in")} Radarr, monitored, and searching";
+        }
+
+        private JObject Lookup(LibraryAddRequest request)
+        {
+            if (request.TmdbId > 0)
+            {
+                return GetOrNull<JObject>($"/movie/lookup/tmdb?tmdbId={request.TmdbId}");
+            }
+
+            return string.IsNullOrWhiteSpace(request.ImdbId) ? null : GetOrNull<JObject>($"/movie/lookup/imdb?imdbId={request.ImdbId}");
         }
     }
 }

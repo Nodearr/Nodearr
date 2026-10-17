@@ -99,6 +99,9 @@ public class ReceivedTitleResource : RestResource
     public bool IsWhole { get; set; }
     public List<string> OfferIds { get; set; } = new();
     public DateTime Received { get; set; }
+    public int Year { get; set; }
+    public GetItState GetItState { get; set; }
+    public string? GetItMessage { get; set; }
 
     public static ReceivedTitleResource FromModel(ReceivedTitle received, Dictionary<int, Peer> peers)
     {
@@ -112,7 +115,98 @@ public class ReceivedTitleResource : RestResource
             MediaKind = received.MediaKind,
             IsWhole = received.IsWhole,
             OfferIds = string.IsNullOrEmpty(received.OfferIds) ? new List<string>() : received.OfferIds.Split(',').ToList(),
-            Received = received.Received
+            Received = received.Received,
+            Year = received.Year,
+            GetItState = received.GetItState,
+            GetItMessage = received.GetItMessage
+        };
+    }
+}
+
+public class GetItOptionsResource
+{
+    public int ApplicationId { get; set; }
+    public string? RootFolderPath { get; set; }
+    public int QualityProfileId { get; set; }
+    public int? MetadataProfileId { get; set; }
+    public string? SeriesType { get; set; }
+    public bool SeasonFolder { get; set; } = true;
+
+    public static GetItOptionsResource? FromModel(GetItOptions? options)
+    {
+        return options == null ? null : new GetItOptionsResource
+        {
+            ApplicationId = options.ApplicationId,
+            RootFolderPath = options.RootFolderPath,
+            QualityProfileId = options.QualityProfileId,
+            MetadataProfileId = options.MetadataProfileId,
+            SeriesType = options.SeriesType,
+            SeasonFolder = options.SeasonFolder
+        };
+    }
+
+    public GetItOptions ToModel()
+    {
+        return new GetItOptions
+        {
+            ApplicationId = ApplicationId,
+            RootFolderPath = RootFolderPath,
+            QualityProfileId = QualityProfileId,
+            MetadataProfileId = MetadataProfileId,
+            SeriesType = SeriesType,
+            SeasonFolder = SeasonFolder
+        };
+    }
+}
+
+public class GetItRootFolderResource
+{
+    public string? Path { get; set; }
+    public long? FreeSpace { get; set; }
+}
+
+public class GetItProfileResource
+{
+    public int Id { get; set; }
+    public string? Name { get; set; }
+}
+
+public class GetItTargetResource
+{
+    public int ApplicationId { get; set; }
+    public string? ApplicationName { get; set; }
+    public string? Implementation { get; set; }
+    public bool InLibrary { get; set; }
+    public List<GetItRootFolderResource> RootFolders { get; set; } = new();
+    public List<GetItProfileResource> QualityProfiles { get; set; } = new();
+    public List<GetItProfileResource> MetadataProfiles { get; set; } = new();
+    public GetItOptionsResource? Defaults { get; set; }
+    public string? Problem { get; set; }
+}
+
+// Where what was sent can be added, and how, filled in the way most of the library already is.
+public class GetItPlanResource
+{
+    public List<GetItTargetResource> Targets { get; set; } = new();
+    public string? Problem { get; set; }
+
+    public static GetItPlanResource FromModel(GetItPlan plan)
+    {
+        return new GetItPlanResource
+        {
+            Problem = plan.Problem,
+            Targets = plan.Targets.ConvertAll(t => new GetItTargetResource
+            {
+                ApplicationId = t.ApplicationId,
+                ApplicationName = t.ApplicationName,
+                Implementation = t.Implementation,
+                InLibrary = t.InLibrary,
+                RootFolders = t.Choices?.RootFolders.ConvertAll(f => new GetItRootFolderResource { Path = f.Path, FreeSpace = f.FreeSpace }) ?? new(),
+                QualityProfiles = t.Choices?.QualityProfiles.ConvertAll(p => new GetItProfileResource { Id = p.Id, Name = p.Name }) ?? new(),
+                MetadataProfiles = t.Choices?.MetadataProfiles.ConvertAll(p => new GetItProfileResource { Id = p.Id, Name = p.Name }) ?? new(),
+                Defaults = GetItOptionsResource.FromModel(t.Defaults),
+                Problem = t.Problem
+            })
         };
     }
 }
@@ -124,10 +218,12 @@ public class SendController : Controller, IHandle<SentTitlesChangedEvent>, IHand
     private readonly ISendService _sendService;
     private readonly IReceivedService _receivedService;
     private readonly IPeerService _peerService;
+    private readonly IGetItService _getItService;
     private readonly IBroadcastSignalRMessage _broadcaster;
 
-    public SendController(ISendService sendService, IReceivedService receivedService, IPeerService peerService, IBroadcastSignalRMessage broadcaster)
+    public SendController(ISendService sendService, IReceivedService receivedService, IPeerService peerService, IGetItService getItService, IBroadcastSignalRMessage broadcaster)
     {
+        _getItService = getItService;
         _sendService = sendService;
         _receivedService = receivedService;
         _peerService = peerService;
@@ -209,6 +305,31 @@ public class SendController : Controller, IHandle<SentTitlesChangedEvent>, IHand
     public NoContent Dismiss(int id)
     {
         _receivedService.Dismiss(id);
+
+        return TypedResults.NoContent();
+    }
+
+    // Where what was sent can be added, and the choices for adding it.
+    [HttpGet("received/{id:int}/getit")]
+    [Produces("application/json")]
+    public Ok<GetItPlanResource> GetItPlan(int id)
+    {
+        return TypedResults.Ok(GetItPlanResource.FromModel(_getItService.Plan(id)));
+    }
+
+    // Adds what was sent to the Arr app if it is missing, monitors it, and searches, in the background.
+    [HttpPost("received/{id:int}/getit")]
+    [Consumes("application/json")]
+    public NoContent GetIt(int id, [FromBody] GetItOptionsResource resource)
+    {
+        try
+        {
+            _getItService.GetIt(id, resource.ToModel());
+        }
+        catch (GetItException ex)
+        {
+            throw new BadRequestException(ex.Message);
+        }
 
         return TypedResults.NoContent();
     }

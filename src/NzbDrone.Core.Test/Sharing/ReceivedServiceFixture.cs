@@ -4,6 +4,7 @@ using System.Linq;
 using FluentAssertions;
 using Moq;
 using NUnit.Framework;
+using NzbDrone.Core.Applications;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Nodes;
 using NzbDrone.Core.PeerCatalog;
@@ -70,6 +71,39 @@ namespace NzbDrone.Core.Test.Sharing
             Receive(sent);
 
             Subject.Waiting().Single().Should().Match<ReceivedTitle>(r => r.Title == "Something" && r.Summary == null && r.OfferIds == "e-1-501");
+        }
+
+        [Test]
+        public void what_the_arr_apps_know_it_by_should_be_kept_when_it_would_do()
+        {
+            var sent = Pingu();
+
+            (sent.TvdbId, sent.Year, sent.SeriesType, sent.ImdbId) = (75669, 1989, "anime", "tt0094518");
+            sent.Parts = new SentParts { Seasons = new List<int> { 1, -1 }, Episodes = new List<SeasonEpisode> { new() { SeasonNumber = 2, EpisodeNumber = 3 }, null } };
+
+            Receive(sent);
+
+            var received = Subject.Waiting().Single();
+
+            received.Should().Match<ReceivedTitle>(r => r.TvdbId == 75669 && r.Year == 1989 && r.SeriesType == "anime" && r.ImdbId == "tt0094518");
+            received.GetParts().Seasons.Should().Equal(1);
+            received.GetParts().Episodes.Should().ContainSingle().Which.EpisodeNumber.Should().Be(3);
+        }
+
+        [Test]
+        public void ids_and_parts_that_would_not_do_should_be_dropped()
+        {
+            var sent = Pingu();
+
+            (sent.ImdbId, sent.ForeignArtistId, sent.SeriesType, sent.IsAdult) = ("javascript:", "not-a-guid", "weird", true);
+            sent.Parts = new SentParts { Albums = new List<string> { "../x", "2869C510-2679-4A3F-BF15-E5E8B49F2F28" } };
+
+            Receive(sent);
+
+            var received = Subject.Waiting().Single();
+
+            received.Should().Match<ReceivedTitle>(r => r.ImdbId == null && r.ForeignArtistId == null && r.SeriesType == null && !r.IsAdult);
+            received.GetParts().Albums.Should().Equal("2869c510-2679-4a3f-bf15-e5e8b49f2f28");
         }
 
         [TestCase("")]

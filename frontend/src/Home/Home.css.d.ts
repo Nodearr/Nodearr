@@ -13,6 +13,13 @@ interface CssExports {
   'code': string;
   'direct': string;
   'dismiss': string;
+  'getIt': string;
+  'getItChoice': string;
+  'getItChoices': string;
+  'getItDone': string;
+  'getItError': string;
+  'getItLabel': string;
+  'getItNote': string;
   'hero': string;
   'heroText': string;
   'heroTitle': string;
@@ -30,6 +37,7 @@ interface CssExports {
   'progress': string;
   'received': string;
   'receivedButtons': string;
+  'receivedHeader': string;
   'receivedText': string;
   'relay': string;
   'split': string;

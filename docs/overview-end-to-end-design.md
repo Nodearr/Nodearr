@@ -88,7 +88,7 @@ Nothing is shared until its owner says so ([ADR 0014](adr/0014-sharing-rules-and
 
 A whole series, season or artist takes in what arrives later.
 
-Something can also be **sent**: one title, or parts of it, to one friend, or to someone new with an invite made for it alone. It is shared with them on a list of their own, and their node is told, so their Home shows what arrived ([ADR 0021](adr/0021-sending-a-title-to-a-friend.md)).
+Something can also be **sent**: one title, or parts of it, to one friend, or to someone new with an invite made for it alone. It is shared with them on a list of their own, and their node is told, so their Home shows what arrived. **Get it** there adds it to their Arr app, monitors what was sent and searches, and the app fetches it from the friend ([ADR 0021](adr/0021-sending-a-title-to-a-friend.md)).
 
 ### 4. Seeing what friends have
 

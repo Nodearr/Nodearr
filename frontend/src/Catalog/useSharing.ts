@@ -267,6 +267,42 @@ export interface ReceivedTitle {
   isWhole: boolean;
   offerIds: string[];
   received: string;
+  year: number;
+  getItState: GetItState;
+  getItMessage?: string;
+}
+
+export type GetItState = 'none' | 'working' | 'done' | 'failed';
+
+export interface GetItOptions {
+  applicationId: number;
+  rootFolderPath?: string;
+  qualityProfileId: number;
+  metadataProfileId?: number | null;
+  seriesType?: string | null;
+  seasonFolder: boolean;
+}
+
+export interface GetItProfile {
+  id: number;
+  name?: string;
+}
+
+export interface GetItTarget {
+  applicationId: number;
+  applicationName?: string;
+  implementation?: string;
+  inLibrary: boolean;
+  rootFolders: { path?: string; freeSpace?: number }[];
+  qualityProfiles: GetItProfile[];
+  metadataProfiles: GetItProfile[];
+  defaults?: GetItOptions;
+  problem?: string;
+}
+
+export interface GetItPlan {
+  targets: GetItTarget[];
+  problem?: string;
 }
 
 const SENDS_PATH = '/sharing/sends';
@@ -312,6 +348,25 @@ export const useDismissReceived = () => {
 
   return useMutation<unknown, ApiError, number>({
     mutationFn: (id) => send('POST', `${RECEIVED_PATH}/${id}/dismiss`),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: [RECEIVED_PATH] });
+    },
+  });
+};
+
+// Asked when a card is shown: the Arr apps' root folders and profiles, with the defaults.
+export const useGetItPlan = (id: number, enabled: boolean) =>
+  useApiQuery<GetItPlan>({
+    path: `${RECEIVED_PATH}/${id}/getit`,
+    queryOptions: { enabled },
+  });
+
+export const useGetIt = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<unknown, ApiError, { id: number; options: GetItOptions }>({
+    mutationFn: ({ id, options }) =>
+      send('POST', `${RECEIVED_PATH}/${id}/getit`, options),
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: [RECEIVED_PATH] });
     },
