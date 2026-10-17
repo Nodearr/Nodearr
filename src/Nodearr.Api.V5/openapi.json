@@ -9318,6 +9318,9 @@
           "validHours": {
             "type": "integer",
             "format": "int32"
+          },
+          "shareAll": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false
@@ -13264,6 +13267,9 @@
       "RedeemInviteResource": {
         "type": "object",
         "properties": {
+          "shareAll": {
+            "type": "boolean"
+          },
           "code": {
             "type": "string",
             "nullable": true

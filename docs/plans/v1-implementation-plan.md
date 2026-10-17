@@ -16,7 +16,7 @@ Written 2026-10-10. Read this after the handoff context: docs/overview-end-to-en
 4. **Rust/.NET boundary:** a Rust `nodearr-transport` sidecar that .NET starts and supervises. They talk over loopback with a shared token.
 5. **Identity:** the Iroh Ed25519 key is the node identity. It's stored as a file in the data directory, not in the settings database.
 6. **Transport:** an in-memory fake for tests and Iroh for real traffic. No throwaway LAN HTTP transport (this replaces the M4 "local HTTP" step).
-7. **Sharing default (owner decision):** a newly trusted peer sees NOTHING until something is shared with them. The pairing flow offers a one-click "share everything except Hidden".
+7. **Sharing default (owner decision):** a newly trusted peer sees NOTHING until something is shared with them. The pairing flow offers a one-click "share everything except Hidden". Changed by the owner on 2026-10-16: a new friend is offered everything except Hidden unless the invite, on either side, is unticked (ADR 0014, amendments).
 8. **Relay (owner decision):** by default, n0's public Iroh relays are used for coordination only, and media bytes are only sent over direct paths. Users can configure their own relay URL. Official infrastructure never relays media.
 9. **Second node (owner decision):** a friend's PC on another network, used for the cross-NAT spike (S2) and final acceptance (S8).
 10. **Inherited Sonarr TV features:** list them in S0, and remove them only where they get in the way.
@@ -110,6 +110,7 @@ Then a settings page. ADR 0019. Branch `v1/s10-node-settings`.
 - Albums can be shared or hidden one by one, under their artist, as seasons and episodes are under a series. A node can no longer end up with two Hidden lists, and one that had two is mended (ADR 0020 and ADR 0014, amendments). Branch `v1/s51-album-sharing`.
 - A title, or parts of it, can be sent to a friend, or to someone new with an invite made for it alone. It is shared with them on a list of their own, their node is told with a new `sent` message and fetches the catalog at once, and their Home shows what arrived. Adding it to their Arr app with a Get it button is the next slice (ADR 0021). Branch `v1/s52-send-to-friend`.
 - Get it: a friend's send is added to the receiver's Sonarr, Radarr or Lidarr, with the root folder and quality profile most of the library uses and the sender's series type, then what was sent is monitored, by season, episode or album, and searched for. The app fetches it from the friend through Nodearr and imports it (ADR 0021). Branch `v1/s53-get-it`.
+- Sharing everything except Hidden is the default, opt out: an invite is ticked to share everything, and so is the box for the node that uses it, and a send to someone new. Friends paired before keep what they have (ADR 0014, amendments). Branch `v1/s54-share-by-default`.
 
 ## Where V1 stands
 

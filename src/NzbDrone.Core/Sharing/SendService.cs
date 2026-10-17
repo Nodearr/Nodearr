@@ -35,8 +35,9 @@ namespace NzbDrone.Core.Sharing
         SentTitle Send(int peerId, IEnumerable<ShareKey> items);
 
         // The same for someone who is not a friend yet: an invite of its own, and the send waits
-        // for it to be used.
-        SendWithInviteResult SendWithInvite(IEnumerable<ShareKey> items, TimeSpan validFor);
+        // for it to be used. Whoever uses it is offered everything except Hidden too, unless
+        // shareAll is off, and then only what was sent.
+        SendWithInviteResult SendWithInvite(IEnumerable<ShareKey> items, TimeSpan validFor, bool shareAll = true);
 
         // Forgets a send. What it shared stays shared: that is the friend's list to change.
         void Delete(int id);
@@ -123,12 +124,10 @@ namespace NzbDrone.Core.Sharing
             return sent;
         }
 
-        public SendWithInviteResult SendWithInvite(IEnumerable<ShareKey> items, TimeSpan validFor)
+        public SendWithInviteResult SendWithInvite(IEnumerable<ShareKey> items, TimeSpan validFor, bool shareAll = true)
         {
             var checkedItems = Check(items);
-
-            // Nothing else is shared with whoever uses this invite: only what was sent.
-            var invite = _peerService.CreateInvite(validFor, $"For {checkedItems.Title}", false);
+            var invite = _peerService.CreateInvite(validFor, $"For {checkedItems.Title}", shareAll);
             var sent = Record(checkedItems, s => s.InviteId = invite.Invite.Id);
 
             return new SendWithInviteResult { Sent = sent, Invite = invite };

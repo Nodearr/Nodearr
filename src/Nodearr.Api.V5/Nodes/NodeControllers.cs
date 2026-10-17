@@ -184,7 +184,7 @@ public class InviteController : NodeControllerBase
     [Produces("application/json")]
     public Ok<PeerResource> Redeem([FromBody] RedeemInviteResource resource)
     {
-        return TypedResults.Ok(PeerResource.FromModel(Run(() => _peerService.RedeemInvite(resource.Code ?? string.Empty))));
+        return TypedResults.Ok(PeerResource.FromModel(Run(() => _peerService.RedeemInvite(resource.Code ?? string.Empty, resource.ShareAll))));
     }
 
     [HttpDelete("{id:int}")]

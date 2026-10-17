@@ -30,7 +30,7 @@ Then the friend's node is told, with a new control message, `sent`. It carries a
 
 ### Sending to someone new
 
-A send to someone who is not a friend yet makes an invite of its own (ADR 0013), which shares nothing else: it is created without "share everything", and labelled "For" and the title. The send waits for the invite to be used.
+A send to someone who is not a friend yet makes an invite of its own (ADR 0013), labelled "For" and the title. It was made to share nothing else. Since sharing everything except Hidden became the default (ADR 0014, amendment of 2026-10-16), it does that, as any invite does, unless the sender unticks it, and then it shares only what was sent. The send waits for the invite to be used.
 
 When it is used, the inviting node attaches the send to the new friend and shares it before it answers the pairing, so the first catalog the new friend asks for already holds what was sent. The note follows a few seconds later, once the other side has finished pairing, as the first connection check does (`PeerConnectionUpkeep.PairingSettle`). Forgetting a send whose invite was not used deletes the invite.
 

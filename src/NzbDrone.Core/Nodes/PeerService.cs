@@ -49,12 +49,17 @@ namespace NzbDrone.Core.Nodes
         NodeIdentity GetIdentity();
         List<Peer> All();
         List<PeerInvite> Invites();
-        CreatedInvite CreateInvite(TimeSpan validFor, string label, bool shareAll = false);
+
+        // A new friend is offered everything except Hidden unless the invite says otherwise.
+        CreatedInvite CreateInvite(TimeSpan validFor, string label, bool shareAll = true);
 
         // Sends a message to a trusted node and returns its answer.
         PeerReply Ask(Peer peer, PeerMessage message);
         void DeleteInvite(int id);
-        Peer RedeemInvite(string code);
+
+        // Whether this node offers the new friend everything except Hidden, as their invite
+        // may offer it to this node. Trust that already existed keeps what was chosen before.
+        Peer RedeemInvite(string code, bool shareAll = true);
         Peer Ping(int id);
         Peer Block(int id);
         Peer Unblock(int id);
@@ -163,7 +168,7 @@ namespace NzbDrone.Core.Nodes
             return Send(peer, message);
         }
 
-        public CreatedInvite CreateInvite(TimeSpan validFor, string label, bool shareAll = false)
+        public CreatedInvite CreateInvite(TimeSpan validFor, string label, bool shareAll = true)
         {
             var address = _transport.GetLocalAddress();
             var now = DateTime.UtcNow;
@@ -195,7 +200,7 @@ namespace NzbDrone.Core.Nodes
             _invites.Delete(id);
         }
 
-        public Peer RedeemInvite(string code)
+        public Peer RedeemInvite(string code, bool shareAll = true)
         {
             if (!InviteCode.TryDecode(code, out var invite))
             {
@@ -275,7 +280,16 @@ namespace NzbDrone.Core.Nodes
             peer.LastSeen = DateTime.UtcNow;
             peer.LastError = null;
 
-            return ChangeState(peer, PeerState.Trusted, null);
+            if (alreadyTrusted)
+            {
+                return ChangeState(peer, PeerState.Trusted, null);
+            }
+
+            peer.ShareAll = shareAll;
+            peer = ChangeState(peer, PeerState.Trusted, null);
+            _peers.SetFields(peer, p => p.ShareAll);
+
+            return peer;
         }
 
         public Peer Ping(int id)
@@ -484,14 +498,21 @@ namespace NzbDrone.Core.Nodes
             invite.RedeemedByNodeId = remoteNodeId;
             _invites.Update(invite);
 
+            var wasTrusted = peer is { State: PeerState.Trusted };
+
             peer ??= new Peer { NodeId = remoteNodeId, Added = now };
             peer.Name = message.SenderName.IsNotNullOrWhiteSpace() ? message.SenderName : remoteNodeId[..12];
             peer.SetAddress(message.SenderRelayUrl, message.SenderIpAddresses);
             peer.LastSeen = now;
             peer.LastError = null;
 
-            // The inviter chose this when creating the invite. Otherwise a new peer is offered nothing.
-            peer.ShareAll = invite.ShareAll;
+            // The inviter chose this when creating the invite. A friend who was trusted already keeps
+            // what was chosen for them before, as on the other side.
+            if (!wasTrusted)
+            {
+                peer.ShareAll = invite.ShareAll;
+            }
+
             ChangeState(peer, PeerState.Trusted, null);
             _peers.SetFields(peer, p => p.ShareAll);
 

@@ -113,4 +113,4 @@ A stranger who knows a node's ID and can reach it could try invite secrets witho
 
 ### 2026-10-16: an invite can carry a send
 
-An invite can be made for one send (ADR 0021). It is an ordinary invite, made without "share everything" and labelled "For" and the title. When it is used, the inviting node shares what was sent before it answers the pairing, so the first catalog the new friend asks for holds it. Pairing itself is unchanged. The inviting node now raises an event naming the invite that was used, which is how the send finds its friend.
+An invite can be made for one send (ADR 0021). It is an ordinary invite, labelled "For" and the title, and shares everything except Hidden unless the sender unticks that (ADR 0014, amendment of 2026-10-16). When it is used, the inviting node shares what was sent before it answers the pairing, so the first catalog the new friend asks for holds it. Pairing itself is unchanged. The inviting node now raises an event naming the invite that was used, which is how the send finds its friend.

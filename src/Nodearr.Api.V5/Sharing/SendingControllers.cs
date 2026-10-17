@@ -87,6 +87,9 @@ public class CreateSendResource
 
     // How long the invite is good for, when there is one.
     public int ValidHours { get; set; } = 72;
+
+    // Whether whoever uses the invite is offered everything except Hidden too. On unless turned off.
+    public bool ShareAll { get; set; } = true;
 }
 
 public class ReceivedTitleResource : RestResource
@@ -273,7 +276,7 @@ public class SendController : Controller, IHandle<SentTitlesChangedEvent>, IHand
                 throw new BadRequestException("An invite can be valid for 1 hour to 7 days");
             }
 
-            var result = _sendService.SendWithInvite(items, TimeSpan.FromHours(resource.ValidHours));
+            var result = _sendService.SendWithInvite(items, TimeSpan.FromHours(resource.ValidHours), resource.ShareAll);
 
             return TypedResults.Ok(SentTitleResource.FromModel(result.Sent, Peers(), Invites(), result.Invite.Code));
         }

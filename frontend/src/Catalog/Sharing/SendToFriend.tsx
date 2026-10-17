@@ -110,6 +110,9 @@ function SendToFriend({
   const [recipient, setRecipient] = useState<string | null>(null);
   const [validHours, setValidHours] = useState(72);
 
+  // Whoever uses the invite is offered everything except Hidden too, unless this is turned off.
+  const [shareAll, setShareAll] = useState(true);
+
   const { data: sends = [] } = useSends();
   const sendTitle = useSendTitle();
   const { mutate, reset } = sendTitle;
@@ -178,12 +181,17 @@ function SendToFriend({
     []
   );
 
+  const handleShareAllChange = useCallback(() => {
+    setShareAll((current) => !current);
+  }, []);
+
   const handleSendPress = useCallback(() => {
     mutate(
       {
         peerId: to === SOMEONE_NEW ? undefined : Number(to),
         items: Array.from(items, parseShareId),
         validHours: to === SOMEONE_NEW ? validHours : undefined,
+        shareAll: to === SOMEONE_NEW ? shareAll : undefined,
       },
       {
         onSuccess: () => {
@@ -193,7 +201,7 @@ function SendToFriend({
         },
       }
     );
-  }, [mutate, to, items, validHours]);
+  }, [mutate, to, items, validHours, shareAll]);
 
   const sent = sendTitle.data;
 
@@ -293,8 +301,21 @@ function SendToFriend({
                 values={VALIDITY}
                 onChange={handleValidHoursChange}
               />
+              <label className={styles.check}>
+                <input
+                  className={styles.checkBox}
+                  type="checkbox"
+                  checked={shareAll}
+                  onChange={handleShareAllChange}
+                />
+                {translate('SendSomeoneNewShareAll')}
+              </label>
               <p className={styles.muted}>
-                {translate('SendSomeoneNewHelpText')}
+                {translate(
+                  shareAll
+                    ? 'SendSomeoneNewHelpText'
+                    : 'SendSomeoneNewOnlyThisHelpText'
+                )}
               </p>
             </>
           ) : null}

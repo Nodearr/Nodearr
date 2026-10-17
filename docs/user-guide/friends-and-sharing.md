@@ -7,7 +7,7 @@ Two nodes become friends when one uses the other's invite. From then on each can
 On **Nodes > Invites**, or the last step on Home:
 
 1. Choose how long the invite works (**Valid For**, 24 hours unless you change it), and give it a **Label**, a note for yourself about who it is for.
-2. Tick **Share everything except Hidden** if this friend should be offered your whole library from the start. Otherwise they are offered nothing until you share something with them.
+2. **Share everything except Hidden** is ticked: this friend is offered your whole library, apart from what is on your Hidden list, including what you add later. Untick it if they should be offered only what you put on a list for them.
 3. **Create Invite**, and copy the code. Send it to your friend however you like: a message, an email, read out over the phone.
 
 An invite works once, for one node, and stops working when it expires. Nodes > Invites shows each one as open, used or expired.
@@ -16,7 +16,7 @@ The code holds your node's ID, how to reach it, the time it expires, and a secre
 
 ## Using a friend's invite
 
-Paste the code under **Redeem Invite** on Nodes > Invites, or on Home. Your node connects to your friend's, proves who it is, and hands over the secret. When your friend's node accepts it, each of you appears on the other's **Nodes > Trusted Nodes** as trusted, under the name each of you chose.
+Paste the code under **Redeem Invite** on Nodes > Invites, or on Home. **Share everything except Hidden** is ticked there too, for what your node offers them: untick it to share only lists with them. Your node connects to your friend's, proves who it is, and hands over the secret. When your friend's node accepts it, each of you appears on the other's **Nodes > Trusted Nodes** as trusted, under the name each of you chose.
 
 If it fails:
 
@@ -47,13 +47,13 @@ What you can do depends on where trust stands:
 
 ## Choosing what to share
 
-Nothing is shared until you share it. On **Catalog > Sharing**:
+A new friend is offered everything except Hidden, unless you unticked that on the invite. On **Catalog > Sharing** you can change it for each friend:
 
 ### With a friend: everything, or lists
 
 Each friend is either:
 
-- offered **everything except Hidden** (from the invite, or the button on the Sharing page), or
+- offered **everything except Hidden**, as a new friend is unless the invite said otherwise (the button on the Sharing page turns it on and off), or
 - offered **only the lists they are on**.
 
 ### Lists
@@ -92,7 +92,7 @@ What you send is shared with that friend on a list of their own, **Sent to** and
 
 If nothing of it can be sent, Nodearr says so: there is no file of it in your library yet, or it is on your Hidden list.
 
-**To someone new**, Nodearr makes an invite for this alone and shows you the code. Send it to them. When they use it in their Nodearr, the two of you are friends, they are offered what you sent and nothing else, and their Home shows it. The invite is also listed on Nodes > Invites, labelled **For** and the title.
+**To someone new**, Nodearr makes an invite for this and shows you the code. Send it to them. When they use it in their Nodearr, the two of you are friends, their Home shows what you sent, and they are offered the rest of your library except Hidden, as any new friend is. Untick **Share everything except Hidden with them too** first if they should be offered only what you sent. The invite is also listed on Nodes > Invites, labelled **For** and the title.
 
 The **Sent** list under the form says how each send stands:
 

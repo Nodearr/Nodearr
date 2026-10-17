@@ -320,7 +320,12 @@ export const useSendTitle = () => {
   return useMutation<
     SentTitle,
     ApiError,
-    { peerId?: number; items: ShareKey[]; validHours?: number }
+    {
+      peerId?: number;
+      items: ShareKey[];
+      validHours?: number;
+      shareAll?: boolean;
+    }
   >({
     mutationFn: (body) => send<SentTitle>('POST', SENDS_PATH, body),
     onSettled: () => {

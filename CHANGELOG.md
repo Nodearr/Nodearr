@@ -18,6 +18,8 @@ What changed in each release, newest first. Each item links to the decision reco
 
 ### Changed
 
+- **A new friend is offered your whole library, except Hidden**, unless you untick that on the invite, or when you use theirs. It used to be nothing until you shared something. Friends you already have keep what they had ([ADR 0014](docs/adr/0014-sharing-rules-and-catalog-exchange.md), amendments).
+
 - An **upgrade** is now what your Arr app's own quality profile would take, not any higher resolution or better source ([ADR 0014](docs/adr/0014-sharing-rules-and-catalog-exchange.md), amendments).
 - Every package and the image carry **third-party notices** for everything they contain, and the .NET runtime's own licence and notices.
 - The assembly copyright credits Sonarr again.

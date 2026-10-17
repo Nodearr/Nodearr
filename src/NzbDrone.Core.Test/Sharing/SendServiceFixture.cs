@@ -292,14 +292,22 @@ namespace NzbDrone.Core.Test.Sharing
         }
 
         [Test]
-        public void sending_to_someone_new_should_make_an_invite_that_shares_nothing_else()
+        public void sending_to_someone_new_should_make_an_invite_that_shares_everything_but_hidden_by_default()
         {
             var result = Subject.SendWithInvite(new[] { Pingu }, TimeSpan.FromDays(3));
 
             result.Invite.Code.Should().Be("nodearr-invite");
             result.Sent.Should().Match<SentTitle>(s => s.InviteId == 9 && s.PeerId == null);
-            Mocker.GetMock<IPeerService>().Verify(s => s.CreateInvite(TimeSpan.FromDays(3), "For Pingu", false), Times.Once());
+            Mocker.GetMock<IPeerService>().Verify(s => s.CreateInvite(TimeSpan.FromDays(3), "For Pingu", true), Times.Once());
             Sharing.All().Should().NotContain(l => l.List.SentToPeerId != null);
+        }
+
+        [Test]
+        public void sending_to_someone_new_can_share_only_what_was_sent()
+        {
+            Subject.SendWithInvite(new[] { Pingu }, TimeSpan.FromDays(3), false);
+
+            Mocker.GetMock<IPeerService>().Verify(s => s.CreateInvite(TimeSpan.FromDays(3), "For Pingu", false), Times.Once());
         }
 
         [Test]

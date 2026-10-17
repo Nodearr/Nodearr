@@ -125,9 +125,9 @@ export const useDeleteInvite = () => {
 export const useRedeemInvite = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<Peer, ApiError, string>({
-    mutationFn: (code) =>
-      send<Peer>('POST', `${INVITES_PATH}/redeem`, { code }),
+  // shareAll: offer the new friend everything except Hidden, as their invite may offer it.
+  return useMutation<Peer, ApiError, { code: string; shareAll: boolean }>({
+    mutationFn: (body) => send<Peer>('POST', `${INVITES_PATH}/redeem`, body),
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: [PEERS_PATH] });
     },

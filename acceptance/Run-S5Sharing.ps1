@@ -271,9 +271,9 @@ try {
     $night = $titles | Where-Object title -eq 'Night of the Living Dead'
     Assert-That 'A lists the series and movie it can share' ($pingu.files -eq 2 -and $night.files -eq 1 -and @($titles).Count -eq 2) @{ titles = @($titles | ForEach-Object { "$($_.title): $($_.files)" }) }
 
-    # --- Pairing: nothing is shared by default ---------------------------------------------------
+    # --- Pairing with sharing everything turned off: nothing is shared ---------------------------
 
-    $invite = Invoke-Node A POST '/nodes/invites' @{ validHours = 1; label = 's5' }
+    $invite = Invoke-Node A POST '/nodes/invites' @{ validHours = 1; label = 's5'; shareAll = $false }
     Invoke-Node B POST '/nodes/invites/redeem' @{ code = $invite.code } | Out-Null
     $bOnA = Invoke-Node A GET '/nodes/peers' | Select-Object -First 1
     $aOnB = Invoke-Node B GET '/nodes/peers' | Select-Object -First 1
@@ -282,7 +282,7 @@ try {
         $summary = Invoke-Node B GET '/catalog/peers' | Where-Object peerId -eq $aOnB.id
         if ($summary.catalogSyncedAt) { $summary }
     }
-    Assert-That 'A newly trusted peer is offered nothing' (
+    Assert-That 'A peer paired with sharing everything turned off is offered nothing' (
         -not $bOnA.shareAll -and ($synced.notInLibrary + $synced.missing + $synced.upgrade + $synced.have) -eq 0 -and -not $synced.catalogError -and
         (Invoke-Node B GET '/catalog/peers/items?pageSize=50').totalRecords -eq 0
     ) @{ summary = $synced }

@@ -68,7 +68,7 @@ pwsh acceptance/Run-S5Sharing.ps1
 
 Needs Docker and ffmpeg, like S3, and the transport sidecar, like S4. Node A imports a real catalog from Sonarr and Radarr containers. Node B imports from the same Sonarr only. The two pair, and the script reads what B holds after each change on A:
 
-- A newly trusted peer is offered nothing.
+- A peer paired with sharing everything unticked is offered nothing.
 - "Share everything" offers every file, and B hears about it without being asked to sync.
 - B marks each file as have, missing or not in library against its own catalog.
 - Nothing B receives says where a file is stored.
