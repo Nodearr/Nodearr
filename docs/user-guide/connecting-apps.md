@@ -16,6 +16,7 @@ Add each app under **Settings > Apps**, with the **+** button, or from the first
 | Username, Password (advanced) | Only when the app sits behind a reverse proxy that asks for HTTP Basic sign-in. |
 | Download Category (advanced) | The category the app sends its downloads to Nodearr under. |
 | Sync Categories (advanced) | The categories Nodearr's indexer is added to the app with. The app only searches it in these. |
+| Share With New Friends | Whether friends offered everything except Hidden are offered this app's library too: each new friend, and the friends you have when the app is added. Off for Whisparr, on for the rest. Change it for one friend on Catalog > Sharing ([friends and sharing](friends-and-sharing.md#with-a-friend-everything-some-apps-or-lists)). |
 
 **Test** checks that Nodearr can reach the app, that the API key works, and that the app is the one you chose, in a version Nodearr supports. **Save** then adds Nodearr to the app and reads its library, which takes from seconds to a few minutes for a large one.
 

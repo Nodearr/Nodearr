@@ -7,7 +7,7 @@ Two nodes become friends when one uses the other's invite. From then on each can
 On **Nodes > Invites**, or the last step on Home:
 
 1. Choose how long the invite works (**Valid For**, 24 hours unless you change it), and give it a **Label**, a note for yourself about who it is for.
-2. **Share everything except Hidden** is ticked: this friend is offered your whole library, apart from what is on your Hidden list, including what you add later. Untick it if they should be offered only what you put on a list for them.
+2. **Share everything except Hidden** is ticked: this friend is offered your whole library from every app shared with new friends, which is every app but Whisparr unless you change it, apart from what is on your Hidden list, and including what you add later. Untick it if they should be offered only what you put on a list for them.
 3. **Create Invite**, and copy the code. Send it to your friend however you like: a message, an email, read out over the phone.
 
 An invite works once, for one node, and stops working when it expires. Nodes > Invites shows each one as open, used or expired.
@@ -47,14 +47,19 @@ What you can do depends on where trust stands:
 
 ## Choosing what to share
 
-A new friend is offered everything except Hidden, unless you unticked that on the invite. On **Catalog > Sharing** you can change it for each friend:
+A new friend is offered everything except Hidden, from every app but Whisparr, unless you unticked that on the invite. On **Catalog > Sharing** you can change it for each friend.
 
-### With a friend: everything, or lists
+### With a friend: everything, some apps, or lists
 
-Each friend is either:
+Under **Trusted Nodes** on the Sharing page, each friend has a line of their own:
 
-- offered **everything except Hidden**, as a new friend is unless the invite said otherwise (the button on the Sharing page turns it on and off), or
-- offered **only the lists they are on**.
+- **Share everything except Hidden** or **Stop sharing everything** turns "everything" on and off for them. Off, they are offered only the lists they are on.
+- When it is on, a tick for each of your Arr apps says which apps "everything" takes in. Untick one to leave its whole library out for that friend. To share everything but Whisparr, leave Whisparr unticked.
+- Whatever is on a list they are on is offered to them as well, from any app, ticked or not. To share all your series and films but only a few Whisparr items, leave Whisparr unticked and put those items on a list for them.
+
+The label beside each friend says which it is: everything, everything but some apps, or only their lists. Nodes > Trusted Nodes shows the same.
+
+**Which apps a new friend gets** is set on each app, in Settings > Apps: **Share With New Friends**. It is on for every app but Whisparr. It also decides what happens when you add an app later: one with it on is shared with every friend who is offered everything, and one with it off is left out for all of them until you tick it for someone.
 
 ### Lists
 
@@ -71,7 +76,17 @@ A file that holds several episodes is shared only when every one of them is, as 
 
 ### Hidden
 
-Anything on the **Hidden** list is offered to nobody, whatever else says so: not to friends who are offered everything, not to friends whose lists hold it. Use it for what you never want to share. It works at the same levels as a list, so you can hide one season of a series or one album of an artist and share the rest.
+Anything on the **Hidden** list is offered to nobody, whatever else says so: not to friends who are offered everything, not to friends whose lists hold it, not to someone you send it to. Use it for what you never want to share. It works at the same levels as a list, so you can hide one season of a series or one album of an artist and share the rest.
+
+There is one Hidden list, and it is on Catalog > Sharing with the other lists, at the bottom of the page:
+
+1. Find the title with **Filter**.
+2. Tick it, or for a series some of its seasons or episodes, or for an artist some of its albums.
+3. **Save**.
+
+Within seconds it is gone from every friend's node, and a transfer of it stops. Untick it and **Save** to share it again, with whoever would be offered it otherwise. The Hidden list has no **Shared with** and cannot be deleted, because it applies to everyone.
+
+A whole series or artist that is hidden stays hidden as it grows: a new episode or album of it is never offered. Your Arr apps are not told anything: Hidden is only about what your friends see.
 
 ### When sharing changes
 

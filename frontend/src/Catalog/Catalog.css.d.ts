@@ -17,8 +17,10 @@ interface CssExports {
   'nested': string;
   'newList': string;
   'newListName': string;
+  'peerApps': string;
   'peerName': string;
   'peerRow': string;
+  'peerShare': string;
   'posterCell': string;
   'posterNone': string;
   'posterSquare': string;

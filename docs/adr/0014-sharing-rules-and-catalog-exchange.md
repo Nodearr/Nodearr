@@ -154,6 +154,14 @@ The marks are worked out again whenever the local catalog is refreshed.
 
 - 2026-10-16 (ADR 0021): **sending.** A list can be made for one friend, to hold what is sent to them ("Sent to" and their name). It is an ordinary list in every other way, and the rule is unchanged: the Hidden list still wins over it.
 
+- 2026-10-17: **everything, by app.** The owner's direction: share everything was all or nothing, where an owner may well share everything but Whisparr. Rule 3 now reads: a peer marked "share everything" is offered the rest, apart from the Arr apps left out for it.
+  - Each peer holds the IDs of the apps left out for it (`Peers.ExcludedApplicationIds`, migration 254). The Sharing page has a tick per app under each friend.
+  - Lists are unchanged and still share from any app, so a few Whisparr items can go to a friend whose "everything" leaves Whisparr out. The Hidden list still wins over both.
+  - Which apps a new friend gets is a setting on each app, **Share With New Friends**, on for every app but Whisparr v2 and v3. It applies when a friendship forms, on either side, and when an app is added: one with it off is left out for every friend there already. An app removed is taken off every friend's list, so a later app given its number is not left out by mistake.
+  - Adult content is so opt in for "everything", as it already was for the Arr apps (ADR 0015): a Whisparr library reaches a friend only when it is ticked for them or put on a list. A per-kind switch (TV, movies, music, adult) was weighed and not taken: the apps are what the owner sees and configures, and two Radarrs, one for 4K, can be told apart.
+  - Friends paired before keep what they had: every app. Nothing is taken from them without the owner.
+  - Checked by unit tests (`SharingServiceFixture`, `ShareDefaultsFixture`, `PeerServiceFixture`).
+
 ## Follow-up work
 
 - ~~S6: turn peer catalog rows into indexer results, with the opaque file identifier inside a signed GUID.~~ Done: ADR 0015.

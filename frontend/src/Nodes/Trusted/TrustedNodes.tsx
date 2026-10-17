@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react';
+import { describeSharing, useLibraryApplications } from 'Catalog/useSharing';
 import Alert from 'Components/Alert';
 import Label from 'Components/Label';
 import Button from 'Components/Link/Button';
@@ -12,6 +13,7 @@ import Table from 'Components/Table/Table';
 import TableBody from 'Components/Table/TableBody';
 import TableRow from 'Components/Table/TableRow';
 import { kinds } from 'Helpers/Props';
+import Application from 'typings/Application';
 import translate from 'Utilities/String/translate';
 import {
   ConnectionPath,
@@ -121,6 +123,7 @@ function describeNetwork(identity: NodeIdentity, hasDirectPeer: boolean) {
 
 interface PeerRowProps {
   peer: Peer;
+  applications: Application[];
   isBusy: boolean;
   onAction: (id: number, action: PeerAction) => void;
 }
@@ -154,7 +157,7 @@ function PeerActionButton({
   );
 }
 
-function PeerRow({ peer, isBusy, onAction }: PeerRowProps) {
+function PeerRow({ peer, applications, isBusy, onAction }: PeerRowProps) {
   return (
     <TableRow>
       <TableRowCell>
@@ -171,9 +174,7 @@ function PeerRow({ peer, isBusy, onAction }: PeerRowProps) {
         ) : null}
         {peer.state === 'trusted' ? (
           <div className={styles.muted}>
-            {peer.shareAll
-              ? translate('SharingEverything')
-              : translate('SharingListsOnly')}
+            {describeSharing(peer, applications)}
           </div>
         ) : null}
         {peer.lastError ? (
@@ -232,6 +233,7 @@ function PeerRow({ peer, isBusy, onAction }: PeerRowProps) {
 function TrustedNodes() {
   const { data: identity } = useNodeIdentity();
   const { data: peers = [], isLoading, error } = usePeers();
+  const applications = useLibraryApplications();
   const { mutate, isPending, error: actionError } = usePeerAction();
 
   const handleAction = useCallback(
@@ -317,6 +319,7 @@ function TrustedNodes() {
                 <PeerRow
                   key={peer.id}
                   peer={peer}
+                  applications={applications}
                   isBusy={isPending}
                   onAction={handleAction}
                 />

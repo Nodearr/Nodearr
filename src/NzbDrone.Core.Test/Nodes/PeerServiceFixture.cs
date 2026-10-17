@@ -270,6 +270,34 @@ namespace NzbDrone.Core.Test.Nodes
         }
 
         [Test]
+        public void a_new_friend_should_be_offered_everything_from_the_apps_shared_with_new_friends()
+        {
+            // Alice's app 3 and Bob's app 7 are Whisparr, not shared with new friends.
+            _alice.NotSharedWithNewFriends.Add(3);
+            _bob.NotSharedWithNewFriends.Add(7);
+
+            GivenPaired(_alice, _bob);
+
+            _alice.PeerFor(_bob).ExcludedApplicationIds.Should().Equal(3);
+            _bob.PeerFor(_alice).ExcludedApplicationIds.Should().Equal(7);
+        }
+
+        [Test]
+        public void a_friend_paired_again_should_keep_the_apps_chosen_for_them_before()
+        {
+            GivenPaired(_alice, _bob);
+            _alice.PeerFor(_bob).ExcludedApplicationIds = new List<int> { 5 };
+            _bob.PeerFor(_alice).ExcludedApplicationIds = new List<int>();
+            _alice.NotSharedWithNewFriends.Add(3);
+            _bob.NotSharedWithNewFriends.Add(7);
+
+            GivenPaired(_alice, _bob);
+
+            _alice.PeerFor(_bob).ExcludedApplicationIds.Should().Equal(5);
+            _bob.PeerFor(_alice).ExcludedApplicationIds.Should().BeEmpty();
+        }
+
+        [Test]
         public void a_sharing_hint_should_ask_for_the_catalog_to_be_fetched_again()
         {
             GivenPaired(_alice, _bob);
@@ -525,7 +553,9 @@ namespace NzbDrone.Core.Test.Nodes
 
                 Offers.Setup(o => o.Answer(It.IsAny<Peer>(), It.IsAny<PeerMessage>())).Returns(new PeerReply { Ok = true, CatalogVersion = "v1" });
 
-                Service = new NamedPeerService(name, peers.Object, invites.Object, Transport, Offers.Object, Events.Object, logger);
+                ShareDefaults.Setup(d => d.NotSharedWithNewFriends()).Returns(() => NotSharedWithNewFriends.ToList());
+
+                Service = new NamedPeerService(name, peers.Object, invites.Object, Transport, Offers.Object, Events.Object, logger, ShareDefaults.Object);
                 Service.Handle(new ApplicationStartedEvent());
             }
 
@@ -536,6 +566,8 @@ namespace NzbDrone.Core.Test.Nodes
             public List<PeerInvite> Invites { get; } = new();
             public Mock<IEventAggregator> Events { get; } = new();
             public Mock<IOfferExchange> Offers { get; } = new();
+            public Mock<IShareDefaults> ShareDefaults { get; } = new();
+            public List<int> NotSharedWithNewFriends { get; } = new();
             public NodeAddress Address => Transport.GetLocalAddress();
 
             public Peer PeerFor(TestNode other)
@@ -548,8 +580,8 @@ namespace NzbDrone.Core.Test.Nodes
         {
             private readonly string _name;
 
-            public NamedPeerService(string name, IPeerRepository peers, IPeerInviteRepository invites, IPeerTransport transport, IOfferExchange offers, IEventAggregator eventAggregator, Logger logger)
-                : base(peers, invites, transport, offers, eventAggregator, logger, new PairAttemptLimiter(eventAggregator))
+            public NamedPeerService(string name, IPeerRepository peers, IPeerInviteRepository invites, IPeerTransport transport, IOfferExchange offers, IEventAggregator eventAggregator, Logger logger, IShareDefaults shareDefaults)
+                : base(peers, invites, transport, offers, eventAggregator, logger, new PairAttemptLimiter(eventAggregator), shareDefaults: shareDefaults)
             {
                 _name = name;
             }

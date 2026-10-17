@@ -2,6 +2,12 @@
 
 What changed in each release, newest first. Each item links to the decision record that explains it, and the [V1 plan](docs/plans/v1-implementation-plan.md) has the whole story, slice by slice.
 
+## Unreleased
+
+### New
+
+- **Share everything, from the apps you choose.** Under each friend on Catalog > Sharing, a tick for each Arr app says which libraries "everything except Hidden" takes in, so you can share everything but Whisparr. Lists still share from any app, and Hidden still wins. **Share With New Friends**, on each app in Settings > Apps, says which apps a new friend gets: all but Whisparr unless you change it. Friends you have keep what they had ([ADR 0014](docs/adr/0014-sharing-rules-and-catalog-exchange.md), amendments).
+
 ## 0.1.0 (pre-release)
 
 The first release: everything V1 set out to do.

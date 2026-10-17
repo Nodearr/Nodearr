@@ -108,6 +108,40 @@ namespace NzbDrone.Core.Test.Sharing
         }
 
         [Test]
+        public void share_everything_should_leave_out_the_apps_left_out_for_the_peer()
+        {
+            Subject.SetShareAll(_bob.Id, true, new[] { 2 });
+            Subject.SetShareAll(_carol.Id, true, new[] { 1 });
+
+            OfferedTo(_bob).Should().BeEquivalentTo("e-1-501", "e-1-502", "e-1-601");
+            OfferedTo(_carol).Should().BeEquivalentTo("m-2-701");
+        }
+
+        [Test]
+        public void a_list_should_still_share_from_an_app_left_out_of_everything()
+        {
+            var list = Subject.Create("Films for Bob");
+
+            Subject.SetShareAll(_bob.Id, true, new[] { 2 });
+            Subject.Update(list.List.Id, "Films for Bob", new[] { NightOfTheLivingDead }, new[] { _bob.Id });
+
+            OfferedTo(_bob).Should().BeEquivalentTo("e-1-501", "e-1-502", "e-1-601", "m-2-701");
+
+            Subject.Update(Hidden.List.Id, null, new[] { NightOfTheLivingDead }, null);
+
+            OfferedTo(_bob).Should().BeEquivalentTo("e-1-501", "e-1-502", "e-1-601");
+        }
+
+        [Test]
+        public void apps_left_out_should_be_kept_only_when_connected_and_stay_as_they_are_when_not_given()
+        {
+            Subject.SetShareAll(_bob.Id, true, new[] { 2, 99, 2 }).ExcludedApplicationIds.Should().Equal(2);
+            Subject.SetShareAll(_bob.Id, false).ExcludedApplicationIds.Should().Equal(2);
+
+            OfferedTo(_bob).Should().BeEmpty();
+        }
+
+        [Test]
         public void the_hidden_list_should_override_share_everything()
         {
             Subject.SetShareAll(_bob.Id, true);

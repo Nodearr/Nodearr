@@ -85,9 +85,11 @@ namespace NzbDrone.Core.Nodes
         private readonly IContainerEnvironment _container;
         private readonly IPairAttemptLimiter _pairAttempts;
         private readonly IPosterExchange _posters;
+        private readonly IShareDefaults _shareDefaults;
 
-        public PeerService(IPeerRepository peers, IPeerInviteRepository invites, IPeerTransport transport, IOfferExchange offerExchange, IEventAggregator eventAggregator, Logger logger, IPairAttemptLimiter pairAttempts, INodeSettingsProvider settings = null, IContainerEnvironment container = null, IPosterExchange posters = null)
+        public PeerService(IPeerRepository peers, IPeerInviteRepository invites, IPeerTransport transport, IOfferExchange offerExchange, IEventAggregator eventAggregator, Logger logger, IPairAttemptLimiter pairAttempts, INodeSettingsProvider settings = null, IContainerEnvironment container = null, IPosterExchange posters = null, IShareDefaults shareDefaults = null)
         {
+            _shareDefaults = shareDefaults;
             _posters = posters;
             _container = container;
             _pairAttempts = pairAttempts;
@@ -102,6 +104,12 @@ namespace NzbDrone.Core.Nodes
 
         // What other nodes see this node called.
         public virtual string LocalName => _settings?.NodeName ?? Environment.MachineName;
+
+        // What a new friend offered everything is not offered from (ShareDefaults).
+        private List<int> NotSharedWithNewFriends()
+        {
+            return _shareDefaults?.NotSharedWithNewFriends() ?? new List<int>();
+        }
 
         public void Handle(ApplicationStartedEvent message)
         {
@@ -289,8 +297,9 @@ namespace NzbDrone.Core.Nodes
             }
 
             peer.ShareAll = shareAll;
+            peer.ExcludedApplicationIds = NotSharedWithNewFriends();
             peer = ChangeState(peer, PeerState.Trusted, null);
-            _peers.SetFields(peer, p => p.ShareAll);
+            _peers.SetFields(peer, p => p.ShareAll, p => p.ExcludedApplicationIds);
 
             return peer;
         }
@@ -517,10 +526,11 @@ namespace NzbDrone.Core.Nodes
             if (!wasTrusted)
             {
                 peer.ShareAll = invite.ShareAll;
+                peer.ExcludedApplicationIds = NotSharedWithNewFriends();
             }
 
             ChangeState(peer, PeerState.Trusted, null);
-            _peers.SetFields(peer, p => p.ShareAll);
+            _peers.SetFields(peer, p => p.ShareAll, p => p.ExcludedApplicationIds);
 
             _logger.Info("Paired with {0} ({1})", peer.Name, remoteNodeId);
             _eventAggregator.PublishEvent(new InviteRedeemedEvent(invite, peer));
