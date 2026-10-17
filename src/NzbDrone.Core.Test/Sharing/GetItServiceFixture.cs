@@ -204,6 +204,20 @@ namespace NzbDrone.Core.Test.Sharing
         }
 
         [Test]
+        public void what_the_friend_offers_of_the_series_now_should_be_what_is_searched_for()
+        {
+            var peerItems = Mocker.Resolve<IPeerCatalogRepository>();
+
+            peerItems.Insert(new PeerCatalogItem { PeerId = _alice.Id, RemoteId = "e-1-501", MediaKind = MediaKind.Tv, TvdbId = 75669, SeasonNumber = 1, EpisodeNumbers = "1" });
+            peerItems.Insert(new PeerCatalogItem { PeerId = _alice.Id, RemoteId = "e-1-502", MediaKind = MediaKind.Tv, TvdbId = 75669, SeasonNumber = 2, EpisodeNumbers = "3,4" });
+            peerItems.Insert(new PeerCatalogItem { PeerId = _alice.Id, RemoteId = "e-1-900", MediaKind = MediaKind.Tv, TvdbId = 1, SeasonNumber = 1, EpisodeNumbers = "1" });
+
+            Subject.Execute(new GetItCommand { ReceivedTitleId = Received(r => r.IsWhole = true).Id, ApplicationId = 1 });
+
+            _asked.OfferedEpisodes.Select(e => (e.SeasonNumber, e.EpisodeNumber)).Should().BeEquivalentTo(new[] { (1, 1), (2, 3), (2, 4) });
+        }
+
+        [Test]
         public void get_it_should_be_queued_and_shown_as_working()
         {
             var received = Received();

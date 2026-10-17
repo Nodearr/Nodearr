@@ -114,6 +114,7 @@ Then a settings page. ADR 0019. Branch `v1/s10-node-settings`.
 - Get it adds films and scenes to Whisparr v3, found by their StashDB, ThePornDB, TMDb or IMDb ID, and a send carries those IDs. Run end to end between two Radarr 6.4 and two Whisparr 3.6 instances, a film and a scene each added, fetched and imported (ADR 0021). Branch `v1/s55-get-it-whisparr`.
 - The error reporting code inherited from Sonarr is gone from the web UI and the server, with its packages, and what is still open is in one list below, posters and thumbnails added to it (ADR 0018, amendments). Branch `v1/s56-open-work-and-cleanup`.
 - Posters in a friend's catalog: each node passes on the posters its own Arr apps keep, over the peer connection, to friends offered the title, and both sides keep them. Catalog > Peer Catalog shows them beside each file and as a grid by title (ADR 0022). Branch `v1/s57-posters`.
+- A test kit for people: `tools/ui-test.ps1` sets up Nodearr, Sonarr and Radarr with a small library on Windows, solo or one set-up each with a friend, and `docs/guides/ui-test.md` walks through Nodearr in its own pages. Walking through it found and fixed: Home's overview not counting what is new to your apps, an out-of-date help text, and Get it searching a whole series episode by episode where the friend had few (ADR 0021, amendments). Branch `v1/s58-ui-test-kit`.
 
 ## Where V1 stands
 
@@ -150,7 +151,7 @@ V1 is done. What follows is open, most useful first. Each item in the first list
 
 ### Waiting on others
 
-- `iroh-blobs`, looked at again once it is production quality on iroh 1.x (ADR 0012).
+- `iroh-blobs`, looked at again once it is production quality on iroh 1.x (ADR 0012). Its production release, 0.35, is built on iroh 0.35, from before 1.0, and the owner decided on 2026-10-16 not to take Nodearr's iroh back to it.
 
 ### Not planned
 

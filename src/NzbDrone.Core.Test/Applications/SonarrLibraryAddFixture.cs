@@ -120,6 +120,15 @@ namespace NzbDrone.Core.Test.Applications
         }
 
         [Test]
+        public void only_what_the_friend_offers_should_be_searched_for()
+        {
+            Subject.AddAndSearch(Pingu(r => (r.Whole, r.OfferedEpisodes) = (true, new List<SeasonEpisode> { new() { SeasonNumber = 1, EpisodeNumber = 4 } })));
+
+            // Monitored whole, but one search, not one for every missing episode of every season.
+            Commands("EpisodeSearch").Single()["episodeIds"].Values<int>().Should().Equal(104);
+        }
+
+        [Test]
         public void single_episodes_should_be_monitored_once_sonarr_has_them_and_searched()
         {
             var done = Subject.AddAndSearch(Pingu(r => r.Episodes = new List<SeasonEpisode> { new() { SeasonNumber = 1, EpisodeNumber = 4 }, new() { SeasonNumber = 9, EpisodeNumber = 9 } }));

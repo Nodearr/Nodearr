@@ -319,6 +319,13 @@ namespace NzbDrone.Core.Sharing
                         request.TvdbId = items.Value.Select(i => i.TvdbId).FirstOrDefault(i => i > 0);
                     }
 
+                    // Every episode of the series the friend offers now, which for a whole series may
+                    // be more than when it was sent.
+                    request.OfferedEpisodes = _peerItems.ForPeer(received.PeerId)
+                        .Where(i => i.MediaKind == MediaKind.Tv && i.TvdbId > 0 && i.TvdbId == request.TvdbId)
+                        .SelectMany(i => i.GetEpisodeNumbers().Select(e => new SeasonEpisode { SeasonNumber = i.SeasonNumber, EpisodeNumber = e }))
+                        .ToList();
+
                     if (nothingSaid)
                     {
                         request.Episodes = items.Value
@@ -355,6 +362,12 @@ namespace NzbDrone.Core.Sharing
                     {
                         request.Albums = items.Value.Select(i => i.ForeignAlbumId).Where(a => a != null).Distinct().ToList();
                     }
+
+                    request.OfferedAlbums = _peerItems.ForPeer(received.PeerId)
+                        .Where(i => i.ForeignArtistId != null && string.Equals(i.ForeignArtistId, request.ForeignArtistId, StringComparison.OrdinalIgnoreCase) && i.ForeignAlbumId != null)
+                        .Select(i => i.ForeignAlbumId)
+                        .Distinct()
+                        .ToList();
 
                     return request.ForeignArtistId != null ? request : null;
 

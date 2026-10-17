@@ -101,6 +101,17 @@ namespace NzbDrone.Core.Test.Applications
         }
 
         [Test]
+        public void a_whole_artist_should_be_searched_for_only_the_albums_the_friend_offers()
+        {
+            _proxy.Setup(p => p.Get<JObject>(It.IsAny<IArrConnection>(), "/artist/3")).Returns(JObject.Parse("{\"id\":3,\"monitored\":true}"));
+
+            Subject.AddAndSearch(new LibraryAddRequest { ForeignArtistId = Slint, Whole = true, ExistingArrId = 3, OfferedAlbums = new List<string> { Spiderland } });
+
+            Commands("ArtistSearch").Should().BeEmpty();
+            Commands("AlbumSearch").Single()["albumIds"].Values<int>().Should().Equal(31);
+        }
+
+        [Test]
         public void an_album_lidarr_does_not_list_should_be_said()
         {
             var done = Subject.AddAndSearch(new LibraryAddRequest { ForeignArtistId = Slint, Albums = new List<string> { "11111111-1111-1111-1111-111111111111" }, RootFolderPath = "/music", QualityProfileId = 1, MetadataProfileId = 1 });

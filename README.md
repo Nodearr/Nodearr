@@ -49,6 +49,7 @@ The [user guide](docs/user-guide/README.md) has the rest: [installing](docs/user
 - [Overview](docs/overview-end-to-end-design.md): what Nodearr is and how the parts fit together.
 - [Releases](docs/guides/releases.md): what a release holds, and how one is made.
 - [Testing between two machines](docs/guides/two-machine-test.md), and [on Windows](docs/guides/two-machine-test-windows.md).
+- [Testing by hand, in Nodearr's pages](docs/guides/ui-test.md), on your own or with a friend.
 - [Decision records](docs/adr/): why each part works the way it does.
 - [Sequence diagrams](docs/diagrams/).
 - [The V1 plan](docs/plans/v1-implementation-plan.md): what was built, in what order, and what is still open.

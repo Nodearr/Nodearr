@@ -194,7 +194,23 @@ namespace NzbDrone.Core.Applications.Lidarr
 
             if (request.Whole)
             {
-                _proxy.Post(Settings, "/command", new JObject { ["name"] = "ArtistSearch", ["artistId"] = id });
+                // The albums the friend offers, rather than every album of the artist, so that one
+                // send is not a search of every indexer for each album.
+                var offered = request.OfferedAlbums.Select(a => a.ToLowerInvariant()).ToHashSet();
+                var search = albums
+                    .Where(a => offered.Contains(ForeignId(a)) && !IsComplete(a))
+                    .Select(a => a.Value<int>("id"))
+                    .ToList();
+
+                if (offered.Count == 0)
+                {
+                    _proxy.Post(Settings, "/command", new JObject { ["name"] = "ArtistSearch", ["artistId"] = id });
+                }
+                else if (search.Count > 0)
+                {
+                    _proxy.Post(Settings, "/command", new JObject { ["name"] = "AlbumSearch", ["albumIds"] = new JArray(search) });
+                }
+
                 what = "the whole artist";
             }
             else
@@ -214,6 +230,15 @@ namespace NzbDrone.Core.Applications.Lidarr
             var note = missing > 0 ? $". Lidarr does not list {missing} of the albums sent: its metadata profile may leave that kind of release out" : string.Empty;
 
             return $"{(added ? "Added to" : "Already in")} Lidarr, monitoring {what}, and searching{note}";
+        }
+
+        // Lidarr has every track of it. An album it says nothing about is not.
+        private static bool IsComplete(JObject album)
+        {
+            var statistics = album["statistics"];
+            var tracks = statistics?.Value<int?>("trackCount") ?? 0;
+
+            return tracks > 0 && (statistics?.Value<int?>("trackFileCount") ?? 0) >= tracks;
         }
 
         private static string ForeignId(JObject album)
