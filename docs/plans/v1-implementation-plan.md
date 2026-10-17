@@ -112,6 +112,7 @@ Then a settings page. ADR 0019. Branch `v1/s10-node-settings`.
 - Get it: a friend's send is added to the receiver's Sonarr, Radarr or Lidarr, with the root folder and quality profile most of the library uses and the sender's series type, then what was sent is monitored, by season, episode or album, and searched for. The app fetches it from the friend through Nodearr and imports it (ADR 0021). Branch `v1/s53-get-it`.
 - Sharing everything except Hidden is the default, opt out: an invite is ticked to share everything, and so is the box for the node that uses it, and a send to someone new. Friends paired before keep what they have (ADR 0014, amendments). Branch `v1/s54-share-by-default`.
 - Get it adds films and scenes to Whisparr v3, found by their StashDB, ThePornDB, TMDb or IMDb ID, and a send carries those IDs. Run end to end between two Radarr 6.4 and two Whisparr 3.6 instances, a film and a scene each added, fetched and imported (ADR 0021). Branch `v1/s55-get-it-whisparr`.
+- The error reporting code inherited from Sonarr is gone from the web UI and the server, with its packages, and what is still open is in one list below, posters and thumbnails added to it (ADR 0018, amendments). Branch `v1/s56-open-work-and-cleanup`.
 
 ## Where V1 stands
 
@@ -138,8 +139,10 @@ Not yet run:
 
 Not built:
 
+- **Posters and thumbnails** for browsing. Catalog > Peer Catalog, the Sharing page and the cards on Home show titles as text only, which makes a friend's catalog hard to browse. The Arr apps hold each title's images (TMDb, TheTVDB, fanart.tv, MusicBrainz cover art), and Sonarr shows them through its own cached copies. To decide first: whether a node fetches images from those services itself, which is a call out ADR 0018 does not allow yet, or a friend's node passes on the ones its Arr app already has; and how large the offer may grow.
+- **Get it for Whisparr v2.** Built on Sonarr, it adds a site and then a scene in it, and a friend's catalog does not name the site by its ID in v2's metadata (ADR 0021).
+- **From the decision records:** check that a relay answers before saving its address, and a download limit beside the upload limit (ADR 0019); PROPER and REPACK releases told apart (ADR 0015); `iroh-blobs` looked at again once it is production quality on iroh 1.x (ADR 0012).
 - Custom formats in Nodearr's marks. Upgrades follow the quality profile's qualities, and the Arr apps judge custom formats themselves when they search (decision 2).
 - A FreeBSD package and a macOS app bundle (`docs/guides/releases.md`). No updater, by design (ADR 0018).
 - Inherited pages that no route leads to still hold links to pages that do not exist.
 - The S1 spike harness no longer runs on later branches. The acceptance scripts replaced it.
-- The web UI still holds Sonarr's error reporting code, pointed at `sentry.nodearr.com`. It never runs, because analytics is always off (ADR 0018), but it should go.

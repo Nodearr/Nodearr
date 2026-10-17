@@ -23,6 +23,7 @@ What changed in each release, newest first. Each item links to the decision reco
 - An **upgrade** is now what your Arr app's own quality profile would take, not any higher resolution or better source ([ADR 0014](docs/adr/0014-sharing-rules-and-catalog-exchange.md), amendments).
 - Every package and the image carry **third-party notices** for everything they contain, and the .NET runtime's own licence and notices.
 - The assembly copyright credits Sonarr again.
+- The error reporting code inherited from Sonarr, which never ran, is removed from the web UI and the server, with the Sentry packages ([ADR 0018](docs/adr/0018-diagnostics-and-no-calls-home.md), amendments).
 - The API description, `openapi.json`, is generated from the code, and covers Nodearr's own endpoints. It was Sonarr's.
 - An album's tracks arrive named as Lidarr names its own, `Artist - Album - 01 - Title`, from the track titles a friend's Lidarr knows ([ADR 0020](docs/adr/0020-lidarr-albums-shared-and-moved-as-folders-of-tracks.md), amendments).
 
