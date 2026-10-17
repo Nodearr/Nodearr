@@ -22,8 +22,10 @@ import { SortDirection } from 'Helpers/Props/sortDirections';
 import formatDateTime from 'Utilities/Date/formatDateTime';
 import formatBytes from 'Utilities/Number/formatBytes';
 import translate from 'Utilities/String/translate';
+import Poster from '../Poster';
 import {
   PeerCatalogItem,
+  PeerCatalogTitle,
   PeerItemStatus,
   usePeerCatalogSummaries,
 } from '../useSharing';
@@ -31,7 +33,25 @@ import styles from '../Catalog.css';
 
 const PAGE_SIZE = 50;
 
+// A grid of posters fills a page with fewer, larger items.
+const POSTER_PAGE_SIZE = 48;
+
+type View = 'table' | 'posters';
+
+const VIEW_KEY = 'nodearr.peerCatalog.view';
+
+function readView(): View {
+  try {
+    return window.localStorage.getItem(VIEW_KEY) === 'posters'
+      ? 'posters'
+      : 'table';
+  } catch {
+    return 'table';
+  }
+}
+
 const COLUMNS: Column[] = [
+  { name: 'poster', label: '', isVisible: true },
   { name: 'peerName', label: () => translate('Peer'), isVisible: true },
   {
     name: 'title',
@@ -137,9 +157,41 @@ function StatusButton({
   );
 }
 
+// "Pingu (1990)", or "Slint - Spiderland (1991)" for an album.
+function describeTitle(title: PeerCatalogTitle) {
+  const name = title.artist ? `${title.artist} - ${title.title}` : title.title;
+
+  return title.year ? `${name} (${title.year})` : name ?? '';
+}
+
+function TitleTile({ title }: { title: PeerCatalogTitle }) {
+  const counts = STATUSES.filter((s) => title[s] > 0).map(
+    (s) => `${title[s]} ${translate(STATUS_LABELS[s])}`
+  );
+
+  return (
+    <div className={styles.tile}>
+      <Poster
+        itemId={title.posterItemId}
+        title={describeTitle(title)}
+        size="tile"
+        isSquare={title.mediaKind === 'music'}
+      />
+
+      <div className={styles.tileTitle} title={describeTitle(title)}>
+        {describeTitle(title)}
+      </div>
+
+      <div className={styles.tileDetails}>{counts.join(', ')}</div>
+      <div className={styles.tileDetails}>{title.peerNames.join(', ')}</div>
+    </div>
+  );
+}
+
 function PeerCatalog() {
   const [status, setStatus] = useState<PeerItemStatus | undefined>(undefined);
   const [page, setPage] = useState(1);
+  const [view, setView] = useState<View>(readView);
   const [sortKey, setSortKey] = useState('title');
   const [sortDirection, setSortDirection] =
     useState<SortDirection>('ascending');
@@ -169,7 +221,37 @@ function PeerCatalog() {
     sortKey,
     sortDirection,
     queryParams: status ? { status } : undefined,
+    queryOptions: { enabled: view === 'table' },
   });
+
+  const titles = usePagedApiQuery<PeerCatalogTitle>({
+    path: '/catalog/peers/titles',
+    page,
+    pageSize: POSTER_PAGE_SIZE,
+    queryParams: status ? { status } : undefined,
+    queryOptions: { enabled: view === 'posters' },
+  });
+
+  const handleViewPress = useCallback((next: View) => {
+    setView(next);
+    setPage(1);
+
+    try {
+      window.localStorage.setItem(VIEW_KEY, next);
+    } catch {
+      // Remembered for this visit only.
+    }
+  }, []);
+
+  const handleTableViewPress = useCallback(() => {
+    handleViewPress('table');
+  }, [handleViewPress]);
+
+  const handlePosterViewPress = useCallback(() => {
+    handleViewPress('posters');
+  }, [handleViewPress]);
+
+  const pages = view === 'posters' ? titles.totalPages : totalPages;
 
   const handleSyncPress = useCallback(() => {
     executeCommand({ name: CommandNames.PeerCatalogSync }, () => {
@@ -206,12 +288,12 @@ function PeerCatalog() {
   }, []);
 
   const handleNextPagePress = useCallback(() => {
-    setPage((current) => Math.min(totalPages, current + 1));
-  }, [totalPages]);
+    setPage((current) => Math.min(pages, current + 1));
+  }, [pages]);
 
   const handleLastPagePress = useCallback(() => {
-    setPage(totalPages);
-  }, [totalPages]);
+    setPage(pages);
+  }, [pages]);
 
   const counts: Record<PeerItemStatus, number> = {
     missing: summaries.reduce((sum, s) => sum + s.missing, 0),
@@ -231,6 +313,21 @@ function PeerCatalog() {
             isSpinning={isSyncing}
             isDisabled={summaries.length === 0}
             onPress={handleSyncPress}
+          />
+        </PageToolbarSection>
+
+        <PageToolbarSection alignContent="right">
+          <PageToolbarButton
+            label={translate('Table')}
+            iconName={icons.TABLE}
+            isDisabled={view === 'table'}
+            onPress={handleTableViewPress}
+          />
+          <PageToolbarButton
+            label={translate('Posters')}
+            iconName={icons.POSTER}
+            isDisabled={view === 'posters'}
+            onPress={handlePosterViewPress}
           />
         </PageToolbarSection>
       </PageToolbar>
@@ -301,9 +398,35 @@ function PeerCatalog() {
           </Alert>
         ) : null}
 
-        {isLoading ? <LoadingIndicator /> : null}
+        {view === 'posters' && titles.isLoading ? <LoadingIndicator /> : null}
 
-        {!isLoading && records.length > 0 ? (
+        {view === 'posters' &&
+        !titles.isLoading &&
+        titles.records.length > 0 ? (
+          <div>
+            <div className={styles.tiles}>
+              {titles.records.map((title) => (
+                <TitleTile key={title.key} title={title} />
+              ))}
+            </div>
+
+            <TablePager
+              page={page}
+              totalPages={titles.totalPages}
+              totalRecords={titles.totalRecords}
+              isFetching={titles.isFetching}
+              onFirstPagePress={handleFirstPagePress}
+              onPreviousPagePress={handlePreviousPagePress}
+              onNextPagePress={handleNextPagePress}
+              onLastPagePress={handleLastPagePress}
+              onPageSelect={setPage}
+            />
+          </div>
+        ) : null}
+
+        {view === 'table' && isLoading ? <LoadingIndicator /> : null}
+
+        {view === 'table' && !isLoading && records.length > 0 ? (
           <div>
             <Table
               columns={COLUMNS}
@@ -315,6 +438,15 @@ function PeerCatalog() {
               <TableBody>
                 {records.map((item) => (
                   <TableRow key={item.id}>
+                    <TableRowCell className={styles.posterCell}>
+                      <Poster
+                        itemId={item.id}
+                        title={item.title ?? ''}
+                        size="thumb"
+                        isSquare={item.mediaKind === 'music'}
+                      />
+                    </TableRowCell>
+
                     <TableRowCell>{item.peerName}</TableRowCell>
 
                     <TableRowCell className={styles.title}>

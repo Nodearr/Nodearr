@@ -10,7 +10,7 @@ namespace NzbDrone.Core.Applications.Lidarr
 {
     // Lidarr's library is artists, their albums, and the albums' tracks, each track a file. It
     // grabs and imports a whole album at once (ADR 0020).
-    public class Lidarr : ApplicationBase<LidarrSettings>, ILibraryAdder
+    public class Lidarr : ApplicationBase<LidarrSettings>, ILibraryAdder, IPosterSource
     {
         public Lidarr(IArrV3Proxy proxy, IConfigFileProvider configFileProvider, Logger logger)
             : base(proxy, configFileProvider, logger)
@@ -219,6 +219,26 @@ namespace NzbDrone.Core.Applications.Lidarr
         private static string ForeignId(JObject album)
         {
             return album.Value<string>("foreignAlbumId")?.ToLowerInvariant() ?? string.Empty;
+        }
+
+        // An album's own cover, or its artist's picture where Lidarr has no cover for it.
+        public byte[] GetPoster(PosterSubject subject, int arrId)
+        {
+            if (subject != PosterSubject.Album)
+            {
+                return null;
+            }
+
+            var cover = PosterImages.FromMediaCover(_proxy, Settings, $"album/{arrId}/cover-500.jpg");
+
+            if (cover != null)
+            {
+                return cover;
+            }
+
+            var album = GetOrNull<JObject>($"/album/{arrId}");
+
+            return album == null ? null : PosterImages.FromMediaCover(_proxy, Settings, $"artist/{album.Value<int>("artistId")}/poster-500.jpg");
         }
     }
 }

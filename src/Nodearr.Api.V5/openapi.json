@@ -5445,6 +5445,66 @@
         }
       }
     },
+    "/api/v5/catalog/peers/titles": {
+      "get": {
+        "tags": [
+          "PeerCatalog"
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          },
+          {
+            "name": "sortKey",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortDirection",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/SortDirection"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/PeerItemStatus"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeerCatalogTitleResourcePagingResource"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v5/catalog/peers/items": {
       "get": {
         "tags": [
@@ -5552,6 +5612,29 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/v5/catalog/posters/peer/{id}": {
+      "get": {
+        "tags": [
+          "Poster"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
           }
         }
       }
@@ -12623,6 +12706,97 @@
         },
         "additionalProperties": false
       },
+      "PeerCatalogTitleResource": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "nullable": true
+          },
+          "mediaKind": {
+            "$ref": "#/components/schemas/MediaKind"
+          },
+          "isAdult": {
+            "type": "boolean"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "artist": {
+            "type": "string",
+            "nullable": true
+          },
+          "year": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "peerNames": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "posterItemId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "files": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "missing": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "upgrade": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "notInLibrary": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "have": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PeerCatalogTitleResourcePagingResource": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sortKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "sortDirection": {
+            "$ref": "#/components/schemas/SortDirection"
+          },
+          "totalRecords": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PeerCatalogTitleResource"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "PeerItemStatus": {
         "enum": [
           "notInLibrary",
@@ -15529,6 +15703,9 @@
     },
     {
       "name": "Ping"
+    },
+    {
+      "name": "Poster"
     },
     {
       "name": "QualityDefinition"

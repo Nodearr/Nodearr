@@ -69,6 +69,23 @@ export interface PeerCatalogSummary {
   have: number;
 }
 
+// A title a friend offers, with however many of its files, for browsing by poster.
+export interface PeerCatalogTitle {
+  key: string;
+  mediaKind: MediaKind;
+  isAdult: boolean;
+  title?: string;
+  artist?: string;
+  year: number;
+  peerNames: string[];
+  posterItemId: number;
+  files: number;
+  missing: number;
+  upgrade: number;
+  notInLibrary: number;
+  have: number;
+}
+
 export interface PeerCatalogItem {
   id: number;
   peerId: number;

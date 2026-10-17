@@ -14,6 +14,9 @@ namespace NzbDrone.Core.Nodes
 
         // A friend sent something to this node. An older node does not know it, and refuses it.
         public const string Sent = "sent";
+
+        // The poster of the title an offered item belongs to. An older node refuses it too.
+        public const string Poster = "poster";
     }
 
     // What one node says to another on the control channel. The transport has already verified
@@ -48,6 +51,9 @@ namespace NzbDrone.Core.Nodes
 
         // Sent only.
         public SentMessage Sent { get; set; }
+
+        // Poster only: the item of this node's offer whose title's poster is wanted.
+        public string PosterFor { get; set; }
 
         public byte[] ToBytes()
         {
@@ -88,6 +94,9 @@ namespace NzbDrone.Core.Nodes
 
         // How many files the whole catalog at CatalogVersion has, so the asker can check.
         public int CatalogItemCount { get; set; }
+
+        // The poster, as a JPEG or a PNG. None when the title has none.
+        public byte[] Poster { get; set; }
 
         public byte[] ToBytes()
         {

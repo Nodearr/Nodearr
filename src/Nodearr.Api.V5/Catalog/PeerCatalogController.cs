@@ -54,6 +54,23 @@ public class PeerCatalogItemResource
     public string? Blake3 { get; set; }
 }
 
+public class PeerCatalogTitleResource
+{
+    public string? Key { get; set; }
+    public MediaKind MediaKind { get; set; }
+    public bool IsAdult { get; set; }
+    public string? Title { get; set; }
+    public string? Artist { get; set; }
+    public int Year { get; set; }
+    public List<string> PeerNames { get; set; } = new();
+    public int PosterItemId { get; set; }
+    public int Files { get; set; }
+    public int Missing { get; set; }
+    public int Upgrade { get; set; }
+    public int NotInLibrary { get; set; }
+    public int Have { get; set; }
+}
+
 [V5ApiController("catalog/peers")]
 public class PeerCatalogController : Controller
 {
@@ -89,6 +106,42 @@ public class PeerCatalogController : Controller
             Upgrade = s.Upgrade,
             Have = s.Have
         }));
+    }
+
+    // What friends offer by title, a page at a time, for browsing by poster.
+    [HttpGet("titles")]
+    [Produces("application/json")]
+    public Ok<PagingResource<PeerCatalogTitleResource>> GetTitles([FromQuery] PagingRequestResource paging, [FromQuery] PeerItemStatus? status = null)
+    {
+        var names = _peerCatalogService.GetSummaries().ToDictionary(s => s.PeerId, s => s.PeerName);
+        var titles = _peerCatalogService.GetTitles(status);
+        var pageSize = Math.Clamp(paging.PageSize ?? 50, 1, 250);
+        var page = Math.Max(1, paging.Page ?? 1);
+
+        return TypedResults.Ok(new PagingResource<PeerCatalogTitleResource>
+        {
+            Page = page,
+            PageSize = pageSize,
+            SortKey = "title",
+            SortDirection = SortDirection.Ascending,
+            TotalRecords = titles.Count,
+            Records = titles.Skip((page - 1) * pageSize).Take(pageSize).Select(t => new PeerCatalogTitleResource
+            {
+                Key = t.Key,
+                MediaKind = t.MediaKind,
+                IsAdult = t.IsAdult,
+                Title = t.Title,
+                Artist = t.Artist,
+                Year = t.Year,
+                PeerNames = t.PeerIds.Select(p => names.GetValueOrDefault(p) ?? string.Empty).ToList(),
+                PosterItemId = t.PosterItemId,
+                Files = t.Files,
+                Missing = t.Statuses.GetValueOrDefault(PeerItemStatus.Missing),
+                Upgrade = t.Statuses.GetValueOrDefault(PeerItemStatus.Upgrade),
+                NotInLibrary = t.Statuses.GetValueOrDefault(PeerItemStatus.NotInLibrary),
+                Have = t.Statuses.GetValueOrDefault(PeerItemStatus.Have)
+            }).ToList()
+        });
     }
 
     [HttpGet("items")]

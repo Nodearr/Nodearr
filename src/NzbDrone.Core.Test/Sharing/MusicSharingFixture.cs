@@ -72,6 +72,16 @@ namespace NzbDrone.Core.Test.Sharing
         }
 
         [Test]
+        public void an_album_poster_should_be_given_only_for_a_whole_album_shared()
+        {
+            GivenShared(Low);
+
+            Subject.PosterFor(Bob, "a-3-70").Should().Be(new PosterTitle(3, PosterSubject.Album, 70));
+            Subject.PosterFor(Bob, "a-3-71").Should().BeNull();
+            Subject.PosterFor(Bob, "a-3-80").Should().BeNull();
+        }
+
+        [Test]
         public void an_artist_should_be_offered_with_its_whole_albums_only()
         {
             GivenShared(Low);

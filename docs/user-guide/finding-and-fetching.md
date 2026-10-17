@@ -11,6 +11,10 @@
 | **Have** | You have a file at least as good. |
 | **Not in library** | None of your Arr apps has it. Add it there first if you want it. |
 
+Each file shows its title's poster. **Posters**, at the top right, shows a friend's catalog as a grid instead: one tile per series, film, scene or album, however many of its files your friends share and from however many friends, with how many of them you are missing or have. **Table** goes back to the list.
+
+The posters come from your friends' own Arr apps, the pictures they show there. Nodearr fetches each one once and keeps it, and never contacts an image service for them (ADR 0022).
+
 Filter by friend, or by status with the buttons along the top, which count each one. **Sync Peer Catalogs** fetches every friend's offer now, rather than at the next sync (every 15 minutes unless you change it under Settings > Node).
 
 Home shows how many files your friends have that you are missing or could upgrade.

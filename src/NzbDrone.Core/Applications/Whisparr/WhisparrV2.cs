@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Newtonsoft.Json.Linq;
 using NLog;
 using NzbDrone.Core.Catalog;
 using NzbDrone.Core.Configuration;
@@ -10,7 +11,7 @@ namespace NzbDrone.Core.Applications.Whisparr
     // series and a scene is an episode. Nodearr keeps each scene as Whisparr v3 keeps one, a movie
     // marked as an adult scene with its site as the studio, so either version finds the other's
     // scenes by Whisparr's text search (ADR 0015, amendments).
-    public class WhisparrV2 : ApplicationBase<WhisparrV2Settings>
+    public class WhisparrV2 : ApplicationBase<WhisparrV2Settings>, IPosterSource
     {
         public WhisparrV2(IArrV3Proxy proxy, IConfigFileProvider configFileProvider, Logger logger)
             : base(proxy, configFileProvider, logger)
@@ -73,6 +74,19 @@ namespace NzbDrone.Core.Applications.Whisparr
         public override ApplicationCatalog FetchTitle(int arrId)
         {
             return FetchCatalog();
+        }
+
+        // A scene's picture is its site's poster: Whisparr v2 keeps none for the scene itself.
+        public byte[] GetPoster(PosterSubject subject, int arrId)
+        {
+            if (subject != PosterSubject.Movie)
+            {
+                return null;
+            }
+
+            var scene = GetOrNull<JObject>($"/episode/{arrId}");
+
+            return scene == null ? null : PosterImages.FromMediaCover(_proxy, Settings, $"{scene.Value<int>("seriesId")}/poster-500.jpg");
         }
     }
 }

@@ -96,7 +96,7 @@ Each node asks each friend for their **offer**: what that friend shares with thi
 
 The offer is fetched every 15 minutes by default, and at once when a friend takes something back, so what is no longer shared disappears within seconds. After the first time, only what changed is sent, 500 files to a page.
 
-The peer catalog marks each file against the local library: **not in the library**, **missing**, an **upgrade** (one the Arr app's own quality profile would take in place of the one it has), or **have**. Catalog > Peer Catalog shows them. See [catalog exchange](diagrams/catalog-exchange-trusted-nodes.md).
+The peer catalog marks each file against the local library: **not in the library**, **missing**, an **upgrade** (one the Arr app's own quality profile would take in place of the one it has), or **have**. Catalog > Peer Catalog shows them, as a list or as a grid of posters. A poster comes from the friend's own Arr app over the same connection, and is kept once fetched ([ADR 0022](adr/0022-posters-from-friends-arr-apps.md)). See [catalog exchange](diagrams/catalog-exchange-trusted-nodes.md).
 
 ### 5. Searching
 
@@ -160,7 +160,7 @@ One image for Docker, and packages for Linux, macOS and Windows like Sonarr's, i
 
 ## Further reading
 
-- [Decision records](adr/), 0001 to 0021.
+- [Decision records](adr/), 0001 to 0022.
 - [Sequence diagrams](diagrams/).
 - [The V1 plan](plans/v1-implementation-plan.md): what was built, slice by slice, and what is still open.
 - [What Nodearr inherited from Sonarr](research/inherited-sonarr-features.md).

@@ -117,6 +117,30 @@ namespace NzbDrone.Core.Test.Sharing
         }
 
         [Test]
+        public void a_poster_should_be_given_for_an_offered_file_and_name_its_title()
+        {
+            var list = Subject.Create("Kids");
+
+            Subject.Update(list.List.Id, "Kids", new[] { Pingu, NightOfTheLivingDead }, new[] { _bob.Id });
+
+            Subject.PosterFor(_bob, "e-1-502").Should().Be(new PosterTitle(1, PosterSubject.Series, 10));
+            Subject.PosterFor(_bob, "m-2-701").Should().Be(new PosterTitle(2, PosterSubject.Movie, 20));
+        }
+
+        [Test]
+        public void no_poster_should_be_given_for_what_is_not_offered()
+        {
+            var list = Subject.Create("Kids");
+
+            Subject.Update(list.List.Id, "Kids", new[] { Pingu }, new[] { _bob.Id });
+
+            Subject.PosterFor(_carol, "e-1-501").Should().BeNull();
+            Subject.PosterFor(_bob, "e-1-601").Should().BeNull();
+            Subject.PosterFor(_bob, "e-1-0501").Should().BeNull();
+            Subject.PosterFor(_bob, "../e-1-501").Should().BeNull();
+        }
+
+        [Test]
         public void a_share_list_should_offer_only_its_items_and_only_to_its_peers()
         {
             var list = Subject.Create("Kids");

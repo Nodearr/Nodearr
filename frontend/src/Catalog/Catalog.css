@@ -148,3 +148,72 @@
 .newListName {
   flex: 1;
 }
+
+/* Posters */
+
+.posterCell {
+  composes: cell from '~Components/Table/Cells/TableRowCell.css';
+
+  width: 44px;
+}
+
+.posterThumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 51px;
+  border-radius: 2px;
+  background-color: var(--inputBackgroundColor);
+  object-fit: cover;
+}
+
+.posterTile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  border-radius: 4px;
+  background-color: var(--inputBackgroundColor);
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+}
+
+.posterSquare {
+  aspect-ratio: 1;
+}
+
+.posterThumb.posterSquare {
+  height: 34px;
+}
+
+.posterNone {
+  color: var(--helpTextColor);
+}
+
+.tiles {
+  display: grid;
+  margin-bottom: 15px;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 18px;
+}
+
+.tile {
+  min-width: 0;
+}
+
+.tileTitle {
+  overflow: hidden;
+  margin-top: 6px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: bold;
+}
+
+.tileDetails {
+  overflow: hidden;
+  color: var(--helpTextColor);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}

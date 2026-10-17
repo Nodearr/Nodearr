@@ -36,7 +36,14 @@ namespace NzbDrone.Core.Sharing
 
         // Whether a peer is offered a file right now, by the name its offer gives the file.
         bool IsOffered(Peer peer, string offerFileId);
+
+        // The title an item of the peer's offer belongs to, for its poster. Null when the peer is not
+        // offered the item now.
+        PosterTitle PosterFor(Peer peer, string offerItemId);
     }
+
+    // The series, movie or album a poster is of, as the local Arr app numbers it.
+    public record PosterTitle(int ApplicationId, PosterSubject Subject, int ArrId);
 
     // Decides what each peer is told about. The rule, in order:
     //   1. Nothing is offered to a peer that is not trusted.
@@ -491,6 +498,42 @@ namespace NzbDrone.Core.Sharing
             var movie = movieFile == null ? null : _movies.ForArrIds(applicationId, new[] { movieFile.ArrMovieId }).FirstOrDefault(m => m.MissingSince == null);
 
             return movie != null && RuleFor(peer).SharesMovie(applicationId, movie.ArrId);
+        }
+
+        public PosterTitle PosterFor(Peer peer, string offerItemId)
+        {
+            var parts = (offerItemId ?? string.Empty).Split('-');
+
+            if (peer is not { State: PeerState.Trusted } || parts.Length != 3 || !int.TryParse(parts[1], out var applicationId) || !int.TryParse(parts[2], out var arrId) ||
+                offerItemId != $"{parts[0]}-{applicationId}-{arrId}")
+            {
+                return null;
+            }
+
+            switch (parts[0])
+            {
+                case "e" when IsOffered(peer, offerItemId):
+                    var file = _episodeFiles.ForArrIds(applicationId, new[] { arrId }).First();
+
+                    return new PosterTitle(applicationId, PosterSubject.Series, file.ArrSeriesId);
+
+                case "m" when IsOffered(peer, offerItemId):
+                    var movieFile = _movieFiles.ForArrIds(applicationId, new[] { arrId }).First();
+
+                    return new PosterTitle(applicationId, PosterSubject.Movie, movieFile.ArrMovieId);
+
+                // An album is offered by its own ID, and only whole.
+                case "a":
+                    var album = _albums.ForArrIds(applicationId, new[] { arrId }).FirstOrDefault(a => a.MissingSince == null && a.IsWhole);
+                    var artist = album == null ? null : _artists.ForArrIds(applicationId, new[] { album.ArrArtistId }).FirstOrDefault(a => a.MissingSince == null);
+
+                    return artist != null && RuleFor(peer).SharesAlbum(applicationId, artist.ArrId, album.ArrId)
+                        ? new PosterTitle(applicationId, PosterSubject.Album, album.ArrId)
+                        : null;
+
+                default:
+                    return null;
+            }
         }
 
         // Rules 2 to 4, for one peer that is already known to be trusted.

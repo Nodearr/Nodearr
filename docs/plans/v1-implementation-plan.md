@@ -113,6 +113,7 @@ Then a settings page. ADR 0019. Branch `v1/s10-node-settings`.
 - Sharing everything except Hidden is the default, opt out: an invite is ticked to share everything, and so is the box for the node that uses it, and a send to someone new. Friends paired before keep what they have (ADR 0014, amendments). Branch `v1/s54-share-by-default`.
 - Get it adds films and scenes to Whisparr v3, found by their StashDB, ThePornDB, TMDb or IMDb ID, and a send carries those IDs. Run end to end between two Radarr 6.4 and two Whisparr 3.6 instances, a film and a scene each added, fetched and imported (ADR 0021). Branch `v1/s55-get-it-whisparr`.
 - The error reporting code inherited from Sonarr is gone from the web UI and the server, with its packages, and what is still open is in one list below, posters and thumbnails added to it (ADR 0018, amendments). Branch `v1/s56-open-work-and-cleanup`.
+- Posters in a friend's catalog: each node passes on the posters its own Arr apps keep, over the peer connection, to friends offered the title, and both sides keep them. Catalog > Peer Catalog shows them beside each file and as a grid by title (ADR 0022). Branch `v1/s57-posters`.
 
 ## Where V1 stands
 
@@ -128,7 +129,7 @@ V1 is done. What follows is open, most useful first. Each item in the first list
 
 ### Next, in order
 
-1. **Posters, part 1: a friend's catalog with pictures** (S57). Catalog > Peer Catalog shows titles as text only, which makes a friend's catalog hard to browse. Each node's Arr apps already hold every title's poster and fan art, cached on disk. A node asks its own Arr app for them, which ADR 0018 allows since the owner pointed Nodearr at it, and serves them to trusted friends who ask, as it serves files. The friend's node keeps a copy. No image service is contacted by either node. The offer says only which titles have a poster. Peer Catalog then shows a poster beside each title, and a poster grid to browse by.
+1. ~~**Posters, part 1: a friend's catalog with pictures** (S57).~~ Done (ADR 0022).
 2. **Posters, part 2: everywhere else** (S58). The cards on Home for what was sent, the Send form, the Sharing page and Catalog > Local.
 3. **Node settings: a download limit, and a relay checked before it is saved** (S59, ADR 0019). The download limit sits beside the upload limit, in the sidecar. A relay address that does not answer is refused with the reason, as an Arr app's connection test refuses one.
 4. **PROPER and REPACK** (S60, ADR 0015). An offered file says which revision it is, as the Arr apps record it, and the release title the Arr apps see carries PROPER or REPACK, so they prefer it as they prefer any other proper.

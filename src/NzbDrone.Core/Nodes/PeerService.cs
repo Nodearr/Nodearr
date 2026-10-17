@@ -9,6 +9,7 @@ using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Nodes.Settings;
 using NzbDrone.Core.Nodes.Transport;
 using NzbDrone.Core.PeerCatalog;
+using NzbDrone.Core.Posters;
 using NzbDrone.Core.Sharing;
 
 namespace NzbDrone.Core.Nodes
@@ -83,9 +84,11 @@ namespace NzbDrone.Core.Nodes
         private readonly INodeSettingsProvider _settings;
         private readonly IContainerEnvironment _container;
         private readonly IPairAttemptLimiter _pairAttempts;
+        private readonly IPosterExchange _posters;
 
-        public PeerService(IPeerRepository peers, IPeerInviteRepository invites, IPeerTransport transport, IOfferExchange offerExchange, IEventAggregator eventAggregator, Logger logger, IPairAttemptLimiter pairAttempts, INodeSettingsProvider settings = null, IContainerEnvironment container = null)
+        public PeerService(IPeerRepository peers, IPeerInviteRepository invites, IPeerTransport transport, IOfferExchange offerExchange, IEventAggregator eventAggregator, Logger logger, IPairAttemptLimiter pairAttempts, INodeSettingsProvider settings = null, IContainerEnvironment container = null, IPosterExchange posters = null)
         {
+            _posters = posters;
             _container = container;
             _pairAttempts = pairAttempts;
             _peers = peers;
@@ -435,6 +438,9 @@ namespace NzbDrone.Core.Nodes
                 // What this node is told is decided by the sharing rules, for this peer only.
                 case PeerMessageTypes.Catalog when peer is { State: PeerState.Trusted }:
                     return _offerExchange.Answer(peer, message).ToBytes();
+
+                case PeerMessageTypes.Poster when peer is { State: PeerState.Trusted } && _posters != null:
+                    return _posters.Answer(peer, message).ToBytes();
 
                 // Only a hint. This node fetches the catalog itself, when it gets to it.
                 case PeerMessageTypes.CatalogChanged when peer is { State: PeerState.Trusted }:

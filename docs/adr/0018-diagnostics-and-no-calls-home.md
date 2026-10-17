@@ -109,3 +109,5 @@ Two inherited paths remain that only run when someone uses the feature behind th
   - The `Sentry` NuGet package is removed with its log target, its scrubber and debouncer, the start-up code that set them up, the `FilterSentryEvents` setting, and the second copy of some warnings that the inherited code wrote for Sentry. Those warnings are still written to the log once, as before.
   - The third-party notices are shorter by four Sentry packages, and by `qs` and the 18 small packages it brought.
   - Checked by the full test suite, a production build of the UI, and a node started from the build: it served the UI, answered its API and wrote its log, with no errors.
+
+- 2026-10-16 (ADR 0022): **posters contact nothing new.** A friend's posters come from that friend's own Arr apps, over the peer connection, and this node's from its own. No image service is asked for one.

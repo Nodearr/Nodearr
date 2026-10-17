@@ -8,7 +8,7 @@ using NzbDrone.Core.Configuration;
 
 namespace NzbDrone.Core.Applications.Sonarr
 {
-    public class Sonarr : ApplicationBase<SonarrSettings>, ILibraryAdder
+    public class Sonarr : ApplicationBase<SonarrSettings>, ILibraryAdder, IPosterSource
     {
         public Sonarr(IArrV3Proxy proxy, IConfigFileProvider configFileProvider, Logger logger)
             : base(proxy, configFileProvider, logger)
@@ -263,6 +263,11 @@ namespace NzbDrone.Core.Applications.Sonarr
 
                 return null;
             }
+        }
+
+        public byte[] GetPoster(PosterSubject subject, int arrId)
+        {
+            return subject == PosterSubject.Series ? PosterImages.FromMediaCover(_proxy, Settings, $"{arrId}/poster-500.jpg") : null;
         }
     }
 }

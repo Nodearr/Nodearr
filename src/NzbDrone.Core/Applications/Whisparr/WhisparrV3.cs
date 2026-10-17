@@ -11,7 +11,7 @@ namespace NzbDrone.Core.Applications.Whisparr
     // Whisparr v3, also called Eros. It is built on Radarr, so its API, its download client and its
     // webhook are Radarr's. A film or a scene is a movie with one file, and Nodearr keeps them as
     // movies marked as adult content, which only an adult search finds (ADR 0015, amendments).
-    public class WhisparrV3 : ApplicationBase<WhisparrV3Settings>, ILibraryAdder
+    public class WhisparrV3 : ApplicationBase<WhisparrV3Settings>, ILibraryAdder, IPosterSource
     {
         public WhisparrV3(IArrV3Proxy proxy, IConfigFileProvider configFileProvider, Logger logger)
             : base(proxy, configFileProvider, logger)
@@ -116,6 +116,20 @@ namespace NzbDrone.Core.Applications.Whisparr
             }
 
             return null;
+        }
+
+        // Whisparr keeps a film's poster and a scene's screenshot where its media cover API does
+        // not look, so they are fetched by the paths it gives the title.
+        public byte[] GetPoster(PosterSubject subject, int arrId)
+        {
+            if (subject != PosterSubject.Movie)
+            {
+                return null;
+            }
+
+            var movie = GetOrNull<JObject>($"/movie/{arrId}");
+
+            return movie == null ? null : PosterImages.FromImages(_proxy, Settings, movie["images"], "poster", "screenshot", "fanart");
         }
     }
 }
