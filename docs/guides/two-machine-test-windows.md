@@ -22,10 +22,9 @@ Nothing is installed, nothing is clicked, and nobody is asked to sign in. Everyt
 
 ## Before you start: both of you
 
-1. **Get into the repository.** It is private. The person who owns it adds the other as a collaborator, with read access, and the other accepts the invitation GitHub sends.
-2. **Download the Nodearr package.** On the repository's Releases page, open the newest release and download `Nodearr.<version>.win-x64.zip` and `SHA256SUMS` into your **Downloads** folder. Leave the zip as it is. The script finds it there, unpacks it and checks it against `SHA256SUMS`.
-3. **Download the script.** In the repository, open `tools/two-machine-test.ps1` and use **Download raw file**. Put it in Downloads as well.
-4. **Open PowerShell in Downloads.** In File Explorer, open Downloads, then **File > Open Windows PowerShell**. Or start PowerShell and run `cd ~\Downloads`.
+1. **Download the Nodearr package.** On the [Releases](https://github.com/Nodearr/Nodearr/releases) page, open the newest release and download `Nodearr.<version>.win-x64.zip` and `SHA256SUMS` into your **Downloads** folder. Leave the zip as it is. The script finds it there, unpacks it and checks it against `SHA256SUMS`.
+2. **Download the script.** In the repository, open `tools/two-machine-test.ps1` and use **Download raw file**. Put it in Downloads as well.
+3. **Open PowerShell in Downloads.** In File Explorer, open Downloads, then **File > Open Windows PowerShell**. Or start PowerShell and run `cd ~\Downloads`.
 
 Each command below starts with `powershell -ExecutionPolicy Bypass -File`. Windows will not run a downloaded script otherwise. That setting is for this one command only.
 
