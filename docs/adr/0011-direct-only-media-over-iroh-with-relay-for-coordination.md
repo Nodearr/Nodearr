@@ -141,7 +141,7 @@ What it still does not show:
 
 ### 2026-10-14: two home networks
 
-The first run between two homes, each behind its own ordinary router. Both machines ran Windows, with Nodearr 0.1.0 and Radarr 6.4.4 straight on Windows from their release packages (`tools/two-machine-test.ps1`, the owner sending and a friend receiving). Neither owner forwarded a port.
+The first run between two homes, each behind its own ordinary router. Both machines ran Windows, with an early build of Nodearr, from before the public 0.1.0 release, and Radarr 6.4.4 straight on Windows from their release packages (`tools/two-machine-test.ps1`, the owner sending and a friend receiving). Neither owner forwarded a port.
 
 | | The owner's side | The friend's side |
 | --- | --- | --- |

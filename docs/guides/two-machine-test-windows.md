@@ -139,7 +139,7 @@ A new port matters because a mapping the router already made for 6633 lasts a wh
 
 ## What has and has not been run
 
-Run end to end on one Windows 11 machine on 2026-10-14, with both sides on it, in Windows PowerShell 5.1, with Nodearr 0.1.0 and Radarr 6.4.4:
+Run end to end on one Windows 11 machine on 2026-10-14, with both sides on it, in Windows PowerShell 5.1, with an early build of Nodearr, from before the public 0.1.0 release, and Radarr 6.4.4:
 
 - **`send`** downloaded Radarr and ffmpeg, made an 85 MB video, imported it, and printed an invite.
 - **`receive`**, on other ports, paired, connected directly, had Radarr grab the film, and imported it in 8 seconds, with the same SHA-256 as the sending side.
