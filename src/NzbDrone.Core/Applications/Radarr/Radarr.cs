@@ -88,40 +88,7 @@ namespace NzbDrone.Core.Applications.Radarr
 
         public string AddAndSearch(LibraryAddRequest request)
         {
-            var movie = request.ExistingArrId.HasValue ? GetOrNull<JObject>($"/movie/{request.ExistingArrId}") : null;
-            var added = false;
-
-            if (movie == null)
-            {
-                var found = Lookup(request) ?? throw new LibraryAddException("Radarr could not find it on TMDb");
-
-                if (found.Value<int?>("id") is > 0)
-                {
-                    movie = _proxy.Get<JObject>(Settings, $"/movie/{found.Value<int>("id")}");
-                }
-                else
-                {
-                    LibraryAdd.CheckOptions(GetAddChoices(), request, Name);
-
-                    found["qualityProfileId"] = request.QualityProfileId;
-                    found["rootFolderPath"] = request.RootFolderPath;
-                    found["monitored"] = true;
-                    found["minimumAvailability"] = "released";
-                    found["addOptions"] = new JObject { ["monitor"] = "movieOnly", ["searchForMovie"] = true };
-
-                    _proxy.Post(Settings, "/movie", found);
-                    added = true;
-                }
-            }
-
-            if (!added)
-            {
-                movie["monitored"] = true;
-                _proxy.Put(Settings, $"/movie/{movie.Value<int>("id")}", movie);
-                _proxy.Post(Settings, "/command", new JObject { ["name"] = "MoviesSearch", ["movieIds"] = new JArray(movie.Value<int>("id")) });
-            }
-
-            return $"{(added ? "Added to" : "Already in")} Radarr, monitored, and searching";
+            return LibraryAdd.AddMovie(_proxy, Settings, Name, request, () => Lookup(request), GetOrNull<JObject>);
         }
 
         private JObject Lookup(LibraryAddRequest request)

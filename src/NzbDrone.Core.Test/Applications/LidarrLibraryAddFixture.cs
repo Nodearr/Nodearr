@@ -8,6 +8,7 @@ using NUnit.Framework;
 using NzbDrone.Core.Applications;
 using NzbDrone.Core.Applications.Lidarr;
 using NzbDrone.Core.Applications.Radarr;
+using NzbDrone.Core.Applications.Whisparr;
 using NzbDrone.Core.Test.Framework;
 
 namespace NzbDrone.Core.Test.Applications
@@ -163,6 +164,68 @@ namespace NzbDrone.Core.Test.Applications
 
             _proxy.Verify(p => p.Put(It.IsAny<IArrConnection>(), "/movie/20", It.Is<JObject>(m => m.Value<bool>("monitored"))), Times.Once());
             _posted.Single(p => p.Resource == "/command").Body.Should().Match<JObject>(c => c.Value<string>("name") == "MoviesSearch" && c["movieIds"].Values<int>().Single() == 20);
+        }
+    }
+
+    // Get it in Whisparr v3: a scene found by its StashDB ID and added as Radarr adds a movie.
+    [TestFixture]
+    public class WhisparrV3LibraryAddFixture : CoreTest<WhisparrV3>
+    {
+        private const string Stash = "0d7f9e46-1c43-4d5a-9c3e-2b1d6f0a8e11";
+
+        private Mock<IArrV3Proxy> _proxy;
+        private List<(string Resource, JObject Body)> _posted;
+
+        [SetUp]
+        public void Setup()
+        {
+            Subject.Definition = new ApplicationDefinition
+            {
+                Name = "Whisparr",
+                Settings = new WhisparrV3Settings { NodearrUrl = "http://nodearr:6633", BaseUrl = "http://whisparr:6969" }
+            };
+
+            _proxy = Mocker.GetMock<IArrV3Proxy>();
+            _posted = new List<(string, JObject)>();
+
+            _proxy.Setup(p => p.GetArray(It.IsAny<IArrConnection>(), "/rootfolder")).Returns(JArray.Parse("[{\"path\":\"/adult\"}]"));
+            _proxy.Setup(p => p.GetArray(It.IsAny<IArrConnection>(), "/qualityprofile")).Returns(JArray.Parse("[{\"id\":1,\"name\":\"Any\"}]"));
+            _proxy.Setup(p => p.GetArray(It.IsAny<IArrConnection>(), It.Is<string>(r => r.StartsWith("/movie/lookup")))).Returns(new JArray());
+            _proxy.Setup(p => p.GetArray(It.IsAny<IArrConnection>(), $"/movie/lookup?term=stash%3A{Stash}")).Returns(JArray.Parse("[{\"title\":\"A scene\",\"foreignId\":\"" + Stash + "\"}]"));
+            _proxy.Setup(p => p.Post(It.IsAny<IArrConnection>(), It.IsAny<string>(), It.IsAny<JObject>()))
+                  .Callback<IArrConnection, string, JObject>((_, r, b) => _posted.Add((r, (JObject)b.DeepClone())))
+                  .Returns(new JObject());
+        }
+
+        [Test]
+        public void a_scene_should_be_found_by_its_stashdb_id_and_added_monitored()
+        {
+            var done = Subject.AddAndSearch(new LibraryAddRequest { StashId = Stash, TpdbId = "99", RootFolderPath = "/adult", QualityProfileId = 1 });
+
+            var added = _posted.Single(p => p.Resource == "/movie").Body;
+
+            added.Value<string>("title").Should().Be("A scene");
+            added["addOptions"].Value<bool>("searchForMovie").Should().BeTrue();
+            done.Should().Be("Added to Whisparr, monitored, and searching");
+
+            // StashDB answered, so ThePornDB was not asked.
+            _proxy.Verify(p => p.GetArray(It.IsAny<IArrConnection>(), "/movie/lookup?term=tpdb%3A99"), Times.Never());
+        }
+
+        [Test]
+        public void a_film_should_be_found_by_tmdb_when_stashdb_and_theporndb_do_not_know_it()
+        {
+            _proxy.Setup(p => p.GetArray(It.IsAny<IArrConnection>(), "/movie/lookup?term=tmdb%3A5")).Returns(JArray.Parse("[{\"title\":\"A film\"}]"));
+
+            Subject.AddAndSearch(new LibraryAddRequest { StashId = "11111111-1111-1111-1111-111111111111", TmdbId = 5, RootFolderPath = "/adult", QualityProfileId = 1 });
+
+            _posted.Single(p => p.Resource == "/movie").Body.Value<string>("title").Should().Be("A film");
+        }
+
+        [Test]
+        public void what_whisparr_cannot_find_should_be_refused()
+        {
+            Assert.Throws<LibraryAddException>(() => Subject.AddAndSearch(new LibraryAddRequest { StashId = "11111111-1111-1111-1111-111111111111", RootFolderPath = "/adult", QualityProfileId = 1 }));
         }
     }
 }

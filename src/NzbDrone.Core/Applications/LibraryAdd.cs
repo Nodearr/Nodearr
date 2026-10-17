@@ -29,6 +29,10 @@ namespace NzbDrone.Core.Applications
         public string ImdbId { get; set; }
         public string ForeignArtistId { get; set; }
 
+        // Whisparr's: StashDB's and ThePornDB's IDs for a scene or a film.
+        public string StashId { get; set; }
+        public string TpdbId { get; set; }
+
         // The Arr app's own ID for it, where the local catalog says the app has it already.
         public int? ExistingArrId { get; set; }
 
@@ -139,6 +143,45 @@ namespace NzbDrone.Core.Applications
         {
             return proxy.GetArray(settings, "/command")
                 .Any(c => c.Value<string>("name") == commandName && c.Value<string>("status") is "queued" or "started");
+        }
+
+        // A movie, as Radarr and Whisparr v3 add one: looked up, then added monitored and searched
+        // for, or, where the app has it already, monitored and searched for again.
+        public static string AddMovie(IArrV3Proxy proxy, IArrConnection settings, string appName, LibraryAddRequest request, Func<JObject> lookup, Func<string, JObject> get)
+        {
+            var movie = request.ExistingArrId.HasValue ? get($"/movie/{request.ExistingArrId}") : null;
+
+            if (movie == null)
+            {
+                var found = lookup() ?? throw new LibraryAddException($"{appName} could not find it");
+
+                if (found.Value<int?>("id") is > 0)
+                {
+                    movie = proxy.Get<JObject>(settings, $"/movie/{found.Value<int>("id")}");
+                }
+                else
+                {
+                    CheckOptions(Choices(proxy, settings, false), request, appName);
+
+                    found["qualityProfileId"] = request.QualityProfileId;
+                    found["rootFolderPath"] = request.RootFolderPath;
+                    found["monitored"] = true;
+                    found["minimumAvailability"] = "released";
+                    found["addOptions"] = new JObject { ["monitor"] = "movieOnly", ["searchForMovie"] = true };
+
+                    proxy.Post(settings, "/movie", found);
+
+                    return $"Added to {appName}, monitored, and searching";
+                }
+            }
+
+            var id = movie.Value<int>("id");
+
+            movie["monitored"] = true;
+            proxy.Put(settings, $"/movie/{id}", movie);
+            proxy.Post(settings, "/command", new JObject { ["name"] = "MoviesSearch", ["movieIds"] = new JArray(id) });
+
+            return $"Already in {appName}, monitored, and searching";
         }
 
         public static string Join(IReadOnlyList<string> items)

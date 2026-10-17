@@ -20,7 +20,7 @@ The owner's direction:
 
 What is sent is shared with the friend on a list of their own, named "Sent to" and their name, made the first time they are sent something and kept from then on. The list is an ordinary share list: the Sharing page shows it, the owner can change or delete it, and the Hidden list still wins over it. Sharing it is what lets the friend's node fetch the files. Nothing about transfers or the sharing rule changes.
 
-Then the friend's node is told, with a new control message, `sent`. It carries an ID for the send, the title as the sender's library names it, which part of it ("Seasons 1 and 2", "S01E04", an album's title, or none for the whole title), whether the whole title was sent, and the IDs the sender's offer gives the files it covers. It carries nothing the friend's catalog does not already hold, apart from what Get it needs (below): the IDs the Arr apps know the title by (TVDB, TMDb, IMDb, MusicBrainz), its year, the series type the sender's Sonarr gives it, whether it is adult content, and the parts sent by the numbers every node shares: TVDB's season and episode numbers, and MusicBrainz release groups for albums.
+Then the friend's node is told, with a new control message, `sent`. It carries an ID for the send, the title as the sender's library names it, which part of it ("Seasons 1 and 2", "S01E04", an album's title, or none for the whole title), whether the whole title was sent, and the IDs the sender's offer gives the files it covers. It carries nothing the friend's catalog does not already hold, apart from what Get it needs (below): the IDs the Arr apps know the title by (TVDB, TMDb, IMDb, MusicBrainz, and for adult content StashDB, ThePornDB and Whisparr's own), its year, the series type the sender's Sonarr gives it, whether it is adult content, and the parts sent by the numbers every node shares: TVDB's season and episode numbers, and MusicBrainz release groups for albums.
 
 - One title at a time: one series, movie, Whisparr item or artist, whole or in part, at the levels the Arr apps monitor (ADR 0014, amendments; ADR 0020, amendments).
 - A send is refused when nothing of it can be offered: no file of it yet, or it is on the Hidden list.
@@ -40,8 +40,8 @@ Home shows each note, "Alice sent you Pingu - Season 1", above everything else, 
 
 Get it does what the person would do in the Arr app, then lets the app do the rest:
 
-1. **The app.** A series goes to Sonarr, a movie to Radarr, an artist or album to Lidarr. With several of one kind, such as a 4K Sonarr, the card asks which. Whisparr's titles cannot be added yet (follow-up work below); the card says so, and Whisparr finds them from the friend when it searches.
-2. **Adding, if the app does not have it.** It is looked up by its ID in the app, as the app's own Add New does, with the choices the app asks for filled in the way most of the library already is:
+1. **The app.** A series goes to Sonarr, a movie to Radarr, an artist or album to Lidarr, and a film or a scene to Whisparr v3, never to Radarr. With several of one kind, such as a 4K Sonarr, the card asks which. Whisparr v2 cannot be added to yet (follow-up work below); the card says so, and Whisparr finds the title from the friend when it searches.
+2. **Adding, if the app does not have it.** It is looked up by its ID in the app, as the app's own Add New does (Whisparr v3: `stash:`, then `tpdb:`, `tmdb:` and `imdb:`, the prefixes its search takes, which return a scene or a film as a movie), with the choices the app asks for filled in the way most of the library already is:
    - the root folder: the only one, or the one most of the app's titles are in;
    - the quality profile: the one most of the app's titles use;
    - Lidarr's metadata profile: the app's first;
@@ -49,7 +49,7 @@ Get it does what the person would do in the Arr app, then lets the app do the re
 
    The card shows each, to change before pressing it. A root folder or profile the app does not have is refused, so a request cannot point the app anywhere else.
 3. **Monitoring what was sent, and nothing more.** A whole series or artist is monitored whole, with what arrives later. Seasons are monitored as seasons, so their later episodes are too. Single episodes and single albums are monitored one by one, once the app has read the title from its metadata server. Nodearr waits for the app's own refresh of a title it has just added to finish, since the app sets what is monitored as that ends. Lidarr leaves an artist added without its albums monitored unmonitored itself, which would keep its albums from being searched for on their own, so Nodearr monitors the artist again.
-4. **Searching** for what was sent: in Sonarr an Episode Search for each episode sent that it does not have, in Radarr a Movie Search, in Lidarr an Artist or Album Search. Not Sonarr's Season or Series Search: for a season that ended long ago those take only season packs (Sonarr's Season Search Maximum Single Episode Age), and a friend offers episode files one by one. The first live run found this: a Season Search for Pingu's first season, from 1990, turned the episodes down. The search reaches Nodearr like any other, finds the files in the friend's catalog, and the transfer and import follow as for any grab (ADR 0015, ADR 0016). The app may also find it from its other indexers. That is the app's choice, as in any search.
+4. **Searching** for what was sent: in Sonarr an Episode Search for each episode sent that it does not have, in Radarr and Whisparr v3 a Movie Search, in Lidarr an Artist or Album Search. Not Sonarr's Season or Series Search: for a season that ended long ago those take only season packs (Sonarr's Season Search Maximum Single Episode Age), and a friend offers episode files one by one. The first live run found this: a Season Search for Pingu's first season, from 1990, turned the episodes down. The search reaches Nodearr like any other, finds the files in the friend's catalog, and the transfer and import follow as for any grab (ADR 0015, ADR 0016). The app may also find it from its other indexers. That is the app's choice, as in any search.
 
 It runs in the background as a command. The card shows it working, then what was done ("Added to Sonarr, monitoring Season 1, and searching") or why it was not, with a way to try again. A note from an older sender, without IDs, is filled in from the friend's catalog once it has arrived.
 
@@ -67,6 +67,7 @@ It runs in the background as a command. The card shows it working, then what was
   - Spiderland: "Added to Lidarr, monitoring Spiderland, and searching". Spiderland was monitored, Tweez not, and the artist was. All six tracks arrived and were imported.
   - S01E03: "Already in Sonarr, monitoring 1 episode, and searching for 1 episode".
   - With Pingu deleted from B's Sonarr, a send of S01E02 alone added Pingu with that one episode monitored and fetched it, pressed from the card on Home.
+  - Radarr and Whisparr v3, two of each, the same way: A sent Night of the Living Dead to someone new and a scene, found in Whisparr by its StashDB ID, to B once they were friends. B pressed Get it on each card: "Added to Radarr, monitored, and searching" and "Added to Whisparr, monitored, and searching". Both apps grabbed through Nodearr, and both files were fetched from A and imported. Radarr first turned the film down as a sample, because the test's file ran two minutes; with an eleven-minute file it imported it.
   - The runs found three faults, fixed before the last: Season Search turning single episodes down (above), Lidarr answering a bulk change with a list where Nodearr expected one object, and the indexer showing one result for identical bytes offered as different episodes. The test had made its three episodes from one file, and the indexer kept one of them, so the other two were never found. Copies are now one result only when they are offered as the same thing.
 
 ## Consequences
@@ -87,4 +88,5 @@ It runs in the background as a command. The card shows it working, then what was
 ## Follow-up work
 
 - ~~The Get it card.~~ Done, see above.
-- Get it for Whisparr. Whisparr v3 adds films and scenes by their StashDB or TPDB IDs, and v2 by site and scene. Each needs its own add path, and a live test against both.
+- ~~Get it for Whisparr v3.~~ Done: films and scenes, by StashDB, ThePornDB, TMDb or IMDb ID.
+- Get it for Whisparr v2. Built on Sonarr, it adds a site and then monitors a scene in it, and a friend's catalog does not name the site by its ID in v2's metadata. A scene that came from a v2 is known only by v2's own number, which Whisparr v3 cannot look up; the card says so.

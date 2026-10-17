@@ -30,6 +30,7 @@ namespace NzbDrone.Core.Sharing
         private const int MaxParts = 10000;
 
         private static readonly Regex SendIdPattern = new(@"^[A-Za-z0-9-]{1,64}$", RegexOptions.Compiled);
+        private static readonly Regex ForeignIdPattern = new(@"^[A-Za-z0-9][A-Za-z0-9:._-]{0,99}$", RegexOptions.Compiled);
         private static readonly Regex ImdbPattern = new(@"^tt\d{1,10}$", RegexOptions.Compiled);
         private static readonly Regex OfferIdPattern = new(@"^[ema]-\d{1,9}-\d{1,9}$", RegexOptions.Compiled);
 
@@ -126,6 +127,9 @@ namespace NzbDrone.Core.Sharing
             received.ForeignArtistId = Guid.TryParse(sent.ForeignArtistId, out var artist) ? artist.ToString() : null;
             received.IsAdult = sent.IsAdult && sent.MediaKind == MediaKind.Movie;
             received.SeriesType = sent.SeriesType is "standard" or "daily" or "anime" ? sent.SeriesType : null;
+            received.ForeignId = received.IsAdult ? Id(sent.ForeignId) : null;
+            received.StashId = received.IsAdult ? Id(sent.StashId) : null;
+            received.TpdbId = received.IsAdult ? Id(sent.TpdbId) : null;
 
             var parts = sent.Parts ?? new SentParts();
             var kept = new SentParts
@@ -139,6 +143,12 @@ namespace NzbDrone.Core.Sharing
             };
 
             received.Parts = kept.Seasons.Count + kept.Episodes.Count + kept.Albums.Count == 0 ? null : JsonSerializer.Serialize(kept);
+        }
+
+        // An ID as Whisparr's metadata gives one: a UUID, a number, or such with a prefix.
+        private static string Id(string value)
+        {
+            return value != null && ForeignIdPattern.IsMatch(value) ? value : null;
         }
 
         private static string Text(string value)

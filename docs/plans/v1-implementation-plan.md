@@ -111,6 +111,7 @@ Then a settings page. ADR 0019. Branch `v1/s10-node-settings`.
 - A title, or parts of it, can be sent to a friend, or to someone new with an invite made for it alone. It is shared with them on a list of their own, their node is told with a new `sent` message and fetches the catalog at once, and their Home shows what arrived. Adding it to their Arr app with a Get it button is the next slice (ADR 0021). Branch `v1/s52-send-to-friend`.
 - Get it: a friend's send is added to the receiver's Sonarr, Radarr or Lidarr, with the root folder and quality profile most of the library uses and the sender's series type, then what was sent is monitored, by season, episode or album, and searched for. The app fetches it from the friend through Nodearr and imports it (ADR 0021). Branch `v1/s53-get-it`.
 - Sharing everything except Hidden is the default, opt out: an invite is ticked to share everything, and so is the box for the node that uses it, and a send to someone new. Friends paired before keep what they have (ADR 0014, amendments). Branch `v1/s54-share-by-default`.
+- Get it adds films and scenes to Whisparr v3, found by their StashDB, ThePornDB, TMDb or IMDb ID, and a send carries those IDs. Run end to end between two Radarr 6.4 and two Whisparr 3.6 instances, a film and a scene each added, fetched and imported (ADR 0021). Branch `v1/s55-get-it-whisparr`.
 
 ## Where V1 stands
 

@@ -67,6 +67,11 @@ namespace NzbDrone.Core.Sharing
         public bool IsAdult { get; set; }
         public string SeriesType { get; set; }
 
+        // Whisparr's own ID for a film or a scene, and StashDB's and ThePornDB's.
+        public string ForeignId { get; set; }
+        public string StashId { get; set; }
+        public string TpdbId { get; set; }
+
         // Which seasons, episodes or albums were sent, as JSON. Empty for a whole title.
         public string Parts { get; set; }
 
@@ -115,6 +120,9 @@ namespace NzbDrone.Core.Sharing
         public string ForeignArtistId { get; set; }
         public bool IsAdult { get; set; }
         public string SeriesType { get; set; }
+        public string ForeignId { get; set; }
+        public string StashId { get; set; }
+        public string TpdbId { get; set; }
         public SentParts Parts { get; set; }
     }
 

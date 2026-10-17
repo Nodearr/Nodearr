@@ -360,6 +360,11 @@ namespace NzbDrone.Core.Sharing
                     if (movie != null)
                     {
                         (message.TmdbId, message.ImdbId, message.Year, message.IsAdult) = (movie.TmdbId, movie.ImdbId, movie.Year, movie.IsAdult);
+
+                        if (movie.IsAdult)
+                        {
+                            (message.ForeignId, message.StashId, message.TpdbId) = (movie.ForeignId, movie.StashId, movie.TpdbId);
+                        }
                     }
 
                     break;

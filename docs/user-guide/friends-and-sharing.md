@@ -112,9 +112,9 @@ Home shows it at the top, above everything else, as **"<name> sent you <title>"*
 2. It monitors what was sent, and nothing more: the whole series or artist, the seasons, the episodes, or the albums.
 3. It has the app search for it. The app finds it from your friend, through Nodearr, and the download and import follow as for anything else. Activity > Transfers shows it arriving.
 
-A series goes to Sonarr, a movie to Radarr, music to Lidarr. With two of one kind, such as a second Sonarr for 4K, the card asks which. If the app has it already, Get it only monitors what was sent and searches.
+A series goes to Sonarr, a movie to Radarr, music to Lidarr, and a film or a scene to Whisparr v3. With two of one kind, such as a second Sonarr for 4K, the card asks which. If the app has it already, Get it only monitors what was sent and searches.
 
-The card then says what was done, such as "Added to Sonarr, monitoring Season 1, and searching", or why it was not, with a way to try again. Nodearr cannot add to Whisparr yet: add it there yourself, and Whisparr finds it from your friend when it searches.
+The card then says what was done, such as "Added to Sonarr, monitoring Season 1, and searching", or why it was not, with a way to try again. Nodearr cannot add to Whisparr v2 yet, nor add a scene that came from a friend's Whisparr v2 to Whisparr v3: add those yourself, and Whisparr finds them from your friend when it searches.
 
 **See it in their catalog** opens Catalog > Peer Catalog. **Put away** clears the card.
 

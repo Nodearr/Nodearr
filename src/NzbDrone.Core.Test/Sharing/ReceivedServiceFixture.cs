@@ -106,6 +106,25 @@ namespace NzbDrone.Core.Test.Sharing
             received.GetParts().Albums.Should().Equal("2869c510-2679-4a3f-bf15-e5e8b49f2f28");
         }
 
+        [Test]
+        public void whisparrs_ids_should_be_kept_for_adult_content_only()
+        {
+            var scene = Pingu("scene");
+
+            (scene.MediaKind, scene.IsAdult, scene.StashId, scene.TpdbId, scene.ForeignId) = (MediaKind.Movie, true, "0d7f9e46-1c43-4d5a-9c3e-2b1d6f0a8e11", "<script>", "whisparr2:4411");
+            Receive(scene);
+
+            var series = Pingu("series");
+
+            series.StashId = "0d7f9e46-1c43-4d5a-9c3e-2b1d6f0a8e11";
+            Receive(series);
+
+            var waiting = Subject.Waiting();
+
+            waiting.Single(r => r.SendId == "scene").Should().Match<ReceivedTitle>(r => r.StashId == "0d7f9e46-1c43-4d5a-9c3e-2b1d6f0a8e11" && r.TpdbId == null && r.ForeignId == "whisparr2:4411");
+            waiting.Single(r => r.SendId == "series").StashId.Should().BeNull();
+        }
+
         [TestCase("")]
         [TestCase("../x")]
         public void a_send_with_a_name_that_would_not_do_should_be_ignored(string sendId)

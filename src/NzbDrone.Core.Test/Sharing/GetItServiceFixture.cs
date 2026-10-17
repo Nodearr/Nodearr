@@ -62,6 +62,29 @@ namespace NzbDrone.Core.Test.Sharing
             series.Insert(new CatalogSeries { ApplicationId = 1, ArrId = 3, TvdbId = 3, Title = "Three", Path = "/anime/Three", QualityProfileId = 4 });
         }
 
+        // Another app beside the Sonarr every test has.
+        private Mock<ILibraryAdder> GivenApp(ApplicationDefinition definition)
+        {
+            var application = new Mock<IApplication>();
+            var adder = application.As<ILibraryAdder>();
+
+            adder.Setup(a => a.GetAddChoices()).Returns(new LibraryAddChoices
+            {
+                RootFolders = new List<LibraryRootFolder> { new() { Path = "/adult" } },
+                QualityProfiles = new List<LibraryProfile> { new() { Id = 1, Name = "Any" } }
+            });
+            adder.Setup(a => a.AddAndSearch(It.IsAny<LibraryAddRequest>())).Callback<LibraryAddRequest>(r => _asked = r).Returns("Already in Whisparr, monitored, and searching");
+
+            var all = Mocker.GetMock<IApplicationFactory>().Object.All().Append(definition).ToList();
+
+            Mocker.GetMock<IApplicationFactory>().Setup(f => f.All()).Returns(all);
+            Mocker.GetMock<IApplicationFactory>().Setup(f => f.Find(definition.Id)).Returns(definition);
+            Mocker.GetMock<IApplicationFactory>().Setup(f => f.Get(definition.Id)).Returns(definition);
+            Mocker.GetMock<IApplicationFactory>().Setup(f => f.GetInstance(definition)).Returns(application.Object);
+
+            return adder;
+        }
+
         private ReceivedTitle Received(Action<ReceivedTitle> change = null)
         {
             var received = new ReceivedTitle
@@ -103,12 +126,49 @@ namespace NzbDrone.Core.Test.Sharing
         }
 
         [Test]
-        public void something_for_whisparr_should_say_it_cannot_be_added_yet()
+        public void a_scene_should_go_to_whisparr_v3_and_be_known_there_by_its_stashdb_id()
         {
+            var whisparr = GivenApp(new ApplicationDefinition { Id = 5, Name = "Whisparr", Implementation = "WhisparrV3" });
+
+            Mocker.Resolve<ICatalogMovieRepository>().Insert(new CatalogMovie { ApplicationId = 5, ArrId = 50, Title = "A scene", ItemType = "scene", StashId = "0d7f9e46-1c43-4d5a-9c3e-2b1d6f0a8e11", Path = "/adult/A scene" });
+
+            var received = Received(r => (r.MediaKind, r.IsAdult, r.TvdbId, r.Parts, r.StashId) = (MediaKind.Movie, true, 0, null, "0D7F9E46-1C43-4D5A-9C3E-2B1D6F0A8E11"));
+
+            Subject.Plan(received.Id).Targets.Should().ContainSingle().Which.Should().Match<GetItTarget>(t => t.ApplicationId == 5 && t.InLibrary);
+
+            Subject.Execute(new GetItCommand { ReceivedTitleId = received.Id, ApplicationId = 5 });
+
+            _asked.Should().Match<LibraryAddRequest>(r => r.ExistingArrId == 50 && r.StashId == "0D7F9E46-1C43-4D5A-9C3E-2B1D6F0A8E11");
+            whisparr.Verify(w => w.AddAndSearch(It.IsAny<LibraryAddRequest>()), Times.Once());
+        }
+
+        [Test]
+        public void adult_content_should_never_go_to_radarr()
+        {
+            GivenApp(new ApplicationDefinition { Id = 6, Name = "Radarr", Implementation = "Radarr" });
+
+            Subject.Plan(Received(r => (r.MediaKind, r.IsAdult, r.TmdbId) = (MediaKind.Movie, true, 5)).Id).Problem.Should().Contain("Connect Whisparr v3");
+        }
+
+        [Test]
+        public void with_only_whisparr_v2_it_should_say_it_cannot_be_added_there_yet()
+        {
+            GivenApp(new ApplicationDefinition { Id = 7, Name = "Whisparr v2", Implementation = "WhisparrV2" });
+
             var plan = Subject.Plan(Received(r => (r.MediaKind, r.IsAdult, r.TmdbId) = (MediaKind.Movie, true, 5)).Id);
 
-            plan.Problem.Should().Contain("Whisparr");
+            plan.Problem.Should().Contain("cannot add to Whisparr v2 yet");
             plan.Targets.Should().BeEmpty();
+        }
+
+        [Test]
+        public void a_scene_known_only_to_whisparr_v2_should_say_why_it_cannot_be_added()
+        {
+            GivenApp(new ApplicationDefinition { Id = 5, Name = "Whisparr", Implementation = "WhisparrV3" });
+
+            var received = Received(r => (r.MediaKind, r.IsAdult, r.TvdbId, r.Parts, r.ForeignId) = (MediaKind.Movie, true, 0, null, "whisparr2:4411"));
+
+            Subject.Plan(received.Id).Problem.Should().Contain("comes from Whisparr v2");
         }
 
         [Test]

@@ -126,16 +126,19 @@ namespace NzbDrone.Core.Sharing
 
             if (implementation == null)
             {
-                plan.Problem = "Nodearr cannot add this to Whisparr yet. Add it in Whisparr, and Whisparr finds it from your friend when it searches";
+                plan.Problem = "Nodearr cannot add this kind of title to an app";
 
                 return plan;
             }
 
+            var appName = implementation == nameof(Applications.Whisparr.WhisparrV3) ? "Whisparr v3" : implementation;
             var request = RequestFor(received);
 
             if (request == null)
             {
-                plan.Problem = $"Nodearr does not know what {implementation} calls this yet. It will once your friend's catalog has arrived";
+                plan.Problem = IsWhisparrV2Scene(received)
+                    ? "This scene comes from Whisparr v2, which knows it by an ID Whisparr v3 cannot look up. Add it in Whisparr, and Whisparr finds it from your friend when it searches"
+                    : $"Nodearr does not know what {appName} calls this yet. It will once your friend's catalog has arrived";
 
                 return plan;
             }
@@ -144,7 +147,11 @@ namespace NzbDrone.Core.Sharing
 
             if (definitions.Count == 0)
             {
-                plan.Problem = $"Connect {implementation} on Settings > Apps, and Nodearr can add this to it";
+                // Whisparr v2 is built on Sonarr, and a scene in it belongs to a site, which a friend's
+                // catalog does not name by its ID there.
+                plan.Problem = received.IsAdult && _applicationFactory.All().Any(d => d.Implementation == nameof(Applications.Whisparr.WhisparrV2))
+                    ? "Nodearr cannot add to Whisparr v2 yet. Add it in Whisparr, and Whisparr finds it from your friend when it searches"
+                    : $"Connect {appName} on Settings > Apps, and Nodearr can add this to it";
 
                 return plan;
             }
@@ -269,13 +276,13 @@ namespace NzbDrone.Core.Sharing
             }
         }
 
-        // The app a title of this kind goes to. Null for Whisparr's, which cannot be added yet.
+        // The app a title of this kind goes to. Adult content goes to Whisparr v3 only.
         private static string AppFor(ReceivedTitle received)
         {
             return received.MediaKind switch
             {
                 MediaKind.Tv => "Sonarr",
-                MediaKind.Movie => received.IsAdult ? null : "Radarr",
+                MediaKind.Movie => received.IsAdult ? nameof(Applications.Whisparr.WhisparrV3) : "Radarr",
                 MediaKind.Music => "Lidarr",
                 _ => null
             };
@@ -292,6 +299,8 @@ namespace NzbDrone.Core.Sharing
                 TmdbId = received.TmdbId,
                 ImdbId = received.ImdbId,
                 ForeignArtistId = received.ForeignArtistId,
+                StashId = received.StashId,
+                TpdbId = received.TpdbId,
                 Whole = received.IsWhole,
                 Seasons = parts.Seasons,
                 Episodes = parts.Episodes,
@@ -322,13 +331,19 @@ namespace NzbDrone.Core.Sharing
                     return request.TvdbId > 0 ? request : null;
 
                 case MediaKind.Movie:
-                    if (request.TmdbId == 0 && request.ImdbId == null)
+                    if (request.TmdbId == 0 && request.ImdbId == null && request.StashId == null && request.TpdbId == null)
                     {
                         request.TmdbId = items.Value.Select(i => i.TmdbId).FirstOrDefault(i => i > 0);
                         request.ImdbId = items.Value.Select(i => i.ImdbId).FirstOrDefault(i => i != null);
+
+                        if (received.IsAdult)
+                        {
+                            request.StashId = items.Value.Select(i => i.StashId).FirstOrDefault(i => i != null);
+                            request.TpdbId = items.Value.Select(i => i.TpdbId).FirstOrDefault(i => i != null);
+                        }
                     }
 
-                    return request.TmdbId > 0 || request.ImdbId != null ? request : null;
+                    return request.TmdbId > 0 || request.ImdbId != null || request.StashId != null || request.TpdbId != null ? request : null;
 
                 case MediaKind.Music:
                     if (request.ForeignArtistId == null)
@@ -353,12 +368,40 @@ namespace NzbDrone.Core.Sharing
             return received.MediaKind switch
             {
                 MediaKind.Tv => _series.ForApplication(applicationId).FirstOrDefault(s => s.MissingSince == null && s.TvdbId == request.TvdbId)?.ArrId,
-                MediaKind.Movie => _movies.ForApplication(applicationId).FirstOrDefault(m => m.MissingSince == null &&
-                                                                                          ((request.TmdbId > 0 && m.TmdbId == request.TmdbId) || (request.ImdbId != null && m.ImdbId == request.ImdbId)))?.ArrId,
+                MediaKind.Movie => _movies.ForApplication(applicationId).FirstOrDefault(m => m.MissingSince == null && IsSameMovie(m, received, request))?.ArrId,
                 MediaKind.Music => _artists.ForApplication(applicationId).FirstOrDefault(a => a.MissingSince == null &&
                                                                                            string.Equals(a.ForeignArtistId, request.ForeignArtistId, StringComparison.OrdinalIgnoreCase))?.ArrId,
                 _ => null
             };
+        }
+
+        // A film or a scene is the same one by any ID both know it by. Whisparr's own ID only
+        // means the same thing between two Whisparrs.
+        private static bool IsSameMovie(CatalogMovie movie, ReceivedTitle received, LibraryAddRequest request)
+        {
+            return (request.TmdbId > 0 && movie.TmdbId == request.TmdbId) ||
+                   (request.ImdbId != null && movie.ImdbId == request.ImdbId) ||
+                   (received.IsAdult && request.StashId != null && string.Equals(movie.StashId, request.StashId, StringComparison.OrdinalIgnoreCase)) ||
+                   (received.IsAdult && request.TpdbId != null && string.Equals(movie.TpdbId, request.TpdbId, StringComparison.OrdinalIgnoreCase)) ||
+                   (received.IsAdult && received.ForeignId != null && movie.ForeignId == received.ForeignId);
+        }
+
+        // A scene a friend's Whisparr v2 holds, known only by v2's own number for it.
+        private bool IsWhisparrV2Scene(ReceivedTitle received)
+        {
+            if (!received.IsAdult)
+            {
+                return false;
+            }
+
+            if (received.ForeignId?.StartsWith("whisparr2:", StringComparison.Ordinal) == true)
+            {
+                return true;
+            }
+
+            var offered = received.OfferIds?.Split(',', StringSplitOptions.RemoveEmptyEntries).ToHashSet() ?? new HashSet<string>();
+
+            return _peerItems.ForPeer(received.PeerId).Any(i => offered.Contains(i.RemoteId) && i.ForeignId?.StartsWith("whisparr2:", StringComparison.Ordinal) == true);
         }
 
         // The way most of the library already is.
