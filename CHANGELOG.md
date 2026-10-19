@@ -2,11 +2,12 @@
 
 What changed in each release, newest first. Each item links to the decision record that explains it, and the [V1 plan](docs/plans/v1-implementation-plan.md) has the whole story, slice by slice.
 
-## Unreleased
+## 0.2.1 (pre-release)
 
 ### Changed
 
 - **The user guide has screenshots**, of two test nodes, taken by `tools/docs-screenshots.mjs` so they can be taken again when the pages change.
+- **Issues on GitHub** open as a bug report or a feature request form, which asks for what a Nodearr problem needs. Security problems are pointed to private reporting.
 
 ### Fixed
 
