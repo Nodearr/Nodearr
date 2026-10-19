@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security problem
+    url: https://github.com/Nodearr/Nodearr/security/advisories/new
+    about: Privately, so it can be fixed before it is public. See SECURITY.md.
+  - name: Troubleshooting
+    url: https://nodearr.com/guide/troubleshooting/
+    about: What each warning means, and what to do when a friend cannot be reached or a transfer fails.
+  - name: User guide
+    url: https://nodearr.com/guide/
+    about: Installing, connecting your apps, friends and sharing, and every setting.
