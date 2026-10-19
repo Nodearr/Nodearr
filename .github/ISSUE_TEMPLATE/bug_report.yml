@@ -1,0 +1,88 @@
+name: Bug report
+description: Something in Nodearr does not work as it should.
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting it. Before you start, look at **System > Status** in Nodearr and at the [troubleshooting guide](https://nodearr.com/guide/troubleshooting/): many problems are explained there, with what to do.
+
+        **A security problem goes through [SECURITY.md](https://github.com/Nodearr/Nodearr/security/policy), privately, not here.**
+
+        Logs and screenshots can hold your node ID, your network addresses, folder names and your friends' names. Replace any you would rather not post: `203.0.113.1` stands in for an address well enough.
+  - type: checkboxes
+    attributes:
+      label: Is there an issue for this already?
+      description: Search the open and closed issues first. One closed as done may not be in a release yet.
+      options:
+        - label: I searched the open and closed issues
+          required: true
+  - type: textarea
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Steps to make it happen
+      description: As exactly as you can. Which friend, which app, which title or kind of title, if it matters.
+      placeholder: |
+        1. On Catalog > Sharing, ...
+        2. In Sonarr, ...
+        3. ...
+    validations:
+      required: false
+  - type: input
+    attributes:
+      label: Nodearr version
+      description: From System > Status, or the bottom of the page.
+      placeholder: 0.2.0
+    validations:
+      required: true
+  - type: dropdown
+    attributes:
+      label: How Nodearr is installed
+      options:
+        - Windows installer
+        - Windows zip
+        - Linux
+        - macOS
+        - Docker
+        - Built from source
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: The Arr apps involved
+      description: Which apps and versions, and whether they run in Docker or straight on the machine.
+      placeholder: |
+        - Sonarr 4.0.20, Docker
+        - Radarr 6.4.4, Windows
+    validations:
+      required: false
+  - type: dropdown
+    attributes:
+      label: Connection to the friend involved
+      description: Nodes > Trusted Nodes shows it beside each friend.
+      options:
+        - Direct
+        - Relay only
+        - Not reachable
+        - No friend involved
+    validations:
+      required: false
+  - type: textarea
+    attributes:
+      label: Logs
+      description: |
+        From System > Log Files, around the time it happened. For more detail, raise Log Level to Trace under Settings > General, make it happen again, and put the level back afterwards.
+      render: text
+    validations:
+      required: false
+  - type: textarea
+    attributes:
+      label: Anything else
+      description: Screenshots, or anything that would help. Drag files into this box to attach them.
+    validations:
+      required: false

@@ -1,0 +1,35 @@
+name: Feature request
+description: An idea that would make Nodearr better.
+labels: ['enhancement']
+body:
+  - type: checkboxes
+    attributes:
+      label: Is there an issue for this already?
+      description: Search the open and closed issues first, and the [plan](https://github.com/Nodearr/Nodearr/blob/main/docs/plans/v1-implementation-plan.md#what-is-still-open), which lists the work still open.
+      options:
+        - label: I searched the open and closed issues
+          required: true
+  - type: textarea
+    attributes:
+      label: What you want to do
+      description: The problem, or the thing you cannot do today. Say it as what you are trying to achieve, not yet how Nodearr should do it.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: How Nodearr could do it
+      description: What you would like to happen, from your side and from your friend's.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: What you do instead today
+      description: How you manage without it, and any other ways it could be done.
+    validations:
+      required: false
+  - type: textarea
+    attributes:
+      label: Anything else
+      description: Who sees what, and what friends would have to agree to. Mock-ups, links, or how other apps do it.
+    validations:
+      required: false
