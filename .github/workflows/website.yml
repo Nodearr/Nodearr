@@ -1,0 +1,32 @@
+# When a release is published, nodearr.com is rebuilt with that release's user guide, changelog and
+# API description (Nodearr/nodearr.github.io). The site publishes the docs of the newest release,
+# not of main, so it describes what people can download.
+#
+# Sending the dispatch needs a token that may write to Nodearr/nodearr.github.io, in the secret
+# SITE_DISPATCH_TOKEN: a fine-grained token for that one repository, with Contents set to read and
+# write. Without it, this says so and does nothing, and the site can be rebuilt by hand from its
+# Actions tab.
+
+name: Website
+
+on:
+  release:
+    types: [published]
+
+permissions: {}
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Tell the site to rebuild with this release
+        env:
+          GH_TOKEN: ${{ secrets.SITE_DISPATCH_TOKEN }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::warning::SITE_DISPATCH_TOKEN is not set, so nodearr.com was not told about $TAG. Run its Deploy workflow by hand."
+            exit 0
+          fi
+          gh api repos/Nodearr/nodearr.github.io/dispatches -f event_type=nodearr-release -f "client_payload[tag]=$TAG"
+          echo "nodearr.com is rebuilding with the docs of $TAG"

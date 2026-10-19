@@ -107,6 +107,8 @@ A version is three numbers with an optional pre-release tag: `0.1.0`, `0.1.0-bet
 
 Run the workflow by hand from the Actions tab, with a version, to build the packages without drafting or pushing anything. They are kept as the run's artifacts.
 
+Publishing the release rebuilds [nodearr.com](https://nodearr.com) with that release's user guide, changelog and API description: `.github/workflows/website.yml` tells [Nodearr/nodearr.github.io](https://github.com/Nodearr/nodearr.github.io) to. That needs the secret `SITE_DISPATCH_TOKEN`, a fine-grained token for that repository with Contents set to read and write. Without it the workflow warns, and the site's Deploy workflow can be run by hand. The site never shows the docs of `main`, so what it describes is what can be downloaded.
+
 ## Building one package yourself
 
 The scripts in `build/` are what the workflow runs. Each needs PowerShell 7.
