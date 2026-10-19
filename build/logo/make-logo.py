@@ -124,7 +124,45 @@ def write(path, text):
     print('wrote', path)
 
 
+def social():
+    """The picture GitHub shows for the repository on topic pages and in shared links, 1280 x 640.
+    Dark, as it is mostly seen on dark pages: the mark, the name, and what Nodearr works with."""
+    k = 0.62
+    return f'''<svg width="1280" height="640" viewBox="0 0 1280 640" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title">
+  <title id="title">Nodearr: your friends' libraries, in your Arr apps</title>
+  <!-- Drawn by build/logo/make-logo.py. Uploaded by hand: Settings > General > Social preview. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="640" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0D1117"/>
+      <stop offset="100%" stop-color="#0B2A28"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1280" height="640" fill="url(#bg)"/>
+
+  <!-- The mark, large and faint, off to the right, behind everything -->
+  <g transform="translate(700 -60) scale(1.5)" opacity="0.06">
+    {mark(LIGHT, TEAL, prefix='faint-')}
+  </g>
+
+  <!-- The icon, as it is everywhere else -->
+  <g transform="translate(120 180) scale({k})">
+    <circle cx="256" cy="256" r="240" fill="{DARK}"/>
+    <circle cx="256" cy="256" r="236" fill="none" stroke="{TEAL}" stroke-opacity="0.35" stroke-width="8"/>
+    {mark(LIGHT, TEAL, prefix='icon-')}
+  </g>
+
+  <g font-family="{FONT}">
+    <text x="470" y="318" font-size="132" font-weight="700" letter-spacing="-4" fill="#F0F6FC">Node<tspan fill="#5EEAD4">arr</tspan></text>
+    <text x="474" y="380" font-size="34" fill="#C9D1D9">Your friends' libraries, in your Arr apps.</text>
+    <text x="474" y="436" font-size="24" font-weight="600" letter-spacing="1.5" fill="#5EEAD4">SONARR · RADARR · LIDARR · WHISPARR · PROWLARR</text>
+  </g>
+</svg>
+'''
+
+
 write('Logo/Nodearr.svg', icon(LIGHT, DARK, 'Nodearr'))
+write('Logo/social-preview.svg', social())
 write('Logo/Nodearr-dark.svg', icon(DARK, LIGHT, 'Nodearr'))
 write('Logo/banner-light.svg', banner('light'))
 write('Logo/banner-dark.svg', banner('dark'))
