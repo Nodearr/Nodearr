@@ -21,8 +21,8 @@ On each set-up it:
 
 | | Library A | Library B |
 | --- | --- | --- |
-| Radarr | Night of the Living Dead (1968) | Plan 9 from Outer Space (1957) |
-| Sonarr | Pingu, S01E01 to S01E03 | Bluey, S01E01 to S01E03 |
+| Radarr | Back to the Future (1985) | Spirited Away (2001) |
+| Sonarr | Cowboy Bebop, S01E01 to S01E03 | Frieren: Beyond Journey's End, S01E01 to S01E03 |
 
 Each library has what the other lacks, so each side has something to share and something to fetch.
 
@@ -73,7 +73,7 @@ Set-up A
   Nodearr  http://localhost:26633
   Sonarr   http://localhost:28989   API key 3f9c...
   Radarr   http://localhost:27878   API key 81ab...
-  Library  Night of the Living Dead, and Pingu S01E01 to S01E03
+  Library  Back to the Future, and Cowboy Bebop S01E01 to S01E03
   Nodearr's UDP port, for another machine: 26633
 ```
 
@@ -144,9 +144,9 @@ Open **Catalog > Peer Catalog**. If it is empty, press **Sync Peer Catalogs**. A
 
 ## 7. Choose what to share
 
-On the side that has Pingu, A, open **Catalog > Sharing**.
+On the side that has Cowboy Bebop, A, open **Catalog > Sharing**.
 
-1. Under **Hidden**, open **Pingu** with its arrow, tick **S01E02**, and press **Save**.
+1. Under **Hidden**, open **Cowboy Bebop** with its arrow, tick **S01E02**, and press **Save**.
 2. On the other side, B, look at **Catalog > Peer Catalog**.
 
 - [ ] Within a few seconds, S01E02 is gone from B's list, without pressing anything. Taking something back is immediate.
@@ -159,20 +159,20 @@ Then, on A, untick it under Hidden and save. On B, press **Sync Peer Catalogs**.
 
 **A sends.** On A, in **Catalog > Sharing**, under **Send to a friend**:
 
-1. Type *Pingu* in the filter and pick it. Leave it whole: the whole series.
+1. Type *Cowboy* in the filter and pick **Cowboy Bebop**. Leave it whole: the whole series.
 2. Under **To**, pick B's name.
 3. Press **Send**.
 
-- [ ] It says "Sent Pingu to ...", and under **Sent** the send shows **Told** within a few seconds.
+- [ ] It says "Sent Cowboy Bebop to ...", and under **Sent** the send shows **Told** within a few seconds.
 
 **B gets it.** On B's Home:
 
-- [ ] A card says "... sent you Pingu", with **Root Folder**, **Quality Profile** and **Series Type** filled in.
+- [ ] A card says "... sent you Cowboy Bebop", with **Root Folder**, **Quality Profile** and **Series Type** filled in.
 - [ ] Press **Get it**. The card says it is asking Sonarr, then "Added to Sonarr, monitoring the whole series, and searching for 3 episodes": the three A has. Sonarr monitors the whole series, so it looks for the rest on its own later, as it would for any series.
-- [ ] **Activity > Transfers** shows Pingu's three episodes arriving from A, one after another, then done.
-- [ ] In B's Sonarr, **Series > Pingu** shows the three episodes with files. Sonarr imported what Nodearr fetched.
+- [ ] **Activity > Transfers** shows Cowboy Bebop's three episodes arriving from A, one after another, then done.
+- [ ] In B's Sonarr, **Series > Cowboy Bebop** shows the three episodes with files. Sonarr imported what Nodearr fetched.
 
-**Then the other way round.** B sends **Plan 9 from Outer Space** to A, and A presses **Get it** on its card.
+**Then the other way round.** B sends **Spirited Away** to A, and A presses **Get it** on its card.
 
 - [ ] A's Radarr adds the film, grabs it through Nodearr, and imports it. The film is larger than an episode, so give it a minute.
 
@@ -180,7 +180,7 @@ Then, on A, untick it under Hidden and save. On B, press **Sync Peer Catalogs**.
 
 This is how Nodearr works day to day: Sonarr or Radarr search, and find what friends have among their other results.
 
-On B's Radarr, add **Night of the Living Dead**: **Movies > Add New**, search for it, and pick the one from **1968** (there are several). Untick **Start search for missing movie**, which Radarr ticks for you, and press **Add Movie**. Then open the film and press **Interactive Search** at the top.
+On B's Radarr, add **Back to the Future**: **Movies > Add New**, search for it, and pick the one from **1985**, the first of the three. Untick **Start search for missing movie**, which Radarr ticks for you, and press **Add Movie**. Then open the film and press **Interactive Search** at the top.
 
 - [ ] A release from the indexer **Nodearr** is listed, with its size and quality.
 - [ ] Press its download button. Nodearr's **Activity > Transfers** shows it arriving from A, and Radarr imports it.
@@ -190,11 +190,11 @@ On B's Radarr, add **Night of the Living Dead**: **Movies > Add New**, search fo
 This is how a friendship can start: "I have that, let me send it to you."
 
 1. On A, **Nodes > Trusted Nodes**, press **Revoke trust** on B. The two are no longer friends.
-2. On A, in **Catalog > Sharing**, under **Send to a friend**, pick **Night of the Living Dead**, and under **To** pick **Someone new, with an invite**. Leave **Share everything except Hidden with them too** ticked, press **Send**, and copy the invite code it shows.
+2. On A, in **Catalog > Sharing**, under **Send to a friend**, pick **Back to the Future**, and under **To** pick **Someone new, with an invite**. Leave **Share everything except Hidden with them too** ticked, press **Send**, and copy the invite code it shows.
 3. On B, **Nodes > Invites**, paste the code under **Redeem Invite**, and press **Redeem**.
 
 - [ ] The two are friends again, and A's send shows **Told**.
-- [ ] B's Home shows a card for Night of the Living Dead. B has it from step 9, so it says Radarr has it already.
+- [ ] B's Home shows a card for Back to the Future. B has it from step 9, so it says Radarr has it already.
 
 ## 11. Look around
 

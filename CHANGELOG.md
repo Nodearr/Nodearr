@@ -2,6 +2,18 @@
 
 What changed in each release, newest first. Each item links to the decision record that explains it, and the [V1 plan](docs/plans/v1-implementation-plan.md) has the whole story, slice by slice.
 
+## Unreleased
+
+### Changed
+
+- **The user guide has screenshots**, of two test nodes, taken by `tools/docs-screenshots.mjs` so they can be taken again when the pages change.
+
+### Fixed
+
+- A page that does not exist said "DefaultNotFoundMessage" instead of a sentence. Any page drawn once, before the words had arrived, showed their keys.
+- A series whose title already ends with its year, as TVDB names some, showed the year twice: "Bluey (2018) (2018)".
+- On Activity > Transfers, a transfer's percentage was cut off at the edge of the part already done, so early on it could not be read.
+
 ## 0.2.0 (pre-release)
 
 ### New

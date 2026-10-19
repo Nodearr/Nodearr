@@ -91,7 +91,7 @@ dotnet test src/Nodearr.sln
 ## What a change includes
 
 - **Tests** for what it does, beside the existing ones in `src/NzbDrone.Core.Test` and the other test projects.
-- **The user guide** ([`docs/user-guide/`](docs/user-guide/README.md)), when it changes something a person sees or does.
+- **The user guide** ([`docs/user-guide/`](docs/user-guide/README.md)), when it changes something a person sees or does. When a page in its screenshots changes, take them again with `tools/docs-screenshots.mjs`, which says how.
 - **The changelog** ([CHANGELOG.md](CHANGELOG.md)), under Unreleased.
 - **The third-party notices**, when it adds, removes or updates a dependency: `pwsh build/Build-Notices.ps1`, and commit the result ([licences](docs/guides/releases.md#licences)).
 - **The API description**, when it changes the API: `pwsh build/Build-OpenApi.ps1`, and commit `src/Nodearr.Api.V5/openapi.json` and `src/Nodearr.Api.V3/openapi.json`.

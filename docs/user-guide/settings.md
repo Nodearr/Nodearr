@@ -6,6 +6,8 @@ Every setting Nodearr has, where it is, and the environment variable that can fi
 
 How this node presents itself, reaches other nodes, and stores what it fetches ([ADR 0019](../adr/0019-node-settings-saved-in-the-ui-fixed-by-the-environment.md)).
 
+![Settings > Node: the node's name, the relay, and the UDP port, here set by the environment](images/settings-node.png)
+
 | Setting | Default | What it does | Takes effect | Environment variable |
 | --- | --- | --- | --- | --- |
 | Name | The machine's name | What your friends see this node called. | At once | `Nodearr__Transport__NodeName` |
@@ -76,6 +78,8 @@ See [Backups](backups.md).
 ## Settings > Apps
 
 Your Arr apps and Prowlarr, and the path mappings. See [Connecting your apps](connecting-apps.md).
+
+![Settings > Apps: Radarr and Sonarr connected with Full Sync, and Path Mappings](images/settings-apps.png)
 
 ## Set by the environment
 

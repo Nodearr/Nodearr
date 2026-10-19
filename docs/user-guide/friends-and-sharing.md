@@ -6,6 +6,8 @@ Two nodes become friends when one uses the other's invite. From then on each can
 
 On **Nodes > Invites**, or the last step on Home:
 
+![Nodes > Invites, with a new invite labelled For Sam and its code ready to copy](images/invites.png)
+
 1. Choose how long the invite works (**Valid For**, 24 hours unless you change it), and give it a **Label**, a note for yourself about who it is for.
 2. **Share everything except Hidden** is ticked: this friend is offered your whole library from every app shared with new friends, which is every app but Whisparr unless you change it, apart from what is on your Hidden list, and including what you add later. Untick it if they should be offered only what you put on a list for them.
 3. **Create Invite**, and copy the code. Send it to your friend however you like: a message, an email, read out over the phone.
@@ -25,6 +27,8 @@ If it fails:
 - **"turned away too many invites from this node lately"**: your node tried five codes in 15 minutes that did not work. Wait 15 minutes, then try once with a fresh code.
 
 ## Your friends
+
+![Nodes > Trusted Nodes: this node, and Sam, trusted, sharing everything except Hidden, connected directly](images/trusted-nodes.png)
 
 **Nodes > Trusted Nodes** lists every node you have paired with, with:
 
@@ -53,6 +57,8 @@ A new friend is offered everything except Hidden, from every app but Whisparr, u
 
 Under **Trusted Nodes** on the Sharing page, each friend has a line of their own:
 
+![Catalog > Sharing: Sam shares everything except Hidden, from Radarr and Sonarr, and the form to send a friend something](images/sharing.png)
+
 - **Share everything except Hidden** or **Stop sharing everything** turns "everything" on and off for them. Off, they are offered only the lists they are on.
 - When it is on, a tick for each of your Arr apps says which apps "everything" takes in. Untick one to leave its whole library out for that friend. To share everything but Whisparr, leave Whisparr unticked.
 - Whatever is on a list they are on is offered to them as well, from any app, ticked or not. To share all your series and films but only a few Whisparr items, leave Whisparr unticked and put those items on a list for them.
@@ -80,6 +86,8 @@ Anything on the **Hidden** list is offered to nobody, whatever else says so: not
 
 There is one Hidden list, and it is on Catalog > Sharing with the other lists, at the bottom of the page:
 
+![The Hidden list, filtered to find a title to tick](images/sharing-hidden.png)
+
 1. Find the title with **Filter**.
 2. Tick it, or for a series some of its seasons or episodes, or for an artist some of its albums.
 3. **Save**.
@@ -98,6 +106,8 @@ Having been offered something earlier counts for nothing: every request for a fi
 ## Sending something to a friend
 
 "I have that, let me send it to you": on **Catalog > Sharing**, under **Send to a friend**:
+
+![Send to a friend, with Frieren chosen for Alex, and an earlier send to Alex marked Told](images/send-to-a-friend.png)
 
 1. Find the title, and pick it. For a series you can then narrow it to seasons or episodes, and for an artist to albums, as on a list.
 2. Under **To**, pick the friend. Or pick **Someone new, with an invite** if they are not a friend yet, and how long the invite works.
@@ -120,6 +130,8 @@ The cross on a send forgets it. What it shared stays shared until you change the
 ## When a friend sends you something
 
 Home shows it at the top, above everything else, as **"<name> sent you <title>"**.
+
+![Home with Sam's send of Frieren at the top, its choices for Sonarr filled in, and Get it](images/received.png)
 
 **Get it** adds it to your Arr app and fetches it:
 

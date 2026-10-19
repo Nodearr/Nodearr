@@ -14,8 +14,8 @@
         stop               stop everything, and keep it to start again with "up"
         down               stop everything and remove what this script made
 
-    Library A is Night of the Living Dead and three episodes of Pingu. Library B is Plan 9 from
-    Outer Space and three episodes of Bluey. The videos are test patterns made with ffmpeg, named
+    Library A is Back to the Future and three episodes of Cowboy Bebop. Library B is Spirited Away
+    and three episodes of Frieren: Beyond Journey's End. The videos are test patterns made with ffmpeg, named
     as releases are, so Sonarr and Radarr import them as those titles.
 
     Sonarr, Radarr and ffmpeg are downloaded from their GitHub releases and checked against the
@@ -72,13 +72,13 @@ $ProgressPreference = 'SilentlyContinue'
 $Sides = @{
     A = @{
         NodearrPort = 26633; SonarrPort = 28989; RadarrPort = 27878
-        Movie       = @{ TmdbId = 10331; Title = 'Night of the Living Dead'; Release = 'Night.of.the.Living.Dead.1968.720p.WEB-DL.AAC2.0.H.264-NODEARR' }
-        Series      = @{ TvdbId = 75669; Title = 'Pingu'; Release = 'Pingu.S01E0{0}.720p.WEB-DL.AAC2.0.H.264-NODEARR' }
+        Movie       = @{ TmdbId = 105; Title = 'Back to the Future'; Release = 'Back.to.the.Future.1985.720p.WEB-DL.AAC2.0.H.264-NODEARR' }
+        Series      = @{ TvdbId = 76885; Title = 'Cowboy Bebop'; Release = 'Cowboy.Bebop.S01E0{0}.720p.WEB-DL.AAC2.0.H.264-NODEARR' }
     }
     B = @{
         NodearrPort = 26643; SonarrPort = 28990; RadarrPort = 27879
-        Movie       = @{ TmdbId = 10513; Title = 'Plan 9 from Outer Space'; Release = 'Plan.9.from.Outer.Space.1957.720p.WEB-DL.AAC2.0.H.264-NODEARR' }
-        Series      = @{ TvdbId = 353546; Title = 'Bluey'; Release = 'Bluey.2018.S01E0{0}.720p.WEB-DL.AAC2.0.H.264-NODEARR' }
+        Movie       = @{ TmdbId = 129; Title = 'Spirited Away'; Release = 'Spirited.Away.2001.720p.WEB-DL.AAC2.0.H.264-NODEARR' }
+        Series      = @{ TvdbId = 424536; Title = "Frieren: Beyond Journey's End"; Release = 'Frieren.Beyond.Journeys.End.S01E0{0}.720p.WEB-DL.AAC2.0.H.264-NODEARR' }
     }
 }
 
@@ -95,9 +95,10 @@ $FfmpegPackage = @{
     Sha256 = '60f467265b1e312373dbcd92200c2618a74850f98d3d078e94296bb3fa2047ba'
 }
 
-# A film shorter than this is taken for a sample and not imported. An episode needs less.
+# A video shorter than these is taken for a sample and not imported. Sonarr wants at least five
+# minutes of an episode of a series whose episodes run 10 to 30 minutes, as both series here do.
 $MovieSeconds = 660
-$EpisodeSeconds = 120
+$EpisodeSeconds = 330
 
 $ReleasesPage = 'https://github.com/Nodearr/Nodearr/releases'
 $FirewallRule = 'Nodearr UI test'
@@ -502,9 +503,14 @@ function Get-TestVideo([string] $Kind) {
     $source = $(if ($Kind -eq 'movie') { 'smptebars=size=1280x720:rate=5' } else { 'testsrc2=size=1280x720:rate=5' })
 
     Say "  Making a $([int] ($seconds / 60))-minute test video"
+    # An episode is held to a steady 2.4 Mb/s, about 95 MB: Sonarr turns down a 720p WEB-DL of a
+    # 25-minute episode below 75 MB as too small to be real, and a test pattern would otherwise
+    # come out far smaller. Radarr's sizes have no such floor, so the film stays small.
+    $quality = $(if ($Kind -eq 'movie') { @('-crf', '30') } else { @('-b:v', '2400k', '-minrate', '2400k', '-maxrate', '2400k', '-bufsize', '2400k', '-x264-params', 'nal-hrd=cbr') })
+
     $ffmpeg = Get-Ffmpeg
     $arguments = @('-hide_banner', '-loglevel', 'error', '-y', '-f', 'lavfi', '-i', $source, '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=48000',
-        '-t', "$seconds", '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p', '-crf', '30', '-c:a', 'aac', '-b:a', '64k', "$file.partial.mkv")
+        '-t', "$seconds", '-c:v', 'libx264', '-preset', 'ultrafast', '-pix_fmt', 'yuv420p') + $quality + @('-c:a', 'aac', '-b:a', '64k', "$file.partial.mkv")
     & $ffmpeg @arguments
     if ($LASTEXITCODE -ne 0) { Stop-Test 'ffmpeg could not make the test video.' }
     Move-Item "$file.partial.mkv" $file -Force

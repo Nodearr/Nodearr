@@ -6,6 +6,8 @@ Add each app under **Settings > Apps**, with the **+** button, or from the first
 
 ## What to fill in
 
+![Settings > Apps, editing Sonarr: its name, sync level, the two addresses and its API key](images/settings-apps-sonarr.png)
+
 | Field | What it is |
 | --- | --- |
 | Name | What Nodearr calls the app. Anything. |
@@ -116,3 +118,5 @@ Prowlarr copies every indexer into each app it manages. Those copies are not tie
 ## Reading the library again
 
 Nodearr reads each app's whole library every 12 hours, and one title again within seconds whenever the app's webhook says it changed. Catalog > Local can read everything again at once with **Refresh Catalog**. What an app stops reporting is marked missing, and removed after 7 days, or at once with **Purge Missing**.
+
+![Catalog > Local: what each app reported, and each file's path and whether Nodearr can read it](images/local-catalog.png)
