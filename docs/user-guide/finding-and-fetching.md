@@ -4,6 +4,8 @@
 
 **Catalog > Peer Catalog** lists every file your friends share with you, each marked against your own library:
 
+![Catalog > Peer Catalog: Sam's files, with posters, each marked Not in library or Have](images/peer-catalog.png)
+
 | Status | Meaning |
 | --- | --- |
 | **Missing** | The series, movie, scene or album is in one of your Arr apps, and you have no file for it. |
@@ -12,6 +14,8 @@
 | **Not in library** | None of your Arr apps has it. Add it there first if you want it. |
 
 Each file shows its title's poster. **Posters**, at the top right, shows a friend's catalog as a grid instead: one tile per series, film, scene or album, however many of its files your friends share and from however many friends, with how many of them you are missing or have. **Table** goes back to the list.
+
+![The Posters view of Sam's catalog: one tile each for Cowboy Bebop, Frieren and Spirited Away, with what Alex has of each](images/peer-catalog-posters.png)
 
 The posters come from your friends' own Arr apps, the pictures they show there. Nodearr fetches each one once and keeps it, and never contacts an image service for them (ADR 0022).
 
@@ -39,6 +43,8 @@ The same file offered by two friends is one result. A result says nothing about 
 ## What happens to a grab
 
 The app sends what it grabbed to Nodearr's download client, as it would to SABnzbd, and **Activity > Transfers** shows it as Nodearr fetches it. The same page lists what your node is sending to friends.
+
+![Activity > Transfers: three episodes of Frieren coming from Sam, part way, and Cowboy Bebop sent to Sam earlier](images/transfers.png)
 
 1. **Queued**: waiting for a slot. Three transfers run at once.
 2. **Downloading**: arriving from your friend, with its progress. Your Arr app's queue shows the same.

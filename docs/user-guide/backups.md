@@ -12,6 +12,8 @@ A backup does not hold your library or anything in the download folder. Those ar
 
 ## When they are made
 
+![System > Backup, with Backup Now and Restore Backup, and the warning to keep backups private](images/backup.png)
+
 - **Every 7 days**, kept for 28 days, in a `Backups` folder in the data folder. Change all three under Settings > General, Backups. Put the folder on another disk if you can.
 - **When you press Backup Now** on System > Backup. Do that before moving the node, and before trying anything you are unsure of.
 

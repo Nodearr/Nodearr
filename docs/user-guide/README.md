@@ -2,6 +2,8 @@
 
 For anyone running Nodearr beside their Arr apps. Each page is one task.
 
+![Nodearr's Home once it is set up: what a friend sent, what friends have that is new to your apps, your library, your friends and your node](images/home.png)
+
 1. [Installing](installing.md): Docker, Windows, Linux or macOS, and the first start.
 2. [Connecting your apps](connecting-apps.md): Sonarr, Radarr, Whisparr, Lidarr and Prowlarr, and the two folders that have to line up.
 3. [Friends and sharing](friends-and-sharing.md): invites, trust, and choosing what each friend sees.
@@ -12,6 +14,8 @@ For anyone running Nodearr beside their Arr apps. Each page is one task.
 8. [Privacy and security](privacy-and-security.md): what friends, the relay and anyone else can see.
 
 New to it? [What Nodearr is](../../README.md), then [how it works](../overview-end-to-end-design.md), then start at 1.
+
+The screenshots show two test nodes, Alex and Sam, each beside its own Sonarr and Radarr. Their folders and network addresses are examples.
 
 ## Words this guide uses
 

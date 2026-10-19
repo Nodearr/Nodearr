@@ -102,10 +102,15 @@ The macOS packages are built by the release workflow but have not yet been run o
 Open `http://localhost:6633`, or the machine's address and port 6633 from another one.
 
 1. **Signing in.** A new node asks you to choose a username and a password. Do: Nodearr can be reached from your network, and it holds the key your friends trust. You can change how sign-in works later under Settings > General.
+
+   ![A new node asking for a username and password before anything else](images/first-run.png)
+
 2. **Home** then takes you through three steps, ticking each off as it is done:
    1. [Connect your Arr apps](connecting-apps.md).
    2. Choose the name your friends will see.
    3. [Connect with a friend](friends-and-sharing.md): create an invite, or paste one.
+
+   ![Home's three steps on a new node: connect your Arr apps, choose your name, connect with a friend](images/first-steps.png)
 
 Once all three are done, Home becomes an overview of what needs attention, what friends have that you lack, your library, your friends and your network.
 

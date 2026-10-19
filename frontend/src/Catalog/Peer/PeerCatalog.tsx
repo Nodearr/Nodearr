@@ -21,6 +21,7 @@ import { icons, kinds } from 'Helpers/Props';
 import { SortDirection } from 'Helpers/Props/sortDirections';
 import formatDateTime from 'Utilities/Date/formatDateTime';
 import formatBytes from 'Utilities/Number/formatBytes';
+import titleWithYear from 'Utilities/String/titleWithYear';
 import translate from 'Utilities/String/translate';
 import Poster from '../Poster';
 import {
@@ -114,7 +115,7 @@ function pad(value: number) {
 
 function describe(item: PeerCatalogItem) {
   if (item.mediaKind === 'music') {
-    const album = item.year ? `${item.title} (${item.year})` : item.title;
+    const album = titleWithYear(item.title, item.year);
     const tracks =
       item.trackCount === 1
         ? translate('SharingOneTrack')
@@ -124,7 +125,7 @@ function describe(item: PeerCatalogItem) {
   }
 
   if (item.mediaKind === 'movie') {
-    return item.year ? `${item.title} (${item.year})` : item.title;
+    return titleWithYear(item.title, item.year);
   }
 
   const episodes = item.episodeNumbers.map((n) => `E${pad(n)}`).join('');
@@ -161,7 +162,7 @@ function StatusButton({
 function describeTitle(title: PeerCatalogTitle) {
   const name = title.artist ? `${title.artist} - ${title.title}` : title.title;
 
-  return title.year ? `${name} (${title.year})` : name ?? '';
+  return titleWithYear(name, title.year);
 }
 
 function TitleTile({ title }: { title: PeerCatalogTitle }) {

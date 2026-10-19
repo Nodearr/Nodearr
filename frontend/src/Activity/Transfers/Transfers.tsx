@@ -29,6 +29,10 @@ import {
 } from './useTransfers';
 import styles from './Transfers.css';
 
+// The progress column's width less its padding. The bar draws its percentage across the whole
+// bar only when it knows its width; without one the text is clipped to the part already done.
+const PROGRESS_WIDTH = 144;
+
 const COLUMNS: Column[] = [
   { name: 'title', label: () => translate('Title'), isVisible: true },
   { name: 'peerName', label: () => translate('Peer'), isVisible: true },
@@ -112,6 +116,7 @@ function UploadRow({ upload }: { upload: Upload }) {
           progress={state === 'completed' ? 100 : percent}
           kind={state === 'failed' ? kinds.DANGER : kinds.PRIMARY}
           showText={true}
+          width={PROGRESS_WIDTH}
           title={`${formatBytes(bytesSent)} / ${formatBytes(size)}`}
         />
       </TableRowCell>
@@ -171,6 +176,7 @@ function TransferRow({ transfer, isBusy, onAction }: TransferRowProps) {
           progress={state === 'completed' ? 100 : percent}
           kind={state === 'failed' ? kinds.DANGER : kinds.PRIMARY}
           showText={true}
+          width={PROGRESS_WIDTH}
           title={`${formatBytes(bytesDone)} / ${formatBytes(size)}`}
         />
       </TableRowCell>

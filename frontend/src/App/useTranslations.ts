@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import useApiQuery from 'Helpers/Hooks/useApiQuery';
 import { setTranslations } from 'Utilities/String/translate';
 
@@ -15,11 +14,12 @@ export function useTranslations() {
     },
   });
 
-  useEffect(() => {
-    if (data) {
-      setTranslations(data.strings);
-    }
-  }, [data]);
+  // Set while rendering, not in an effect: the page renders as soon as these are fetched, and an
+  // effect would run after that first render, so a page that never renders again, such as the
+  // one for a page that does not exist, kept showing the keys instead of the words.
+  if (data) {
+    setTranslations(data.strings);
+  }
 
   return {
     ...result,
