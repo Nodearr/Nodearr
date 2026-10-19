@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import IconButton from 'Components/Link/IconButton';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import { icons } from 'Helpers/Props';
+import titleWithYear from 'Utilities/String/titleWithYear';
 import translate from 'Utilities/String/translate';
 import {
   albumShareId,
@@ -374,9 +375,7 @@ export function ArtistChoice({
 
           {albums.map((album) => {
             const id = albumShareId(title, album.albumArrId);
-            const name = album.year
-              ? `${album.title ?? ''} (${album.year})`
-              : album.title ?? '';
+            const name = titleWithYear(album.title, album.year);
 
             return (
               <Check
@@ -399,7 +398,7 @@ export function ArtistChoice({
 }
 
 export function describeTitle(title: ShareableTitle) {
-  const name = title.year ? `${title.title} (${title.year})` : title.title;
+  const name = titleWithYear(title.title, title.year);
   // An artist's files are its albums' tracks.
   const isMusic = title.mediaKind === 'music';
   const one = isMusic ? 'SharingOneTrack' : 'SharingOneFile';

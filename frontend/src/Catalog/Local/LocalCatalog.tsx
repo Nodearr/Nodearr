@@ -29,6 +29,7 @@ import {
 } from 'typings/LocalCatalog';
 import formatDateTime from 'Utilities/Date/formatDateTime';
 import formatBytes from 'Utilities/Number/formatBytes';
+import titleWithYear from 'Utilities/String/titleWithYear';
 import translate from 'Utilities/String/translate';
 import styles from './LocalCatalog.css';
 
@@ -78,7 +79,7 @@ function pad(value: number) {
 
 function describe(file: LocalCatalogFile) {
   if (file.mediaType === 'movie') {
-    return file.year ? `${file.title} (${file.year})` : file.title;
+    return titleWithYear(file.title, file.year);
   }
 
   const episodes = file.episodeNumbers.map((n) => `E${pad(n)}`).join('');
