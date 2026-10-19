@@ -7,6 +7,9 @@ namespace NzbDrone.Core.Applications.Whisparr
             BaseUrl = "http://localhost:6969";
             DownloadCategory = "whisparr";
 
+            // Adult content is shared with a friend only when chosen for them.
+            ShareWithNewFriends = false;
+
             // The adult family: the whole of it, and the subcategories Nodearr files its results under.
             SyncCategories = new[] { 6000, 6040, 6045, 6080, 6090 };
         }

@@ -1,7 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import useApiQuery from 'Helpers/Hooks/useApiQuery';
+import type { Peer } from 'Nodes/useNodes';
+import Application from 'typings/Application';
 import fetchJson, { ApiError } from 'Utilities/Fetch/fetchJson';
 import getQueryPath from 'Utilities/Fetch/getQueryPath';
+import translate from 'Utilities/String/translate';
 
 export type MediaKind = 'tv' | 'movie' | 'music';
 
@@ -239,12 +242,51 @@ export const useDeleteShareList = () => {
   });
 };
 
+// The apps whose libraries Nodearr reads. Prowlarr only searches, and holds no
+// library.
+export const useLibraryApplications = () => {
+  const { data = [] } = useApiQuery<Application[]>({ path: '/applications' });
+
+  return data.filter((app) => app.implementation !== 'Prowlarr');
+};
+
+// What a friend is offered, in a few words: everything, everything but some
+// apps, or only their lists.
+export function describeSharing(peer: Peer, applications: Application[]) {
+  if (!peer.shareAll) {
+    return translate('SharingListsOnly');
+  }
+
+  const leftOut = applications.filter((app) =>
+    peer.excludedApplicationIds?.includes(app.id)
+  );
+
+  if (leftOut.length === 0) {
+    return translate('SharingEverything');
+  }
+
+  if (leftOut.length === applications.length) {
+    return translate('SharingListsOnly');
+  }
+
+  return translate('SharingEverythingBut', {
+    apps: leftOut.map((app) => app.name).join(', '),
+  });
+}
+
 export const useSetShareAll = () => {
   const queryClient = useQueryClient();
 
-  return useMutation<unknown, ApiError, { id: number; shareAll: boolean }>({
-    mutationFn: ({ id, shareAll }) =>
-      send('PUT', `${PEERS_PATH}/${id}/shareall`, { shareAll }),
+  return useMutation<
+    unknown,
+    ApiError,
+    { id: number; shareAll: boolean; excludedApplicationIds?: number[] }
+  >({
+    mutationFn: ({ id, shareAll, excludedApplicationIds }) =>
+      send('PUT', `${PEERS_PATH}/${id}/shareall`, {
+        shareAll,
+        excludedApplicationIds,
+      }),
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: [PEERS_PATH] });
     },

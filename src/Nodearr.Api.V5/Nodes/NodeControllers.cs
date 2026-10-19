@@ -95,7 +95,7 @@ public class PeerController : NodeControllerBase, IHandle<PeerConnectionCheckedE
     [Produces("application/json")]
     public Ok<PeerResource> SetShareAll(int id, [FromBody] ShareAllResource resource)
     {
-        return TypedResults.Ok(PeerResource.FromModel(_sharingService.SetShareAll(id, resource.ShareAll)));
+        return TypedResults.Ok(PeerResource.FromModel(_sharingService.SetShareAll(id, resource.ShareAll, resource.ExcludedApplicationIds)));
     }
 
     [HttpGet]

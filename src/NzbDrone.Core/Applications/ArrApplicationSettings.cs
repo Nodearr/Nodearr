@@ -44,6 +44,11 @@ namespace NzbDrone.Core.Applications
         [FieldDefinition(6, Label = "ApplicationSettingsSyncCategories", Type = FieldType.Select, SelectOptions = typeof(NewznabCategoryFieldConverter), Advanced = true, HelpText = "ApplicationSettingsSyncCategoriesHelpText")]
         public IEnumerable<int> SyncCategories { get; set; }
 
+        // Whether friends offered everything are offered this app's library too, when they become
+        // friends or when the app is added. Each friend can be changed on Catalog > Sharing.
+        [FieldDefinition(7, Label = "ApplicationShareWithNewFriends", Type = FieldType.Checkbox, HelpText = "ApplicationShareWithNewFriendsHelpText")]
+        public bool ShareWithNewFriends { get; set; } = true;
+
         // Not a setting: kept out of what is saved and shown. Lidarr's API is /api/v1.
         string IArrConnection.ApiRoute => ApiRoute;
 

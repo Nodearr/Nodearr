@@ -80,10 +80,10 @@ Trust can be **revoked** from either side, which ends it on both, or the other n
 
 ### 3. Choosing what to share
 
-A new friend is offered everything except the Hidden list, unless the invite said otherwise, on either side ([ADR 0014](adr/0014-sharing-rules-and-catalog-exchange.md), amendments). On Catalog > Sharing:
+A new friend is offered everything except the Hidden list, from every Arr app but Whisparr, unless the invite said otherwise, on either side ([ADR 0014](adr/0014-sharing-rules-and-catalog-exchange.md), amendments). On Catalog > Sharing:
 
 - a **share list** holds whole series, seasons, episodes, movies, Whisparr items, whole artists and single albums, and is given to chosen friends;
-- a friend is marked **share everything**, or not;
+- a friend is marked **share everything**, or not, and which Arr apps that takes in;
 - anything on the **Hidden** list is offered to nobody, whatever else says so.
 
 A whole series, season or artist takes in what arrives later.

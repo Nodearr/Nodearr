@@ -36,6 +36,8 @@ export interface Peer {
   connectionAddress?: string;
   connectionChecked?: string;
   shareAll: boolean;
+  // The Arr apps that everything leaves out for this friend.
+  excludedApplicationIds: number[];
 }
 
 export interface Invite {

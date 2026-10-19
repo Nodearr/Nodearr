@@ -54,6 +54,9 @@ public class PeerResource : RestResource
     public DateTime? ConnectionChecked { get; set; }
     public bool ShareAll { get; set; }
 
+    // The Arr apps that everything leaves out for this friend.
+    public List<int> ExcludedApplicationIds { get; set; } = new();
+
     public static PeerResource FromModel(Peer peer)
     {
         return new PeerResource
@@ -70,7 +73,8 @@ public class PeerResource : RestResource
             ConnectionPath = peer.ConnectionPath,
             ConnectionAddress = peer.ConnectionAddress,
             ConnectionChecked = peer.ConnectionChecked,
-            ShareAll = peer.ShareAll
+            ShareAll = peer.ShareAll,
+            ExcludedApplicationIds = peer.ExcludedApplicationIds ?? new List<int>()
         };
     }
 }
@@ -117,6 +121,9 @@ public class CreateInviteResource
 public class ShareAllResource
 {
     public bool ShareAll { get; set; }
+
+    // The Arr apps everything leaves out. Left out of the request, they stay as they are.
+    public List<int>? ExcludedApplicationIds { get; set; }
 }
 
 public class RedeemInviteResource

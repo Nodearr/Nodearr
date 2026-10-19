@@ -115,6 +115,7 @@ Then a settings page. ADR 0019. Branch `v1/s10-node-settings`.
 - The error reporting code inherited from Sonarr is gone from the web UI and the server, with its packages, and what is still open is in one list below, posters and thumbnails added to it (ADR 0018, amendments). Branch `v1/s56-open-work-and-cleanup`.
 - Posters in a friend's catalog: each node passes on the posters its own Arr apps keep, over the peer connection, to friends offered the title, and both sides keep them. Catalog > Peer Catalog shows them beside each file and as a grid by title (ADR 0022). Branch `v1/s57-posters`.
 - A test kit for people: `tools/ui-test.ps1` sets up Nodearr, Sonarr and Radarr with a small library on Windows, solo or one set-up each with a friend, and `docs/guides/ui-test.md` walks through Nodearr in its own pages. Walking through it found and fixed: Home's overview not counting what is new to your apps, an out-of-date help text, and Get it searching a whole series episode by episode where the friend had few (ADR 0021, amendments). Branch `v1/s58-ui-test-kit`.
+- Everything, by app: under each friend on Catalog > Sharing, a tick for each Arr app says which libraries "everything except Hidden" takes in, and Share With New Friends on each app says which a new friend gets, all but Whisparr unless changed (ADR 0014, amendments). Branch `v1/s59-share-by-app`.
 
 ## Where V1 stands
 
@@ -139,7 +140,7 @@ V1 is done. What follows is open, most useful first. Each item in the first list
 
 ### Needs the owner, a second machine or a Mac
 
-- **A release.** Cut when the GitHub Actions minutes come back. Then pull the image back from GHCR and start it.
+- ~~**A release.**~~ 0.1.0 was released on 2026-10-17, the first since the repository went public. Still to do: pull the image back from GHCR and start it.
 - **Sonarr between two machines.** Every run between two machines used Radarr and one film. What Sonarr adds, sharing by episode, scene numbers and daily shows, is Nodearr's own logic and has been checked against a real Sonarr on one machine.
 - **Living with it.** Every run so far was one pairing and one file. Nothing has run for days: the Catalog Sync Interval, the Arr webhooks, the 12-hour import, restarts on either side, a node going away and coming back.
 - **Large files between networks.** The largest transfer between two networks was 89 MB. Multi-gigabyte files and resuming after a lost connection have been checked on one machine only.

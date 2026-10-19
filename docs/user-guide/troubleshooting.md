@@ -42,7 +42,7 @@ Nodearr reads files from the paths the Arr app reports. Mount the library into N
 
 ## A friend sees nothing of yours
 
-A new friend is offered everything except Hidden, unless that was unticked on the invite. On Catalog > Sharing, either mark the friend as offered everything except Hidden, or put things on a list and give it to them. Check that what you expect is not on Hidden. A friend from before this was the default keeps what they had: nothing until it is shared.
+A new friend is offered everything except Hidden, from every app but Whisparr, unless that was unticked on the invite. On Catalog > Sharing, either mark the friend as offered everything except Hidden, with the app ticked under their name, or put things on a list and give it to them. Check that what you expect is not on Hidden. A friend from before this was the default keeps what they had: nothing until it is shared.
 
 What you newly share reaches them at their next catalog sync, every 15 minutes unless they changed it, or at once if they press **Sync Peer Catalogs**.
 

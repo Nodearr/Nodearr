@@ -67,6 +67,20 @@
   font-weight: bold;
 }
 
+.peerShare {
+  margin-bottom: 12px;
+}
+
+.peerApps {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+
+  margin-top: -4px;
+  max-width: 760px;
+  gap: 4px 16px;
+}
+
 .columns {
   display: flex;
   flex-wrap: wrap;

@@ -46,6 +46,10 @@ namespace NzbDrone.Core.Nodes
         // Offer this node everything in the local catalog except what is on the Hidden list.
         public bool ShareAll { get; set; }
 
+        // The Arr apps whose libraries "everything" leaves out for this node. Their titles can still
+        // be shared with it on a list.
+        public List<int> ExcludedApplicationIds { get; set; } = new();
+
         // The last catalog snapshot received from this node.
         public string CatalogVersion { get; set; }
         public DateTime? CatalogSyncedAt { get; set; }

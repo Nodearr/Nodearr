@@ -10,9 +10,11 @@ import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
 import { kinds } from 'Helpers/Props';
 import { getErrorMessage, Peer, usePeers } from 'Nodes/useNodes';
+import Application from 'typings/Application';
 import { InputChanged } from 'typings/inputs';
 import translate from 'Utilities/String/translate';
 import {
+  describeSharing,
   parseShareId,
   ShareableTitle,
   shareId,
@@ -20,6 +22,7 @@ import {
   titleId,
   useDeleteShareList,
   useHashingStatus,
+  useLibraryApplications,
   useSaveShareList,
   useSetShareAll,
   useShareableTitles,
@@ -35,28 +38,70 @@ import {
 } from './ShareChoices';
 import styles from '../Catalog.css';
 
-function ShareAllRow({ peer }: { peer: Peer }) {
+function ShareAllRow({
+  peer,
+  applications,
+}: {
+  peer: Peer;
+  applications: Application[];
+}) {
   const { mutate, isPending, error } = useSetShareAll();
+  const excluded = useMemo(
+    () => peer.excludedApplicationIds ?? [],
+    [peer.excludedApplicationIds]
+  );
 
   const handlePress = useCallback(() => {
     mutate({ id: peer.id, shareAll: !peer.shareAll });
   }, [mutate, peer.id, peer.shareAll]);
 
+  const handleAppToggle = useCallback(
+    (id: string) => {
+      mutate({
+        id: peer.id,
+        shareAll: true,
+        excludedApplicationIds: excluded.includes(Number(id))
+          ? excluded.filter((e) => e !== Number(id))
+          : [...excluded, Number(id)],
+      });
+    },
+    [mutate, peer.id, excluded]
+  );
+
+  const sharesAny =
+    peer.shareAll && applications.some((app) => !excluded.includes(app.id));
+
   return (
-    <div className={styles.peerRow}>
-      <div className={styles.peerName}>{peer.name}</div>
+    <div className={styles.peerShare}>
+      <div className={styles.peerRow}>
+        <div className={styles.peerName}>{peer.name}</div>
 
-      <Label kind={peer.shareAll ? kinds.SUCCESS : kinds.DEFAULT}>
-        {peer.shareAll
-          ? translate('SharingEverything')
-          : translate('SharingListsOnly')}
-      </Label>
+        <Label kind={sharesAny ? kinds.SUCCESS : kinds.DEFAULT}>
+          {describeSharing(peer, applications)}
+        </Label>
 
-      <SpinnerButton isSpinning={isPending} onPress={handlePress}>
-        {peer.shareAll
-          ? translate('SharingStopEverything')
-          : translate('SharingShareEverything')}
-      </SpinnerButton>
+        <SpinnerButton isSpinning={isPending} onPress={handlePress}>
+          {peer.shareAll
+            ? translate('SharingStopEverything')
+            : translate('SharingShareEverything')}
+        </SpinnerButton>
+      </div>
+
+      {peer.shareAll && applications.length > 1 ? (
+        <div className={styles.peerApps}>
+          <span className={styles.muted}>{translate('SharingFromApps')}</span>
+
+          {applications.map((app) => (
+            <Check
+              key={app.id}
+              id={String(app.id)}
+              label={app.name}
+              isChecked={!excluded.includes(app.id)}
+              onToggle={handleAppToggle}
+            />
+          ))}
+        </div>
+      ) : null}
 
       {error ? (
         <div className={styles.error}>{getErrorMessage(error)}</div>
@@ -292,6 +337,7 @@ function Sharing() {
   const { data: lists = [], isLoading, error } = useShareLists();
   const { data: titles = [] } = useShareableTitles();
   const { data: allPeers = [] } = usePeers();
+  const applications = useLibraryApplications();
   const {
     mutate: createList,
     isPending: isCreating,
@@ -330,8 +376,16 @@ function Sharing() {
             <div className={styles.muted}>{translate('NoTrustedNodes')}</div>
           ) : null}
 
+          {peers.length > 0 ? (
+            <p className={styles.muted}>{translate('SharingAppsHelpText')}</p>
+          ) : null}
+
           {peers.map((peer) => (
-            <ShareAllRow key={peer.id} peer={peer} />
+            <ShareAllRow
+              key={peer.id}
+              peer={peer}
+              applications={applications}
+            />
           ))}
         </FieldSet>
 

@@ -26,7 +26,10 @@ namespace NzbDrone.Core.Sharing
 
         // The albums of one artist, for choosing among them.
         List<ShareableAlbum> GetAlbums(int applicationId, int artistArrId);
-        Peer SetShareAll(int peerId, bool shareAll);
+
+        // Whether a peer is offered everything except Hidden, and from which Arr apps not. Null
+        // leaves the apps as they are.
+        Peer SetShareAll(int peerId, bool shareAll, IEnumerable<int> excludedApplicationIds = null);
 
         // Albums only for a node that can take them. An older one would take an album for a movie.
         Offer BuildOffer(Peer peer, bool includeMusic);
@@ -48,8 +51,9 @@ namespace NzbDrone.Core.Sharing
     // Decides what each peer is told about. The rule, in order:
     //   1. Nothing is offered to a peer that is not trusted.
     //   2. Anything on the Hidden list is offered to nobody.
-    //   3. A peer marked "share everything" is offered the rest.
-    //   4. Otherwise a peer is offered what is on the share lists it has been given.
+    //   3. A peer marked "share everything" is offered the rest, apart from the Arr apps left out
+    //      for it.
+    //   4. Besides, and otherwise, a peer is offered what is on the share lists it has been given.
     // A list holds whole series, seasons, single episodes, movies, whole artists and single albums. An
     // episode is covered by its series, its season, or itself. A file holding several episodes is
     // offered only when every one of them is, as Sonarr wants a release only when every episode
@@ -255,12 +259,20 @@ namespace NzbDrone.Core.Sharing
                 .ToList();
         }
 
-        public Peer SetShareAll(int peerId, bool shareAll)
+        public Peer SetShareAll(int peerId, bool shareAll, IEnumerable<int> excludedApplicationIds = null)
         {
             var peer = _peers.Get(peerId);
 
             peer.ShareAll = shareAll;
-            _peers.SetFields(peer, p => p.ShareAll);
+
+            if (excludedApplicationIds != null)
+            {
+                var known = _applicationFactory.All().Select(a => a.Id).ToHashSet();
+
+                peer.ExcludedApplicationIds = excludedApplicationIds.Where(known.Contains).Distinct().OrderBy(i => i).ToList();
+            }
+
+            _peers.SetFields(peer, p => p.ShareAll, p => p.ExcludedApplicationIds);
             _eventAggregator.PublishEvent(new SharingChangedEvent());
 
             return peer;
@@ -281,7 +293,7 @@ namespace NzbDrone.Core.Sharing
         public List<string> OfferIdsFor(IEnumerable<ShareKey> items)
         {
             var hidden = All().Where(l => l.List.IsHidden).SelectMany(l => l.Items).ToHashSet();
-            var rule = new SharingRule(hidden, Tidy(items).ToHashSet(), false);
+            var rule = new SharingRule(hidden, Tidy(items).ToHashSet(), false, new HashSet<int>());
 
             return BuildOffer(rule, true).Items.Select(i => i.Id).ToList();
         }
@@ -543,7 +555,7 @@ namespace NzbDrone.Core.Sharing
             var hidden = lists.Where(l => l.List.IsHidden).SelectMany(l => l.Items).ToHashSet();
             var listed = lists.Where(l => !l.List.IsHidden && l.PeerIds.Contains(peer.Id)).SelectMany(l => l.Items).ToHashSet();
 
-            return new SharingRule(hidden, listed, peer.ShareAll);
+            return new SharingRule(hidden, listed, peer.ShareAll, (peer.ExcludedApplicationIds ?? new List<int>()).ToHashSet());
         }
 
         // What a list may hold: a movie whole, a series whole, by season or by episode, and an artist
@@ -573,12 +585,14 @@ namespace NzbDrone.Core.Sharing
             private readonly HashSet<ShareKey> _hidden;
             private readonly HashSet<ShareKey> _listed;
             private readonly bool _shareAll;
+            private readonly HashSet<int> _excluded;
 
-            public SharingRule(HashSet<ShareKey> hidden, HashSet<ShareKey> listed, bool shareAll)
+            public SharingRule(HashSet<ShareKey> hidden, HashSet<ShareKey> listed, bool shareAll, HashSet<int> excluded)
             {
                 _hidden = hidden;
                 _listed = listed;
                 _shareAll = shareAll;
+                _excluded = excluded;
             }
 
             public bool SharesAnyTv => _shareAll || _listed.Any(k => k.Kind == MediaKind.Tv);
@@ -591,14 +605,14 @@ namespace NzbDrone.Core.Sharing
                 var album = ShareKey.Album(applicationId, artistArrId, albumArrId);
 
                 return !_hidden.Contains(artist) && !_hidden.Contains(album) &&
-                       (_shareAll || _listed.Contains(artist) || _listed.Contains(album));
+                       (SharesAllOf(applicationId) || _listed.Contains(artist) || _listed.Contains(album));
             }
 
             public bool SharesMovie(int applicationId, int movieArrId)
             {
                 var key = ShareKey.Movie(applicationId, movieArrId);
 
-                return !_hidden.Contains(key) && (_shareAll || _listed.Contains(key));
+                return !_hidden.Contains(key) && (SharesAllOf(applicationId) || _listed.Contains(key));
             }
 
             public bool SharesFile(List<CatalogEpisode> contained)
@@ -608,7 +622,13 @@ namespace NzbDrone.Core.Sharing
 
             private bool SharesEpisode(CatalogEpisode episode)
             {
-                return !Covers(_hidden, episode) && (_shareAll || Covers(_listed, episode));
+                return !Covers(_hidden, episode) && (SharesAllOf(episode.ApplicationId) || Covers(_listed, episode));
+            }
+
+            // Everything from this app, unless it is left out for the peer.
+            private bool SharesAllOf(int applicationId)
+            {
+                return _shareAll && !_excluded.Contains(applicationId);
             }
 
             private static bool Covers(HashSet<ShareKey> keys, CatalogEpisode episode)
