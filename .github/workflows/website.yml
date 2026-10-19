@@ -1,0 +1,54 @@
+# When a release is published, nodearr.com is rebuilt with that release's user guide, changelog and
+# API description (Nodearr/nodearr.github.io). The site publishes the docs of the newest release,
+# not of main, so it describes what people can download.
+#
+# The dispatch is sent as the Nodearr organisation's GitHub App, installed on
+# Nodearr/nodearr.github.io with Contents set to read and write. Each run gets a token that lasts an
+# hour and reaches that one repository, so nothing long-lived belongs to a person. It needs the
+# variable SITE_APP_CLIENT_ID and the secret SITE_APP_PRIVATE_KEY. Without them, this says so and
+# does nothing, and the site can be rebuilt by hand from its Actions tab.
+
+name: Website
+
+on:
+  release:
+    types: [published]
+
+permissions: {}
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the app is set up
+        id: app
+        env:
+          CLIENT_ID: ${{ vars.SITE_APP_CLIENT_ID }}
+          HAS_KEY: ${{ secrets.SITE_APP_PRIVATE_KEY != '' }}
+        run: |
+          if [ -z "$CLIENT_ID" ] || [ "$HAS_KEY" != "true" ]; then
+            echo "::warning::SITE_APP_CLIENT_ID or SITE_APP_PRIVATE_KEY is not set, so nodearr.com was not told about this release. Run its Deploy workflow by hand."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Get a token for the site repository
+        id: token
+        if: steps.app.outputs.ready == 'true'
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.SITE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.SITE_APP_PRIVATE_KEY }}
+          owner: Nodearr
+          repositories: nodearr.github.io
+          permission-contents: write
+
+      - name: Tell the site to rebuild with this release
+        if: steps.app.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          gh api repos/Nodearr/nodearr.github.io/dispatches -f event_type=nodearr-release -f "client_payload[tag]=$TAG"
+          echo "nodearr.com is rebuilding with the docs of $TAG"
