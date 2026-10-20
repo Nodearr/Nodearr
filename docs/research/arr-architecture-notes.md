@@ -432,7 +432,7 @@ The inspected repositories include runtime packaging artifacts, systemd units, p
 
 Representative inspected paths:
 
-- `arr_checkouts/Sonarr/distribution/debian/nodearr.service`
+- `arr_checkouts/Sonarr/distribution/debian/sonarr.service`
 - `arr_checkouts/Sonarr/distribution/docker-build/Dockerfile`
 - `arr_checkouts/Sonarr/distribution/docker-build/debian-start.sh`
 - `arr_checkouts/Sonarr/docker/tests/`

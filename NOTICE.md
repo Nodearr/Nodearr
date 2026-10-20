@@ -32,7 +32,7 @@ Nodearr's changes begin on 2026-05-21. The full record is the git history of thi
 
 - "Sonarr" was renamed to "Nodearr" throughout the inherited code: namespaces, assembly and product names, user-facing text and URLs. As a result, identifiers and hostnames in inherited code such as `services.nodearr.com`, `skyhook.nodearr.com` and `sentry.nodearr.com` are renamed Sonarr endpoints. They are not services operated by Nodearr.
 - The frontend navigation and routes were replaced with Nodearr's Catalog, Nodes, Activity, Settings and System pages.
-- Prowlarr's application sync was ported in and is being reshaped for Nodearr's own indexer and download client registration.
+- Prowlarr's application sync was ported in and reshaped to register Nodearr's indexer, download client and webhook in library apps, import their catalogs, and register an indexer in Prowlarr.
 - Cover image resizing, and with it the SixLabors.ImageSharp dependency, was removed.
 
 [docs/research/inherited-sonarr-features.md](docs/research/inherited-sonarr-features.md) lists the inherited Sonarr features and what Nodearr intends to do with each.

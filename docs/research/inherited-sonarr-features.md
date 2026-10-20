@@ -2,6 +2,8 @@
 
 Written 2026-10-10 for slice S0 of the [V1 implementation plan](../plans/v1-implementation-plan.md), against branch `v1/s0-baseline`.
 
+> This is the S0 inventory, with some later work marked Done. Its API counts, placeholders, missing login page, unused Windows helpers and test results describe that baseline, not the current application. Use the [overview](../overview-end-to-end-design.md) and [user guide](../user-guide/README.md) for current behaviour.
+
 Nodearr's backend and frontend were ported from Sonarr `v5-develop` (see [NOTICE.md](../../NOTICE.md)), so the repository still contains a complete TV library manager. This document lists what was inherited and what V1 should do with each part. The plan's rule is to remove inherited features only where they get in the way, so most of this list is "leave it alone".
 
 Each item has one of four dispositions:
