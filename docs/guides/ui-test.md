@@ -42,9 +42,11 @@ You need Windows 10 or 11, about 1 GB free, and an internet connection. The scri
 1. **Download the Nodearr package.** From the newest release on [Releases](https://github.com/Nodearr/Nodearr/releases), download `Nodearr.<version>.win-x64.zip` and `SHA256SUMS` into your **Downloads** folder. Leave the zip as it is. The script finds it there and checks it. Use a release from after Send to a friend and posters were added: version 0.2.0 or later.
    - *From the source instead*: build a package with `build/Build-Release.ps1` and give the script its path, `-NodearrZip PATH`.
 2. **Download the script.** In the repository, open `tools/ui-test.ps1` and use **Download raw file**. Put it in Downloads as well.
-3. **Open PowerShell in Downloads.** In File Explorer, open Downloads, then **File > Open Windows PowerShell**. Or start PowerShell and run `cd ~\Downloads`.
+3. **Open PowerShell in Downloads.** Start Windows PowerShell and run `cd ~\Downloads`.
 
-Each command starts with `powershell -ExecutionPolicy Bypass -File`, because Windows will not run a downloaded script otherwise. That setting is for that one command only.
+Each command starts with `powershell -ExecutionPolicy Bypass -File` so downloaded scripts can run under the usual execution policy. That setting is for that one command only.
+
+The Nodearr checksum check is skipped if `SHA256SUMS` is missing or does not list the zip. Check the card says the package matches the release's `SHA256SUMS`.
 
 ## 1. Set up
 
@@ -122,7 +124,7 @@ One of you invites, the other uses the invite. **Solo**: A invites, B uses it.
 
 **The one who invites**, on Home, in **Connect with a friend**:
 
-1. Leave **Share my whole library with them** ticked. It is the default.
+1. Leave **Share my library with them** ticked. It is the default. It includes the apps marked Share With New Friends, which starts on for Sonarr and Radarr.
 2. Press **Create an invite**, and copy the code.
 3. **With a friend**: send it any way you like: a message, an email. Anyone who has it can use it until it is used or expires, so send it only to them. **Solo**: paste it into B's page.
 
@@ -169,7 +171,7 @@ Then, on A, untick it under Hidden and save. On B, press **Sync Peer Catalogs**.
 
 - [ ] A card says "... sent you Cowboy Bebop", with **Root Folder**, **Quality Profile** and **Series Type** filled in.
 - [ ] Press **Get it**. The card says it is asking Sonarr, then "Added to Sonarr, monitoring the whole series, and searching for 3 episodes": the three A has. Sonarr monitors the whole series, so it looks for the rest on its own later, as it would for any series.
-- [ ] **Activity > Transfers** shows Cowboy Bebop's three episodes arriving from A, one after another, then done.
+- [ ] **Activity > Transfers** shows Cowboy Bebop's three episodes arriving from A, then done. Up to three files can arrive at once.
 - [ ] In B's Sonarr, **Series > Cowboy Bebop** shows the three episodes with files. Sonarr imported what Nodearr fetched.
 
 **Then the other way round.** B sends **Spirited Away** to A, and A presses **Get it** on its card.

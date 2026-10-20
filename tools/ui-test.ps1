@@ -38,6 +38,7 @@
 .PARAMETER NodearrZip
     The Nodearr package, Nodearr.<version>.win-x64.zip. By default the newest one in Downloads,
     beside this script, or in the test folder.
+    Checked against SHA256SUMS beside the zip when that file lists it; otherwise reported as not checked.
 
 .PARAMETER OpenFirewall
     With "up": add a Windows Firewall rule that lets UDP in to Nodearr's transport. Needs

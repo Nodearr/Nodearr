@@ -1,8 +1,8 @@
 // Takes the user guide's screenshots from the two set-ups of the UI test kit (tools/ui-test.ps1).
 // Run it again whenever the pages it shows change. From nothing:
 //
-//   pwsh tools/ui-test.ps1 down
-//   powershell -File tools/ui-test.ps1 up -Solo
+//   powershell -ExecutionPolicy Bypass -File tools/ui-test.ps1 down
+//   powershell -ExecutionPolicy Bypass -File tools/ui-test.ps1 up -Solo
 //   node tools/docs-screenshots.mjs prepare
 //   node tools/docs-screenshots.mjs
 //

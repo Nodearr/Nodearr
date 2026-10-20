@@ -51,6 +51,14 @@ cargo build --release --manifest-path transport/Cargo.toml
 cp transport/target/release/nodearr-transport _output/net10.0/
 ```
 
+On Windows, the binary ends in `.exe`. In PowerShell:
+
+```powershell
+Copy-Item transport/target/release/nodearr-transport.exe _output/net10.0/
+```
+
+If `CARGO_TARGET_DIR` is set, use the folder Cargo wrote to instead of `transport/target`.
+
 Or leave it where it is and point `Nodearr__Transport__BinaryPath` at it. Without the sidecar Nodearr still runs, and System > Status says the peer transport is not running.
 
 ## Running
@@ -59,7 +67,7 @@ Or leave it where it is and point `Nodearr__Transport__BinaryPath` at it. Withou
 dotnet run --project src/NzbDrone.Console/Nodearr.Console.csproj -- -nobrowser -data=/path/to/data
 ```
 
-- `-data=` sets where `config.xml`, `nodearr.db`, the node's key and the logs are kept. Without it Nodearr uses `%ProgramData%\Nodearr` on Windows and `~/.config/Nodearr` elsewhere.
+- `-data=` sets where `config.xml`, `nodearr.db`, the node's key and the logs are kept. Without it Nodearr uses `%ProgramData%\Nodearr` on Windows, `~/.config/Nodearr` on Linux (`$XDG_CONFIG_HOME/Nodearr` when set), and `~/Library/Application Support/Nodearr` on macOS.
 - `-nobrowser` stops it opening a browser on start.
 - The UI is at `http://localhost:6633`. The port is changed under Settings > General.
 
@@ -74,17 +82,29 @@ GET /api/v5/system/status     API key required
 
 Send the key as an `X-Api-Key` header or an `apikey` query parameter. It is generated on first run and stored as `ApiKey` in `config.xml`.
 
-The whole API is described in [`src/Nodearr.Api.V5/openapi.json`](src/Nodearr.Api.V5/openapi.json), generated from the code by `pwsh build/Build-OpenApi.ps1`. A debug build also serves it at `/docs/v5/openapi.json`. It still lists the TV endpoints inherited from Sonarr, which answer but which nothing in Nodearr uses.
+The native V5 API is described in [`src/Nodearr.Api.V5/openapi.json`](src/Nodearr.Api.V5/openapi.json), generated from the code by `pwsh build/Build-OpenApi.ps1`. A debug build also serves it at `/docs/v5/openapi.json`. It still lists the TV endpoints inherited from Sonarr, which answer but which nothing in Nodearr uses. The Newznab and SABnzbd compatibility APIs are described in [ADR 0010](docs/adr/0010-arr-contract-newznab-indexer-and-sabnzbd-download-client.md).
 
 ## Testing
 
-```sh
-dotnet test src/Nodearr.sln
+Build first, then run the unit-test assemblies one at a time, as CI does. They share files and can interfere when run together. This PowerShell 7 command leaves out manual, integration, automation and other-platform tests:
+
+```powershell
+$excludedPlatform = if ($IsWindows) { 'LINUX' } else { 'WINDOWS' }
+$skip = @('Nodearr.Automation.Test', 'Nodearr.Integration.Test')
+$skip += if ($IsWindows) { 'Nodearr.Mono.Test' } else { 'Nodearr.Windows.Test' }
+$filter = "TestCategory!=ManualTest&TestCategory!=IntegrationTest&TestCategory!=AutomationTest&TestCategory!=$excludedPlatform"
+$failed = @()
+foreach ($assembly in Get-ChildItem _tests/net10.0 -Filter 'Nodearr.*.Test.dll') {
+    if ($skip -contains $assembly.BaseName) { continue }
+    dotnet test $assembly.FullName --filter $filter
+    if ($LASTEXITCODE -ne 0) { $failed += $assembly.BaseName }
+}
+if ($failed) { throw "Tests failed: $($failed -join ', ')" }
 ```
 
 - CI runs the unit tests on Linux and Windows for every push and pull request, lints and builds the web UI, builds the sidecar, and builds the image ([release guide](docs/guides/releases.md#continuous-integration)).
-- The web UI is linted with `yarn lint` and `yarn stylelint`, and type-checked with `tsc`.
-- The sidecar is `cargo test --manifest-path transport/Cargo.toml`.
+- The web UI is linted with `yarn lint` and `yarn stylelint`. `yarn build` runs its TypeScript checker; the standalone check is `npx tsc --noEmit -p .`.
+- The sidecar is built with `cargo test --manifest-path transport/Cargo.toml`. It currently has no Rust unit tests; its behaviour is exercised by the acceptance scripts.
 - The acceptance scripts in [`acceptance/`](acceptance/README.md) run a built Nodearr from the outside against real Sonarr and Radarr containers: registration and catalog import, pairing and trust, sharing, searching, transfers, and the Docker image deployed twice. Run the one for the part you changed.
 - Something the scripts do not cover, such as a new Arr app, is checked by hand against the real app, and what was run and what it showed goes in the decision record. [Testing by hand](docs/guides/ui-test.md) sets up Nodearr, Sonarr and Radarr with a small library to try things in the pages.
 

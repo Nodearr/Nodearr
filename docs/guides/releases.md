@@ -34,7 +34,7 @@ Every Linux sidecar is a statically linked musl binary. It runs on glibc systems
 
 ### What the machine needs
 
-Linux needs ICU: `libicu` on Debian and Ubuntu (`libicu72` on bookworm), `icu-libs` on Alpine. SQLite comes with the package. On a bare `debian:bookworm-slim` and a bare `alpine:3.20`, with nothing installed but ICU and curl, each Linux package started, served the UI, and ran its sidecar.
+Linux needs .NET's [native system dependencies](https://learn.microsoft.com/en-us/dotnet/core/install/linux-scripted-manual#dependencies), including ICU and OpenSSL. ICU is `libicu72` on Debian bookworm and `icu-libs` on Alpine; other distributions and releases use other package names. SQLite and .NET come with the package. On a bare `debian:bookworm-slim` and a bare `alpine:3.20`, after installing ICU and curl with their dependencies, each Linux package started, served the UI, and ran its sidecar.
 
 Where each package has been run:
 
@@ -107,7 +107,7 @@ A version is three numbers with an optional pre-release tag: `0.1.0`, `0.1.0-bet
 
 Run the workflow by hand from the Actions tab, with a version, to build the packages without drafting or pushing anything. They are kept as the run's artifacts.
 
-Publishing the release rebuilds [nodearr.com](https://nodearr.com) with that release's user guide, changelog and API description: `.github/workflows/website.yml` tells [Nodearr/nodearr.github.io](https://github.com/Nodearr/nodearr.github.io) to. It sends that as the Nodearr organisation's GitHub App, installed on the site repository with Contents set to read and write, so each run gets a token that lasts an hour and reaches only that repository. It needs the repository variable `SITE_APP_CLIENT_ID` and the secret `SITE_APP_PRIVATE_KEY`. Without them the workflow warns, and the site's Deploy workflow can be run by hand. The site never shows the docs of `main`, so what it describes is what can be downloaded.
+Publishing the release rebuilds [nodearr.com](https://nodearr.com) with that release's user guide, changelog and API description: `.github/workflows/website.yml` tells [Nodearr/nodearr.github.io](https://github.com/Nodearr/nodearr.github.io) to. It sends that as the Nodearr organisation's GitHub App, installed on the site repository with Contents set to read and write, so each run gets a token that lasts an hour and reaches only that repository. It needs the repository variable `SITE_APP_CLIENT_ID` and the secret `SITE_APP_PRIVATE_KEY`. Without them the workflow warns, and the site's Deploy workflow can be run by hand. Automatic publishing uses a release tag so it describes what can be downloaded. A manual Deploy run can choose another tag or branch.
 
 ## Building one package yourself
 
@@ -155,7 +155,7 @@ The web UI and the application build once, on the machine doing the build. Only 
 
 - The web UI: lint, style lint, and a production build.
 - The application on Linux and on Windows: a build, then the unit tests one assembly at a time. As in Sonarr's own CI, it leaves out the manual, integration and automation tests, and the tests for the other operating system.
-- The sidecar: build and tests.
+- The sidecar: build and `cargo test`. There are currently no Rust unit tests; the acceptance scripts exercise the real sidecar.
 - The image, built for amd64.
 
 The acceptance scripts in `acceptance/` are not part of CI. They start Sonarr and Radarr containers, and some take many minutes.

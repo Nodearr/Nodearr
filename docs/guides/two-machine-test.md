@@ -1,6 +1,6 @@
 # Testing Nodearr between two machines
 
-Everything in `acceptance/` runs on one machine. This is the test that cannot: two people, two networks, one file going from one home to the other. It is the last open question in the V1 plan, and it decides whether ADR 0011 (files only ever travel over a direct connection) can be accepted.
+Everything in `acceptance/` runs on one machine. This guide tests two people, two networks, and one file going from one to the other. The home-to-home case passed on 2026-10-14 ([ADR 0011](../adr/0011-direct-only-media-over-iroh-with-relay-for-coordination.md#2026-10-14-two-home-networks)). Use this to check another pair of networks; the [V1 plan](../plans/v1-implementation-plan.md#what-is-still-open) lists what still needs a run.
 
 It needs two machines on different networks. A laptop on a phone hotspot or a café's Wi-Fi counts as a second network.
 
@@ -28,7 +28,7 @@ It needs two machines on different networks. A laptop on a phone hotspot or a ca
 
 ## Start it
 
-Copy `docker/docker-compose.yml`, set the two library paths, and start it:
+Copy `docker/docker-compose.yml`, set the two library paths, and change Nodearr's `image:` to `nodearr` to use the image built above. Then start it:
 
 ```sh
 docker compose -f docker/docker-compose.yml up -d
@@ -66,7 +66,7 @@ Then pair:
 6. The side with the file: **Nodes > Invites**, tick "share everything", create an invite, and send the code to the other side by any means.
 7. The other side: **Nodes > Invites**, paste the code and redeem it.
 8. Both sides: **Nodes > Trusted Nodes** shows the other as trusted. Within a few seconds of pairing the Connection column fills in by itself. "Check connection" asks again at any time, and takes up to ten seconds. The column says one of two things:
-   - **Direct.** A transfer will work. Go on.
+   - **Direct.** A direct route was found. Go on and try the transfer.
    - **Relay only.** The nodes can talk and a transfer would fail as `NoDirectRoute`. There is no need to try one to find out. System > Status now carries a warning that names the other node. Go back to the firewall section above, on both machines. If both firewalls let Nodearr in, forward UDP 6633 on a router you control, to the machine running Nodearr. Check again after each change.
 
 ## Run it
