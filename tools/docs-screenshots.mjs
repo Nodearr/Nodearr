@@ -16,13 +16,23 @@
 // only those pages. The "send" screenshot changes the test data: Sam sends Alex Frieren and Alex
 // requests it. Recreate the kit before capturing "send" a second time.
 //
+// The help texts in the shots come from the server, so run the kit on a package built from the
+// branch being documented (build/Build-Release.ps1, then up -Solo -NodearrZip PATH), not on a
+// release.
+//
+// "firstrun" needs a third Nodearr that has never been started, at NODEARR_NEW
+// (http://127.0.0.1:26663 unless set). Start the kit's own package with an empty folder:
+// Nodearr__Server__Port and Nodearr__Transport__Port set to 26663, and
+// Nodearr.Console.exe -nobrowser -data=EMPTY_FOLDER. Without it, every shot before "firstrun" is
+// taken and then the run stops.
+//
 // It needs Playwright with Chromium, and sharp to make the files smaller, which are not among
 // Nodearr's dependencies: run it where they are installed, with NODE_PATH pointing there.
 // Sign-in comes from NODEARR_USERNAME and NODEARR_PASSWORD, the same on both set-ups, and the kit's
 // folder from NODEARR_KIT, ~/nodearr-ui-test unless set.
 //
 // What a screenshot would give away about the machine it was taken on is replaced first: the
-// folder the kit lives in, and the machine's public and local addresses. The guide's
+// folder the kit lives in, the machine's public and local addresses, and its disk's free space. The guide's
 // screenshots show example values, not anyone's.
 
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -210,6 +220,8 @@ function mask() {
     [/\b(?:10|172|192)\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/g, '192.168.1.20'],
     // IPv6, to the documentation prefix (RFC 3849).
     [/\b(?:[0-9a-f]{1,4}:){3,7}[0-9a-f]{1,4}\b/gi, '2001:db8::24'],
+    // The free space on the kit's disk, as a root folder shows it, is this machine's.
+    [/\(\d+(?:\.\d+)? [KMGTP]iB free\)/g, '(1.8 TiB free)'],
   ];
   const plain = (s) => rules.reduce((t, [re, to]) => t.replace(re, to), s);
 
