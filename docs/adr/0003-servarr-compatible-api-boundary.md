@@ -66,3 +66,7 @@ Deferred. Nodearr should first be searchable and grabbable as an indexer, not re
 - ~~Define grab endpoint behavior and error responses.~~ Done: ADR 0010 and ADR 0015.
 - ~~Build compatibility tests against local Sonarr/Radarr/Prowlarr expectations.~~ Done: the S1 spike and the acceptance scripts in `acceptance/`.
 
+## Amendments
+
+- 2026-10-19: **a grab link returns a ticket.** The original decision described grab links as creating a transfer. As built, `t=get` only returns the NZB ticket. A job is created when the Arr app uploads it to `/sabnzbd/api` with `mode=addfile` ([ADR 0010](0010-arr-contract-newznab-indexer-and-sabnzbd-download-client.md)).
+

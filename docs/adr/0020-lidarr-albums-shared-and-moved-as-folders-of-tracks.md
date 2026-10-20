@@ -93,7 +93,7 @@ The first run named the parts `01.flac` and so on, and Lidarr, which does not re
 
 ### Negative / trade-offs
 
-- A Lidarr library with many artists costs one request per artist on every full read.
+- A Lidarr library with many artists costs two requests per artist on every full read: track files and tracks, since track titles were added on 2026-10-16.
 - An album is all or nothing. A peer with one track short offers nothing for that album.
 - Lidarr finds releases by text, so a match is only as good as the artist and album names on both sides.
 - 2026-10-16: **albums are shared one by one, as seasons are.** A share list held only whole artists. Lidarr monitors by album, as Sonarr does by season and episode, so a list now holds an artist whole or some of its albums, and the Hidden list can hold one album of an artist that is otherwise shared. An album is covered by its artist or itself. A whole artist still takes in albums that arrive later, and an album on a list under its whole artist on the same list is dropped as saying nothing more. An album is still offered only when Lidarr holds every track, and Catalog > Sharing says which are not yet whole. In the API an album is `albumArrId` on a share key, and `GET /api/v5/sharing/titles/{application}/{artist}/albums` lists an artist's albums. Checked between two nodes: hiding one album took it off the friend's side within a second, and unhiding it brought it back at their next sync.

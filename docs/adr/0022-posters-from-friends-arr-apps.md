@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Part 1 built on 2026-10-16 (S57): a friend's catalog with posters. Part 2, the other pages, is next (S58).
+Accepted. Part 1 built on 2026-10-16 (S57): a friend's catalog with posters. Part 2, the other pages, is still open in the [V1 plan](../plans/v1-implementation-plan.md#what-is-still-open). S58 was used for the UI test kit.
 
 ## Context
 
@@ -51,4 +51,4 @@ A poster comes from the friend that offers the title, and nothing else is contac
 
 ## Follow-up work
 
-- Posters on the other pages: the cards on Home, the Send form, the Sharing page and Catalog > Local (S58).
+- Posters on the other pages: the cards on Home, the Send form, the Sharing page and Catalog > Local.

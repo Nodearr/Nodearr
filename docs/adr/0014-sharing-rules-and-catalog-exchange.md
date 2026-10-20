@@ -162,6 +162,10 @@ The marks are worked out again whenever the local catalog is refreshed.
   - Friends paired before keep what they had: every app. Nothing is taken from them without the owner.
   - Checked by unit tests (`SharingServiceFixture`, `ShareDefaultsFixture`, `PeerServiceFixture`).
 
+- 2026-10-19: **removal notices are best effort.** `SharingNotifier` tries to tell each affected friend to sync, and logs a failed delivery. The friend's cached offer can remain until its next successful sync. The file request is checked against the current sharing rule either way. With the Catalog Sync Interval at zero, an undelivered notice needs another sync trigger, such as Sync Peer Catalogs.
+
+- 2026-10-19: **Have means no upgrade under the local profile.** Since the quality-profile amendment, Have does not always mean the local file has the higher quality. Upgrades may be off, the cutoff may be met, or the offered quality may be disallowed. These marks do not filter indexer search results.
+
 ## Follow-up work
 
 - ~~S6: turn peer catalog rows into indexer results, with the opaque file identifier inside a signed GUID.~~ Done: ADR 0015.
