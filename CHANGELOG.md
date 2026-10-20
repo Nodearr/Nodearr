@@ -2,12 +2,13 @@
 
 What changed in each release, newest first. Each item links to the decision record that explains it, and the [V1 plan](docs/plans/v1-implementation-plan.md) has the whole story, slice by slice.
 
-## Unreleased
+## 0.2.4 (pre-release)
 
 ### Documentation
 
 - Reworked the user guide into clearer procedures with explicit prerequisites, app locations and expected results. Whisparr v2 and v3 instructions now include the context each version needs.
 - Applied Google's documentation guidance: bold UI labels, links to third-party projects, consistent terminology and simpler help text. Contributor and test guides now make shared steps and dependencies explicit.
+- The guide's screenshots show the new help texts. A root folder's free space in them is an example, as the folders and addresses already were.
 
 ## 0.2.3 (pre-release)
 
