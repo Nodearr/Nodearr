@@ -2,6 +2,12 @@
 
 What changed in each release, newest first. Each item links to the decision record that explains it, and the [V1 plan](docs/plans/v1-implementation-plan.md) has the whole story, slice by slice.
 
+## 0.2.3 (pre-release)
+
+### Fixed
+
+- Sonarr, and the other Arr apps, warned that Nodearr's download folder for their category did not exist, such as `/downloads/complete/tv`, until the first transfer for it arrived. Nodearr now makes each category's folder when the app reads its download client settings.
+
 ## 0.2.2 (pre-release)
 
 ### Security
