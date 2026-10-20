@@ -24,4 +24,4 @@ The screenshots show two test nodes, Alex and Sam, each beside its own Sonarr an
 - **Arr app:** Sonarr, Radarr, Whisparr or Lidarr: an app that holds a library. Prowlarr is added the same way but holds none.
 - **Offer:** what a friend shares with you. Each friend's is built for you alone.
 - **Transfer:** a file being fetched from a friend after one of your Arr apps grabbed it.
-- **Relay:** a server that helps two nodes find each other. It never carries a file.
+- **Relay:** a server that helps two nodes find each other and can pass encrypted messages, catalogs and posters. It never carries the media your Arr apps download.

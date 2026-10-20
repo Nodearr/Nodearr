@@ -30,9 +30,9 @@ Nobody else is involved. There is no account, no server of ours that sees your l
 
 - **Nothing new to learn in your Arr apps.** Nodearr adds itself to each one as an indexer and a download client. Their searches, grabs, quality profiles, upgrades and imports work as they always have.
 - **Friends by invite.** One friend creates an invite code, the other pastes it in, and the two nodes trust each other. Revoke a friend at any time.
-- **Everything is shared, unless you say otherwise.** A new friend is offered your whole library, apart from what you put on the Hidden list. Or untick that for a friend and choose what they see: whole series, seasons, episodes, movies, artists or albums.
+- **Choose what each friend sees.** A new friend is offered everything except Hidden from the apps marked **Share With New Friends**: all but Whisparr by default. Change the apps for one friend, or share only lists of whole series, seasons, episodes, movies, artists or albums.
 - **Browse what your friends have,** with posters from their own Arr apps, and see at a glance what they have that you are missing, or have in a better quality.
-- **Send a friend something.** Pick a title and a friend. Their Nodearr offers to add it to their Arr app, filled in the way the rest of their library is, and fetch it. Someone who is not a friend yet is sent an invite with it.
+- **Send a friend something.** Pick a title and a friend. Their Nodearr offers to add it to their Arr app, filled in the way the rest of their library is, and ask the app to search. Someone who is not a friend yet is sent an invite with it.
 - **Straight between you, and checked.** Connections are encrypted, and files go directly between the two machines, through most home routers without forwarding a port. Every file is checked against its hash before it is handed over.
 - **Runs where your Arr apps run:** a Windows installer that starts in the tray or as a service, Linux and macOS packages, and a Docker image for amd64 and arm64.
 - **The familiar Arr interface,** because most of Nodearr is built from Sonarr.
@@ -48,7 +48,7 @@ Nobody else is involved. There is no account, no server of ours that sees your l
 | **Whisparr v2** | The same, with each site's scenes. A v2 and a v3 find each other's scenes. |
 | **Prowlarr** | Adds Nodearr to Prowlarr as an indexer, so you can search it there with your others. Prowlarr holds no library, so nothing is read from it. |
 
-Adult content from Whisparr is only ever found by Whisparr's own searches, and albums only by Lidarr's. Sonarr and Radarr never see either. Readarr is not supported: it was archived in June 2025.
+Adult content needs a search in the XXX categories and albums a search in Audio. Nodearr registers Whisparr and Lidarr with those categories; Sonarr's and Radarr's normal searches leave them out. The categories, not the app's identity, control this. Readarr is not supported: it was archived in June 2025.
 
 ## Getting started
 
@@ -65,7 +65,7 @@ The [user guide](docs/user-guide/README.md) has the rest: [installing](docs/user
 
 1. You add your Arr apps to Nodearr. Nodearr adds itself to each one as an indexer and a download client, and reads its library.
 2. You create an invite and send it to a friend. When they paste it into their Nodearr, the two nodes trust each other.
-3. Each friend is offered your library, apart from what is on your Hidden list, unless you choose what they see. Or you send one friend one thing, and their Nodearr offers to add it to their app and fetch it.
+3. Each friend is offered everything except Hidden from the apps you share with them, or only the lists you give them. Or you send one friend one thing, and their Nodearr offers to add it to their app and search for it.
 4. Each node fetches what its friends share, and shows what they have that you are missing, or have better.
 5. When an Arr app searches, Nodearr answers from what your friends share. When it grabs a result, Nodearr fetches the file directly from the friend who has it, checks it, and hands it to the Arr app to import.
 
@@ -74,7 +74,7 @@ A public relay run by [n0](https://n0.computer), who make [iroh](https://www.iro
 ## Support
 
 - **Something not working?** Start with [troubleshooting](docs/user-guide/troubleshooting.md). It covers the usual ones: a friend who cannot be reached, an Arr app that does not find what a friend has or does not import what arrived, a friend who sees nothing of yours, and being locked out of the web interface.
-- **Bugs and feature requests** go in [GitHub Issues](https://github.com/Nodearr/Nodearr/issues). Say which version you run, on what, and with which Arr apps, and attach the log from **System > Logs** if there is one.
+- **Bugs and feature requests** go in [GitHub Issues](https://github.com/Nodearr/Nodearr/issues). Say which version you run, on what, and with which Arr apps, and attach the log from **System > Log Files** if there is one.
 - **Security problems** go through [SECURITY.md](SECURITY.md), privately, not in an issue.
 
 ## Documentation

@@ -10,14 +10,14 @@
 | --- | --- |
 | **Missing** | The series, movie, scene or album is in one of your Arr apps, and you have no file for it. |
 | **Upgrade** | You have a file, and your friend's is one your Arr app's quality profile would take in its place: better, with your copy still below the profile's cutoff and upgrades allowed. |
-| **Have** | You have a file at least as good. |
+| **Have** | You have a file, and this offer is not an upgrade under your local quality profile. This also applies when upgrades are off or the cutoff is met. |
 | **Not in library** | None of your Arr apps has it. Add it there first if you want it. |
 
 Each file shows its title's poster. **Posters**, at the top right, shows a friend's catalog as a grid instead: one tile per series, film, scene or album, however many of its files your friends share and from however many friends, with how many of them you are missing or have. **Table** goes back to the list.
 
 ![The Posters view of Sam's catalog: one tile each for Cowboy Bebop, Frieren and Spirited Away, with what Alex has of each](images/peer-catalog-posters.png)
 
-The posters come from your friends' own Arr apps, the pictures they show there. Nodearr fetches each one once and keeps it, and never contacts an image service for them (ADR 0022).
+The posters come from your friends' own Arr apps, the pictures they show there. Nodearr keeps each for 30 days before asking again, and never contacts an image service for them ([ADR 0022](../adr/0022-posters-from-friends-arr-apps.md)).
 
 Filter by friend, or by status with the buttons along the top, which count each one. **Sync Peer Catalogs** fetches every friend's offer now, rather than at the next sync (every 15 minutes unless you change it under Settings > Node).
 
@@ -37,8 +37,10 @@ The same file offered by two friends is one result. A result says nothing about 
 
 - **Sonarr** is shown episodes, matched by the series' IDs and the season and episode it asks for. A file holding several episodes is a result only for those episodes.
 - **Radarr** is shown movies, by TMDb or IMDb ID. Never Whisparr's films.
-- **Whisparr** is shown films and scenes, from friends' Whisparr v2 and v3. Only Whisparr's searches, in the XXX categories, find them.
-- **Lidarr** is shown albums, by artist and album. Only Lidarr's searches, in the Audio categories, find them.
+- **Whisparr** is shown films and scenes, from friends' Whisparr v2 and v3. These need a search in the XXX categories.
+- **Lidarr** is shown albums, by artist and album. These need a search in the Audio categories.
+
+The categories in the request decide what can be found, not which app sent it. Sonarr's and Radarr's default categories leave adult content and albums out. A manual search in Prowlarr can find them when those categories are selected.
 
 ## What happens to a grab
 
@@ -53,11 +55,11 @@ The app sends what it grabbed to Nodearr's download client, as it would to SABnz
 
 Nothing half arrived is ever where your Arr app looks: a transfer is written under `incomplete` and only moved to `complete` once checked. An album appears only once every one of its tracks has arrived and been checked.
 
-If Nodearr or its friend stops part way, the transfer carries on from what had arrived when both are back, as long as the file has not changed. If the friend goes away and another friend has the same file, by its hash, it carries on from them.
+If Nodearr stops part way, it picks up the transfer when it starts again. If the friend stops, Nodearr retries while attempts remain; after that, search again or press **Retry** once the friend is back. Each attempt carries on from what had arrived, as long as the file has not changed. If another friend offers the same file with the same hash and size, Nodearr can carry on from them instead. An album stays with the friend it came from.
 
 ## When a transfer fails
 
-A transfer that fails for a reason that may pass, such as a lost connection, is tried again, up to three times, 15 seconds apart, from where it got to. One that fails for good is reported to the Arr app, which records the reason in its history, blocklists that result, and searches again.
+A transfer gets up to three attempts from each friend it is tried from, with 15 seconds between retries. A lost connection can be retried from where it got to. Each track of an album has its own three attempts. One that fails for good is reported to the Arr app, which records the reason in its history, blocklists that result, and searches again.
 
 | Reason | What it means | What to do |
 | --- | --- | --- |

@@ -2,6 +2,13 @@
 
 What changed in each release, newest first. Each item links to the decision record that explains it, and the [V1 plan](docs/plans/v1-implementation-plan.md) has the whole story, slice by slice.
 
+## Unreleased
+
+### Documentation
+
+- Corrected the 0.1.0 descriptions below: adult content and albums are selected by search categories, not the calling app's identity; Get it asks the Arr app to search its enabled indexers and may fetch another indexer's release; restoring a node's identity needs a backup containing `node.key`.
+- The guide and UI help now explain sharing by app, best-effort removal notices, three transfer attempts per source, poster cache expiry, password recovery and platform data folders. Build and test instructions match the scripts they describe.
+
 ## 0.2.1 (pre-release)
 
 ### Changed
