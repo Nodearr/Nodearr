@@ -1,24 +1,28 @@
 # Friends and sharing
 
-Two nodes become friends when one uses the other's invite. From then on each can be offered what the other chooses to share, and nothing else.
+Two Nodearr instances become trusted friends when one redeems the other's invite. Each person chooses what to share. Your friend's sharing choices do not change yours.
 
 ## Inviting a friend
 
-On **Nodes > Invites**, or the last step on Home:
+In Nodearr, go to **Nodes > Invites**. You can also create an invite from **Connect with a friend** on **Home**.
 
 ![Nodes > Invites, with a new invite labelled For Sam and its code ready to copy](images/invites.png)
 
-1. Choose how long the invite works (**Valid For**, 24 hours unless you change it), and give it a **Label**, a note for yourself about who it is for.
-2. **Share everything except Hidden** is ticked: this friend is offered your whole library from every app shared with new friends, which is every app but Whisparr unless you change it, apart from what is on your Hidden list, and including what you add later. Untick it if they should be offered only what you put on a list for them.
-3. **Create Invite**, and copy the code. Send it to your friend however you like: a message, an email, read out over the phone.
+1. Set **Valid For** to the invite's lifetime. The default is 24 hours. Enter a **Label** to remind yourself who it is for.
+2. Choose what to share. The sharing checkbox, **Share everything except Hidden with whoever redeems this invite, from the apps shared with new friends**, is selected by default. It includes existing and future files from apps with **Share With New Friends** enabled. That setting starts on for [Sonarr](https://sonarr.tv/), [Radarr](https://radarr.video/) and [Lidarr](https://lidarr.audio/), and off for both [Whisparr](https://whisparr.com/) versions. Clear the checkbox to share only lists you assign to this friend.
+3. Select **Create Invite** and copy the code. Send it privately to your friend.
 
-An invite works once, for one node, and stops working when it expires. Nodes > Invites shows each one as open, used or expired.
+An invite can be used once by one node, before it expires. **Nodes > Invites** shows whether an invite is open, used or expired.
 
-The code holds your node's ID, how to reach it, the time it expires, and a secret. Treat it like a key to your door until it is used: anyone who has it before your friend can use it in their place. Your node stores only a hash of the secret.
+The code contains your node's ID, network addresses, expiry time and a secret. Anyone who obtains an unused code can pair with your node, so send it only to its intended recipient. Your node stores a hash of the secret rather than the secret itself.
 
 ## Using a friend's invite
 
-Paste the code under **Redeem Invite** on Nodes > Invites, or on Home. **Share everything except Hidden** is ticked there too, for what your node offers them: untick it to share only lists with them. Your node connects to your friend's, proves who it is, and hands over the secret. When your friend's node accepts it, each of you appears on the other's **Nodes > Trusted Nodes** as trusted, under the name each of you chose.
+1. In Nodearr, go to **Nodes > Invites** and paste the code under **Redeem Invite**. Alternatively, use **Have a code?** on **Home**.
+2. Choose what you will share with this friend. The checkbox **Share everything except Hidden with them, from the apps shared with new friends** includes apps with **Share With New Friends** enabled; both Whisparr versions are excluded by default. Clear the checkbox to share only lists.
+3. Select **Redeem Invite**. On **Home**, select **Connect** instead.
+
+Your node connects to your friend's node and redeems the invite. After pairing succeeds, both nodes appear as **Trusted** on **Nodes > Trusted Nodes**, under the names you each chose.
 
 If it fails:
 
@@ -30,12 +34,12 @@ If it fails:
 
 ![Nodes > Trusted Nodes: this node, and Sam, trusted, sharing everything except Hidden, connected directly](images/trusted-nodes.png)
 
-**Nodes > Trusted Nodes** lists every node you have paired with, with:
+**Nodes > Trusted Nodes** lists the nodes you have paired with. For each node, it shows:
 
-- **Status**: Pending (you used their invite and they have not answered yet), Trusted, Revoked or Blocked;
-- **Connection**: **Direct**, meaning files can move, or **Relay only**, meaning the two nodes can talk but files cannot (see [Troubleshooting](troubleshooting.md#relay-only));
-- **Sharing**: whether they are offered everything except Hidden, or only the lists they are on;
-- **Last seen**.
+- **Status**: **Pending**, **Trusted**, **Revoked** or **Blocked**. A pending node has not completed pairing.
+- **Connection**: **Direct** allows file transfers. **Relay only** allows messages but no media transfers; see [Relay only](troubleshooting.md#relay-only).
+- A summary of what you share with that friend.
+- **Last seen**, the most recent contact with that node.
 
 What you can do depends on where trust stands:
 
@@ -51,7 +55,9 @@ What you can do depends on where trust stands:
 
 ## Choosing what to share
 
-A new friend is offered everything except Hidden from the apps marked **Share With New Friends**, unless you unticked that on the invite. All apps but Whisparr start with that setting on. On **Catalog > Sharing** you can change it for each friend.
+By default, a new friend can access files from apps with **Share With New Friends** enabled, except titles on **Hidden**. Both Whisparr versions start with this setting off; other library apps start with it on. You can choose to share only lists when creating or redeeming an invite.
+
+To change an existing friend's access, go to **Catalog > Sharing**.
 
 ### With a friend: everything, some apps, or lists
 
@@ -59,65 +65,72 @@ Under **Trusted Nodes** on the Sharing page, each friend has a line of their own
 
 ![Catalog > Sharing: Sam shares everything except Hidden, from Radarr and Sonarr, and the form to send a friend something](images/sharing.png)
 
-- **Share everything except Hidden** or **Stop sharing everything** turns "everything" on and off for them. Off, they are offered only the lists they are on.
-- When it is on, a tick for each of your Arr apps says which apps "everything" takes in. Untick one to leave its whole library out for that friend. To share everything but Whisparr, leave Whisparr unticked.
-- Whatever is on a list they are on is offered to them as well, from any app, ticked or not. To share all your series and films but only a few Whisparr items, leave Whisparr unticked and put those items on a list for them.
+- Select **Share everything except Hidden** to share the libraries of selected apps. Select **Stop sharing everything** to share only assigned lists.
+- When library sharing is on, select the apps to include. Clearing an app's checkbox excludes its library from this mode of sharing.
+- Assigned lists can share titles from any app, including an app excluded from library sharing. For example, exclude Whisparr's library, then assign a list containing only the Whisparr titles you want this friend to see.
 
-The label beside each friend says which it is: everything, everything but some apps, or only their lists. Nodes > Trusted Nodes shows the same.
+**Hidden** overrides both app selection and lists. A hidden title is never shared.
 
-**Which apps a new friend gets** is set on each app, in Settings > Apps: **Share With New Friends**. It is on for every app but Whisparr. It also decides what happens when you add an app later: one with it on is shared with every friend who is offered everything, and one with it off is left out for all of them until you tick it for someone.
+The summary beside each friend describes their access. You can also see that summary on **Nodes > Trusted Nodes**.
+
+To set the default for future friends, edit the app under **Settings > Apps** and change **Share With New Friends**. This also controls what happens when you add an app: if enabled, its library is included for existing friends who receive everything except **Hidden**. If disabled, select it individually for any existing friend who should receive it.
 
 ### Lists
 
-A list holds chosen things from your library, and is given to chosen friends:
+A share list gives selected friends access to selected titles. On **Catalog > Sharing**:
 
-1. **New List**, and name it.
-2. Tick what goes on it. For a series you can tick the whole series, single seasons or single episodes. For an artist, the whole artist or single albums. Movies and Whisparr items go on whole.
-3. Under **Shared with**, tick the friends who get it.
-4. **Save**.
+1. Enter a name under **New List**, then select **New List**.
+2. Select the titles to include. You can select a whole series, individual seasons or episodes; a whole artist or individual albums; or whole movies and Whisparr titles.
+3. Under **Shared with**, select the friends who should receive the list.
+4. Select **Save**.
 
-A whole series, season or artist takes in what arrives later: a new episode of a ticked season is shared as soon as Sonarr imports it, and so is a new album of a ticked artist, once it is complete. A season or album that arrives later is shared only if the whole series or artist is ticked. An album is offered only once Lidarr holds every track of it; the Sharing page says which are not there yet.
+Selecting a whole series includes future seasons and episodes. Selecting a season includes future episodes of that season, but no other seasons. Selecting a whole artist includes future albums; selecting individual albums does not.
 
-A file that holds several episodes is shared only when every one of them is, as Sonarr wants a release only when every episode in it is monitored.
+An album is shared only when Lidarr has every track. **Catalog > Sharing** shows which tracks are still missing.
+
+A file containing several episodes is shared only if you share every episode it contains.
 
 ### Hidden
 
-Anything on the **Hidden** list is offered to nobody, whatever else says so: not to friends who are offered everything, not to friends whose lists hold it, not to someone you send it to. Use it for what you never want to share. It works at the same levels as a list, so you can hide one season of a series or one album of an artist and share the rest.
+Use **Hidden** for titles you do not want to share with anyone. It overrides app selection, share lists and sends. You can hide a whole title or selected parts, such as one season or one album.
 
-There is one Hidden list, and it is on Catalog > Sharing with the other lists, at the bottom of the page:
+There is one **Hidden** list on **Catalog > Sharing**:
 
 ![The Hidden list, filtered to find a title to tick](images/sharing-hidden.png)
 
 1. Find the title with **Filter**.
-2. Tick it, or for a series some of its seasons or episodes, or for an artist some of its albums.
-3. **Save**.
+2. Select the title, seasons, episodes or albums to hide.
+3. Select **Save**.
 
-Your node stops sending it at once and tells friends to fetch your catalog again. A friend it cannot reach may still show the old offer until their next sync, but cannot fetch the file. Untick it and **Save** to share it again, with whoever would be offered it otherwise. The Hidden list has no **Shared with** and cannot be deleted, because it applies to everyone.
+Nodearr stops sending those files immediately and asks affected friends to refresh your catalog. An offline friend's catalog may still show the files until the next successful sync, but requests for them are refused.
 
-A whole series or artist that is hidden stays hidden as it grows: a new episode or album of it is never offered. Your Arr apps are not told anything: Hidden is only about what your friends see.
+To make a title available again, clear its checkbox and select **Save**. Your other sharing choices then determine who can access it. The **Hidden** list has no **Shared with** selector and cannot be deleted.
+
+A whole series or artist that is hidden stays hidden as it grows: a new episode or album of it is never offered. Your Arr apps are not told anything: **Hidden** is only about what your friends see.
 
 ### When sharing changes
 
-- **Taking something back stops it being sent at once.** When you unshare or hide something, or Nodearr learns that your Arr app deleted it, your node stops sending it and tells each friend who was offered it to fetch your catalog again. It usually leaves their catalog within seconds. If the hint cannot reach them, they find out at their next sync. An old offer never lets them fetch a file that is no longer shared.
-- **Sharing something new is not announced.** Each friend's node picks it up at its next catalog sync, every 15 minutes unless they changed it (Settings > Node), or straight away if they press **Sync Peer Catalogs** on Catalog > Peer Catalog.
+- **Removing access stops uploads immediately.** When you unshare or hide something, or Nodearr learns that your Arr app deleted it, your node stops sending it and tells each friend who was offered it to fetch your catalog again. It usually leaves their catalog within seconds. If the hint cannot reach them, they find out at their next sync. An old offer never lets them fetch a file that is no longer shared.
+- **Newly shared titles wait for a catalog refresh.** Each friend's node picks it up at its next catalog sync, every 15 minutes unless they changed it (**Settings > Node**), or straight away if they select **Sync Peer Catalogs** on **Catalog > Peer Catalog**.
 
-Having been offered something earlier counts for nothing: every request for a file is checked against what is shared at that moment.
+Nodearr checks your current sharing choices on every file request. A cached offer does not preserve access to an unshared file.
 
 ## Sending something to a friend
 
-"I have that, let me send it to you": on **Catalog > Sharing**, under **Send to a friend**:
+Sending a title shares it with one person and places a card on their **Home** page. The recipient chooses whether to download it. In Nodearr, go to **Catalog > Sharing** and find **Send to a friend**:
 
 ![Send to a friend, with Frieren chosen for Alex, and an earlier send to Alex marked Told](images/send-to-a-friend.png)
 
-1. Find the title, and pick it. For a series you can then narrow it to seasons or episodes, and for an artist to albums, as on a list.
-2. Under **To**, pick the friend. Or pick **Someone new, with an invite** if they are not a friend yet, and how long the invite works.
-3. **Send**.
+1. Find and select a title. For a series, you can select individual seasons or episodes. For an artist, you can select individual albums.
+2. Under **To**, select a friend. To send to someone you have not paired with, select **Someone new, with an invite** and choose an invite lifetime.
+3. For someone new, decide whether to leave **Share everything except Hidden with them too** selected. Clear it to share only this send. If selected, it also includes apps with **Share With New Friends** enabled, excluding **Hidden**.
+4. Select **Send**.
 
-What you send is shared with that friend on a list of their own, **Sent to** and their name, which you will see among your lists and can change like any other. Their Nodearr is told, and fetches your catalog at once, so it is there for them straight away. Their Home shows a card such as **"Sam sent you Frieren"**.
+Nodearr creates a share list named **Sent to** followed by the friend's name. You can edit it like any other list. Nodearr also notifies the recipient, whose node refreshes your catalog and shows a card such as **Sam sent you Frieren** on **Home**.
 
-If nothing of it can be sent, Nodearr says so: there is no file of it in your library yet, or it is on your Hidden list.
+If nothing of it can be sent, Nodearr says so: there is no file of it in your library yet, or it is on your **Hidden** list.
 
-**To someone new**, Nodearr makes an invite for this and shows you the code. Send it to them. When they use it in their Nodearr, the two of you are friends, their Home shows what you sent, and they are offered everything except Hidden from the apps marked **Share With New Friends** too, as any new friend is. Untick **Share everything except Hidden with them too** first if they should be offered only what you sent. The invite is also listed on Nodes > Invites, labelled **For** and the title.
+For someone new, Nodearr shows an invite code. Send it privately to the recipient. Once they redeem it, you become friends and the card appears on their **Home** page. The invite is also listed on **Nodes > Invites**, with a label beginning **For** followed by the title.
 
 The **Sent** list under the form says how each send stands:
 
@@ -125,26 +138,34 @@ The **Sent** list under the form says how each send stands:
 - **Shared, not told yet**: it is shared with them. Nodearr tries to tell them at each connection check, every 15 minutes, for up to 30 days. An older Nodearr that cannot take the note still finds what you sent in its catalog.
 - **Invite not used yet**, or **Invite expired or deleted**.
 
-The cross on a send forgets it. What it shared stays shared until you change the list. For a send whose invite was not used, it deletes the invite too.
+Removing a send from **Sent** removes the notification record, but its share list remains. Edit or delete the list to stop sharing those titles. Removing a send also deletes its invite if the invite has not been used.
 
 ## When a friend sends you something
 
-Home shows it at the top, above everything else, as a card such as **"Sam sent you Frieren"**.
+When a friend sends you a title, a card such as **Sam sent you Frieren** appears on **Home**.
 
 ![Home with Sam's send of Frieren at the top, its choices for Sonarr filled in, and Get it](images/received.png)
 
-**Get it** adds it to your Arr app and fetches it:
+To request the title:
 
-1. If the app does not have it yet, Nodearr adds it, as you would on the app's Add New page. The card shows the choices it will use, filled in the way most of your library already is: the **Root Folder** most of it is in, the **Quality Profile** most of it uses, and for a series the **Series Type** your friend's Sonarr gives it (Lidarr also asks for a **Metadata Profile**). Change any of them first if you like.
-2. For a new title, it monitors what was sent: the whole series or artist, the seasons, the episodes, or the albums. A whole series leaves specials out; send Season 0 or its episodes to include them. For a title already in the app, it turns monitoring on for what was sent and keeps anything else you already monitor.
-3. It has the app search. For Sonarr it searches for missing episodes your friend offers, and for a whole artist in Lidarr for the albums offered. If your node knows of no files from that friend for the title yet, it searches all the requested parts instead. The app searches its other indexers too and chooses what to grab with its own profiles. A grab from your friend arrives through Nodearr and appears on Activity > Transfers; the app imports it as usual.
+1. Choose an **App** if you have more than one of the required type, such as separate Sonarr instances for HD and 4K.
+2. For a new title, review **Root Folder** and **Quality Profile**. Nodearr initially chooses the values used most often in that app. A series also has **Series Type**, taken from your friend's Sonarr; Lidarr also requires **Metadata Profile**.
+3. Select **Get it**. Nodearr adds a new title to the app, enables monitoring for what was sent and asks the app to search. For an existing title, it preserves anything else you already monitor.
 
-A series goes to Sonarr, a movie to Radarr, music to Lidarr, and a film or a scene to Whisparr v3. With two of one kind, such as a second Sonarr for 4K, the card asks which. If the app has it already, Get it only monitors what was sent and searches.
+A whole series includes future episodes but excludes specials. To include specials, the sender must select Season 0 or its episodes.
 
-The card then says what was done, such as "Added to Sonarr, monitoring Season 1, and searching", or why it was not, with a way to try again. Nodearr cannot add to Whisparr v2 yet, nor add a scene that came from a friend's Whisparr v2 to Whisparr v3: add those yourself, and Whisparr finds them from your friend when it searches.
+For Sonarr, the initial search targets missing episodes offered by the sender. For a whole artist in Lidarr, it targets the offered albums. If Nodearr has no matching files from that friend in its catalog yet, it searches the requested parts instead.
 
-**See it in their catalog** opens Catalog > Peer Catalog. **Put away** clears the card.
+The Arr app searches all its enabled indexers and chooses a result using its own profiles. It may choose a source other than the sender. Downloads through Nodearr appear on **Activity > Transfers**, then the Arr app imports them.
+
+A series goes to Sonarr, a movie to Radarr, music to Lidarr, and a film or scene to Whisparr v3.
+
+The card reports what happened or explains a failure and lets you retry. **Get it** cannot add titles to Whisparr v2, or add a scene originating in a friend's Whisparr v2 to Whisparr v3. Add those titles in Whisparr yourself, then search there to find your friend's copy.
+
+Select **See it in their catalog** to open **Catalog > Peer Catalog**, or **Put away** to dismiss the card.
 
 ### Hashing
 
-Each file you share is read once ahead of time to work out its hash, so a friend who asks for it does not wait while a large file is read. Catalog > Sharing shows how far that has got. It pauses while your node is sending, and a file is read again only when it changes. The hash also lets a friend's node tell that two friends have the same file, and fetch it from the other if one goes away.
+Nodearr calculates hashes for shared files in the background so a transfer can start without first reading the entire source file. **Catalog > Sharing** shows progress. Background hashing pauses during uploads and runs again for a file only when it changes.
+
+The hash also identifies identical copies offered by different friends. A download can resume from another friend with the same file if its original sender becomes unavailable.

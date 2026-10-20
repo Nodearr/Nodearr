@@ -1,8 +1,15 @@
 # Connecting your apps
 
-Nodearr works through the Arr apps you already have. It reads each one's library, and adds itself to each as an indexer and a download client, so what your friends have turns up in your searches and comes in like any other download.
+Nodearr connects to the Arr apps you already run. It reads their libraries and registers itself as an indexer and a download client. Your apps can then find and import files shared by your friends.
 
-Add each app under **Settings > Apps**, with the **+** button, or from the first step on Home.
+## Adding an app
+
+To connect an app:
+
+1. In Nodearr, go to **Settings > Apps** and select **+**. You can also start from **Connect your Arr apps** on **Home**.
+2. Choose the app and fill in the fields below.
+3. Select **Test** to check the address, API key, app type and supported version.
+4. Select **Save**. Nodearr registers itself in the app and imports its library. A large library can take a few minutes.
 
 ## What to fill in
 
@@ -10,78 +17,85 @@ Add each app under **Settings > Apps**, with the **+** button, or from the first
 
 | Field | What it is |
 | --- | --- |
-| Name | What Nodearr calls the app. Anything. |
-| Sync Level | **Full Sync** (recommended): Nodearr keeps what it added to the app as it set it, and puts back any change made there. **Add Only**: it adds what is missing and leaves your changes alone. **Disabled**: Nodearr neither reads the app nor keeps anything in it. |
-| Nodearr Server | The address **the app** uses to reach Nodearr. The default is right when both run on the same machine, outside Docker. |
-| Application Server | The address **Nodearr** uses to reach the app. |
-| API Key | The app's own key, from its Settings > General. |
-| Username, Password (advanced) | Only when the app sits behind a reverse proxy that asks for HTTP Basic sign-in. |
-| Download Category (advanced) | The category the app sends its downloads to Nodearr under. |
-| Sync Categories (advanced) | The categories Nodearr's indexer is added to the app with. The app only searches it in these. |
-| Share With New Friends | Whether friends offered everything except Hidden are offered this app's library too: each new friend, and the friends you have when the app is added. Off for Whisparr, on for the rest. Change it for one friend on Catalog > Sharing ([friends and sharing](friends-and-sharing.md#with-a-friend-everything-some-apps-or-lists)). |
+| **Name** | A name you choose to identify this connection in Nodearr. |
+| **Sync Level** | **Full Sync** (recommended) maintains Nodearr's indexer, download client and webhook settings in the app, replacing changes you make there. **Add Only** creates missing entries and preserves your changes to existing ones. **Disabled** stops library imports and registration updates. |
+| **Nodearr Server** | The address the Arr app uses to reach Nodearr. The default works when both run on the same machine outside [Docker](https://docs.docker.com/). |
+| **Application Server** | The address Nodearr uses to reach the Arr app. |
+| **API Key** | The Arr app's API key, found in that app under **Settings > General**. |
+| **Username**, **Password** (advanced) | Credentials for a reverse proxy that requires HTTP Basic authentication. Leave these empty if the app is not behind such a proxy. |
+| **Download Category** (advanced) | The category the app uses when sending downloads to Nodearr. |
+| **Sync Categories** (advanced) | The categories the app searches on Nodearr's indexer. |
+| **Share With New Friends** | Includes this app's library when a friend is offered everything except **Hidden**. Applies to new friends and to existing friends when you add the app. Off by default for both [Whisparr](https://whisparr.com/) versions; on for other library apps. To change access for an existing friend, use [the per-friend app choices](friends-and-sharing.md#with-a-friend-everything-some-apps-or-lists) on **Catalog > Sharing**. |
 
-**Test** checks that Nodearr can reach the app, that the API key works, and that the app is the one you chose, in a version Nodearr supports. **Save** then adds Nodearr to the app and reads its library, which takes from seconds to a few minutes for a large one.
+The two server addresses point in opposite directions. Check both when an app runs in [Docker](https://docs.docker.com/) or on another machine.
 
 ### The defaults for each app
 
 | App | Address | Category | Searched in | Needs at least |
 | --- | --- | --- | --- | --- |
-| Sonarr | `http://localhost:8989` | `tv` | 5030, 5040, 5045, and 5070 for anime | 3.0.5 |
-| Radarr | `http://localhost:7878` | `movies` | 2030, 2040, 2045 | 3.0 |
+| [Sonarr](https://sonarr.tv/) | `http://localhost:8989` | `tv` | 5030, 5040, 5045, and 5070 for anime | 3.0.5 |
+| [Radarr](https://radarr.video/) | `http://localhost:7878` | `movies` | 2030, 2040, 2045 | 3.0 |
 | Whisparr v3 | `http://localhost:6969` | `whisparr` | 6000, 6040, 6045, 6080, 6090 | 3.0 |
 | Whisparr v2 | `http://localhost:6969` | `whisparr` | 6000, 6040, 6045, 6080, 6090 | 2.0, below 3.0 |
-| Lidarr | `http://localhost:8686` | `music` | 3000, 3010, 3040 | 2.0 |
-| Prowlarr | `http://localhost:9696` | | | 1.0 |
+| [Lidarr](https://lidarr.audio/) | `http://localhost:8686` | `music` | 3000, 3010, 3040 | 2.0 |
+| [Prowlarr](https://prowlarr.com/) | `http://localhost:9696` | | | 1.0 |
 
-Both versions of Whisparr call themselves Whisparr. Add the one you run: a Whisparr v3 added as v2 is told to be added as v3.
+Choose the Whisparr version you run. Both versions use the name Whisparr, but Nodearr has separate connection types for v2 and v3. **Test** reports a version mismatch if you choose the wrong one.
 
 ## When the apps are in Docker
 
-"localhost" inside a container is the container itself, so the two addresses depend on where each side runs:
+Inside a container, `localhost` means that container. Use addresses each application can reach:
 
-| Nodearr | The app | Nodearr Server | Application Server |
+| Nodearr | The app | **Nodearr Server** | **Application Server** |
 | --- | --- | --- | --- |
 | On the machine | On the machine | `http://localhost:6633` | `http://localhost:8989` |
-| On the machine, or in Docker with the host's network | In Docker on a bridge | `http://host.docker.internal:6633` (the container needs `extra_hosts: host.docker.internal:host-gateway` on Linux) | `http://localhost:8989` |
+| On the machine, or in Docker with the host's network | In Docker on a bridge | `http://host.docker.internal:6633` | `http://localhost:8989`, using Sonarr's published host port |
 | In Docker on the same bridge network | In Docker on that network | `http://nodearr:6633` | `http://sonarr:8989` |
 
-Use the service names from your compose file, and the app's own port.
+These examples use Sonarr. Substitute your app's port, and use the service names from your Docker Compose file. The second row requires the app's port to be published on the host. On Linux, also add this to the Arr app's service so it can resolve `host.docker.internal`:
+
+```yaml
+extra_hosts:
+  - "host.docker.internal:host-gateway"
+```
 
 ## What Nodearr adds to each app
 
-All three are named **Nodearr**, so you can see them in the app:
+For Sonarr, Radarr, Whisparr and Lidarr, Nodearr creates three entries named **Nodearr** in the Arr app:
 
-- **A download client** (Settings > Download Clients), as SABnzbd, on the app's category, set to remove downloads once imported.
-- **An indexer** (Settings > Indexers), as Newznab, tied to that download client so nothing found through Nodearr is ever sent to another client. RSS is off: friends' new files are found by the app's own searches, and Nodearr does not flood the app's RSS sync. Automatic and interactive search are on.
-- **A connection** (Settings > Connect), as a webhook, so Nodearr hears within seconds when the app imports, upgrades, renames or deletes something.
+- A download client under **Settings > Download Clients**, using the [SABnzbd](https://sabnzbd.org/) interface and the app's download category. The app removes completed downloads from Nodearr after importing them.
+- An indexer under **Settings > Indexers**, using Newznab and assigned to that download client. Automatic and interactive search are on. RSS is off by default, so the app discovers your friends' files when it searches.
+- A webhook under **Settings > Connect**, which notifies Nodearr when the app imports, upgrades, renames or deletes files.
 
-Deleting the app in Nodearr tries to take all three out of it, and deletes what Nodearr read from it. If the app cannot be reached, remove the entries there yourself when it is back. If another connection in Nodearr points to the same app, its entries are kept.
+Prowlarr receives only an indexer; see [Prowlarr](#prowlarr).
+
+Deleting a connection in Nodearr removes its imported catalog and tries to remove Nodearr's entries from the Arr app. If the app is offline, remove those entries yourself when it is available. Nodearr keeps the entries if another connection still points to that same app.
 
 ## The two folders that have to line up
 
 ### Where transfers go
 
-The app has to see the folder Nodearr writes finished transfers to, at the path it expects, or it never imports them. Nodearr checks this itself, through the app's own file browser, and System > Status says so when it cannot see it.
+The Arr app must be able to read Nodearr's completed downloads at the path Nodearr reports. Nodearr checks this through the app's file browser and reports problems on **System > Status**.
 
 - In Docker, mount one folder at the same path, such as `/downloads`, in Nodearr and in every app.
-- Outside Docker, apps on the same machine see Nodearr's folder as it is. The default is a `downloads` folder in Nodearr's data folder. Set another under Settings > Node.
-- If the app sees the folder at another path, as an app on another machine does, add a **remote path mapping in the app** (its Settings > Download Clients), from Nodearr's path to its own.
+- Outside Docker, apps on the same machine usually use the same path. The default is `downloads` in Nodearr's data folder. Change **Download Folder** under **Settings > Node** if needed.
+- If the app sees that folder at a different path, add a remote path mapping in the Arr app under **Settings > Download Clients**. Map the path Nodearr reports to the path the app can read.
 
 ### When Nodearr sees the library at another path
 
-To send a file to a friend, Nodearr reads it from the path the app reports. If Nodearr sees the library at another path, such as when the app is in Docker and Nodearr is not, add a **path mapping in Nodearr**, at the bottom of Settings > Apps:
+To send a library file to a friend, Nodearr reads the path reported by the Arr app. If that path differs from the one Nodearr can read, add a path mapping in Nodearr under **Settings > Apps**, in **Path Mappings**:
 
 | Host | Remote path | Local path |
 | --- | --- | --- |
-| The app's host, as in its Application Server address | The path the app reports, such as `/tv/` | Where Nodearr finds it, such as `D:\Media\TV\` |
+| The app's host, as in its **Application Server** address | The path the app reports, such as `/tv/` | Where Nodearr finds it, such as `D:\Media\TV\` |
 
-Catalog > Local shows whether Nodearr can open each file, and if not, whether the file is not there or Nodearr is not allowed to open it. System > Status warns when files are not there or Nodearr may not open them: see [Troubleshooting](troubleshooting.md#friends-are-refused-your-files). A friend is offered such files, and then refused them, until it is fixed.
+Check **Catalog > Local** to see each file's path and whether Nodearr can read it. **System > Status** warns about missing files and permission problems; see [Friends are refused your files](troubleshooting.md#friends-are-refused-your-files). These files can still appear in a friend's catalog, but transfers fail until Nodearr can read them.
 
 ## Each app
 
 ### Sonarr
 
-Nodearr reads every series, episode and episode file. Sonarr searches Nodearr by the IDs it knows: TVDB, TMDb and IMDb, and the season and episode. A series that the scene numbers differently is searched by the scene's numbers, and a daily show by the day it aired. Both work. Anime is searched in category 5070, by the same IDs and numbers.
+Nodearr reads every series, episode and episode file. Sonarr searches Nodearr by the IDs it knows: TVDB, TMDb and IMDb, and the season and episode. When release groups use different episode numbering, Sonarr searches with those scene numbers. Daily shows use the air date. Anime searches use category 5070 and the same series IDs and episode numbers.
 
 You can share a whole series, a season or single episodes.
 
@@ -91,32 +105,46 @@ Nodearr reads every movie and its file. Radarr searches by TMDb and IMDb ID.
 
 ### Whisparr v3 (Eros)
 
-Nodearr reads films and scenes, with each one's studio, release date, code and IDs. Whisparr searches for a film by its TMDb ID, and for a scene by text: its studio, date, title or code, in the forms Whisparr uses. Nodearr answers both.
+Nodearr reads films and scenes, including their studio, release date, code and IDs. Whisparr v3 searches for films by TMDb ID and scenes by studio, date, title or code. It can find scenes shared by friends running either Whisparr v2 or v3, and Nodearr recognizes matching scenes across the two versions.
 
 Adult content is found only by searches in the XXX categories, which Nodearr registers Whisparr with. Radarr's normal movie categories leave it out, even for a film it also knows. This is category filtering, not a separate key for each app.
 
+**Share With New Friends** is off by default for Whisparr v3. To share its library, enable it for new friends or select the app for an existing friend on **Catalog > Sharing**. You can also share individual titles through lists.
+
+For titles sent by friends, **Get it** can add films and v3 scenes to Whisparr v3. It cannot add scenes originating from Whisparr v2; add those in Whisparr yourself and search there. See [receiving a title](friends-and-sharing.md#when-a-friend-sends-you-something).
+
 ### Whisparr v2
 
-Nodearr reads each site and its scenes, and keeps each scene as Whisparr v3 keeps one. A v2 and a v3 therefore find each other's scenes, and a scene one has is shown as held by the other.
+Nodearr reads each site's scenes from Whisparr v2. Whisparr v2 searches for scenes by studio, date, title or code. It can find scenes shared by friends running either Whisparr v2 or v3, and Nodearr recognizes matching scenes across the two versions.
 
-Whisparr v2 tells Nodearr which site changed, not which scene, so Nodearr reads the whole library again after each change. On a very large library that takes a little while.
+Adult content requires a search in the XXX categories, which Nodearr selects when registering its indexer in Whisparr v2. Radarr's normal movie categories exclude it. This restriction depends on the search categories, not the calling app's identity.
+
+**Share With New Friends** is off by default for Whisparr v2. To share its library, enable it for new friends or select the app for an existing friend on **Catalog > Sharing**. You can also share individual scenes through lists.
+
+Whisparr v2 webhooks identify the changed site rather than an individual scene, so Nodearr refreshes the full library after each change. Large libraries take longer to refresh.
+
+**Get it** cannot add titles to Whisparr v2. Add the scene in Whisparr yourself, then search there for your friend's copy. See [receiving a title](friends-and-sharing.md#when-a-friend-sends-you-something).
 
 ### Lidarr
 
-Nodearr reads artists, albums and track files. You share a whole artist, or single albums of it. An album is offered only when Lidarr holds every track of it, and it is moved as one folder of tracks, which appears for Lidarr only once every track has arrived and been checked.
+Nodearr reads artists, albums and track files. You can share a whole artist or individual albums. An album is offered only when Lidarr has every track. Nodearr transfers the tracks into one folder and makes it available for import after every track has arrived and passed verification.
 
 Lidarr searches by artist and album, as text, in the Audio categories. Albums are found only when an Audio category is requested. An album's release title is the name Lidarr kept for the release, or `Artist - Album (Year) [Quality]`.
 
-Tracks arrive named as Lidarr names its own by default, such as `Slint - Spiderland - 01 - Breadcrumb Trail.flac`, or `1-01` and so on for an album on several discs. Lidarr does not rename tracks unless told to, and then keeps those names, straight in the artist's folder. Turn on Rename Tracks in Lidarr's Settings > Media Management for folders and names of your own choosing.
+Track names follow Lidarr's default naming format, such as `Slint - Spiderland - 01 - Breadcrumb Trail.flac`. Multi-disc albums include the disc number, such as `1-01`. If **Rename Tracks** is off in Lidarr, it preserves those names and imports the files directly into the artist's folder. To use your own folder and file naming formats, turn on **Rename Tracks** in Lidarr under **Settings > Media Management**.
 
 ### Prowlarr
 
-Prowlarr holds no library, so Nodearr reads nothing from it. Adding it makes Nodearr one of Prowlarr's indexers, called Nodearr, so you can search it there with your others.
+Prowlarr manages indexers rather than a media library. Connecting it adds an indexer named **Nodearr** to Prowlarr, where you can search your friends' offers alongside other indexers. Nodearr imports no library from Prowlarr.
 
-Prowlarr copies every indexer into each app it manages. Those copies are not tied to Nodearr's download client, so a grab through one would go to the wrong client and fail. Nodearr therefore gives its indexer in Prowlarr a sync profile of its own, also called Nodearr, with RSS and both kinds of search off: the copies arrive switched off. **Add each Arr app to Nodearr directly as well**, as above; it is that indexer they use.
+Prowlarr's copies of the Nodearr indexer are not assigned to Nodearr's download client. Downloads through those copies could go to the wrong client and fail. To prevent this, Nodearr creates a sync profile named **Nodearr** in Prowlarr with RSS, automatic search and interactive search disabled. The indexers copied to your apps are therefore disabled.
+
+Connect each library app directly to Nodearr using [the connection steps](#adding-an-app) at the start of this page. The app uses the indexer and download client registered by that direct connection.
 
 ## Reading the library again
 
-Nodearr reads each app's whole library every 12 hours, and one title again within seconds whenever the app's webhook says it changed. Catalog > Local can read everything again at once with **Refresh Catalog**. What an app stops reporting is marked missing, and removed after 7 days, or at once with **Purge Missing**.
+Nodearr refreshes each app's library every 12 hours. Webhooks trigger a refresh of the affected title within seconds; Whisparr v2 triggers a full-library refresh instead.
+
+To refresh all libraries now, go to **Catalog > Local** and select **Refresh Catalog**. Files an app no longer reports are marked missing, then removed from Nodearr's catalog after 7 days. Select **Purge Missing** to remove those catalog entries immediately.
 
 ![Catalog > Local: what each app reported, and each file's path and whether Nodearr can read it](images/local-catalog.png)
