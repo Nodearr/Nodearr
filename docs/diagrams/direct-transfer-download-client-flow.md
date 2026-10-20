@@ -83,7 +83,7 @@ sequenceDiagram
     Arr->>Local: Delete from history
 ```
 
-The same shape holds for every failure in ADR 0016. Those that may pass, such as a lost connection, are tried again up to three times first, carrying on from what had arrived.
+The same shape holds for every failure in ADR 0016. Those that may pass, such as a lost connection, get up to three attempts total per source node, with 15 seconds between retries, carrying on from what had arrived.
 
 ## Carrying on from another friend
 

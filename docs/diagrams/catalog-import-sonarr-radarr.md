@@ -41,7 +41,7 @@ sequenceDiagram
     participant Store as Catalog tables
 
     Note over Nodearr: Every 12 hours, on demand, and after an application is saved
-    Nodearr->>Arr: GET /api/v3/qualityprofile
+    Nodearr->>Arr: GET /api/v3/qualityprofile (Lidarr: /api/v1/qualityprofile)
     alt Sonarr
         Nodearr->>Arr: GET /api/v3/series
         loop Each series
@@ -59,6 +59,7 @@ sequenceDiagram
         Nodearr->>Arr: GET /api/v1/artist, then GET /api/v1/album
         loop Each artist
             Nodearr->>Arr: GET /api/v1/trackfile?artistId=N
+            Nodearr->>Arr: GET /api/v1/track?artistId=N (track titles and numbering)
         end
     end
     Nodearr->>Store: Insert what is new, update what changed

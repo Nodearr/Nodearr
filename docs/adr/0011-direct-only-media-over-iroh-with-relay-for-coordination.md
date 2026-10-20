@@ -6,7 +6,7 @@ Accepted on 2026-10-13.
 
 The S2 spike passed every scenario that can be run on one machine on 2026-10-10. Runs between two machines on different networks followed on 2026-10-12 and 2026-10-13 (see "Runs between two machines" at the end). In the last of them a PC behind a home router and a cloud machine that allowed no UDP in connected directly and moved a file, with nothing opened on either side, and where only a relay was available no file data moved.
 
-What that acceptance does not cover is said there too. The far side was a cloud firewall, not a second home router, and a node in Docker Desktop is a harder case than the same node run on the machine itself.
+That initial acceptance used a cloud firewall, not a second home router. The later [two-home run](#2026-10-14-two-home-networks) covers that case too. A node in Docker Desktop is a harder case than the same node run on the machine itself.
 
 ## Context
 
@@ -87,9 +87,9 @@ Strict mode gives the stronger guarantee and cannot meet the goal of working wit
 
 ## Follow-up work
 
-- ~~Run the cross-NAT scenarios on two machines and record the results here.~~ Done: see "Runs between two machines" above.
+- ~~Run the cross-NAT scenarios on two machines and record the results here.~~ Done: see [Runs between two machines](#runs-between-two-machines) below.
 - ~~S7: carry the gating rule and the typed failures into the real transfer provider.~~ Done: ADR 0016.
-- Measure relayed bytes when the direct path is blocked mid-transfer. Still open: the sidecar resets the stream when the path stops being direct, and run 3 above shows a connection surviving a rule change, but nobody has counted relay bytes in that case.
+- Measure relayed bytes when the direct path is blocked mid-transfer. Still open: the sidecar resets the stream when the path stops being direct, and run 3 below shows a connection surviving a rule change, but nobody has counted relay bytes in that case.
 - ~~S8: a settings page for the port-mapping switch (risk 3).~~ Done: Settings > Node (ADR 0019).
 
 ## Runs between two machines
@@ -143,10 +143,12 @@ What it still does not show:
 
 The first run between two homes, each behind its own ordinary router. Both machines ran Windows, with an early build of Nodearr, from before the public 0.1.0 release, and Radarr 6.4.4 straight on Windows from their release packages (`tools/two-machine-test.ps1`, the owner sending and a friend receiving). Neither owner forwarded a port.
 
+The addresses below are documentation examples replacing the addresses recorded in the run.
+
 | | The owner's side | The friend's side |
 | --- | --- | --- |
 | Its network, as Nodearr reported it | UDP works and the public port stays the same | UDP works and the public port stays the same |
-| The address the other side reached | 73.19.61.153:6633 | 174.21.18.84:6633 |
+| The address the other side reached | 203.0.113.10:6633 | 203.0.113.20:6633 |
 | Firewall | Allowed `nodearr-transport` | A rule blocking `nodearr-transport` (Windows' question was cancelled) |
 
 The connection check said Direct. Radarr on the friend's side searched, grabbed and imported the test film: 89,579,739 bytes in 32 seconds, search and import included, 24 seconds of it the transfer. The SHA-256 was the same at both ends.
@@ -155,7 +157,7 @@ What it shows: two nodes behind two home routers found a direct route and moved 
 
 On its own it did not show that nothing was opened. Nodearr asks each router for a port mapping (UPnP, NAT-PMP or PCP) by default, and does not report whether one was granted, so either router may have opened 6633 on Nodearr's request. The second run settles that.
 
-**The second run, with nothing opened.** Both sides were taken down and started again with port mapping off (`-NoPortMapping`), on UDP ports neither had used: 6655 on the owner's side, 6656 on the friend's. The owner's sidecar was checked to be running with `--no-port-mapping`. The connection check said Direct, at 73.19.61.153:6655 one way and 174.21.18.84:6656 the other. Radarr imported the film, 89,558,499 bytes in 32 seconds, search and import included, and the SHA-256 was the same at both ends.
+**The second run, with nothing opened.** Both sides were taken down and started again with port mapping off (`-NoPortMapping`), on UDP ports neither had used: 6655 on the owner's side, 6656 on the friend's. The owner's sidecar was checked to be running with `--no-port-mapping`. The connection check said Direct, at 203.0.113.10:6655 one way and 203.0.113.20:6656 the other. Radarr imported the film, 89,558,499 bytes in 32 seconds, search and import included, and the SHA-256 was the same at both ends.
 
 So two nodes behind two home routers connect directly and move a file with nothing forwarded and nothing mapped on either side. Each router kept one public port for its node's traffic, which is what made it work.
 

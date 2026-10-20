@@ -1,6 +1,6 @@
 # Settings
 
-Every setting Nodearr has, where it is, and the environment variable that can fix it in place.
+The settings on Nodearr's pages, where they are, and the environment variables that can fix them in place.
 
 ## Settings > Node
 
@@ -10,8 +10,8 @@ How this node presents itself, reaches other nodes, and stores what it fetches (
 
 | Setting | Default | What it does | Takes effect | Environment variable |
 | --- | --- | --- | --- | --- |
-| Name | The machine's name | What your friends see this node called. | At once | `Nodearr__Transport__NodeName` |
-| Relay | Public relays | **Public relays**: n0's, which help two nodes find each other and never carry a file. **A relay of your own**: one you run, at Relay Address. **No relay**: nodes behind home routers then usually cannot find each other. Use it only when both have addresses the other can reach. | The transport restarts | `Nodearr__Transport__Relay`: `n0`, `custom` or `disabled` |
+| Name | The machine's name | What your friends see this node called. Friends learn a new name when the nodes next talk. | At once here | `Nodearr__Transport__NodeName` |
+| Relay | Public relays | **Public relays**: n0's, which help two nodes find each other and never carry downloaded media. **A relay of your own**: one you run, at Relay Address, with the same direct-only rule for media. **No relay**: nodes behind home routers then usually cannot find each other. Use it only when both have addresses the other can reach. | The transport restarts | `Nodearr__Transport__Relay`: `n0`, `custom` or `disabled` |
 | Relay Address | | The address of your own relay. | The transport restarts | `Nodearr__Transport__RelayUrl` |
 | UDP Port | 0 | The port friends' nodes connect to. 0 lets the system pick one each time. Set one when you need to forward or allow it. | The transport restarts | `Nodearr__Transport__Port` |
 | Ask the Router to Open the Port | On | Asks the router to open the UDP port (UPnP, NAT-PMP or PCP). | The transport restarts | `Nodearr__Transport__DisablePortMapping=true` turns it off |
@@ -52,7 +52,7 @@ A new port, bind address or URL base takes effect after a restart. If you change
 | API Key | Made on the first start | `Nodearr__Auth__ApiKey` |
 | Certificate Validation | Enabled | |
 
-- **Forms** is a sign-in page. **Basic** is the browser's own sign-in box; Nodearr turns it into Forms, as Sonarr does. **External** asks for nothing, because something in front of Nodearr (a reverse proxy with its own sign-in) does. **None** asks for nothing at all.
+- **Forms** is a sign-in page and the choice offered in the UI. A saved **Basic** setting is changed to Forms. **External** and **None** ask for no sign-in and are set in `config.xml` or the environment; use External only when something in front of Nodearr, such as a reverse proxy, signs people in.
 - **Disabled for local addresses** lets anyone on your home network in without signing in, and **Disabled for localhost** only someone on the same machine. Your friends' nodes never use the web UI or the API: they talk to the transport, which only trusts nodes you paired with.
 - **The API key** is what your Arr apps and Prowlarr use to reach Nodearr. Resetting it gives the new one to every app set to Full Sync. Change it by hand in any other.
 
@@ -60,7 +60,7 @@ A new port, bind address or URL base takes effect after a restart. If you change
 
 | Setting | Default | Environment variable |
 | --- | --- | --- |
-| Log Level | Info | `Nodearr__Log__Level`: `Info`, `Debug` or `Trace` |
+| Log Level | Debug | `Nodearr__Log__Level`: `Info`, `Debug` or `Trace` |
 | Log Size Limit | 1 MB, at most 10 | `Nodearr__Log__SizeLimit` |
 
 Also only from the environment: `Nodearr__Log__Rotate` (how many log files are kept, 50 by default), `__ConsoleLevel`, `__ConsoleFormat` (`Standard` or `Clef`), `__SyslogServer`, `__SyslogPort`, `__SyslogLevel`, `__DbEnabled` and `__Sql`.
@@ -104,9 +104,9 @@ Sonarr can keep its database in PostgreSQL, and the code is still there: `Nodear
 
 | Option | What it does |
 | --- | --- |
-| `-data=<folder>` | Where `config.xml`, `nodearr.db`, `node.key`, the logs and the backups are kept. The default is `C:\ProgramData\Nodearr` on Windows and `~/.config/Nodearr` elsewhere. |
+| `-data=<folder>` | Where `config.xml`, `nodearr.db`, `node.key`, the logs and the backups are kept. The default is `C:\ProgramData\Nodearr` on Windows, `~/.config/Nodearr` on Linux (`$XDG_CONFIG_HOME/Nodearr` when set), and `~/Library/Application Support/Nodearr` on macOS. |
 | `-nobrowser` | Does not open a browser on start. |
 
 ## In config.xml
 
-`config.xml` in the data folder holds the settings on Settings > General, as Sonarr's does. Edit it only while Nodearr is stopped. The settings on Settings > Node and the rest are in the database.
+`config.xml` in the data folder holds the web listener, authentication mode, API key and logging settings. Edit it only while Nodearr is stopped. The username and password, Application URL, certificate validation, backup settings, Settings > Node and your Arr apps are kept in the database.

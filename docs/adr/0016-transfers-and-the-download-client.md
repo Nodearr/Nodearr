@@ -170,3 +170,5 @@ Nodearr reports paths as it sees them. When the Arr app sees the download folder
   - Checked by unit tests, and by `acceptance/Run-IdenticalCopies.ps1` with three real nodes: the node B was fetching from was stopped at 4.2 MB, and the transfer carried on from the other node at 4.5 MB, not from the start. Sonarr imported the right file and recorded no failure.
   - Fetching parts of one file from several nodes at once is not done. The owner left it for when identical copies turn out to be common.
 
+- 2026-10-19: **current limits clarified.** Three attempts means the first attempt and at most two retries, with 15 seconds between retries. Switching to another identical copy gives that node its own attempts; each track of an album has its own attempts and stays with the same node. A friend returning after all attempts have failed does not restart the transfer by itself. The owner or Arr app must retry. Upload Limit is now on Settings > Node ([ADR 0019](0019-node-settings-saved-in-the-ui-fixed-by-the-environment.md)).
+

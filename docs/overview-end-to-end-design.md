@@ -38,7 +38,7 @@ Nodearr is not a shared drive, a media server, a public indexer or a library man
 
 - **Nodearr** is the application: a .NET service with a web UI, derived from Sonarr ([ADR 0004](adr/0004-technology-stack.md), [NOTICE](../NOTICE.md)). It talks to the Arr apps, keeps the catalogs, applies the sharing rules, answers searches and runs transfers.
 - **`nodearr-transport`** is a small Rust program Nodearr starts beside itself. It holds the node's key and does all the networking between nodes, with [iroh](https://www.iroh.computer): encrypted QUIC connections, NAT traversal, and the file transfer protocol ([ADR 0009](adr/0009-iroh-behind-transfer-abstraction.md), [ADR 0012](adr/0012-custom-transfer-protocol-instead-of-iroh-blobs.md)). Nodearr talks to it over a loopback port with a token only the two of them know ([ADR 0013](adr/0013-node-identity-pairing-and-trust.md)).
-- **The relay** helps two nodes find a path to each other. By default it is one of n0's public relays. A person can run their own, or turn relays off. It never carries a file ([ADR 0011](adr/0011-direct-only-media-over-iroh-with-relay-for-coordination.md)).
+- **The relay** helps two nodes find a path to each other. By default it is one of n0's public relays. A person can run their own, or turn relays off. It may carry encrypted control messages, catalogs and posters, but no media downloaded by the Arr apps ([ADR 0011](adr/0011-direct-only-media-over-iroh-with-relay-for-coordination.md)).
 
 ## The apps it works with
 
@@ -51,7 +51,7 @@ Nodearr is not a shared drive, a media server, a public indexer or a library man
 | Lidarr | Artists, albums and track files | Whole artists, or single albums. An album is offered only when complete | Text: artist and album |
 | Prowlarr | Nothing | Nothing | Nodearr adds itself there as an indexer ([ADR 0007](adr/0007-prowlarr-as-downstream-indexer-consumer.md)) |
 
-Adult content is found only by searches in its own categories, which only Whisparr makes. Albums are found only by searches in the audio categories, which only Lidarr makes. Sonarr and Radarr never see either ([ADR 0015](adr/0015-the-indexer-id-matching-release-titles-and-candidate-ids.md), [ADR 0020](adr/0020-lidarr-albums-shared-and-moved-as-folders-of-tracks.md)).
+Adult content is found only by searches in the XXX categories, and albums only in Audio. Nodearr registers Whisparr and Lidarr with those categories; Sonarr's and Radarr's normal categories leave them out. Filtering uses the request's categories, not the calling app's identity ([ADR 0015](adr/0015-the-indexer-id-matching-release-titles-and-candidate-ids.md), [ADR 0020](adr/0020-lidarr-albums-shared-and-moved-as-folders-of-tracks.md)).
 
 ## From start to finish
 
@@ -80,7 +80,7 @@ Trust can be **revoked** from either side, which ends it on both, or the other n
 
 ### 3. Choosing what to share
 
-A new friend is offered everything except the Hidden list, from every Arr app but Whisparr, unless the invite said otherwise, on either side ([ADR 0014](adr/0014-sharing-rules-and-catalog-exchange.md), amendments). On Catalog > Sharing:
+A new friend is offered everything except Hidden from the apps marked **Share With New Friends**, unless the invite said otherwise, on either side. That setting starts on for every library app but Whisparr ([ADR 0014](adr/0014-sharing-rules-and-catalog-exchange.md), amendments). On Catalog > Sharing:
 
 - a **share list** holds whole series, seasons, episodes, movies, Whisparr items, whole artists and single albums, and is given to chosen friends;
 - a friend is marked **share everything**, or not, and which Arr apps that takes in;
@@ -88,13 +88,13 @@ A new friend is offered everything except the Hidden list, from every Arr app bu
 
 A whole series, season or artist takes in what arrives later.
 
-Something can also be **sent**: one title, or parts of it, to one friend, or to someone new with an invite made for it alone. It is shared with them on a list of their own, and their node is told, so their Home shows what arrived. **Get it** there adds it to their Arr app, monitors what was sent and searches, and the app fetches it from the friend ([ADR 0021](adr/0021-sending-a-title-to-a-friend.md)).
+Something can also be **sent**: one title, or parts of it, to one friend, or to someone new with an invite made for it alone. It is shared with them on a list of their own, and their node is told, so their Home shows what arrived. **Get it** there adds it to their Arr app if needed, monitors what was sent and asks the app to search. The app chooses among its enabled indexers, including Nodearr ([ADR 0021](adr/0021-sending-a-title-to-a-friend.md)).
 
 ### 4. Seeing what friends have
 
 Each node asks each friend for their **offer**: what that friend shares with this node, and nothing else ([ADR 0014](adr/0014-sharing-rules-and-catalog-exchange.md)). An offer says what each file is (its IDs, title, season and episodes, or album and tracks), how good it is (quality, resolution, codecs, size, release name) and its BLAKE3 hash where the sender has worked it out. It says nothing of where the file is or what it is called, apart from its extension.
 
-The offer is fetched every 15 minutes by default, and at once when a friend takes something back, so what is no longer shared disappears within seconds. After the first time, only what changed is sent, 500 files to a page.
+The offer is fetched every 15 minutes by default. A friend taking something back sends a hint to fetch it again, so it usually disappears within seconds. If the hint cannot be delivered, the next successful sync removes it; requests for the file are refused in the meantime. After the first time, only what changed is sent, 500 files to a page.
 
 The peer catalog marks each file against the local library: **not in the library**, **missing**, an **upgrade** (one the Arr app's own quality profile would take in place of the one it has), or **have**. Catalog > Peer Catalog shows them, as a list or as a grid of posters. A poster comes from the friend's own Arr app over the same connection, and is kept once fetched ([ADR 0022](adr/0022-posters-from-friends-arr-apps.md)). See [catalog exchange](diagrams/catalog-exchange-trusted-nodes.md).
 
@@ -118,7 +118,7 @@ When the Arr app grabs a result, it gets a small NZB that is only a ticket namin
 
 An album arrives as its tracks, one after another, and appears only once every one of them is verified ([ADR 0020](adr/0020-lidarr-albums-shared-and-moved-as-folders-of-tracks.md)).
 
-Three transfers run at once. One that fails for a reason that may pass is tried again, up to three times, 15 seconds apart, carrying on from what had arrived. If another friend has the same file, by its hash, the transfer carries on from them instead. One that fails for good is reported to the Arr app with a reason written for its history, such as `NoDirectRoute` or `Revoked`, and the Arr app blocklists it and searches again. See [transfers](diagrams/direct-transfer-download-client-flow.md).
+Three transfers run at once. A file gets up to three attempts per source node, with 15 seconds between retries, carrying on from what had arrived. If another friend offers the same file with the same hash and size, the transfer can carry on from them instead. An album stays with its source node, and each track gets its own attempts. One that fails for good is reported to the Arr app with a reason written for its history, such as `NoDirectRoute` or `Revoked`, and the Arr app blocklists it and searches again. See [transfers](diagrams/direct-transfer-download-client-flow.md).
 
 ## How two nodes reach each other
 

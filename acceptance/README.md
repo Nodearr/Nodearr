@@ -2,7 +2,7 @@
 
 Scripts that run a built Nodearr and check a whole slice of behaviour from the outside, through the HTTP APIs.
 
-They need PowerShell 7 and a built Nodearr:
+They need PowerShell 7 and, except for S8 which builds in Docker, a built Nodearr:
 
 ```sh
 dotnet build src/Nodearr.sln
@@ -69,7 +69,7 @@ pwsh acceptance/Run-S5Sharing.ps1
 Needs Docker and ffmpeg, like S3, and the transport sidecar, like S4. Node A imports a real catalog from Sonarr and Radarr containers. Node B imports from the same Sonarr only. The two pair, and the script reads what B holds after each change on A:
 
 - A peer paired with sharing everything unticked is offered nothing.
-- "Share everything" offers every file, and B hears about it without being asked to sync.
+- "Share everything" offers every file once B syncs. New sharing is not announced; taking a file back is.
 - B marks each file as have, missing or not in library against its own catalog.
 - Nothing B receives says where a file is stored.
 - Hiding a series removes it. A share list offers only its titles, and only to the peers on it.
@@ -154,7 +154,7 @@ Needs the same as S7, and takes about four minutes. Three nodes on this machine:
 pwsh acceptance/Run-S8Docker.ps1
 ```
 
-Needs Docker and ffmpeg, and nothing else: no .NET, Node or Rust on the host. The first run builds the Nodearr image and a small relay image used only by this test, which takes ten minutes or so. Later runs take about five. Add `-SkipBuild` to reuse the images.
+Needs PowerShell 7, Docker and ffmpeg, with no .NET, Node or Rust on the host. The first run builds the Nodearr image and a small relay image used only by this test, which takes ten minutes or so. Later runs take about five. Add `-SkipBuild` to reuse the images.
 
 It runs `acceptance/docker-compose.s8.yml`: two complete deployments, John's and Ryan's, each a Nodearr container with its own Sonarr and Radarr, one shared `/downloads` volume and its libraries mounted read-only. The two sides reach each other over one network that stands in for a direct route, and a relay that stands in for a public one.
 

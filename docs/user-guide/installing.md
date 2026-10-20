@@ -6,7 +6,7 @@ Downloads are on the [Releases](https://github.com/Nodearr/Nodearr/releases) pag
 
 ## Docker
 
-The image is `ghcr.io/nodearr/nodearr`, for amd64 and arm64. [`docker/docker-compose.yml`](../../docker/docker-compose.yml) is a complete example beside Sonarr and Radarr. Copy it and change the paths.
+The image is `ghcr.io/nodearr/nodearr`, for amd64 and arm64. The [example compose file](../../docker/docker-compose.yml) puts it beside Sonarr and Radarr. Copy it and change the paths.
 
 Three things have to be right:
 
@@ -49,7 +49,7 @@ Unpack the archive for your machine:
 | `linux-arm` | 32-bit ARM with glibc |
 | `linux-musl-x64`, `linux-musl-arm64` | Alpine |
 
-It needs ICU: `libicu` on Debian and Ubuntu (`libicu72` on bookworm), `icu-libs` on Alpine. Everything else is in the archive, .NET included. Then:
+The archive includes .NET, but the system still needs its [native Linux dependencies](https://learn.microsoft.com/en-us/dotnet/core/install/linux-scripted-manual#dependencies), including ICU and OpenSSL. ICU is `libicu72` on Debian bookworm and `icu-libs` on Alpine; check the package name for your distribution and version. Then:
 
 ```sh
 tar -xzf Nodearr.<version>.linux-x64.tar.gz
@@ -59,7 +59,7 @@ tar -xzf Nodearr.<version>.linux-x64.tar.gz
 ./Nodearr/Nodearr -nobrowser
 ```
 
-The data folder is `~/.config/Nodearr` for the user that runs it, or wherever `-data=` points.
+The data folder is `~/.config/Nodearr` for the user that runs it, or `$XDG_CONFIG_HOME/Nodearr` if that variable is set, or wherever `-data=` points.
 
 To start it with the machine, run it as a service under the same user as your Arr apps. A systemd unit like this one, modelled on Sonarr's, does it. It has not yet been tried with Nodearr:
 
@@ -95,7 +95,7 @@ xattr -dr com.apple.quarantine Nodearr
 ./Nodearr/Nodearr
 ```
 
-The macOS packages are built by the release workflow but have not yet been run on a Mac.
+The data folder is `~/Library/Application Support/Nodearr`, or wherever `-data=` points. The macOS packages are built by the release workflow but have not yet been run on a Mac.
 
 ## The first start
 

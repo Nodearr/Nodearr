@@ -92,3 +92,9 @@ It runs in the background as a command. The card shows it working, then what was
 - ~~The Get it card.~~ Done, see above.
 - ~~Get it for Whisparr v3.~~ Done: films and scenes, by StashDB, ThePornDB, TMDb or IMDb ID.
 - Get it for Whisparr v2. Built on Sonarr, it adds a site and then monitors a scene in it, and a friend's catalog does not name the site by its ID in v2's metadata. A scene that came from a v2 is known only by v2's own number, which Whisparr v3 cannot look up; the card says so.
+
+## Amendments
+
+- 2026-10-19: **monitoring an existing title adds to what was chosen before.** The Sonarr and Lidarr adders turn monitoring on for what was sent without turning other monitored parts off. A new title starts with only the requested parts. A whole series means Sonarr's All Episodes choice, which leaves specials out; Season 0 or its episodes must be sent explicitly. Searching still uses the Arr app's enabled indexers and profiles, so it can choose a release from another indexer.
+
+- 2026-10-19: **searching before matching offers are known.** Sonarr falls back to searching every missing episode of the requested parts when no offered episodes are known yet. For a whole artist, Lidarr falls back to Artist Search when no offered albums are known. Once offers are known, the limited searches described above apply.

@@ -31,7 +31,7 @@ Add each app under **Settings > Apps**, with the **+** button, or from the first
 | Whisparr v3 | `http://localhost:6969` | `whisparr` | 6000, 6040, 6045, 6080, 6090 | 3.0 |
 | Whisparr v2 | `http://localhost:6969` | `whisparr` | 6000, 6040, 6045, 6080, 6090 | 2.0, below 3.0 |
 | Lidarr | `http://localhost:8686` | `music` | 3000, 3010, 3040 | 2.0 |
-| Prowlarr | `http://localhost:9696` | | | |
+| Prowlarr | `http://localhost:9696` | | | 1.0 |
 
 Both versions of Whisparr call themselves Whisparr. Add the one you run: a Whisparr v3 added as v2 is told to be added as v3.
 
@@ -55,7 +55,7 @@ All three are named **Nodearr**, so you can see them in the app:
 - **An indexer** (Settings > Indexers), as Newznab, tied to that download client so nothing found through Nodearr is ever sent to another client. RSS is off: friends' new files are found by the app's own searches, and Nodearr does not flood the app's RSS sync. Automatic and interactive search are on.
 - **A connection** (Settings > Connect), as a webhook, so Nodearr hears within seconds when the app imports, upgrades, renames or deletes something.
 
-Deleting the app in Nodearr takes all three out of it, and deletes what Nodearr read from it.
+Deleting the app in Nodearr tries to take all three out of it, and deletes what Nodearr read from it. If the app cannot be reached, remove the entries there yourself when it is back. If another connection in Nodearr points to the same app, its entries are kept.
 
 ## The two folders that have to line up
 
@@ -93,7 +93,7 @@ Nodearr reads every movie and its file. Radarr searches by TMDb and IMDb ID.
 
 Nodearr reads films and scenes, with each one's studio, release date, code and IDs. Whisparr searches for a film by its TMDb ID, and for a scene by text: its studio, date, title or code, in the forms Whisparr uses. Nodearr answers both.
 
-Adult content is only ever found by searches in the XXX categories, which only Whisparr makes. Radarr never sees it, even for a film it also knows.
+Adult content is found only by searches in the XXX categories, which Nodearr registers Whisparr with. Radarr's normal movie categories leave it out, even for a film it also knows. This is category filtering, not a separate key for each app.
 
 ### Whisparr v2
 
@@ -105,7 +105,7 @@ Whisparr v2 tells Nodearr which site changed, not which scene, so Nodearr reads 
 
 Nodearr reads artists, albums and track files. You share a whole artist, or single albums of it. An album is offered only when Lidarr holds every track of it, and it is moved as one folder of tracks, which appears for Lidarr only once every track has arrived and been checked.
 
-Lidarr searches by artist and album, as text, in the Audio categories. Albums are only ever found by those searches. An album's release title is the name Lidarr kept for the release, or `Artist - Album (Year) [Quality]`.
+Lidarr searches by artist and album, as text, in the Audio categories. Albums are found only when an Audio category is requested. An album's release title is the name Lidarr kept for the release, or `Artist - Album (Year) [Quality]`.
 
 Tracks arrive named as Lidarr names its own by default, such as `Slint - Spiderland - 01 - Breadcrumb Trail.flac`, or `1-01` and so on for an album on several discs. Lidarr does not rename tracks unless told to, and then keeps those names, straight in the artist's folder. Turn on Rename Tracks in Lidarr's Settings > Media Management for folders and names of your own choosing.
 

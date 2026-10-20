@@ -64,3 +64,7 @@ Rejected. It conflicts with Nodearr's infrastructure and abuse-risk model.
 - ~~Define transfer failure reasons for no route, auth failure, policy failure, and verification failure.~~ Done: ADR 0016.
 - ~~Decide how self-hosted relay or alternate network path options would be represented if added later.~~ Done: a relay of your own, or none, on Settings > Node (ADR 0019).
 
+## Amendments
+
+- 2026-10-19: **the direct-only rule applies to every relay.** The original decision left room for self-hosted media relaying. As built in [ADR 0011](0011-direct-only-media-over-iroh-with-relay-for-coordination.md), choosing a relay of your own changes coordination, not the transfer rule: media still needs a direct route. Catalogs, posters and other control messages may use that relay.
+

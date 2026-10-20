@@ -17,13 +17,13 @@ They also learn how to reach your node: its addresses, including its public IP a
 ## What a friend can do
 
 - Ask for a file you share with them, and nothing else. Every request is checked at that moment: whether they are still trusted, and whether the file is still shared with them. A name for a file they were given earlier earns nothing once you stop sharing it.
-- Not browse your folders, reach your web UI or API, or reach your Arr apps. Nodes only ever talk to each other's transport, which answers a handful of messages: pairing, checking in, what do you share with me, my offer changed, trust is revoked, and send me this file.
+- Peer trust gives no access to your folders, web UI, API or Arr apps. Those have separate access controls. Nodes talk to each other's transport: pairing, checking in, exchanging catalogs and removal notices, sending a title's note or poster, revoking trust, and requesting a shared file.
 
 Revoking or blocking a friend ends all of it at once, including anything being sent to them.
 
 ## What the relay sees
 
-By default your node uses the public relays of [n0](https://n0.computer), who make iroh. A relay sees that two node IDs talk, from which IP addresses, and when, and passes on the encrypted messages sent through it before a direct path forms. It cannot read them, and never carries a file: files only ever go directly between the two machines.
+By default your node uses the public relays of [n0](https://n0.computer), who make iroh. A relay sees that two node IDs talk, from which IP addresses, and when. It may pass encrypted control messages, catalogs, posters and transfer headers when there is no direct path. It cannot read them. The media files your Arr apps download only ever go directly between the two machines.
 
 To keep even that to yourselves, run your own relay (iroh's `iroh-relay`) and set it on Settings > Node, or use no relay at all if your nodes can reach each other's addresses directly.
 

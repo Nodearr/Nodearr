@@ -24,11 +24,11 @@ Pairing says "Unable to reach the node that created this invite", or a friend's 
 - Both nodes have to be running and online. A friend's node that is off cannot be reached until it is back.
 - If neither side has a relay (Settings > Node, Relay: none), the two nodes have to already know an address each other can reach. With a relay, they find each other.
 - **System > Status says the peer transport is not running.** Nodearr could not start `nodearr-transport`. It has to be next to Nodearr, or wherever `Nodearr__Transport__BinaryPath` points. If it was saved with settings it cannot start with, such as a UDP port already in use, Settings > Node says so on saving; change the setting back.
-- **System > Status says UDP does not get out of this network.** Something blocks outgoing UDP: a firewall, or a network that only lets the web through. Nodearr needs UDP out to reach friends at all.
+- **System > Status says it could not confirm that UDP gets out.** A firewall may block outgoing UDP. A relay that offers no address discovery can cause the same warning. If transfers fail with `NoDirectRoute`, check outgoing UDP; a working direct connection proves UDP can get through.
 
 ## The Arr app does not import what arrived
 
-System > Status says *"<app> cannot see the folder Nodearr puts finished transfers in"*, or Activity > Transfers shows Completed and the app never imports.
+System > Status says an app cannot see the folder Nodearr puts finished transfers in, or Activity > Transfers shows Completed and the app never imports.
 
 The app has to see Nodearr's download folder at the path it expects. Mount the same folder into both, at the same path, or add a remote path mapping in the app, from Nodearr's path to its own. See [the two folders that have to line up](connecting-apps.md#the-two-folders-that-have-to-line-up).
 
@@ -36,13 +36,13 @@ If System > Status says Nodearr *cannot write to its download folder*, the folde
 
 ## Friends are refused your files
 
-System > Status says *"Nodearr cannot read … files it checked from <app>"*, or a friend's transfers from you fail with `NotFound`.
+System > Status says Nodearr cannot read files it checked from an app, or a friend's transfers from you fail with `NotFound`.
 
 Nodearr reads files from the paths the Arr app reports. Mount the library into Nodearr at the same paths, read-only, or add a path mapping under Settings > Apps. Catalog > Local shows which files can be read. On Windows, a Nodearr service may run as an account that cannot read the library or a network share: see [Installing](installing.md#windows).
 
 ## A friend sees nothing of yours
 
-A new friend is offered everything except Hidden, from every app but Whisparr, unless that was unticked on the invite. On Catalog > Sharing, either mark the friend as offered everything except Hidden, with the app ticked under their name, or put things on a list and give it to them. Check that what you expect is not on Hidden. A friend from before this was the default keeps what they had: nothing until it is shared.
+A new friend is offered everything except Hidden from the apps marked **Share With New Friends**, unless that was unticked on the invite. The setting starts on for all apps but Whisparr. On Catalog > Sharing, either mark the friend as offered everything except Hidden, with the app ticked under their name, or put things on a list and give it to them. Check that what you expect is not on Hidden. A friend from before this was the default keeps what they had: nothing until it is shared.
 
 What you newly share reaches them at their next catalog sync, every 15 minutes unless they changed it, or at once if they press **Sync Peer Catalogs**.
 
@@ -51,10 +51,10 @@ What you newly share reaches them at their next catalog sync, every 15 minutes u
 Check, in order:
 
 1. **Catalog > Peer Catalog** lists the file. If not, your friend has not shared it with you, or your node has not synced since: press Sync Peer Catalogs.
-2. Its status is **Missing** or **Upgrade**. **Not in library** means none of your Arr apps has the series, movie or album: add it there first. **Have** means you already have one at least as good.
+2. Its status is **Missing** or **Upgrade**. **Not in library** means none of your Arr apps has the series, movie or album: add it there first. **Have** means there is a local file and this offer is not an upgrade under its quality profile. Nodearr still returns matching offers in searches; the Arr app makes the final decision.
 3. **The app searched.** Nodearr's indexer has RSS off, so the app only finds things when it searches: for something just added, or with Search All Missing, or by hand. See [how your Arr apps find it](finding-and-fetching.md#how-your-arr-apps-find-it).
 4. **The app wants it.** An interactive search shows Nodearr's results with the reasons the app turned any down: wrong quality for the profile, a custom format it scores below zero, a blocklisted release.
-5. **The right app.** Adult content is only found by Whisparr, and albums only by Lidarr.
+5. **The right categories.** Whisparr needs the XXX categories and Lidarr the Audio categories. Normal Sonarr and Radarr searches leave both out.
 6. **Through Prowlarr?** The copies Prowlarr makes of Nodearr's indexer are switched off on purpose. The app has to be added to Nodearr directly. See [Prowlarr](connecting-apps.md#prowlarr).
 
 ## Pairing keeps being turned away
@@ -65,12 +65,13 @@ If System > Status on **your** node says nodes you do not know keep trying to pa
 
 ## Locked out of the web UI
 
-If you have forgotten the password, stop Nodearr and turn sign-in off for a moment:
+If you have forgotten the password, allow access from this machine for a moment:
 
-- in `config.xml` in the data folder, set `<AuthenticationMethod>External</AuthenticationMethod>`, or
-- start it with the environment variable `Nodearr__Auth__Method=External`.
+1. Stop Nodearr. In `config.xml` in the data folder, keep `<AuthenticationMethod>Forms</AuthenticationMethod>` and set `<AuthenticationRequired>DisabledForLocalhost</AuthenticationRequired>`. If `Nodearr__Auth__Method` or `Nodearr__Auth__Required` is set in the environment, change those there instead: they win over the file.
+2. Start Nodearr and open `http://localhost:6633` on the machine running it, using your own port and URL base if different. Under Settings > General, set the username, password and password confirmation, then Save.
+3. Set Authentication Required back to **Enabled** and Save. If it is fixed by the environment, stop Nodearr, set `Nodearr__Auth__Required=Enabled`, and start it again.
 
-Start it, set a new username and password under Settings > General, then put the setting back. External means Nodearr asks for no sign-in at all, because something in front of it does, so do this only on a network you trust, and only for as long as it takes.
+In Docker, `localhost` in this setting means inside the container. If access from the host still asks for a password, stop the container and use `Nodearr__Auth__Required=DisabledForLocalAddresses` temporarily, with Authentication set to Forms. Keep the web port reachable only from a network you trust while doing this, then put Required back to Enabled and recreate the container. Do not use External for this: its password fields are hidden.
 
 ## Something else
 
