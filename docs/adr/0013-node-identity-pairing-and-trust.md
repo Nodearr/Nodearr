@@ -8,7 +8,7 @@ Accepted. Built and checked in S4 on 2026-10-10.
 
 Nodearr only exchanges catalogs and files with nodes its owner has chosen to trust. S4 had to provide a stable identity for each node, a way for two owners to pair their nodes without typing keys at each other, the trust states pending, trusted, blocked and revoked, and a block that takes effect before a blocked node can say anything.
 
-The V1 plan had already decided that the Iroh Ed25519 key is the node identity and lives in a file (decision 5), that a Rust sidecar holds the transport (decision 4), and that tests use an in-memory fake (decision 6).
+The V1 plan had already decided that the [Iroh](https://www.iroh.computer/) Ed25519 key is the node identity and lives in a file (decision 5), that a [Rust](https://www.rust-lang.org/) sidecar holds the transport (decision 4), and that tests use an in-memory fake (decision 6).
 
 ## Decision
 
@@ -18,7 +18,7 @@ A node's identity is its Iroh endpoint key. The public key, 64 hexadecimal chara
 
 The secret key is created on first start by the `nodearr-transport` sidecar and stored in `node.key` in the data folder, not in the database. Nodearr itself never reads it. Backing up or moving a node means keeping that file. Deleting it makes the node a stranger to every peer.
 
-Amendment, 2026-10-15: System > Backup includes `node.key` in every backup, with the settings and the database. Restoring one leaves the key as `node.key.restore`, and the transport puts it in place the next time it starts, which restoring always ends in. The key never changes under a running transport. A backup is therefore as secret as the key: whoever has one can be this node.
+Amendment, 2026-10-15: **System > Backup** includes `node.key` in every backup, with the settings and the database. Restoring one leaves the key as `node.key.restore`, and the transport puts it in place the next time it starts, which restoring always ends in. The key never changes under a running transport. A backup is therefore as secret as the key: whoever has one can be this node.
 
 ### The handshake is Iroh's
 
@@ -96,8 +96,8 @@ There is no lookup service. Nodes learn each other's relay URL and addresses fro
 
 - ~~S5: purge a peer's cached catalog on block and revoke.~~ Done: S5 (ADR 0014).
 - ~~S7: cancel a peer's transfers on block and revoke, and apply the same authorization to every transfer request.~~ Done: ADR 0016.
-- ~~S8: ship the sidecar in the Docker image, and settings for relay mode, relay URL and port mapping (today they are `Nodearr__Transport__*` environment variables).~~ Done: ADR 0017 and ADR 0019.
-- ~~A setting for the node's display name.~~ Done: Settings > Node (ADR 0019).
+- ~~S8: ship the sidecar in the [Docker](https://docs.docker.com/) image, and settings for relay mode, relay URL and port mapping (today they are `Nodearr__Transport__*` environment variables).~~ Done: ADR 0017 and ADR 0019.
+- ~~A setting for the node's display name.~~ Done: **Settings > Node** (ADR 0019).
 
 ## Amendments
 
@@ -108,9 +108,9 @@ A stranger who knows a node's ID and can reach it could try invite secrets witho
 - A node that fails to pair five times in 15 minutes is turned away for the rest of that time, without its invite being looked at, even when it brings a real one. It is told `TooManyAttempts`, which says nothing about which invites exist, and the node redeeming the invite says to try again in 15 minutes. A node that pairs starts again from nothing.
 - Pairing is never closed to everyone. A limit for all nodes at once would let one stranger keep a friend from pairing.
 - The first ten failures in 15 minutes are logged one by one. One more warning says the rest are only counted, and they are logged at debug level.
-- System > Status warns when a node has been turned away, or after 20 failures in an hour, and says how many and from how many node IDs.
+- **System > Status** warns when a node has been turned away, or after 20 failures in an hour, and says how many and from how many node IDs.
 - Everything is kept in memory, at most 10,000 node IDs. A restart forgets it, which costs nothing.
 
 ### 2026-10-16: an invite can carry a send
 
-An invite can be made for one send (ADR 0021). It is an ordinary invite, labelled "For" and the title, and shares everything except Hidden unless the sender unticks that (ADR 0014, amendment of 2026-10-16). When it is used, the inviting node shares what was sent before it answers the pairing, so the first catalog the new friend asks for holds it. Pairing itself is unchanged. The inviting node now raises an event naming the invite that was used, which is how the send finds its friend.
+An invite can be made for one send (ADR 0021). It is an ordinary invite, labelled "For" and the title, and shares everything except **Hidden** unless the sender unticks that (ADR 0014, amendment of 2026-10-16). When it is used, the inviting node shares what was sent before it answers the pairing, so the first catalog the new friend asks for holds it. Pairing itself is unchanged. The inviting node now raises an event naming the invite that was used, which is how the send finds its friend.

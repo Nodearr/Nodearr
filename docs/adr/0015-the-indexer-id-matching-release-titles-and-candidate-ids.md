@@ -6,7 +6,7 @@ Accepted. Built and checked in S6 on 2026-10-10.
 
 ## Context
 
-ADR 0010 proved that Sonarr and Radarr accept Nodearr as a Newznab indexer, using a stub that read its results from a file. ADR 0014 gave each node a copy of what its trusted peers offer. S6 joins the two: a search from an Arr app is answered from the peer catalog.
+ADR 0010 proved that [Sonarr](https://sonarr.tv/) and [Radarr](https://radarr.video/) accept Nodearr as a Newznab indexer, using a stub that read its results from a file. ADR 0014 gave each node a copy of what its trusted peers offer. S6 joins the two: a search from an Arr app is answered from the peer catalog.
 
 ADR 0010 left five questions for this slice: how IDs match, whether to offer text search, what keeps the publish date and size stable, what the opaque ID of a result is, and what a query with no IDs returns. Plan decision 2 had already settled who judges quality: the Arr apps do, from the release title, so the title has to be right.
 
@@ -22,7 +22,7 @@ Media is matched by ID and nothing else.
 - `ep` matches a file that holds that episode, including a file that holds several. A season search returns every file in the season.
 - A query with an ID Nodearr does not hold, such as a TVRage ID alone, returns nothing.
 
-The TV and movie searches do not advertise `q`. With `q` advertised, Sonarr falls back to searching by title whenever the ID search is empty, and guessing by title is what ID matching is there to avoid. Plain `t=search` does take `q`, as a match on every word, for people searching by hand in Prowlarr. Radarr uses it as a second try when its ID search is empty, which costs one cheap query.
+The TV and movie searches do not advertise `q`. With `q` advertised, Sonarr falls back to searching by title whenever the ID search is empty, and guessing by title is what ID matching is there to avoid. Plain `t=search` does take `q`, as a match on every word, for people searching by hand in [Prowlarr](https://prowlarr.com/). Radarr uses it as a second try when its ID search is empty, which costs one cheap query.
 
 Categories mean only TV or movies. Any 5xxx category asks for TV and any 2xxx for movies, whichever subcategory it is, so a 2160p file is still found by a Sonarr that asks for SD and HD only. Each result carries the parent category and a subcategory for its resolution.
 
@@ -46,7 +46,7 @@ The quality words are chosen so that an Arr app reads them back as the same qual
 Each file a peer offers gets a candidate ID: the first 16 bytes of HMAC-SHA256, keyed with a secret this node creates once and keeps in its database, over the peer's node ID and the peer's own ID for the file.
 
 - **Stable.** The same file from the same peer always gets the same ID, however often the catalog is fetched again. The Arr apps use it as the GUID.
-- **Opaque.** It says nothing about the peer or the file. Arr and Prowlarr logs and histories learn neither.
+- **Opaque.** It says nothing about the peer or the file. Arr and [Prowlarr](https://prowlarr.com/) logs and histories learn neither.
 - **Not forgeable.** Without the secret nobody can produce an ID that resolves to anything.
 
 It is a lookup key, not a signed payload. That is deliberate. A signed payload would still verify after the peer stopped offering the file, so it would need a lookup anyway. Here an ID resolves only while a trusted peer currently offers that file, so hiding a title or revoking a peer voids every link already handed out.
@@ -101,14 +101,14 @@ Nodearr registers its Sonarr indexer with an anime category and with "anime stan
 
 It works (ADR 0010), with two things a user must do by hand in the Arr app, because Prowlarr creates the indexer there and Nodearr cannot change it:
 
-- **Set the synced indexer's download client to Nodearr.** A Nodearr ticket sent to a real SABnzbd fails.
+- **Set the synced indexer's download client to Nodearr.** A Nodearr ticket sent to a real [SABnzbd](https://sabnzbd.org/) fails.
 - **Decide about RSS.** Prowlarr turns it on.
 
 The link in a result uses the address the request came in on. Through Prowlarr that is the address Prowlarr uses for Nodearr, and the Arr app fetches the ticket from it directly, so the Arr app must be able to reach that address too.
 
 Adding the Arr app to Nodearr directly avoids all three.
 
-Amendment, 2026-10-15: adding Prowlarr to Nodearr in Settings > Apps does this safely. Nodearr adds itself to Prowlarr with a sync profile that switches off the copies Prowlarr makes in Sonarr and Radarr, so nothing unpinned can grab a Nodearr release (ADR 0007, amendments). The steps above are for someone who adds Nodearr to Prowlarr by hand instead.
+Amendment, 2026-10-15: adding Prowlarr to Nodearr in **Settings > Apps** does this safely. Nodearr adds itself to Prowlarr with a sync profile that switches off the copies Prowlarr makes in Sonarr and Radarr, so nothing unpinned can grab a Nodearr release (ADR 0007, amendments). The steps above are for someone who adds Nodearr to Prowlarr by hand instead.
 
 ## Follow-up work
 
@@ -148,7 +148,7 @@ Amendment, 2026-10-15: adding Prowlarr to Nodearr in Settings > Apps does this s
 
   A node's files get scene numbers at its next library refresh after upgrading. A node still on an older Nodearr sends none, and its files are titled by TVDB's numbers as before.
 
-- 2026-10-14: **the same file from several nodes is one result.** Files carry their BLAKE3 hash now (ADR 0014, amendments), so a node can tell when trusted peers hold the very same bytes. They are one release to the Arr app, as one release is one release however many indexers list it.
+- 2026-10-14: **the same file from several nodes is one result.** Files carry their [BLAKE3](https://github.com/BLAKE3-team/BLAKE3) hash now (ADR 0014, amendments), so a node can tell when trusted peers hold the very same bytes. They are one release to the Arr app, as one release is one release however many indexers list it.
   - In a search, copies with the same hash from trusted nodes are shown once. The copy shown is the one with the lowest candidate ID, so it is the same one, with the same GUID, as long as the same nodes offer it.
   - In the list of the newest, which is paged in the database, copies that fall on the same page are shown once.
   - A file whose hash its node has not worked out yet stands alone, as before.
@@ -156,7 +156,7 @@ Amendment, 2026-10-15: adding Prowlarr to Nodearr in Settings > Apps does this s
   - The Peer Catalog page and its API show each file's hash, so the owner can see which nodes hold identical copies.
   - Checked by unit tests and by `acceptance/Run-IdenticalCopies.ps1`: with the same episode on two nodes, B's Sonarr was shown one result and approved it.
 
-- 2026-10-15: **Whisparr v3, and scenes found by text.** Whisparr v3 (Eros) is built on Radarr, and Nodearr keeps its films and scenes as movies marked as adult content. Media is matched by ID wherever the Arr app sends one, and Whisparr does for a film. For a scene it has no ID to send: read from its ReleaseSearchService and Newznab request generator, it searches by text, several ways, depending on how it is set up. The title; the title and the release date; the studio and the title; the studio and the date; the studio and the scene's code. The studio may be its name, an alias, or its name run together (CouchCastingX for Couch Casting-X). The date may be yy.MM.dd or dd.MM.yyyy. The title loses a leading "The", has "&" as "and", and loses apostrophes and accents.
+- 2026-10-15: **Whisparr v3, and scenes found by text.** [Whisparr](https://whisparr.com/) v3 (Eros) is built on Radarr, and Nodearr keeps its films and scenes as movies marked as adult content. Media is matched by ID wherever the Arr app sends one, and Whisparr does for a film. For a scene it has no ID to send: read from its ReleaseSearchService and Newznab request generator, it searches by text, several ways, depending on how it is set up. The title; the title and the release date; the studio and the title; the studio and the date; the studio and the scene's code. The studio may be its name, an alias, or its name run together (CouchCastingX for Couch Casting-X). The date may be yy.MM.dd or dd.MM.yyyy. The title loses a leading "The", has "&" as "and", and loses apostrophes and accents.
   - A query for adult content is matched by `SceneQuery`: a day in the query, in any of those forms, has to be the scene's release date, and every other word has to be in its studio, written either way, its title, its code or its release title. Peers send what that needs, the item type, studio, release date and code, with Whisparr's ForeignId, StashDB and ThePornDB IDs, and only for Whisparr's files, so every other file's fingerprint is as it was.
   - Adult content is found only by a search in Newznab's XXX family (6000), which is what Whisparr asks in, and is filed there. A search for movies or TV, or one that names no category, never finds it, so Radarr never sees it. Whisparr never sees Radarr's movies either, even where a film and a movie share a TMDb ID.
   - A scene keeps its own release name where the peer's Whisparr kept one. Otherwise it is named as scenes are released: the studio run together, the date as yy.MM.dd, the title, XXX, then the quality.
@@ -165,4 +165,4 @@ Amendment, 2026-10-15: adding Prowlarr to Nodearr in Settings > Apps does this s
   - v2 and v3 know a scene by different IDs. They agree on its studio and its release date, so where no ID links a peer's scene to the local library, those do, the studio written either way.
   - Run against Whisparr 2.2.0.404, two of them: Nodearr read a site's 6,833 scenes on each, and a scene grabbed through it was imported with the same bytes. Then a v2 searched a v3's node: it found the v3's scene with its own text search, approved it, grabbed and imported it, and its comparison marked the scene as had, by studio and date.
 
-- 2026-10-19: **categories select the content family.** The earlier wording that only Whisparr or Lidarr can find their content describes their normal registration. The Newznab endpoint uses the categories in a request, not the caller's application identity. An API-key holder, including a manual Prowlarr search, can request XXX or Audio categories. A request without them does not find adult content or albums.
+- 2026-10-19: **categories select the content family.** The earlier wording that only Whisparr or [Lidarr](https://lidarr.audio/) can find their content describes their normal registration. The Newznab endpoint uses the categories in a request, not the caller's application identity. An API-key holder, including a manual Prowlarr search, can request XXX or Audio categories. A request without them does not find adult content or albums.

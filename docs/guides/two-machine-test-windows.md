@@ -1,8 +1,8 @@
 # The two-machine test on Windows, from nothing
 
-This is the two-machine test for two people on Windows who have nothing set up: no Docker, no Sonarr or Radarr, no Python. One script, `tools/two-machine-test.ps1`, does the whole test on each machine. It needs only the PowerShell that comes with Windows.
+This is the two-machine test for two people on Windows who have nothing set up: no [Docker](https://docs.docker.com/), no [Sonarr](https://sonarr.tv/) or [Radarr](https://radarr.video/), no Python. One script, `tools/two-machine-test.ps1`, does the whole test on each machine. It needs only the PowerShell that comes with Windows.
 
-The two machines need to be on different networks: two homes, or a home and a phone's hotspot. What the test is for, and what each result means, is in [two-machine-test.md](two-machine-test.md).
+Use two machines on different networks, such as two homes or a home and a phone hotspot. The test checks pairing, a direct connection, download verification and import into Radarr. Compare the SHA-256 hashes printed by both sides to confirm that the file arrived unchanged.
 
 ## What the script does
 
@@ -89,9 +89,9 @@ It checks the connection again, removes the film and fetches it again.
 
 What the results mean:
 
-- **"Check connection" says Direct, and the transfer completed.** That is the result the test is for.
-- **"Relay only", and the transfer failed as `NoDirectRoute`.** The two nodes can talk, but cannot reach each other directly, so no file was sent. Check the firewall on **both** machines first. If both allow `nodearr-transport`, forward UDP 6633 to that machine on whichever router you control, then run `fetch` again.
-- **Could not reach the other node.** Check that the sending side is still on, and run `status` there.
+- **Check connection** reports **Direct** and the transfer completes: the nodes transferred and verified the file over a direct route.
+- **Relay only**, with a transfer failure of `NoDirectRoute`: The two nodes can talk, but cannot reach each other directly, so no file was sent. Check the firewall on **both** machines first. If both allow `nodearr-transport`, forward UDP 6633 to that machine on whichever router you control, then run `fetch` again.
+- The other node cannot be reached: Check that the sending side is still on, and run `status` there.
 
 Each side's pages are at `http://localhost:6633` for Nodearr and `http://localhost:7878` for Radarr, on that machine only. There is no need to open them, but they show the same things in more detail.
 
@@ -110,7 +110,7 @@ It stops Nodearr and Radarr and removes the `nodearr-test-windows` folder: Radar
 | Option | What for |
 | --- | --- |
 | `-OpenFirewall` | Add the firewall rule instead of waiting for Windows to ask. Needs PowerShell as administrator. |
-| `-NoPortMapping` | Stop Nodearr asking the router to open its port, which it does by default. See below. |
+| `-NoPortMapping` | Disable automatic router port mapping. See [The run with nothing opened](#the-run-with-nothing-opened). |
 | `-Name 'Alex'` | What the other side sees this node called. Default: Sender or Receiver. |
 | `-NodearrZip PATH` | Use a Nodearr package that is not in Downloads. |
 | `-SizeMB 500` | A bigger test video, on the sending side. Default 100. |

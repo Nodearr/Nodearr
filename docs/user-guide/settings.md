@@ -1,89 +1,91 @@
 # Settings
 
-The settings on Nodearr's pages, where they are, and the environment variables that can fix them in place.
+Use **Settings > Node** for peer connections and transfers, **Settings > General** for the web UI and sign-in, and **Settings > Apps** for Arr connections. The tables below list defaults and environment overrides.
 
 ## Settings > Node
 
-How this node presents itself, reaches other nodes, and stores what it fetches ([ADR 0019](../adr/0019-node-settings-saved-in-the-ui-fixed-by-the-environment.md)).
+These settings control your node's name, peer connections and download storage ([ADR 0019](../adr/0019-node-settings-saved-in-the-ui-fixed-by-the-environment.md)).
 
 ![Settings > Node: the node's name, the relay, and the UDP port, here set by the environment](images/settings-node.png)
 
 | Setting | Default | What it does | Takes effect | Environment variable |
 | --- | --- | --- | --- | --- |
-| Name | The machine's name | What your friends see this node called. Friends learn a new name when the nodes next talk. | At once here | `Nodearr__Transport__NodeName` |
-| Relay | Public relays | **Public relays**: n0's, which help two nodes find each other and never carry downloaded media. **A relay of your own**: one you run, at Relay Address, with the same direct-only rule for media. **No relay**: nodes behind home routers then usually cannot find each other. Use it only when both have addresses the other can reach. | The transport restarts | `Nodearr__Transport__Relay`: `n0`, `custom` or `disabled` |
-| Relay Address | | The address of your own relay. | The transport restarts | `Nodearr__Transport__RelayUrl` |
-| UDP Port | 0 | The port friends' nodes connect to. 0 lets the system pick one each time. Set one when you need to forward or allow it. | The transport restarts | `Nodearr__Transport__Port` |
-| Ask the Router to Open the Port | On | Asks the router to open the UDP port (UPnP, NAT-PMP or PCP). | The transport restarts | `Nodearr__Transport__DisablePortMapping=true` turns it off |
-| Wait for a Direct Route | 20 seconds | How long a transfer waits for a direct connection before it fails with `NoDirectRoute`. | The transport restarts | `Nodearr__Transport__DirectTimeoutSeconds` |
-| Download Folder | `downloads` in the data folder | Where transfers are written: `incomplete` while they arrive, `complete` once checked. Your Arr apps must see this same folder. It cannot be moved while transfers are under way. | At once | `Nodearr__Transport__DownloadFolder` |
-| Upload Limit | None | The most each upload to a friend may send, in kilobytes per second. 0 is no limit. | The transport restarts | `Nodearr__Transport__UploadLimitKbps` |
-| Catalog Sync Interval | 15 minutes | How often to ask each friend what changed, like Sonarr's RSS Sync Interval: 10 to 120, or 0 to ask only when told or asked. | At once | |
+| **Name** | The machine's name | The name shown to friends. They receive a changed name the next time the nodes communicate. | Immediately in this UI | `Nodearr__Transport__NodeName` |
+| **Relay** | **Public relays** | **Public relays**: n0's, which help two nodes find each other and never carry downloaded media. **A relay of your own**: one you run, entered in **Relay Address**, with the same direct-only rule for media. **No relay**: nodes behind home routers then usually cannot find each other. Use it only when both have addresses the other can reach. | The transport restarts | `Nodearr__Transport__Relay`: `n0`, `custom` or `disabled` |
+| **Relay Address** | | The address of your own relay. | The transport restarts | `Nodearr__Transport__RelayUrl` |
+| **UDP Port** | 0 | The port friends' nodes connect to. 0 lets the system pick one each time. Set one when you need to forward or allow it. | The transport restarts | `Nodearr__Transport__Port` |
+| **Ask the Router to Open the Port** | On | Asks the router to open the UDP port (UPnP, NAT-PMP or PCP). | The transport restarts | `Nodearr__Transport__DisablePortMapping=true` turns it off |
+| **Wait for a Direct Route** | 20 seconds | How long a transfer waits for a direct connection before it fails with `NoDirectRoute`. | The transport restarts | `Nodearr__Transport__DirectTimeoutSeconds` |
+| **Download Folder** | `downloads` in the data folder | Where transfers are written: `incomplete` while they arrive, `complete` once checked. Your Arr apps must see this same folder. It cannot be moved while transfers are under way. | At once | `Nodearr__Transport__DownloadFolder` |
+| **Upload Limit** | None | The most each upload to a friend may send, in kilobytes per second. 0 is no limit. | The transport restarts | `Nodearr__Transport__UploadLimitKbps` |
+| **Catalog Sync Interval** | 15 minutes | Minutes between scheduled catalog refreshes: 10 to 120. Set 0 to disable scheduled refreshes. Pairing, sends, removal notices and **Sync Peer Catalogs** can still trigger a refresh. | At once | |
 
 When the transport restarts, connections drop for a moment and transfers carry on once it is back. If the new settings stop it starting, the page says so; change them back.
 
-The node's ID is shown on the same page. It is its public key, and it never changes.
+The page also shows your node ID: the public key derived from `node.key`. Changing the node name does not change this ID. Keep the key when [moving or restoring a node](backups.md).
 
 ## Settings > General
 
-Inherited from Sonarr, and the same there.
+These settings control the web server, sign-in, logging and scheduled backups.
 
 ### Host
 
 | Setting | Default | Environment variable |
 | --- | --- | --- |
-| Bind Address | `*`, every address | `Nodearr__Server__BindAddress` |
-| Port Number | 6633 | `Nodearr__Server__Port` |
-| URL Base | | `Nodearr__Server__UrlBase` |
-| Instance Name | Nodearr | `Nodearr__App__InstanceName` |
-| Application URL | | |
-| Enable SSL, SSL Port, SSL Cert Path, SSL Key Path, SSL Cert Password | Off, 9898 | `Nodearr__Server__EnableSsl`, `__SslPort`, `__SslCertPath`, `__SslKeyPath`, `__SslCertPassword` |
-| Open browser on start | Yes | `Nodearr__App__LaunchBrowser` |
+| **Bind Address** | `*`, every address | `Nodearr__Server__BindAddress` |
+| **Port Number** | 6633 | `Nodearr__Server__Port` |
+| **URL Base** | | `Nodearr__Server__UrlBase` |
+| **Instance Name** | Nodearr | `Nodearr__App__InstanceName` |
+| **Application URL** | | |
+| **Enable SSL**, **SSL Port**, **SSL Cert Path**, **SSL Key Path**, **SSL Cert Password** | Off, 9898 | `Nodearr__Server__EnableSsl`, `Nodearr__Server__SslPort`, `Nodearr__Server__SslCertPath`, `Nodearr__Server__SslKeyPath`, `Nodearr__Server__SslCertPassword` |
+| **Open browser on start** | Yes | `Nodearr__App__LaunchBrowser` |
 
-A new port, bind address or URL base takes effect after a restart. If you change the port or the URL base, change **Nodearr Server** for each app under Settings > Apps too, so each one is told where to reach Nodearr now.
+A new port, bind address or URL base takes effect after a restart. If you change the port or the URL base, change **Nodearr Server** for each app under **Settings > Apps** too, so each one is told where to reach Nodearr now.
 
 ### Security
 
 | Setting | Default | Environment variable |
 | --- | --- | --- |
-| Authentication | Forms, set up on the first start | `Nodearr__Auth__Method`: `Forms`, `External` or `None` |
-| Authentication Required | Enabled | `Nodearr__Auth__Required`: `Enabled`, `DisabledForLocalAddresses` or `DisabledForLocalhost` |
-| Username, Password | | |
-| API Key | Made on the first start | `Nodearr__Auth__ApiKey` |
-| Certificate Validation | Enabled | |
+| **Authentication** | **Forms (Login Page)**, set up on the first start | `Nodearr__Auth__Method`: `Forms`, `External` or `None` |
+| **Authentication Required** | **Enabled** | `Nodearr__Auth__Required`: `Enabled`, `DisabledForLocalAddresses` or `DisabledForLocalhost` |
+| **Username**, **Password** | | |
+| **API Key** | Made on the first start | `Nodearr__Auth__ApiKey` |
+| **Certificate Validation** | **Enabled** | |
 
-- **Forms** is a sign-in page and the choice offered in the UI. A saved **Basic** setting is changed to Forms. **External** and **None** ask for no sign-in and are set in `config.xml` or the environment; use External only when something in front of Nodearr, such as a reverse proxy, signs people in.
-- **Disabled for local addresses** lets anyone on your home network in without signing in, and **Disabled for localhost** only someone on the same machine. Your friends' nodes never use the web UI or the API: they talk to the transport, which only trusts nodes you paired with.
-- **The API key** is what your Arr apps and Prowlarr use to reach Nodearr. Resetting it gives the new one to every app set to Full Sync. Change it by hand in any other.
+- **Forms (Login Page)** is a sign-in page and the choice offered in the UI. The inherited `Basic` configuration value is migrated to `Forms`. The configuration values `External` and `None` disable Nodearr's sign-in page and can be set in `config.xml` or the environment. Use `External` only when a reverse proxy or another service authenticates requests before they reach Nodearr.
+- **Disabled for Local Addresses** lets anyone on your home network in without signing in, and **Disabled for Localhost** only someone on the same machine. Your friends' nodes never use the web UI or the API: they talk to the transport, which only trusts nodes you paired with.
+- The **API Key** is what your Arr apps and [Prowlarr](https://prowlarr.com/) use to reach Nodearr. Resetting it gives the new one to every app set to **Full Sync**. Change it by hand in any other.
 
 ### Logging
 
 | Setting | Default | Environment variable |
 | --- | --- | --- |
-| Log Level | Debug | `Nodearr__Log__Level`: `Info`, `Debug` or `Trace` |
-| Log Size Limit | 1 MB, at most 10 | `Nodearr__Log__SizeLimit` |
+| **Log Level** | **Debug** | `Nodearr__Log__Level`: `Info`, `Debug` or `Trace` |
+| **Log Size Limit** | 1 MB, at most 10 | `Nodearr__Log__SizeLimit` |
 
-Also only from the environment: `Nodearr__Log__Rotate` (how many log files are kept, 50 by default), `__ConsoleLevel`, `__ConsoleFormat` (`Standard` or `Clef`), `__SyslogServer`, `__SyslogPort`, `__SyslogLevel`, `__DbEnabled` and `__Sql`.
+Additional logging settings are available only through environment variables: `Nodearr__Log__Rotate` (number of retained log files, 50 by default), `Nodearr__Log__ConsoleLevel`, `Nodearr__Log__ConsoleFormat` (`Standard` or `Clef`), `Nodearr__Log__SyslogServer`, `Nodearr__Log__SyslogPort`, `Nodearr__Log__SyslogLevel`, `Nodearr__Log__DbEnabled` and `Nodearr__Log__Sql`.
 
 ### Backups
 
 | Setting | Default |
 | --- | --- |
-| Folder | `Backups` in the data folder |
-| Interval | 7 days |
-| Retention | 28 days |
+| **Folder** | `Backups` in the data folder |
+| **Interval** | 7 days |
+| **Retention** | 28 days |
 
 See [Backups](backups.md).
 
 ## Settings > Apps
 
-Your Arr apps and Prowlarr, and the path mappings. See [Connecting your apps](connecting-apps.md).
+Add and edit connections to your Arr apps and Prowlarr here. **Path Mappings** translates library paths reported by an app into paths Nodearr can read. See [Connecting your apps](connecting-apps.md) for the fields, defaults and folder setup.
 
 ![Settings > Apps: Radarr and Sonarr connected with Full Sync, and Path Mappings](images/settings-apps.png)
 
 ## Set by the environment
 
-Any setting above with an environment variable can be given that way instead. Each is `Nodearr__<Section>__<Name>`, as in the tables, and wins over what is saved: the page shows it as set by the environment and offers nothing to change. That is how a container is set up without the UI, and how the image fixes the settings its mounts and ports are built around:
+Environment variables override saved settings. Use the complete variable names in the tables, such as `Nodearr__Server__Port`. A setting controlled by the environment is shown as fixed in the UI; change it in the environment and restart Nodearr instead.
+
+The [Docker](https://docs.docker.com/) image supplies these defaults to match its ports and mounts:
 
 | In the image | Value |
 | --- | --- |
@@ -92,13 +94,15 @@ Any setting above with an environment variable can be given that way instead. Ea
 | `Nodearr__Transport__Port` | 6633 |
 | `Nodearr__Transport__DownloadFolder` | `/downloads` |
 
-`Nodearr__Transport__BinaryPath` says where `nodearr-transport` is, when it is not next to Nodearr.
+Set `Nodearr__Transport__BinaryPath` to the transport executable's path if `nodearr-transport` is not beside the Nodearr executable.
 
-In the image, `PUID` and `PGID` set the user Nodearr runs as, and `TZ` the time zone, as in the linuxserver.io images of the Arr apps.
+In Docker, `PUID` and `PGID` set the user and group Nodearr runs as, and `TZ` sets the time zone. Match the user and group to the permissions on your library and download folders.
 
 ### Postgres
 
-Sonarr can keep its database in PostgreSQL, and the code is still there: `Nodearr__Postgres__Host`, `__Port`, `__User`, `__Password`, `__MainDb` and `__LogDb`. Nodearr has only ever been run on SQLite, its default. Use Postgres at your own risk.
+Nodearr inherits [PostgreSQL](https://www.postgresql.org/) support from [Sonarr](https://sonarr.tv/), but it has only been tested with SQLite, the default. The PostgreSQL variables are `Nodearr__Postgres__Host`, `Nodearr__Postgres__Port`, `Nodearr__Postgres__User`, `Nodearr__Postgres__Password`, `Nodearr__Postgres__MainDb` and `Nodearr__Postgres__LogDb`.
+
+If you use PostgreSQL, back up and restore that database separately. Nodearr's [backup ZIP](backups.md#postgresql) does not include it.
 
 ## On the command line
 
@@ -109,4 +113,4 @@ Sonarr can keep its database in PostgreSQL, and the code is still there: `Nodear
 
 ## In config.xml
 
-`config.xml` in the data folder holds the web listener, authentication mode, API key and logging settings. Edit it only while Nodearr is stopped. The username and password, Application URL, certificate validation, backup settings, Settings > Node and your Arr apps are kept in the database.
+`config.xml` in the data folder holds the web listener, authentication mode, API key and logging settings. Edit it only while Nodearr is stopped. The username and password, **Application URL**, **Certificate Validation**, backup settings, node settings and Arr connections are kept in the database.

@@ -6,7 +6,7 @@ Accepted.
 
 ## Context
 
-Nodearr is intended to integrate naturally with the Servarr ecosystem and feel familiar to existing Arr users and contributors.
+Nodearr is intended to integrate naturally with the [Servarr](https://wiki.servarr.com/) ecosystem and feel familiar to existing Arr users and contributors.
 
 Architecture reconnaissance across Arr projects showed a common product structure:
 
@@ -35,13 +35,13 @@ Nodearr will use the same general stack shape as the Arr applications on purpose
 
 Initial stack:
 
-- Backend: C# / .NET.
+- Backend: C# / [.NET](https://dotnet.microsoft.com/).
 - Web host: ASP.NET Core.
 - API style: versioned API routes using MVC controllers or minimal APIs where appropriate.
 - Real-time updates: SignalR.
 - API docs: OpenAPI/Swagger.
 - Logging: NLog.
-- Frontend: React + TypeScript.
+- Frontend: [React](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/).
 - Frontend build: use a modern build tool while preserving Arr-familiar UI conventions.
 - Database: SQLite for initial local persistence.
 - Packaging: Docker-first, with config/data/download volumes planned from the beginning.
@@ -53,7 +53,7 @@ Nodearr should preserve its own domain model and naming even where it adopts fam
 
 ### Positive
 
-- Easier conceptual alignment with Sonarr, Radarr, Prowlarr, and related Arr applications.
+- Easier conceptual alignment with [Sonarr](https://sonarr.tv/), [Radarr](https://radarr.video/), [Prowlarr](https://prowlarr.com/), and related Arr applications.
 - Familiar contribution path for Servarr-adjacent developers.
 - Natural fit for API-key auth, provider models, SignalR updates, and self-hosted daemon packaging.
 - Reduces avoidable invention in host/API/UI layers.
@@ -77,15 +77,15 @@ Rejected. Good for small services and networking code, but weaker alignment with
 
 ### Rust + React
 
-Rejected for the initial application stack. Rust may still be useful for transfer-provider experiments later, but it is not the best fit for the first full application skeleton.
+Rejected for the initial application stack. [Rust](https://www.rust-lang.org/) may still be useful for transfer-provider experiments later, but it is not the best fit for the first full application skeleton.
 
 ## Follow-up work
 
 - Continue shaping project names and layering around Nodearr domains. Partly done: Nodearr's own code is in its Catalog, Nodes, Sharing, PeerCatalog, PeerIndexer and Transfers namespaces, and the inherited projects keep Sonarr's `NzbDrone` names (NOTICE.md).
-- ~~Add Docker-first development workflow.~~ Done: the image (ADR 0017) and the acceptance scripts, which run the Arr apps in Docker.
+- ~~Add Docker-first development workflow.~~ Done: the image (ADR 0017) and the acceptance scripts, which run the Arr apps in [Docker](https://docs.docker.com/).
 - ~~Add initial SQLite persistence boundary.~~ Done: Sonarr's datastore, kept.
 - ~~Define transfer-provider integration points.~~ Done: the transport behind `IPeerTransport` and `IFileTransport` (ADR 0013, ADR 0016).
-- ~~Validate Iroh integration feasibility behind a Nodearr abstraction.~~ Done: the S2 spike, ADR 0011.
+- ~~Validate [Iroh](https://www.iroh.computer/) integration feasibility behind a Nodearr abstraction.~~ Done: the S2 spike, ADR 0011.
 
 ## Amendments
 

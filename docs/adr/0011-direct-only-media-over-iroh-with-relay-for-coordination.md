@@ -6,11 +6,11 @@ Accepted on 2026-10-13.
 
 The S2 spike passed every scenario that can be run on one machine on 2026-10-10. Runs between two machines on different networks followed on 2026-10-12 and 2026-10-13 (see "Runs between two machines" at the end). In the last of them a PC behind a home router and a cloud machine that allowed no UDP in connected directly and moved a file, with nothing opened on either side, and where only a relay was available no file data moved.
 
-That initial acceptance used a cloud firewall, not a second home router. The later [two-home run](#2026-10-14-two-home-networks) covers that case too. A node in Docker Desktop is a harder case than the same node run on the machine itself.
+That initial acceptance used a cloud firewall, not a second home router. The later [two-home run](#2026-10-14-two-home-networks) covers that case too. A node in [Docker](https://docs.docker.com/) Desktop is a harder case than the same node run on the machine itself.
 
 ## Context
 
-ADR 0008 forbids relaying media bytes through official infrastructure. ADR 0009 picks Iroh as the transport and requires that the no-relay rule be enforceable even though Iroh can relay. The V1 plan (decision 8) sets the default: use n0's public relays for coordination only, send media only over direct paths, and let users configure their own relay.
+ADR 0008 forbids relaying media bytes through official infrastructure. ADR 0009 picks [Iroh](https://www.iroh.computer/) as the transport and requires that the no-relay rule be enforceable even though Iroh can relay. The V1 plan (decision 8) sets the default: use n0's public relays for coordination only, send media only over direct paths, and let users configure their own relay.
 
 S2 had to compare two ways of getting there and show, with relayed bytes counted, that a peer pair with no direct route fails clearly without any media crossing a relay.
 
@@ -30,7 +30,7 @@ Use the coordinated mode by default.
 
 ## Evidence
 
-`spikes/iroh-direct` is a standalone Rust binary on `iroh = "=1.3.0"`. `Run-IrohSpike.ps1` runs it as provider and fetcher against a self-hosted `iroh-relay` 1.3.0 in dev mode. Relayed bytes are measured two ways that do not depend on each other: Iroh's per-path counters on both endpoints, and the relay server's own `relayserver_bytes_sent_total` metric.
+`spikes/iroh-direct` is a standalone [Rust](https://www.rust-lang.org/) binary on `iroh = "=1.3.0"`. `Run-IrohSpike.ps1` runs it as provider and fetcher against a self-hosted `iroh-relay` 1.3.0 in dev mode. Relayed bytes are measured two ways that do not depend on each other: Iroh's per-path counters on both endpoints, and the relay server's own `relayserver_bytes_sent_total` metric.
 
 Both endpoints ran on one Windows machine. The file was 16,777,216 bytes. To make the connection start on the relay the way it does across NATs, the fetcher was given a ticket without the provider's IP addresses.
 
@@ -90,7 +90,7 @@ Strict mode gives the stronger guarantee and cannot meet the goal of working wit
 - ~~Run the cross-NAT scenarios on two machines and record the results here.~~ Done: see [Runs between two machines](#runs-between-two-machines) below.
 - ~~S7: carry the gating rule and the typed failures into the real transfer provider.~~ Done: ADR 0016.
 - Measure relayed bytes when the direct path is blocked mid-transfer. Still open: the sidecar resets the stream when the path stops being direct, and run 3 below shows a connection surviving a rule change, but nobody has counted relay bytes in that case.
-- ~~S8: a settings page for the port-mapping switch (risk 3).~~ Done: Settings > Node (ADR 0019).
+- ~~S8: a settings page for the port-mapping switch (risk 3).~~ Done: **Settings > Node** (ADR 0019).
 
 ## Runs between two machines
 
@@ -105,7 +105,7 @@ Made by the project's owner with `docker/two-machine-test.py`.
 | Run | The cloud machine's firewall | Connection check | Transfer |
 | --- | --- | --- | --- |
 | 1 | No UDP allowed in | Relay only | Failed as `NoDirectRoute` after three attempts, with no bytes of the file moved |
-| 2 | UDP 6633 allowed in from the home address | Direct | Completed and imported by Radarr: 87 MB in 32 seconds, search and import included |
+| 2 | UDP 6633 allowed in from the home address | Direct | Completed and imported by [Radarr](https://radarr.video/): 87 MB in 32 seconds, search and import included |
 
 What this shows:
 

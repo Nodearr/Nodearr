@@ -2,17 +2,17 @@
 
 ## Status
 
-Accepted. All five slices built and checked on 2026-10-15: L1 (Lidarr's library in the catalog), L2 (sharing and comparing albums), L3 (moving an album), L4 (the indexer) and L5 (the live test).
+Accepted. All five slices built and checked on 2026-10-15: L1 ([Lidarr](https://lidarr.audio/)'s library in the catalog), L2 (sharing and comparing albums), L3 (moving an album), L4 (the indexer) and L5 (the live test).
 
 ## Context
 
-Lidarr is still developed and is the music app of the Arr family. Readarr, the books app, was archived in June 2025 and is not supported.
+Lidarr is still developed and is the music app of the Arr family. [Readarr](https://github.com/Readarr/Readarr), the books app, was archived in June 2025 and is not supported.
 
-Everything Nodearr shares so far is one file: an episode file, a movie file, a Whisparr scene. Lidarr does not work that way:
+Everything Nodearr shares so far is one file: an episode file, a movie file, a [Whisparr](https://whisparr.com/) scene. Lidarr does not work that way:
 
 - Its library is artists, their albums, and the albums' tracks. Each track is a file of its own.
 - It grabs and imports a whole album at once, as one download holding a folder of tracks. A release with one track missing is a different release, not most of one.
-- It knows an artist by its MusicBrainz ID and an album by its MusicBrainz release group, which every edition of the album shares.
+- It knows an artist by its [MusicBrainz](https://musicbrainz.org/) ID and an album by its MusicBrainz release group, which every edition of the album shares.
 - It searches an indexer by text, `t=music&artist=...&album=...`, not by ID. Its categories are 3000 (Audio), 3010 (MP3) and 3040 (Lossless).
 - Its API is `/api/v1`. Its download client field is `musicCategory`, and its webhook names the artist (`"artist": { "id": ... }`).
 
@@ -27,7 +27,7 @@ Three tables beside the series and movie ones: `CatalogArtists`, `CatalogAlbums`
 - A full read takes the quality profiles, `/artist`, `/album`, then `/trackfile?artistId=` for each artist, as Lidarr lists track files only per artist or album.
 - A webhook names an artist, and that artist is read again: the artist, `/album?artistId=` and its track files. Nothing else of the library is touched.
 - Lidarr sends only a track's full path. The part below the artist's folder is kept as its relative path.
-- Registration is Sonarr's and Radarr's: the SABnzbd client on `musicCategory`, a Newznab indexer on 3000, 3010 and 3040 pinned to it, and the webhook on import, upgrade, rename, artist added, artist deleted and album deleted.
+- Registration is [Sonarr](https://sonarr.tv/)'s and [Radarr](https://radarr.video/)'s: the [SABnzbd](https://sabnzbd.org/) client on `musicCategory`, a Newznab indexer on 3000, 3010 and 3040 pinned to it, and the webhook on import, upgrade, rename, artist added, artist deleted and album deleted.
 
 ### L2: sharing and offers by album
 
@@ -96,5 +96,5 @@ The first run named the parts `01.flac` and so on, and Lidarr, which does not re
 - A Lidarr library with many artists costs two requests per artist on every full read: track files and tracks, since track titles were added on 2026-10-16.
 - An album is all or nothing. A peer with one track short offers nothing for that album.
 - Lidarr finds releases by text, so a match is only as good as the artist and album names on both sides.
-- 2026-10-16: **albums are shared one by one, as seasons are.** A share list held only whole artists. Lidarr monitors by album, as Sonarr does by season and episode, so a list now holds an artist whole or some of its albums, and the Hidden list can hold one album of an artist that is otherwise shared. An album is covered by its artist or itself. A whole artist still takes in albums that arrive later, and an album on a list under its whole artist on the same list is dropped as saying nothing more. An album is still offered only when Lidarr holds every track, and Catalog > Sharing says which are not yet whole. In the API an album is `albumArrId` on a share key, and `GET /api/v5/sharing/titles/{application}/{artist}/albums` lists an artist's albums. Checked between two nodes: hiding one album took it off the friend's side within a second, and unhiding it brought it back at their next sync.
+- 2026-10-16: **albums are shared one by one, as seasons are.** A share list held only whole artists. Lidarr monitors by album, as Sonarr does by season and episode, so a list now holds an artist whole or some of its albums, and the **Hidden** list can hold one album of an artist that is otherwise shared. An album is covered by its artist or itself. A whole artist still takes in albums that arrive later, and an album on a list under its whole artist on the same list is dropped as saying nothing more. An album is still offered only when Lidarr holds every track, and **Catalog > Sharing** says which are not yet whole. In the API an album is `albumArrId` on a share key, and `GET /api/v5/sharing/titles/{application}/{artist}/albums` lists an artist's albums. Checked between two nodes: hiding one album took it off the friend's side within a second, and unhiding it brought it back at their next sync.
 

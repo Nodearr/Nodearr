@@ -4,7 +4,7 @@ Everything in `acceptance/` runs on one machine. This guide tests two people, tw
 
 It needs two machines on different networks. A laptop on a phone hotspot or a café's Wi-Fi counts as a second network.
 
-**Two Windows machines with nothing set up**, no Docker and no Sonarr or Radarr, have a guide and a script of their own: [two-machine-test-windows.md](two-machine-test-windows.md). The rest of this page is for machines that run Docker, or that already run Sonarr or Radarr.
+**Two Windows machines with nothing set up**, no [Docker](https://docs.docker.com/) and no [Sonarr](https://sonarr.tv/) or [Radarr](https://radarr.video/), have a guide and a script of their own: [two-machine-test-windows.md](two-machine-test-windows.md). The rest of this page is for machines that run Docker, or that already run Sonarr or Radarr.
 
 ## What each side needs
 
@@ -45,11 +45,11 @@ Check this before anything else. It is the one obstacle that no test on a single
 
 Nodearr needs incoming UDP on its port, which is 6633 in the Docker image. What that takes depends on how it runs:
 
-- **Windows, without Docker.** Windows asks once whether to allow `nodearr-transport`. It may not ask until Nodearr is given a fixed port in Settings > Node. Say yes, and tick the kind of network you are on, including Public if that is what Windows calls it. If the question was missed or closed, Windows keeps a rule that blocks it. Open **Windows Security > Firewall & network protection > Allow an app through firewall**, find `nodearr-transport` and tick it there.
+- **Windows, without Docker.** Windows asks once whether to allow `nodearr-transport`. It may not ask until Nodearr is given a fixed port in **Settings > Node**. Say yes, and tick the kind of network you are on, including Public if that is what Windows calls it. If the question was missed or closed, Windows keeps a rule that blocks it. Open **Windows Security > Firewall & network protection > Allow an app through firewall**, find `nodearr-transport` and tick it there.
 - **Docker Desktop, on Windows or macOS.** The published port belongs to Docker Desktop, not to Nodearr. Docker Desktop's own firewall rule may cover private networks only. On a network Windows calls Public, such as a café's, allow Docker Desktop on public networks too, in the same place.
 - **Linux, with `network_mode: host`.** The host's firewall applies. With ufw: `sudo ufw allow 6633/udp`.
 
-A blocked firewall and a router that needs a port forwarded look the same from inside Nodearr: "Check connection" says "Relay only", and System > Status warns that there is no direct route. Look at the firewall first. It is on a machine you can reach, and it is the quicker one to rule out.
+A blocked firewall and a router that needs a port forwarded look the same from inside Nodearr: **Check connection** says "Relay only", and **System > Status** warns that there is no direct route. Look at the firewall first. It is on a machine you can reach, and it is the quicker one to rule out.
 
 ## Set it up
 
@@ -65,9 +65,9 @@ Then pair:
 
 6. The side with the file: **Nodes > Invites**, tick "share everything", create an invite, and send the code to the other side by any means.
 7. The other side: **Nodes > Invites**, paste the code and redeem it.
-8. Both sides: **Nodes > Trusted Nodes** shows the other as trusted. Within a few seconds of pairing the Connection column fills in by itself. "Check connection" asks again at any time, and takes up to ten seconds. The column says one of two things:
+8. Both sides: **Nodes > Trusted Nodes** shows the other as trusted. Within a few seconds of pairing the Connection column fills in by itself. **Check connection** asks again at any time, and takes up to ten seconds. The column says one of two things:
    - **Direct.** A direct route was found. Go on and try the transfer.
-   - **Relay only.** The nodes can talk and a transfer would fail as `NoDirectRoute`. There is no need to try one to find out. System > Status now carries a warning that names the other node. Go back to the firewall section above, on both machines. If both firewalls let Nodearr in, forward UDP 6633 on a router you control, to the machine running Nodearr. Check again after each change.
+   - **Relay only.** The nodes can talk and a transfer would fail as `NoDirectRoute`. There is no need to try one to find out. **System > Status** now carries a warning that names the other node. Check [the firewall on each machine](#the-firewall-on-each-machine). If both firewalls let Nodearr in, forward UDP 6633 on a router you control, to the machine running Nodearr. Check again after each change.
 
 ## Run it
 
@@ -88,15 +88,15 @@ For each pair of networks you try:
 | Did each machine's firewall allow incoming UDP 6633? | |
 | Was UDP 6633 forwarded on either router? | |
 | What each side's network box said | |
-| "Check connection" said | Direct, relay only, or an error |
+| **Check connection** said | Direct, relay only, or an error |
 | The transfer | Completed, or failed with which name |
 | If it completed | Size and how long it took |
 
 The outcomes mean:
 
 - **Completed.** The two nodes found a direct route. The file was verified before Sonarr or Radarr saw it.
-- **NoDirectRoute.** The nodes could talk through a relay and could not reach each other directly. Nothing of the file was sent. The message, in Nodearr and in Sonarr's or Radarr's history, goes on to say what the last connection check found and which side to look at first. Write that down too. This is Nodearr working as designed on a network that does not allow a direct route. Phone networks and some café networks are like this. "Check connection" will have said "Relay only" beforehand. It is also what a firewall blocking Nodearr on either machine looks like, so rule that out first. Then try forwarding UDP 6633 on the side that has a router you control, and check again.
-- **PeerUnreachable.** The nodes could not talk at all. Check that both are running and that "Check connection" works.
+- **NoDirectRoute.** The nodes could talk through a relay and could not reach each other directly. Nothing of the file was sent. The message, in Nodearr and in Sonarr's or Radarr's history, goes on to say what the last connection check found and which side to look at first. Write that down too. This is Nodearr working as designed on a network that does not allow a direct route. Phone networks and some café networks are like this. **Check connection** will have said "Relay only" beforehand. It is also what a firewall blocking Nodearr on either machine looks like, so rule that out first. Then try forwarding UDP 6633 on the side that has a router you control, and check again.
+- **PeerUnreachable.** The nodes could not talk at all. Check that both are running and that **Check connection** works.
 
 One "Direct" and one completed transfer between two home networks, with no port forwarded, is the result that matters most. A `NoDirectRoute` on a phone hotspot is worth recording and is not a failure of the test.
 
@@ -121,14 +121,14 @@ It ends by printing an invite code, the command for the other machine, and the S
 
 ### 2. Rent the other machine
 
-In the EC2 console, launch an instance:
+In the [Amazon EC2 console](https://console.aws.amazon.com/ec2/), launch an instance:
 
 - **Ubuntu Server 24.04**, and **64-bit (x86)**. The script uses Radarr's x86 image, so not a Graviton type.
 - **t3.medium**, with **30 GB** of storage.
 - A key pair, saved as a `.pem` file.
 - Under network settings, allow **SSH from My IP** and nothing else.
 
-It is billed by the second, and a stopped instance still pays for its disk.
+Check the [EC2 pricing](https://aws.amazon.com/ec2/pricing/) and your account's charges before launching. Stopping an instance can leave billable storage; terminate it and remove unneeded volumes when finished.
 
 ### 3. Send it the image and the script
 
@@ -178,7 +178,7 @@ ssh -i KEY.pem -L 16633:localhost:6633 -L 17878:localhost:7878 ubuntu@ITS-ADDRES
 
 The rented machine's Nodearr is then at `http://localhost:16633` and its Radarr at `http://localhost:17878`, on your own machine and nobody else's. Your own are at `http://localhost:6633` and `http://localhost:7878`. While that connection is open its ports are taken, and the scripts in `acceptance/` use one of them, so do not run those at the same time.
 
-The pages ask nobody to sign in. That is only safe because both are bound to the machine itself. Never allow TCP 6633 or 7878 in.
+These test instances have sign-in disabled and bind their web ports to loopback. Keep those ports private: do not add inbound TCP rules for 6633 or 7878. Use the SSH tunnel to view the remote pages.
 
 ### 7. Clear up
 
@@ -192,9 +192,9 @@ Then terminate the instance. Stopping it does not end the charge for its disk.
 
 ### What to expect from Docker Desktop
 
-On Windows and macOS, Docker Desktop puts its own address translation between Nodearr and your router, and it gives a different public port to every destination. Measured on one Windows machine: Nodearr run straight on Windows saw one stable public port, and the same Nodearr in Docker Desktop saw a different one each time. Nodearr reports this on Nodes > Trusted Nodes and on System > Status, and says there that it is Docker Desktop and not the router.
+On Windows and macOS, Docker Desktop puts its own address translation between Nodearr and your router, and it gives a different public port to every destination. Measured on one Windows machine: Nodearr run straight on Windows saw one stable public port, and the same Nodearr in Docker Desktop saw a different one each time. Nodearr reports this on **Nodes > Trusted Nodes** and on **System > Status**, and says there that it is Docker Desktop and not the router.
 
-So a node in Docker Desktop is hard to reach directly unless the other side can be reached first. Against a cloud machine, expect "Relay only" on the first run and "Direct" once UDP 6633 is allowed in there. That is what the first run between two machines found (ADR 0011). Between two homes, the Docker Desktop side wants UDP 6633 forwarded on its router, or the other side does. Linux with the host's network has none of this.
+So a node in Docker Desktop is hard to reach directly unless the other side can be reached first. Against a cloud machine, expect "Relay only" on the first run and "Direct" once UDP 6633 is allowed in there. That is what the first run between two machines found ([ADR 0011](../adr/0011-direct-only-media-over-iroh-with-relay-for-coordination.md)). Between two homes, the Docker Desktop side wants UDP 6633 forwarded on its router, or the other side does. Linux with the host's network has none of this.
 
 Docker Desktop's own "Enable host networking" setting does not change this. It was tried on Docker Desktop 4.91 for Windows on 2026-10-13: with it on, the transport in a container on the host's network still reported a different public address for every destination. It also stopped Nodearr's transport from staying up in that container at all, for a reason not yet found, so leave `network_mode: host` to Linux.
 
@@ -210,9 +210,9 @@ python docker\two-machine-test.py send --native
 
 If the transport was built somewhere else, add `--transport-bin PATH`. Windows may ask whether to let `nodearr-transport` through its firewall the first time. Say yes.
 
-Everything after that is the same: the code it prints goes to `receive` on the other machine, and `fetch`, `status` and `down` work as before. `receive --native` works too. A side is one or the other. To change, run `down` first.
+Send the printed invite code and SHA-256 to the other person. On their machine, run `python3 two-machine-test.py receive 'THE-CODE'`, adding `--native` if their Nodearr should also run outside Docker. Use `fetch` to retry, `status` to inspect the setup and `down` to remove it. Before switching a side between Docker and native mode, run `down` for that side.
 
-This is the run worth making against a cloud machine that allows no UDP in. If the two connect directly, they did it with nothing opened on either side, which is what two homes would have to do. It has been made once, and they did (ADR 0011).
+This is the run worth making against a cloud machine that allows no UDP in. If the two connect directly, they did it with nothing opened on either side, which is what two homes would have to do. It has been made once, and they did ([ADR 0011](../adr/0011-direct-only-media-over-iroh-with-relay-for-coordination.md)).
 
 To make that run clean, start the receiving side fresh on a UDP port it has not used: `down`, then `receive CODE --udp-port 6644`. A firewall goes on allowing a connection it has already seen, so a rule removed while two nodes are connected proves nothing.
 

@@ -2,7 +2,7 @@
 
 Nodearr is free software licensed under the GNU General Public License, version 3 (see [LICENSE](LICENSE)). It is a modified work that contains code from other GPL-3.0 projects. This file records where that code came from and that it has been changed, as GPL-3.0 section 5 requires.
 
-Nodearr is not affiliated with, sponsored by or endorsed by the Sonarr, Prowlarr or Servarr teams.
+Nodearr is not affiliated with, sponsored by or endorsed by the [Sonarr](https://sonarr.tv/), [Prowlarr](https://prowlarr.com/) or [Servarr](https://wiki.servarr.com/) teams.
 
 ## Sonarr
 
@@ -14,7 +14,7 @@ Nodearr is not affiliated with, sponsored by or endorsed by the Sonarr, Prowlarr
 What is derived from Sonarr:
 
 - Nearly everything under `src/`: the `NzbDrone.*` projects, and `Nodearr.Api.V3`, `Nodearr.Api.V5` and `Nodearr.Http`, which are Sonarr's `Sonarr.Api.V3`, `Sonarr.Api.V5` and `Sonarr.Http` renamed.
-- The `frontend/` application, its build configuration, and the root `package.json`, lint and TypeScript configuration.
+- The `frontend/` application, its build configuration, and the root `package.json`, lint and [TypeScript](https://www.typescriptlang.org/) configuration.
 - The test projects and their fixtures.
 
 ## Prowlarr
@@ -39,7 +39,7 @@ Nodearr's changes begin on 2026-05-21. The full record is the git history of thi
 
 ## Third-party software
 
-A release also carries work by others under their own licences: the Rust crates in the transport sidecar, the NuGet packages in the application, the npm packages in the web UI, and the .NET runtime. They are listed, with each licence's text, in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) and, for the .NET runtime, in `dotnet-LICENSE.txt` and `dotnet-THIRD-PARTY-NOTICES.txt` in each self-contained package.
+A release also carries work by others under their own licences: the [Rust](https://www.rust-lang.org/) crates in the transport sidecar, the NuGet packages in the application, the npm packages in the web UI, and the [.NET](https://dotnet.microsoft.com/) runtime. They are listed, with each licence's text, in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) and, for the .NET runtime, in `dotnet-LICENSE.txt` and `dotnet-THIRD-PARTY-NOTICES.txt` in each self-contained package.
 
 ## Assembly copyright
 

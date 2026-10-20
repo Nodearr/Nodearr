@@ -1,6 +1,6 @@
 # Nodearr Product Definition
 
-> Written before Nodearr was built, as the definition it started from. Some of it was built differently or not at all: there was never a local HTTP transfer provider, and Readarr is not supported. What Nodearr is now is in the [overview](../overview-end-to-end-design.md) and the [user guide](../user-guide/README.md).
+> Written before Nodearr was built, as the definition it started from. Some of it was built differently or not at all: there was never a local HTTP transfer provider, and [Readarr](https://github.com/Readarr/Readarr) is not supported. What Nodearr is now is in the [overview](../overview-end-to-end-design.md) and the [user guide](../user-guide/README.md).
 
 ## Product one-liner
 
@@ -16,13 +16,13 @@ The core sentence is:
 
 Expected flow:
 
-1. A user runs Sonarr and/or Radarr.
+1. A user runs [Sonarr](https://sonarr.tv/) and/or [Radarr](https://radarr.video/).
 2. Each trusted peer runs their own Nodearr instance.
 3. Nodearr imports library metadata from configured Arr apps.
 4. Nodearr normalizes imported data into local catalog entries.
 5. Nodearr exchanges catalog availability with trusted peers.
 6. Nodearr exposes peer-available candidates through a Torznab/Newznab-compatible indexer API.
-7. A supported Arr app searches Nodearr directly or through Prowlarr.
+7. A supported Arr app searches Nodearr directly or through [Prowlarr](https://prowlarr.com/).
 8. Selecting a result creates a local Nodearr transfer job.
 9. Nodearr retrieves verified bytes directly from a trusted peer.
 10. The completed file is placed into a local completed-download path.
@@ -37,12 +37,12 @@ V1 catalog sources:
 
 Future iterative catalog sources:
 
-- Lidarr.
+- [Lidarr](https://lidarr.audio/).
 - Readarr.
-- Whisparr / Eros.
+- [Whisparr](https://whisparr.com/) / Eros.
 - Other Arr-like applications that expose enough API metadata to support catalog import, candidate projection, and completed-download workflows.
 
-Prowlarr is a downstream indexer consumer, not a catalog source. Media clients such as Jellyfin or Plex may consume the final imported library, but they are not Nodearr catalog sources.
+[Prowlarr](https://prowlarr.com/) is a downstream indexer consumer, not a catalog source. Media clients such as Jellyfin or Plex may consume the final imported library, but they are not Nodearr catalog sources.
 
 ## Non-goals for the first design pass
 
@@ -110,7 +110,7 @@ A local request to retrieve a selected release candidate. It tracks candidate id
 
 ### Transfer provider
 
-A pluggable backend for moving bytes from trusted peers to the local machine. Early milestones may use local HTTP or another simple transport. The leading real P2P direction is Iroh behind a Nodearr abstraction.
+A pluggable backend for moving bytes from trusted peers to the local machine. Early milestones may use local HTTP or another simple transport. The leading real P2P direction is [Iroh](https://www.iroh.computer/) behind a Nodearr abstraction.
 
 ## Expected Nodearr surfaces
 
@@ -173,7 +173,7 @@ An Arr-familiar local management UI with likely top-level areas:
 - Nodearr should keep peer trust separate from local API/UI auth.
 - Nodearr should land completed files in normal download/import paths.
 - Nodearr should use Arr metadata for media identity and content hashes for exactness.
-- Nodearr should keep Servarr compatibility at explicit API boundaries.
+- Nodearr should keep [Servarr](https://wiki.servarr.com/) compatibility at explicit API boundaries.
 - Nodearr may use rendezvous/discovery infrastructure.
 - Official Nodearr infrastructure must not relay media bytes.
 

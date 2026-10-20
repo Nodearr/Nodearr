@@ -6,7 +6,7 @@ Accepted.
 
 ## Context
 
-Sonarr, Radarr, and related applications already understand media identity, library membership, file paths, quality, profiles, custom formats, and import workflows. Rebuilding that logic from folder scans would duplicate mature application behavior and produce worse identity decisions.
+[Sonarr](https://sonarr.tv/), [Radarr](https://radarr.video/), and related applications already understand media identity, library membership, file paths, quality, profiles, custom formats, and import workflows. Rebuilding that logic from folder scans would duplicate mature application behavior and produce worse identity decisions.
 
 Nodearr's catalog needs to know what a local user has and what trusted peers have, but Nodearr should not become the primary media library manager.
 
@@ -49,7 +49,7 @@ Rejected. It would duplicate Arr functionality and make Nodearr responsible for 
 
 ### Prowlarr as catalog source
 
-Rejected. Prowlarr manages indexers; it does not own the user's media library.
+Rejected. [Prowlarr](https://prowlarr.com/) manages indexers; it does not own the user's media library.
 
 ### Media server as catalog source
 
@@ -61,7 +61,7 @@ Rejected for core scope. Media servers consume the imported library but do not d
 - ~~Define Radarr import fields and sync behavior.~~ Done: S3.
 - ~~Define normalized catalog schema.~~ Done: S3.
 - ~~Define stale/deleted item handling.~~ Done: an item the app stops reporting is marked missing and removed after 7 days (S3).
-- ~~Define future source contracts for Lidarr, Readarr, Whisparr / Eros, and other Arr-like applications.~~ Done for Whisparr v2 and v3 (ADR 0015, amendments) and Lidarr (ADR 0020). Readarr was archived in June 2025 and is not supported.
+- ~~Define future source contracts for [Lidarr](https://lidarr.audio/), [Readarr](https://github.com/Readarr/Readarr), [Whisparr](https://whisparr.com/) / Eros, and other Arr-like applications.~~ Done for Whisparr v2 and v3 (ADR 0015, amendments) and Lidarr (ADR 0020). Readarr was archived in June 2025 and is not supported.
 
 ## Amendments
 
@@ -79,10 +79,10 @@ Rejected for core scope. Media servers consume the imported library but do not d
   | The first full read, two requests per series | 36 s |
   | A full read with nothing changed, as every 12 hours | 32 s |
   | One series again from the webhook, the largest (166 episodes) | 1.0 s |
-  | Catalog > Local, first page | 0.25 s |
-  | Catalog > Sharing, every title | 0.56 s |
+  | **Catalog > Local**, first page | 0.25 s |
+  | **Catalog > Sharing**, every title | 0.56 s |
 
-  Most of a read is Sonarr answering 4,000 requests one after another: its own `/series` took 1.5 s, and the largest series' episodes and files 0.02 s and 0.13 s. Nodearr's working set rose from 159 MB to about 600 MB at its peak, during the reads and the Sharing page, and settled at 382 MB once .NET gave memory back, about two minutes later, with the whole catalog in place. Sonarr peaked at 240 MB. Nodearr's database came to 53 MB.
+  Most of a read is Sonarr answering 4,000 requests one after another: its own `/series` took 1.5 s, and the largest series' episodes and files 0.02 s and 0.13 s. Nodearr's working set rose from 159 MB to about 600 MB at its peak, during the reads and the Sharing page, and settled at 382 MB once [.NET](https://dotnet.microsoft.com/) gave memory back, about two minutes later, with the whole catalog in place. Sonarr peaked at 240 MB. Nodearr's database came to 53 MB.
 
   This is a library larger than most. Nothing needed changing. A Sonarr on slower disks, or across a network, makes each request slower, and so the read longer, but it runs in the background and the webhook keeps the catalog current in between.
 

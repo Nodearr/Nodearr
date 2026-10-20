@@ -19,9 +19,9 @@
   <a href="CONTRIBUTING.md">Contributing</a>
 </p>
 
-Nodearr lets a few friends who trust each other get media from one another's libraries, through the Arr apps they already run. It sits beside Sonarr, Radarr, Lidarr and Whisparr as one more indexer and download client. When your Sonarr wants an episode a friend has, it finds it in Nodearr, grabs it, and imports it like any other download. The file comes straight from your friend's machine to yours, and is checked against its hash before your Arr app sees it.
+Nodearr lets a few friends who trust each other get media from one another's libraries, through the Arr apps they already run. It sits beside [Sonarr](https://sonarr.tv/), [Radarr](https://radarr.video/), [Lidarr](https://lidarr.audio/) and [Whisparr](https://whisparr.com/) as one more indexer and download client. When your Sonarr wants an episode a friend has, it finds it in Nodearr, grabs it, and imports it like any other download. The file comes straight from your friend's machine to yours, and is checked against its hash before your Arr app sees it.
 
-Nobody else is involved. There is no account, no server of ours that sees your library, and no relay that carries your files. Each of you runs Nodearr on your own machine, decides what the others may see, and can end a friendship at any time.
+Each person runs Nodearr on their own machine, chooses what to share and can revoke trust at any time. You do not need a Nodearr account, and the project receives no copy of your library. Public relays help nodes connect, but downloaded media travels directly between friends.
 
 > [!NOTE]
 > **Nodearr is in pre-release.** Everything it set out to do for V1 works, and has been run between machines on different home networks with no port forwarded. It has not yet been lived with for weeks. See [what is still open](docs/plans/v1-implementation-plan.md#what-is-still-open).
@@ -30,25 +30,25 @@ Nobody else is involved. There is no account, no server of ours that sees your l
 
 - **Nothing new to learn in your Arr apps.** Nodearr adds itself to each one as an indexer and a download client. Their searches, grabs, quality profiles, upgrades and imports work as they always have.
 - **Friends by invite.** One friend creates an invite code, the other pastes it in, and the two nodes trust each other. Revoke a friend at any time.
-- **Choose what each friend sees.** A new friend is offered everything except Hidden from the apps marked **Share With New Friends**: all but Whisparr by default. Change the apps for one friend, or share only lists of whole series, seasons, episodes, movies, artists or albums.
+- **Choose what each friend sees.** A new friend is offered everything except **Hidden** from the apps marked **Share With New Friends**: all but Whisparr by default. Change the apps for one friend, or share only lists of whole series, seasons, episodes, movies, artists or albums.
 - **Browse what your friends have,** with posters from their own Arr apps, and see at a glance what they have that you are missing, or have in a better quality.
 - **Send a friend something.** Pick a title and a friend. Their Nodearr offers to add it to their Arr app, filled in the way the rest of their library is, and ask the app to search. Someone who is not a friend yet is sent an invite with it.
 - **Straight between you, and checked.** Connections are encrypted, and files go directly between the two machines, through most home routers without forwarding a port. Every file is checked against its hash before it is handed over.
-- **Runs where your Arr apps run:** a Windows installer that starts in the tray or as a service, Linux and macOS packages, and a Docker image for amd64 and arm64.
+- **Runs where your Arr apps run:** a Windows installer that starts in the tray or as a service, Linux and macOS packages, and a [Docker](https://docs.docker.com/) image for amd64 and arm64.
 - **The familiar Arr interface,** because most of Nodearr is built from Sonarr.
 
 ## What it works with
 
 | App | What Nodearr does with it |
 | --- | --- |
-| **Sonarr** | Reads its series, episodes and files. Shares whole series, seasons or single episodes. Finds episodes for it by TVDB, TMDb or IMDb ID, by scene numbering, and by air date for daily shows. |
-| **Radarr** | Reads its movies and files. Finds movies for it by TMDb or IMDb ID. |
-| **Lidarr** | Reads its artists, albums and tracks. Shares whole artists or single albums, offers an album only when it is complete, and moves an album as a folder of tracks. |
-| **Whisparr v3** (Eros) | Reads its films and scenes. Finds films by ID, and scenes by studio, release date, title and code, as Whisparr searches for them. |
-| **Whisparr v2** | The same, with each site's scenes. A v2 and a v3 find each other's scenes. |
-| **Prowlarr** | Adds Nodearr to Prowlarr as an indexer, so you can search it there with your others. Prowlarr holds no library, so nothing is read from it. |
+| Sonarr | Reads its series, episodes and files. Shares whole series, seasons or single episodes. Finds episodes for it by TVDB, TMDb or IMDb ID, by scene numbering, and by air date for daily shows. |
+| Radarr | Reads its movies and files. Finds movies for it by TMDb or IMDb ID. |
+| Lidarr | Reads its artists, albums and tracks. Shares whole artists or single albums, offers an album only when it is complete, and moves an album as a folder of tracks. |
+| Whisparr v3 (Eros) | Reads its films and scenes. Finds films by ID, and scenes by studio, release date, title and code, as Whisparr searches for them. |
+| Whisparr v2 | Reads each site's scenes and finds shared scenes by studio, release date, title or code. Friends using v2 and v3 can find each other's scenes. |
+| [Prowlarr](https://prowlarr.com/) | Adds Nodearr to Prowlarr as an indexer, so you can search it there with your others. Prowlarr holds no library, so nothing is read from it. |
 
-Adult content needs a search in the XXX categories and albums a search in Audio. Nodearr registers Whisparr and Lidarr with those categories; Sonarr's and Radarr's normal searches leave them out. The categories, not the app's identity, control this. Readarr is not supported: it was archived in June 2025.
+Adult content needs a search in the XXX categories and albums a search in Audio. Nodearr registers Whisparr and Lidarr with those categories; Sonarr's and Radarr's normal searches leave them out. The categories, not the app's identity, control this. [Readarr](https://github.com/Readarr/Readarr) is not supported: it was archived in June 2025.
 
 ## Getting started
 
@@ -65,7 +65,7 @@ The [user guide](docs/user-guide/README.md) has the rest: [installing](docs/user
 
 1. You add your Arr apps to Nodearr. Nodearr adds itself to each one as an indexer and a download client, and reads its library.
 2. You create an invite and send it to a friend. When they paste it into their Nodearr, the two nodes trust each other.
-3. Each friend is offered everything except Hidden from the apps you share with them, or only the lists you give them. Or you send one friend one thing, and their Nodearr offers to add it to their app and search for it.
+3. Each friend is offered everything except **Hidden** from the apps you share with them, or only the lists you give them. Or you send one friend one thing, and their Nodearr offers to add it to their app and search for it.
 4. Each node fetches what its friends share, and shows what they have that you are missing, or have better.
 5. When an Arr app searches, Nodearr answers from what your friends share. When it grabs a result, Nodearr fetches the file directly from the friend who has it, checks it, and hands it to the Arr app to import.
 
@@ -96,7 +96,7 @@ For people working on it:
 
 ## Contributing
 
-Contributions are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) has what you need to build Nodearr (.NET 10, Node.js 20 with Yarn 4, and Rust for the transport sidecar), run its tests, and what a change includes. A change of design starts as a decision record, so read the ones for the part you want to change first.
+Contributions are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) has what you need to build Nodearr ([.NET](https://dotnet.microsoft.com/) 10, Node.js 20 with Yarn 4, and [Rust](https://www.rust-lang.org/) for the transport sidecar), run its tests, and what a change includes. A change of design starts as a decision record, so read the ones for the part you want to change first.
 
 ## Licence and acknowledgements
 
@@ -108,4 +108,4 @@ It stands on the work of others:
 - **[iroh](https://www.iroh.computer)**, by [n0](https://n0.computer), which does the networking between nodes, and the relays n0 runs.
 - The other open-source software a release carries, each under its own licence, listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
-Nodearr is not affiliated with or endorsed by the Sonarr, Radarr, Lidarr, Whisparr, Prowlarr or Servarr projects.
+Nodearr is not affiliated with or endorsed by the Sonarr, Radarr, Lidarr, Whisparr, Prowlarr or [Servarr](https://wiki.servarr.com/) projects.

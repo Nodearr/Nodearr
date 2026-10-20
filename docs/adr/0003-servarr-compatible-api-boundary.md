@@ -17,13 +17,13 @@ Nodearr's first search compatibility boundary will be a Torznab/Newznab-compatib
 The boundary should provide:
 
 - Capability reporting.
-- Search endpoints compatible with Sonarr and Radarr V1 needs.
+- Search endpoints compatible with [Sonarr](https://sonarr.tv/) and [Radarr](https://radarr.video/) V1 needs.
 - API-key authentication using `X-Api-Key` and `apikey`.
 - Categories and media identifiers where available.
 - Release candidate results with stable GUIDs, titles, sizes, quality-like fields, source metadata, peer availability hints, publish dates where meaningful, and grab links.
 - Grab/download links that create local Nodearr transfer jobs instead of returning arbitrary peer internals.
 
-Prowlarr may consume this API as an indexer manager, but Prowlarr is downstream of Nodearr and is not a catalog source.
+[Prowlarr](https://prowlarr.com/) may consume this API as an indexer manager, but Prowlarr is downstream of Nodearr and is not a catalog source.
 
 Nodearr will maintain a separate native API for its own UI and domain operations.
 
@@ -61,7 +61,7 @@ Deferred. Nodearr should first be searchable and grabbable as an indexer, not re
 
 - ~~Define exact Torznab/Newznab parameters and response formats required by Sonarr and Radarr.~~ Done: ADR 0010 and ADR 0015. Only Newznab is served.
 - ~~Define category mapping for TV and movies.~~ Done: ADR 0015.
-- ~~Define future category expansion for Lidarr, Readarr, Whisparr / Eros, and other Arr-like applications.~~ Done for Whisparr (ADR 0015, amendments) and Lidarr (ADR 0020). Readarr was archived in June 2025 and is not supported.
+- ~~Define future category expansion for [Lidarr](https://lidarr.audio/), [Readarr](https://github.com/Readarr/Readarr), [Whisparr](https://whisparr.com/) / Eros, and other Arr-like applications.~~ Done for Whisparr (ADR 0015, amendments) and Lidarr (ADR 0020). Readarr was archived in June 2025 and is not supported.
 - ~~Define release candidate GUID format.~~ Done: ADR 0015.
 - ~~Define grab endpoint behavior and error responses.~~ Done: ADR 0010 and ADR 0015.
 - ~~Build compatibility tests against local Sonarr/Radarr/Prowlarr expectations.~~ Done: the S1 spike and the acceptance scripts in `acceptance/`.

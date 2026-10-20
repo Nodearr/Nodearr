@@ -2,11 +2,11 @@
 
 ## Status
 
-Accepted. Two slices, both built on 2026-10-16: sending, and the Get it card that adds what was sent to the friend's Arr app.
+Accepted. Two slices, both built on 2026-10-16: sending, and the **Get it** card that adds what was sent to the friend's Arr app.
 
 ## Context
 
-Sharing so far works one way round. The owner of a library decides what each friend is offered, and the friend's Arr apps find it when they search. That suits a library shared for good. It does not suit the most common way two people start: "I have that series, let me send it to you." The sender wants to hand over one thing. The receiver may not have it in Sonarr at all, so Sonarr would never search for it, and may not even be a friend yet.
+Sharing so far works one way round. The owner of a library decides what each friend is offered, and the friend's Arr apps find it when they search. That suits a library shared for good. It does not suit the most common way two people start: "I have that series, let me send it to you." The sender wants to hand over one thing. The receiver may not have it in [Sonarr](https://sonarr.tv/) at all, so Sonarr would never search for it, and may not even be a friend yet.
 
 The owner's direction:
 
@@ -18,29 +18,29 @@ The owner's direction:
 
 ### Sending is sharing, plus a note
 
-What is sent is shared with the friend on a list of their own, named "Sent to" and their name, made the first time they are sent something and kept from then on. The list is an ordinary share list: the Sharing page shows it, the owner can change or delete it, and the Hidden list still wins over it. Sharing it is what lets the friend's node fetch the files. Nothing about transfers or the sharing rule changes.
+What is sent is shared with the friend on a list of their own, named "Sent to" and their name, made the first time they are sent something and kept from then on. The list is an ordinary share list: the Sharing page shows it, the owner can change or delete it, and the **Hidden** list still wins over it. Sharing it is what lets the friend's node fetch the files. Nothing about transfers or the sharing rule changes.
 
-Then the friend's node is told, with a new control message, `sent`. It carries an ID for the send, the title as the sender's library names it, which part of it ("Seasons 1 and 2", "S01E04", an album's title, or none for the whole title), whether the whole title was sent, and the IDs the sender's offer gives the files it covers. It carries nothing the friend's catalog does not already hold, apart from what Get it needs (below): the IDs the Arr apps know the title by (TVDB, TMDb, IMDb, MusicBrainz, and for adult content StashDB, ThePornDB and Whisparr's own), its year, the series type the sender's Sonarr gives it, whether it is adult content, and the parts sent by the numbers every node shares: TVDB's season and episode numbers, and MusicBrainz release groups for albums.
+Then the friend's node is told, with a new control message, `sent`. It carries an ID for the send, the title as the sender's library names it, which part of it ("Seasons 1 and 2", "S01E04", an album's title, or none for the whole title), whether the whole title was sent, and the IDs the sender's offer gives the files it covers. It carries nothing the friend's catalog does not already hold, apart from what **Get it** needs (below): the IDs the Arr apps know the title by (TVDB, TMDb, IMDb, [MusicBrainz](https://musicbrainz.org/), and for adult content StashDB, ThePornDB and [Whisparr](https://whisparr.com/)'s own), its year, the series type the sender's Sonarr gives it, whether it is adult content, and the parts sent by the numbers every node shares: TVDB's season and episode numbers, and MusicBrainz release groups for albums.
 
 - One title at a time: one series, movie, Whisparr item or artist, whole or in part, at the levels the Arr apps monitor (ADR 0014, amendments; ADR 0020, amendments).
-- A send is refused when nothing of it can be offered: no file of it yet, or it is on the Hidden list.
+- A send is refused when nothing of it can be offered: no file of it yet, or it is on the **Hidden** list.
 - The receiving node takes the note only from a trusted node, keeps it, and fetches the sender's catalog again at once, so what was sent is there without waiting for the next Catalog Sync. The same send told twice is kept once. Text that would not do is dropped, IDs that are not offer IDs are dropped, and more than 200 notes waiting from one friend are not kept.
 - A node that cannot be told yet, because it is offline, still finishing a pairing, or an older Nodearr that refuses the message, is told at the next connection check that reaches it, every 15 minutes. After 30 days it stops being tried. What was sent is shared with it either way, and shows in its catalog.
 - Forgetting a send leaves what it shared on the list. Deleting the friend deletes their list and their sends, as it deletes everything else about them.
 
 ### Sending to someone new
 
-A send to someone who is not a friend yet makes an invite of its own (ADR 0013), labelled "For" and the title. It was made to share nothing else. Since sharing everything except Hidden became the default (ADR 0014, amendment of 2026-10-16), it does that, as any invite does, unless the sender unticks it, and then it shares only what was sent. The send waits for the invite to be used.
+A send to someone who is not a friend yet makes an invite of its own (ADR 0013), labelled "For" and the title. It was made to share nothing else. Since sharing everything except **Hidden** became the default (ADR 0014, amendment of 2026-10-16), it does that, as any invite does, unless the sender unticks it, and then it shares only what was sent. The send waits for the invite to be used.
 
 When it is used, the inviting node attaches the send to the new friend and shares it before it answers the pairing, so the first catalog the new friend asks for already holds what was sent. The note follows a few seconds later, once the other side has finished pairing, as the first connection check does (`PeerConnectionUpkeep.PairingSettle`). Forgetting a send whose invite was not used deletes the invite.
 
 ### The receiving side: the Get it card
 
-Home shows each note, "Alice sent you Pingu - Season 1", above everything else, whether or not setup is finished: someone who joined through a send may not have connected an app yet. The card links to the friend's catalog, can be put away, and offers **Get it**. Nothing is added to an Arr app until the person presses it.
+**Home** shows each note, "Alice sent you Pingu - Season 1", above everything else, whether or not setup is finished: someone who joined through a send may not have connected an app yet. The card links to the friend's catalog, can be put away, and offers **Get it**. Nothing is added to an Arr app until the person presses it.
 
-Get it does what the person would do in the Arr app, then lets the app do the rest:
+**Get it** does what the person would do in the Arr app, then lets the app do the rest:
 
-1. **The app.** A series goes to Sonarr, a movie to Radarr, an artist or album to Lidarr, and a film or a scene to Whisparr v3, never to Radarr. With several of one kind, such as a 4K Sonarr, the card asks which. Whisparr v2 cannot be added to yet (follow-up work below); the card says so, and Whisparr finds the title from the friend when it searches.
+1. **The app.** A series goes to Sonarr, a movie to [Radarr](https://radarr.video/), an artist or album to [Lidarr](https://lidarr.audio/), and a film or a scene to Whisparr v3, never to Radarr. With several of one kind, such as a 4K Sonarr, the card asks which. Whisparr v2 cannot be added to yet (follow-up work below); the card says so, and Whisparr finds the title from the friend when it searches.
 2. **Adding, if the app does not have it.** It is looked up by its ID in the app, as the app's own Add New does (Whisparr v3: `stash:`, then `tpdb:`, `tmdb:` and `imdb:`, the prefixes its search takes, which return a scene or a film as a movie), with the choices the app asks for filled in the way most of the library already is:
    - the root folder: the only one, or the one most of the app's titles are in;
    - the quality profile: the one most of the app's titles use;
@@ -57,20 +57,20 @@ It runs in the background as a command. The card shows it working, then what was
 
 - Unit tests: `SendServiceFixture` (the friend's own list, what each part is called, refusals, the note and its retries, invites, forgetting, deleting a friend), `ReceivedServiceFixture` (keeping, checking and capping what arrives) and `PeerServiceFixture` (the `sent` message, and the invite named when it is used).
 - Live on 2026-10-16, two Lidarr 3.1 instances and two fresh nodes on one machine:
-  - Node A sent the album Spiderland to someone new. The send waited on an invite labelled "For Slint" that shared nothing else. Node B used it, and within seconds A's send said Told, A had a "Sent to Node B" list holding the album, B's Home said "Node A sent you Slint - Spiderland", and B's peer catalog held that album and nothing else, as missing from B's Lidarr.
+  - Node A sent the album Spiderland to someone new. The send waited on an invite labelled "For Slint" that shared nothing else. Node B used it, and within seconds A's send said Told, A had a "Sent to Node B" list holding the album, B's **Home** said "Node A sent you Slint - Spiderland", and B's peer catalog held that album and nothing else, as missing from B's Lidarr.
   - An album A had no files of was refused: "There is no file of that in your library to send yet".
   - The whole artist, sent to B as a friend, was not told for a moment, then Told, and the list held the whole artist in place of the album.
-  - The same from the Sharing page, narrowed to one album by unticking the other, and put away from B's Home.
+  - The same from the Sharing page, narrowed to one album by unticking the other, and put away from B's **Home**.
 
-- Live on 2026-10-16, Get it, with two Sonarr 4.0 and two Lidarr 3.1 instances and two fresh nodes. Node A had Pingu's first three episodes and Spiderland. B's Sonarr had no Pingu and B's Lidarr no Slint. A sent Pingu Season 1 to someone new, Spiderland to B once they were friends, and S01E03 alone. B pressed Get it on each card with the choices it offered:
+- Live on 2026-10-16, **Get it**, with two Sonarr 4.0 and two Lidarr 3.1 instances and two fresh nodes. Node A had Pingu's first three episodes and Spiderland. B's Sonarr had no Pingu and B's Lidarr no Slint. A sent Pingu Season 1 to someone new, Spiderland to B once they were friends, and S01E03 alone. B pressed **Get it** on each card with the choices it offered:
   - Season 1: "Added to Sonarr, monitoring Season 1, and searching for 26 episodes". Season 1 was monitored, all 26 episodes of it, and no other season. Sonarr grabbed E01 to E03 through Nodearr, and they were fetched from A and imported.
   - Spiderland: "Added to Lidarr, monitoring Spiderland, and searching". Spiderland was monitored, Tweez not, and the artist was. All six tracks arrived and were imported.
   - S01E03: "Already in Sonarr, monitoring 1 episode, and searching for 1 episode".
-  - With Pingu deleted from B's Sonarr, a send of S01E02 alone added Pingu with that one episode monitored and fetched it, pressed from the card on Home.
-  - Radarr and Whisparr v3, two of each, the same way: A sent Night of the Living Dead to someone new and a scene, found in Whisparr by its StashDB ID, to B once they were friends. B pressed Get it on each card: "Added to Radarr, monitored, and searching" and "Added to Whisparr, monitored, and searching". Both apps grabbed through Nodearr, and both files were fetched from A and imported. Radarr first turned the film down as a sample, because the test's file ran two minutes; with an eleven-minute file it imported it.
+  - With Pingu deleted from B's Sonarr, a send of S01E02 alone added Pingu with that one episode monitored and fetched it, pressed from the card on **Home**.
+  - Radarr and Whisparr v3, two of each, the same way: A sent Night of the Living Dead to someone new and a scene, found in Whisparr by its StashDB ID, to B once they were friends. B pressed **Get it** on each card: "Added to Radarr, monitored, and searching" and "Added to Whisparr, monitored, and searching". Both apps grabbed through Nodearr, and both files were fetched from A and imported. Radarr first turned the film down as a sample, because the test's file ran two minutes; with an eleven-minute file it imported it.
   - The runs found three faults, fixed before the last: Season Search turning single episodes down (above), Lidarr answering a bulk change with a list where Nodearr expected one object, and the indexer showing one result for identical bytes offered as different episodes. The test had made its three episodes from one file, and the indexer kept one of them, so the other two were never found. Copies are now one result only when they are offered as the same thing.
 
-- 2026-10-16, by hand in the pages (docs/guides/ui-test.md): Get it on a whole series searched for every missing episode the series has, 156 for Pingu, each a search of every indexer the receiving Sonarr has, where the friend had three. It now searches for the episodes, or for a whole artist the albums, the friend offers, and the app's own monitoring looks for the rest as it always does.
+- 2026-10-16, by hand in the pages (docs/guides/ui-test.md): **Get it** on a whole series searched for every missing episode the series has, 156 for Pingu, each a search of every indexer the receiving Sonarr has, where the friend had three. It now searches for the episodes, or for a whole artist the albums, the friend offers, and the app's own monitoring looks for the rest as it always does.
 
 ## Consequences
 
@@ -78,8 +78,8 @@ It runs in the background as a command. The card shows it working, then what was
 
 - "Let me send it to you" is one form: pick the title and the friend, or copy one invite code.
 - Nothing new can be fetched that sharing would not allow: a send is a share, and every file request is still checked against the sharing rule (ADR 0016).
-- A send to someone new costs them two steps: using the invite makes them a friend and brings what was sent, and Get it puts it in their app.
-- Get it uses the app's own add, monitor and search, so what is added looks as if the person had added it there, and what the app does next is what it always does.
+- A send to someone new costs them two steps: using the invite makes them a friend and brings what was sent, and **Get it** puts it in their app.
+- **Get it** uses the app's own add, monitor and search, so what is added looks as if the person had added it there, and what the app does next is what it always does.
 
 ### Negative / trade-offs
 
@@ -89,9 +89,9 @@ It runs in the background as a command. The card shows it working, then what was
 
 ## Follow-up work
 
-- ~~The Get it card.~~ Done, see above.
-- ~~Get it for Whisparr v3.~~ Done: films and scenes, by StashDB, ThePornDB, TMDb or IMDb ID.
-- Get it for Whisparr v2. Built on Sonarr, it adds a site and then monitors a scene in it, and a friend's catalog does not name the site by its ID in v2's metadata. A scene that came from a v2 is known only by v2's own number, which Whisparr v3 cannot look up; the card says so.
+- ~~The **Get it** card.~~ Done, see above.
+- ~~**Get it** for Whisparr v3.~~ Done: films and scenes, by StashDB, ThePornDB, TMDb or IMDb ID.
+- **Get it** for Whisparr v2. Built on Sonarr, it adds a site and then monitors a scene in it, and a friend's catalog does not name the site by its ID in v2's metadata. A scene that came from a v2 is known only by v2's own number, which Whisparr v3 cannot look up; the card says so.
 
 ## Amendments
 

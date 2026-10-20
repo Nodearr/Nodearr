@@ -5,7 +5,7 @@
 
 .DESCRIPTION
     Publishes the application self-contained for the runtime, so the machine it runs on needs no
-    .NET. Puts it in a folder named Nodearr with the web UI, the transport sidecar, the licence,
+    separate .NET installation. Puts it in a folder named Nodearr with the web UI, the transport sidecar, the licence,
     Nodearr's notices, the third-party notices (Build-Notices.ps1) and the .NET runtime's own
     licence and notices, and archives that folder: Nodearr.<version>.<runtime>.tar.gz, or .zip for
     Windows.
