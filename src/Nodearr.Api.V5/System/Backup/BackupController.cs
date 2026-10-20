@@ -18,7 +18,9 @@ public class BackupController : Controller
     private readonly IAppFolderInfo _appFolderInfo;
     private readonly IDiskProvider _diskProvider;
 
-    private static readonly List<string> ValidExtensions = new() { ".zip", ".db", ".xml" };
+    // A backup, or a database file on its own. Anything else would be put where the database is
+    // restored from (BackupService.Restore).
+    private static readonly List<string> ValidExtensions = new() { ".zip", ".db" };
 
     public BackupController(IBackupService backupService,
                             IAppFolderInfo appFolderInfo,

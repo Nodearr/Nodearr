@@ -5,6 +5,7 @@ using NUnit.Framework;
 using NzbDrone.Common;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.EnvironmentInfo;
+using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Backup;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Datastore;
@@ -76,6 +77,28 @@ namespace NzbDrone.Core.Test.Backup
             // Never straight over the key a running transport is using.
             Mocker.GetMock<IDiskProvider>()
                 .Verify(d => d.MoveFile(It.IsAny<string>(), NodeKeyFile.GetPath(_appData), It.IsAny<bool>()), Times.Never());
+        }
+
+        [TestCase("nodearr_backup_restore.db")]
+        [TestCase("nodearr_backup_restore.DB")]
+        public void a_database_file_on_its_own_should_be_restored_as_the_database(string name)
+        {
+            var file = Path.Combine(_temp, name);
+
+            Subject.Restore(file);
+
+            Mocker.GetMock<IDiskProvider>().Verify(d => d.MoveFile(file, Mocker.Resolve<IAppFolderInfo>().GetDatabaseRestore(), true), Times.Once());
+        }
+
+        // Anything else used to be put where the database is restored from, which would leave the
+        // next start without a database.
+        [TestCase("nodearr_backup_restore.xml")]
+        [TestCase("nodearr_backup_restore.txt")]
+        public void anything_else_should_be_refused_and_nothing_moved(string name)
+        {
+            Assert.Throws<RestoreBackupFailedException>(() => Subject.Restore(Path.Combine(_temp, name)));
+
+            Mocker.GetMock<IDiskProvider>().Verify(d => d.MoveFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()), Times.Never());
         }
     }
 }

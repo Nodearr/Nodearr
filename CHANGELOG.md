@@ -2,7 +2,19 @@
 
 What changed in each release, newest first. Each item links to the decision record that explains it, and the [V1 plan](docs/plans/v1-implementation-plan.md) has the whole story, slice by slice.
 
-## Unreleased
+## 0.2.2 (pre-release)
+
+### Security
+
+- **Restoring a crafted backup could write files outside the restore folder**, anywhere the account Nodearr runs as can write. A restore needs a signed-in user or the API key; nothing a friend's node sends can cause one. An entry that would land outside the folder is now refused ([GHSA-gfvh-m4vj-ggh3](https://github.com/Nodearr/Nodearr/security/advisories/GHSA-gfvh-m4vj-ggh3)).
+
+### Fixed
+
+- A restore accepted a `.xml` file and put it where the database is restored from, which would leave the next start without a database. A restore now takes a `.zip` backup, or a database file ending in `.db`.
+
+### Changed
+
+- `yarn typecheck` checks the web UI's TypeScript on its own, as `yarn build` does, and CI runs it.
 
 ### Documentation
 
