@@ -75,7 +75,7 @@ To send a file to a friend, Nodearr reads it from the path the app reports. If N
 | --- | --- | --- |
 | The app's host, as in its Application Server address | The path the app reports, such as `/tv/` | Where Nodearr finds it, such as `D:\Media\TV\` |
 
-Catalog > Local shows whether each file can be read, and System > Status warns when files cannot be. A friend is offered such files, and then refused them, until it is fixed.
+Catalog > Local shows whether Nodearr can open each file, and if not, whether the file is not there or Nodearr is not allowed to open it. System > Status warns when files are not there or Nodearr may not open them: see [Troubleshooting](troubleshooting.md#friends-are-refused-your-files). A friend is offered such files, and then refused them, until it is fixed.
 
 ## Each app
 

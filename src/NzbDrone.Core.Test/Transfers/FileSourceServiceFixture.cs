@@ -37,7 +37,7 @@ namespace NzbDrone.Core.Test.Transfers
         {
             GivenPeer(PeerState.Trusted);
             GivenOffered(true);
-            GivenLocated(new LocatedFile { LocalPath = "/library/tv/Pingu/e1.mkv", Readable = true });
+            GivenLocated(new LocatedFile { LocalPath = "/library/tv/Pingu/e1.mkv", Exists = true });
 
             Subject.Resolve("bob", File).Should().Match<FileGrant>(g => g.Path == "/library/tv/Pingu/e1.mkv" && g.Refusal == null);
         }
@@ -47,7 +47,7 @@ namespace NzbDrone.Core.Test.Transfers
         {
             GivenPeer(PeerState.Trusted);
             GivenOffered(true);
-            GivenLocated(new LocatedFile { LocalPath = "/library/tv/Pingu/e1.mkv", Readable = true });
+            GivenLocated(new LocatedFile { LocalPath = "/library/tv/Pingu/e1.mkv", Exists = true });
             Mocker.GetMock<IFileHasher>().Setup(h => h.Known("/library/tv/Pingu/e1.mkv")).Returns(new HashedFile { Size = 100, ModifiedNs = 5, Blake3 = "abc" });
 
             Subject.Resolve("bob", File).Hash.Should().Match<HashedFile>(h => h.Blake3 == "abc" && h.Size == 100 && h.ModifiedNs == 5);
@@ -70,7 +70,7 @@ namespace NzbDrone.Core.Test.Transfers
         {
             GivenPeer(state);
             GivenOffered(true);
-            GivenLocated(new LocatedFile { LocalPath = "/library/e1.mkv", Readable = true });
+            GivenLocated(new LocatedFile { LocalPath = "/library/e1.mkv", Exists = true });
 
             Subject.Resolve("bob", File).Should().Match<FileGrant>(g => g.Path == null && g.Refusal == reason);
             ExceptionVerification.IgnoreWarns();
@@ -93,7 +93,7 @@ namespace NzbDrone.Core.Test.Transfers
         {
             GivenPeer(PeerState.Trusted);
             GivenOffered(true);
-            GivenLocated(new LocatedFile { LocalPath = "/tv/Pingu/e1.mkv", Readable = false });
+            GivenLocated(new LocatedFile { LocalPath = "/tv/Pingu/e1.mkv", Exists = false });
 
             Subject.Resolve("bob", File).Should().Match<FileGrant>(g => g.Path == null && g.Refusal == FileSourceService.NotFound);
             ExceptionVerification.IgnoreWarns();

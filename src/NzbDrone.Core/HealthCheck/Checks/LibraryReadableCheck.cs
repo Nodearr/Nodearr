@@ -9,8 +9,8 @@ using NzbDrone.Core.ThingiProvider.Events;
 
 namespace NzbDrone.Core.HealthCheck.Checks
 {
-    // A file the catalog lists and Nodearr cannot read is a file another node will be offered
-    // and then refused. The owner would never see that. The other person would.
+    // A file the catalog lists and Nodearr cannot open is a file another node will be offered and
+    // then refused. The owner would never see that. The other person would.
     [CheckOn(typeof(CatalogRefreshedEvent))]
     [CheckOn(typeof(ModelEvent<RemotePathMapping>))]
     [CheckOn(typeof(ProviderDeletedEvent<IApplication>))]
@@ -47,28 +47,53 @@ namespace NzbDrone.Core.HealthCheck.Checks
                     .Where(f => f.MissingSince == null)
                     .ToList();
 
-                var sample = Sample(files);
-                var unreadable = sample.Where(f => !_locator.Locate(application.Id, f.Path).Readable).ToList();
+                var sample = Sample(files).Select(f => _locator.Locate(application.Id, f.Path)).ToList();
 
-                if (unreadable.Count == 0)
+                if (sample.Count == 0)
                 {
                     continue;
                 }
 
-                return new HealthCheck(GetType(),
-                    HealthCheckResult.Warning,
-                    HealthCheckReason.LibraryNotReadable,
-                    _localizationService.GetLocalizedString("LibraryReadableCheckMessage",
-                        new Dictionary<string, object>
-                        {
-                            { "applicationName", application.Name },
-                            { "unreadable", unreadable.Count },
-                            { "checked", sample.Count },
-                            { "path", _locator.Locate(application.Id, unreadable[0].Path).LocalPath }
-                        }));
+                var states = sample.ToLookup(_locator.Open);
+                var missing = states[CatalogFileAccess.Missing].ToList();
+                var unreadable = states[CatalogFileAccess.NotAllowed].ToList();
+
+                // Nothing found at all is a library that is not where Nodearr looks.
+                if (missing.Count == sample.Count)
+                {
+                    return Warning(application, HealthCheckReason.LibraryNotFound, "LibraryNotFoundCheckMessage", missing, sample.Count);
+                }
+
+                // Files there that Nodearr may not open are down to the user it runs as.
+                if (unreadable.Count > 0)
+                {
+                    return Warning(application, HealthCheckReason.LibraryNotReadable, "LibraryReadableCheckMessage", unreadable, sample.Count);
+                }
+
+                // A few missing among many that are there were moved, renamed or deleted after the
+                // Arr app last looked.
+                if (missing.Count > 0)
+                {
+                    return Warning(application, HealthCheckReason.LibraryFilesMissing, "LibraryFilesMissingCheckMessage", missing, sample.Count);
+                }
             }
 
             return new HealthCheck(GetType());
+        }
+
+        private HealthCheck Warning(ApplicationDefinition application, HealthCheckReason reason, string message, List<LocatedFile> files, int checkedCount)
+        {
+            return new HealthCheck(GetType(),
+                HealthCheckResult.Warning,
+                reason,
+                _localizationService.GetLocalizedString(message,
+                    new Dictionary<string, object>
+                    {
+                        { "applicationName", application.Name },
+                        { "count", files.Count },
+                        { "checked", checkedCount },
+                        { "path", files[0].LocalPath }
+                    }));
         }
 
         // Spread evenly through the list, so that one bad folder among many is still likely found.

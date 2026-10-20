@@ -19,7 +19,9 @@ namespace NzbDrone.Core.HealthCheck
         // fragment they give, which leads to the top of the page.
         private static readonly Dictionary<HealthCheckReason, string> GuideSections = new()
         {
+            [HealthCheckReason.LibraryNotFound] = "#friends-are-refused-your-files",
             [HealthCheckReason.LibraryNotReadable] = "#friends-are-refused-your-files",
+            [HealthCheckReason.LibraryFilesMissing] = "#friends-are-refused-your-files",
             [HealthCheckReason.DownloadFolderNotWritable] = "#the-arr-app-does-not-import-what-arrived",
             [HealthCheckReason.DownloadFolderNotShared] = "#the-arr-app-does-not-import-what-arrived",
             [HealthCheckReason.PeerRelayOnly] = "#relay-only",
@@ -103,6 +105,8 @@ namespace NzbDrone.Core.HealthCheck
         IndexerSearchNoInteractive,
         IndexerStatusAllUnavailable,
         IndexerStatusUnavailable,
+        LibraryFilesMissing,
+        LibraryNotFound,
         LibraryNotReadable,
         MinimumApiKeyLength,
         MountSeries,

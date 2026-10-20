@@ -36,9 +36,11 @@ If System > Status says Nodearr *cannot write to its download folder*, the folde
 
 ## Friends are refused your files
 
-System > Status says Nodearr cannot read files it checked from an app, or a friend's transfers from you fail with `NotFound`.
+System > Status warns about files Nodearr checked from an app, or a friend's transfers from you fail with `NotFound`. Nodearr reads files from the paths the Arr app reports, and opens a sample of them to check. The warning says which of three things it found:
 
-Nodearr reads files from the paths the Arr app reports. Mount the library into Nodearr at the same paths, read-only, or add a path mapping under Settings > Apps. Catalog > Local shows which files can be read. On Windows, a Nodearr service may run as an account that cannot read the library or a network share: see [Installing](installing.md#windows).
+- **Nodearr finds none of the files.** The library is not where Nodearr looks. Mount it into Nodearr at the same paths, read-only, or add a path mapping under Settings > Apps. Catalog > Local shows the path Nodearr looks at for each file.
+- **Nodearr is not allowed to open files.** The files are there, and the user Nodearr runs as may not read them or search their folders. In Docker, check `PUID` and `PGID` against the library's owner and permissions. On Windows, a Nodearr service may run as an account that cannot read the library or a network share: see [Installing](installing.md#windows).
+- **The app lists files that are not on disk.** Most of the library is there, and some files were moved, renamed or deleted after the app last looked, such as by a tool that transcodes files to a new name. Rescan the library in the app, then press **Refresh Catalog** on Catalog > Local. If the files are in a folder not mounted into Nodearr, mount it too.
 
 ## A friend sees nothing of yours
 

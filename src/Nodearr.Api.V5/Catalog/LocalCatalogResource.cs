@@ -65,8 +65,10 @@ public class LocalCatalogFileResource
     public string? Path { get; set; }
     public string? RelativePath { get; set; }
 
-    // The same file as Nodearr reaches it, after path mappings, and whether it is there.
+    // The same file as Nodearr reaches it, after path mappings, and whether Nodearr can open it.
+    // Readable is true only when Access is.
     public string? LocalPath { get; set; }
+    public CatalogFileAccess Access { get; set; }
     public bool Readable { get; set; }
 
     public long Size { get; set; }

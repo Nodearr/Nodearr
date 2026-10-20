@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using FluentAssertions;
 using Moq;
@@ -45,6 +46,8 @@ namespace NzbDrone.Core.Test.Catalog
 
         private static readonly string[] Names = { "e-1-501", "e-1-502", "e-1-503", "m-2-701", "t-3-801", "e-1-999", "m-1-501", "t-3-701", "a-3-70", "x-1-501", "e-1", "", null };
 
+        private static readonly LocatedFile File = new() { LocalPath = Root + Path("tv/Pingu/e1.mkv"), IsPathHere = true, Exists = true };
+
         [Test]
         public void many_at_once_should_find_each_file_the_way_one_at_a_time_does()
         {
@@ -66,13 +69,13 @@ namespace NzbDrone.Core.Test.Catalog
         }
 
         [Test]
-        public void a_file_should_be_found_where_it_is_here_and_said_whether_it_can_be_read()
+        public void a_file_should_be_found_where_it_is_here_and_said_whether_it_is_there()
         {
             var many = Subject.Locate(Names);
 
             many.Keys.Should().BeEquivalentTo("e-1-501", "e-1-502", "m-2-701", "t-3-801");
-            many["e-1-501"].Should().Match<LocatedFile>(l => l.LocalPath == Root + Path("tv/Pingu/e1.mkv") && l.Readable);
-            many["e-1-502"].Readable.Should().BeFalse();
+            many["e-1-501"].Should().Match<LocatedFile>(l => l.LocalPath == Root + Path("tv/Pingu/e1.mkv") && l.Exists);
+            many["e-1-502"].Exists.Should().BeFalse();
             many["m-2-701"].LocalPath.Should().Be(Root + Path("movies/Night/movie.mkv"));
             many["t-3-801"].LocalPath.Should().Be(Root + Path("music/Low/01.flac"));
         }
@@ -85,6 +88,83 @@ namespace NzbDrone.Core.Test.Catalog
             Subject.Locate(names);
 
             Mocker.GetMock<IApplicationFactory>().Verify(f => f.All(), Times.Once());
+        }
+
+        private void GivenOpening(Exception thrown)
+        {
+            Mocker.GetMock<IDiskProvider>().Setup(d => d.OpenReadStream(File.LocalPath)).Throws(thrown);
+        }
+
+        private void GivenFolderListing(params string[] names)
+        {
+            Mocker.GetMock<IDiskProvider>()
+                  .Setup(d => d.GetFileInfos(It.IsAny<string>()))
+                  .Returns(names.Select(n => new FileInfo(Root + Path("tv/Pingu/" + n))).ToList());
+        }
+
+        private void GivenFolderListing(Exception thrown)
+        {
+            Mocker.GetMock<IDiskProvider>().Setup(d => d.GetFileInfos(It.IsAny<string>())).Throws(thrown);
+        }
+
+        [Test]
+        public void a_file_that_opens_should_be_readable()
+        {
+            Subject.Open(File).Should().Be(CatalogFileAccess.Readable);
+        }
+
+        // As with a file a transcoder replaced under a new name, in a folder that is still there.
+        [Test]
+        public void a_file_absent_from_a_folder_that_is_there_should_be_missing()
+        {
+            GivenOpening(new FileNotFoundException());
+            GivenFolderListing("e1.mp4", "poster.jpg");
+
+            Subject.Open(File).Should().Be(CatalogFileAccess.Missing);
+        }
+
+        [Test]
+        public void a_file_in_a_folder_that_is_not_there_should_be_missing()
+        {
+            GivenOpening(new FileNotFoundException());
+            GivenFolderListing(new DirectoryNotFoundException());
+
+            Subject.Open(File).Should().Be(CatalogFileAccess.Missing);
+        }
+
+        [Test]
+        public void a_file_nodearr_may_not_open_should_be_not_allowed()
+        {
+            GivenOpening(new UnauthorizedAccessException());
+
+            Subject.Open(File).Should().Be(CatalogFileAccess.NotAllowed);
+        }
+
+        // Without leave to search a folder, a file in it looks as if it were not there.
+        [Test]
+        public void a_file_in_a_folder_nodearr_may_not_search_should_be_not_allowed()
+        {
+            GivenOpening(new FileNotFoundException());
+            GivenFolderListing(new UnauthorizedAccessException());
+
+            Subject.Open(File).Should().Be(CatalogFileAccess.NotAllowed);
+        }
+
+        [Test]
+        public void a_file_listed_in_its_folder_that_cannot_be_seen_should_be_not_allowed()
+        {
+            GivenOpening(new FileNotFoundException());
+            GivenFolderListing("e1.mkv");
+
+            Subject.Open(File).Should().Be(CatalogFileAccess.NotAllowed);
+        }
+
+        [Test]
+        public void a_path_from_another_os_should_be_missing_without_touching_the_disk()
+        {
+            Subject.Open(new LocatedFile { LocalPath = @"D:\TV\e1.mkv", IsPathHere = false }).Should().Be(CatalogFileAccess.Missing);
+
+            Mocker.GetMock<IDiskProvider>().Verify(d => d.OpenReadStream(It.IsAny<string>()), Times.Never());
         }
 
         private static string Path(string relative) => OsInfo.IsWindows ? relative.Replace('/', '\\') : relative;
