@@ -100,6 +100,7 @@ services:
 #     With option B, use the service names: http://nodearr:6633, http://sonarr:8989 and
 #     http://radarr:7878.
 #   Nodes > Invites: create an invite and send it to the person you want to share with.
-#   Catalog > Sharing: choose what they are offered. Nothing is shared until you do.
+#   Catalog > Sharing: choose what they are offered. A new friend is offered everything except
+#     Hidden from each app marked Share With New Friends, all but Whisparr unless you change it.
 #
 # The user guide, docs/user-guide/, has the rest.

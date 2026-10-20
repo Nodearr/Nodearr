@@ -103,7 +103,7 @@ if ($failed) { throw "Tests failed: $($failed -join ', ')" }
 ```
 
 - CI runs the unit tests on Linux and Windows for every push and pull request, lints and builds the web UI, builds the sidecar, and builds the image ([release guide](docs/guides/releases.md#continuous-integration)).
-- The web UI is linted with `yarn lint` and `yarn stylelint`. `yarn build` runs its TypeScript checker; the standalone check is `npx tsc --noEmit -p .`.
+- The web UI is linted with `yarn lint` and `yarn stylelint`, and type-checked with `yarn typecheck`, as CI does. It checks our own code, not the type files that come with packages.
 - The sidecar is built with `cargo test --manifest-path transport/Cargo.toml`. It currently has no Rust unit tests; its behaviour is exercised by the acceptance scripts.
 - The acceptance scripts in [`acceptance/`](acceptance/README.md) run a built Nodearr from the outside against real Sonarr and Radarr containers: registration and catalog import, pairing and trust, sharing, searching, transfers, and the Docker image deployed twice. Run the one for the part you changed.
 - Something the scripts do not cover, such as a new Arr app, is checked by hand against the real app, and what was run and what it showed goes in the decision record. [Testing by hand](docs/guides/ui-test.md) sets up Nodearr, Sonarr and Radarr with a small library to try things in the pages.

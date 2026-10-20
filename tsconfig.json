@@ -1,3 +1,9 @@
 {
   "extends": "./frontend/tsconfig.json",
+  "compilerOptions": {
+    // Check our own code, not the type files that come with packages: several of those do not
+    // agree with each other or with this module resolution, and none is ours to fix. yarn build's
+    // checker already reports only our files; this makes "yarn typecheck" do the same.
+    "skipLibCheck": true
+  }
 }
