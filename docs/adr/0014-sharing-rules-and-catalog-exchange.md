@@ -8,7 +8,7 @@ Accepted. Built and checked in S5 on 2026-10-10.
 
 Trusting a node (ADR 0013) lets it talk to this node. It does not say what this node tells it. S5 had to decide what a trusted peer learns about the local catalog, how that is kept current, and how a node makes sense of what its peers offer.
 
-The owner had already decided the default: a newly trusted peer sees nothing until something is shared with it, and pairing offers a one-click "share everything except Hidden" (plan decision 7).
+The owner had already decided the default: a newly trusted peer sees nothing until something is shared with it, and pairing offers a one-click "share everything except **Hidden**" (plan decision 7).
 
 ## Decision
 
@@ -64,13 +64,13 @@ Each offered file is marked against the local catalog:
 
 Matching is by ID only, never by title: TVDB first for series and TMDb first for movies, then the other IDs. A file holding several episodes takes the least favourable mark of its episodes.
 
-"Better" here means a higher resolution, or the same resolution from a better source. It is a display aid. The real decision about what to grab is made by Sonarr and Radarr with their own quality profiles when they search Nodearr (plan decision 2).
+"Better" here means a higher resolution, or the same resolution from a better source. It is a display aid. The real decision about what to grab is made by [Sonarr](https://sonarr.tv/) and [Radarr](https://radarr.video/) with their own quality profiles when they search Nodearr (plan decision 2).
 
 The marks are worked out again whenever the local catalog is refreshed.
 
 ## Evidence
 
-- 47 unit tests for sharing and the peer catalog, and 6 more for peers. The sharing rules run against a real SQLite database: nothing by default, share everything, lists, Hidden overriding both, untrusted peers, missing files left out, and a serialized offer checked for paths.
+- 47 unit tests for sharing and the peer catalog, and 6 more for peers. The sharing rules run against a real SQLite database: nothing by default, share everything, lists, **Hidden** overriding both, untrusted peers, missing files left out, and a serialized offer checked for paths.
 - `acceptance/Run-S5Sharing.ps1` runs two real Nodearr instances against Sonarr and Radarr containers. 10 of 10 checks pass. It reads what node B actually holds after each change on node A, including that the raw response contains no path, and that revoking trust empties B's copy.
 - The Sharing and Peer Catalog pages were used by hand against the same two instances. Hiding a series on one page changed the other node's page within seconds. The acceptance script drives the API and not the pages, so it did not catch a fault in the Sharing page's save, which the hand check did.
 
@@ -79,7 +79,7 @@ The marks are worked out again whenever the local catalog is refreshed.
 ### Positive
 
 - The default is private. Sharing anything is an explicit act.
-- Hidden is absolute and simple to reason about: one list, no exceptions.
+- **Hidden** is absolute and simple to reason about: one list, no exceptions.
 - Unsharing takes effect on peers almost at once.
 - A peer learns nothing about how the sharing node's storage is laid out.
 
@@ -117,9 +117,9 @@ The marks are worked out again whenever the local catalog is refreshed.
 
   What was not changed: a changed offer is sent whole (since changed, see the amendment of 2026-10-14 on catalog changes). At this size that is 36 MB to each trusted node, each time anything shared changes, which with new episodes arriving daily is a few times a day. A page is far under the 4 MB message limit. Sending only what changed, or compressing pages, is the next step if that matters.
 
-- 2026-10-14: **sharing by season and by episode, the way Sonarr monitors.** The owner's direction was to work with the Arr ecosystem: in Sonarr a whole series, a season or single episodes can be monitored, so a share list, and the Hidden list, can now hold any of those.
+- 2026-10-14: **sharing by season and by episode, the way Sonarr monitors.** The owner's direction was to work with the Arr ecosystem: in Sonarr a whole series, a season or single episodes can be monitored, so a share list, and the **Hidden** list, can now hold any of those.
   - A whole series covers every episode, including those that arrive later. A season covers every episode in it, including later ones. An episode covers itself. A movie is always whole.
-  - An episode is shared with a peer when its series, its season or the episode itself is on a list given to the peer, or the peer has "share everything", and none of those is on the Hidden list. Seasons are TVDB's, as in Sonarr.
+  - An episode is shared with a peer when its series, its season or the episode itself is on a list given to the peer, or the peer has "share everything", and none of those is on the **Hidden** list. Seasons are TVDB's, as in Sonarr.
   - A file that holds several episodes is offered only when every one of them is shared, as Sonarr wants a release only when every episode in it is monitored ("One or more episodes is not monitored").
   - A season or episode under a whole series on the same list adds nothing, and is dropped when the list is saved. Existing lists hold whole series and movies, and mean what they meant.
   - The Sharing page opens a series into its seasons and episodes. The boxes work like Sonarr's monitor toggles: a partly ticked series or season shows as such, and unticking part of something ticked whole keeps the rest ticked one level down. Episodes with no file yet are listed too, and marked.
@@ -127,14 +127,14 @@ The marks are worked out again whenever the local catalog is refreshed.
 
 - 2026-10-14: **only what changed is sent, and each file carries its hash.** The owner's direction: a changed catalog is sent as its changes, not whole, and each file's hash goes in the offer so a node can tell when two peers hold the same bytes.
   - Each offered file has a fingerprint, a hash of everything the offer says about it. The catalog's version is a hash of every file's ID and fingerprint, nothing else. A node that kept each file's fingerprint can therefore work out the version of what it holds, and check it against what the peer says. The version used to be a hash of the whole offer. Changing how it is made costs every node one full fetch after upgrading.
-  - An offered file carries its BLAKE3 hash where the sending node has worked it out (ADR 0016, background hashing), and only if the hash was worked out for a file of the size the Arr app reports. The hash is part of the fingerprint, so a file hashed later reaches peers as a change.
+  - An offered file carries its [BLAKE3](https://github.com/BLAKE3-team/BLAKE3) hash where the sending node has worked it out (ADR 0016, background hashing), and only if the hash was worked out for a file of the size the Arr app reports. The hash is part of the fingerprint, so a file hashed later reaches peers as a change.
   - The sending node keeps a record for each peer, in its database: the version it last sent and each file's fingerprint. A node that says it can take changes, and holds the version that record names, is sent only the files added or changed since and the IDs of the files removed. The record survives restarts.
   - The whole catalog is sent instead when the asker is an older node, when the sending node has no record or the asker holds another version, and when more than half of a catalog of more than one page changed, since that is about as large.
   - The receiving node applies the change, then works out the version of what it holds and counts it. If either does not match what the peer said, it fetches the whole catalog at once. A whole catalog that does not add up is kept, since it is what the peer sent, and the next sync fetches the whole of it again.
   - Measured with `LargeLibraryFixture`, 66,000 files: one upgraded episode reached the other node as 809 bytes in about a second, where the whole catalog is 38 MB. Checked by a round-trip test of both ends through the bytes they send, and by `acceptance/Run-S5Sharing.ps1`, where hiding a series reaches the peer as two removals and nothing else.
 
 - 2026-10-14: **the Catalog Sync Interval, and only removals pushed.** Designed on the Arr apps' conventions, as the owner directed:
-  - A node asks each trusted node what changed in its catalog every Catalog Sync Interval, a setting on Settings > Node. It works as Sonarr's RSS Sync Interval does: in minutes, 15 by default, 10 to 120, or 0 to turn it off, with Sonarr's own words when a value is refused. It was every hour. Asking is cheap now that only changes are sent.
+  - A node asks each trusted node what changed in its catalog every Catalog Sync Interval, a setting on **Settings > Node**. It works as Sonarr's RSS Sync Interval does: in minutes, 15 by default, 10 to 120, or 0 to turn it off, with Sonarr's own words when a value is refused. It was every hour. Asking is cheap now that only changes are sent.
   - A node tells a peer at once only when something the peer holds is no longer offered to it: unshared, hidden, or gone from the Arr app. It works this out by comparing what it would offer the peer now with its record of what it last sent. Something newly shared waits for the peer's next Catalog Sync, as a new release waits for Sonarr's next RSS Sync, or for a sync started by hand. It used to tell every peer of every change.
   - The whole library is read from each Arr app every 12 hours, as often as Sonarr refreshes its series. It was every 6 hours. The webhook from the Arr apps (planned) will bring single changes in between.
   - Checked by unit tests of the schedule, the setting and the notifier, and by `acceptance/Run-S5Sharing.ps1`: a newly shared file is not pushed, and arrives when the peer syncs. The scripts that wait for newly shared files now ask the peer to sync, as a user would.
@@ -143,26 +143,26 @@ The marks are worked out again whenever the local catalog is refreshed.
   - Profiles are read with their order of qualities, lowest first as Sonarr and Radarr list them, and the cutoff as a rank. Checked against a real Radarr 6.4.4: its default HD-1080p profile came back with the WEB 1080p group at one rank, the cutoff at Bluray-1080p, and upgrades off, so nothing is an upgrade under it, as Radarr would have it.
   - Until a profile is next read after updating, the old rule stands in: a higher resolution, or the same resolution from a better source.
 
-- 2026-10-16: **one Hidden list.** The Hidden list is made the first time the lists are asked for, and two requests at once, such as a friend's catalog request and the Sharing page, could each make one. A node was found with two. Everything on either was still kept from everyone, but the second was easy to miss. It is now made under a lock, and migration 250 moves whatever was on a second Hidden list to the first, deletes the rest, and adds a unique index so the database holds at most one.
+- 2026-10-16: **one Hidden list.** The **Hidden** list is made the first time the lists are asked for, and two requests at once, such as a friend's catalog request and the Sharing page, could each make one. A node was found with two. Everything on either was still kept from everyone, but the second was easy to miss. It is now made under a lock, and migration 250 moves whatever was on a second **Hidden** list to the first, deletes the rest, and adds a unique index so the database holds at most one.
 
 - 2026-10-16: **sharing everything is the default.** The owner's direction: most friends will want to share their libraries, so it is opt out, not opt in (plan decision 7, changed). The rule above is unchanged; only the switch's starting position is.
-  - An invite shares everything except Hidden with whoever uses it, unless its tick box is unticked. It was unticked.
+  - An invite shares everything except **Hidden** with whoever uses it, unless its tick box is unticked. It was unticked.
   - The node that uses an invite now chooses too, with the same tick box when it pastes the code, ticked. It used to share nothing with the inviter until set. Using another invite between two nodes that already trust each other keeps what was chosen before, on both sides. The inviting side used to take the new invite's box, which with the box ticked by default would have started sharing everything with a friend kept to lists.
-  - A send to someone new (ADR 0021) shares everything except Hidden too, unless the sender unticks it, and then only what was sent.
+  - A send to someone new (ADR 0021) shares everything except **Hidden** too, unless the sender unticks it, and then only what was sent.
   - Friends paired before keep what they have. Nothing is changed for them without the owner.
   - Checked by unit tests and `acceptance/Run-S5Sharing.ps1`, which now unticks the box to check that a friend paired that way is offered nothing.
 
-- 2026-10-16 (ADR 0021): **sending.** A list can be made for one friend, to hold what is sent to them ("Sent to" and their name). It is an ordinary list in every other way, and the rule is unchanged: the Hidden list still wins over it.
+- 2026-10-16 (ADR 0021): **sending.** A list can be made for one friend, to hold what is sent to them ("Sent to" and their name). It is an ordinary list in every other way, and the rule is unchanged: the **Hidden** list still wins over it.
 
-- 2026-10-17: **everything, by app.** The owner's direction: share everything was all or nothing, where an owner may well share everything but Whisparr. Rule 3 now reads: a peer marked "share everything" is offered the rest, apart from the Arr apps left out for it.
+- 2026-10-17: **everything, by app.** The owner's direction: share everything was all or nothing, where an owner may well share everything but [Whisparr](https://whisparr.com/). Rule 3 now reads: a peer marked "share everything" is offered the rest, apart from the Arr apps left out for it.
   - Each peer holds the IDs of the apps left out for it (`Peers.ExcludedApplicationIds`, migration 254). The Sharing page has a tick per app under each friend.
-  - Lists are unchanged and still share from any app, so a few Whisparr items can go to a friend whose "everything" leaves Whisparr out. The Hidden list still wins over both.
+  - Lists are unchanged and still share from any app, so a few [Whisparr](https://whisparr.com/) items can go to a friend whose "everything" leaves Whisparr out. The **Hidden** list still wins over both.
   - Which apps a new friend gets is a setting on each app, **Share With New Friends**, on for every app but Whisparr v2 and v3. It applies when a friendship forms, on either side, and when an app is added: one with it off is left out for every friend there already. An app removed is taken off every friend's list, so a later app given its number is not left out by mistake.
   - Adult content is so opt in for "everything", as it already was for the Arr apps (ADR 0015): a Whisparr library reaches a friend only when it is ticked for them or put on a list. A per-kind switch (TV, movies, music, adult) was weighed and not taken: the apps are what the owner sees and configures, and two Radarrs, one for 4K, can be told apart.
   - Friends paired before keep what they had: every app. Nothing is taken from them without the owner.
   - Checked by unit tests (`SharingServiceFixture`, `ShareDefaultsFixture`, `PeerServiceFixture`).
 
-- 2026-10-19: **removal notices are best effort.** `SharingNotifier` tries to tell each affected friend to sync, and logs a failed delivery. The friend's cached offer can remain until its next successful sync. The file request is checked against the current sharing rule either way. With the Catalog Sync Interval at zero, an undelivered notice needs another sync trigger, such as Sync Peer Catalogs.
+- 2026-10-19: **removal notices are best effort.** `SharingNotifier` tries to tell each affected friend to sync, and logs a failed delivery. The friend's cached offer can remain until its next successful sync. The file request is checked against the current sharing rule either way. With the Catalog Sync Interval at zero, an undelivered notice needs another sync trigger, such as **Sync Peer Catalogs**.
 
 - 2026-10-19: **Have means no upgrade under the local profile.** Since the quality-profile amendment, Have does not always mean the local file has the higher quality. Upgrades may be off, the cutoff may be met, or the offered quality may be disallowed. These marks do not filter indexer search results.
 

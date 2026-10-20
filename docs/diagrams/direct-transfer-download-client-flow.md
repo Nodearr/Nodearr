@@ -106,4 +106,4 @@ Each node is moved to once, and has its own three attempts. A node that is direc
 
 ## An album
 
-An album from Lidarr arrives as its tracks, one transfer after another into the same folder under `incomplete`, each checked against its own hash and each with its own attempts. The folder moves into `complete` only once the last track is checked, so Lidarr never sees half an album. An album stays with the node it came from. See [ADR 0020](../adr/0020-lidarr-albums-shared-and-moved-as-folders-of-tracks.md).
+An album from [Lidarr](https://lidarr.audio/) arrives as its tracks, one transfer after another into the same folder under `incomplete`, each checked against its own hash and each with its own attempts. The folder moves into `complete` only once the last track is checked, so Lidarr never sees half an album. An album stays with the node it came from. See [ADR 0020](../adr/0020-lidarr-albums-shared-and-moved-as-folders-of-tracks.md).

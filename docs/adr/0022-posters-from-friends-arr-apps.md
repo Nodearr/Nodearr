@@ -8,7 +8,7 @@ Accepted. Part 1 built on 2026-10-16 (S57): a friend's catalog with posters. Par
 
 A friend's catalog was a list of file names. That is hard to browse: the owner's direction was to add enriched thumbnails "so that browsing is more intuitive", and to cache them.
 
-Every Arr app already holds each title's pictures. Sonarr, Radarr, Lidarr and Whisparr download them from TheTVDB, TMDb, fanart.tv, MusicBrainz and StashDB when a title is added, keep them on disk with smaller copies, and serve them through their own API. Two ways to show them on a friend's node:
+Every Arr app already holds each title's pictures. [Sonarr](https://sonarr.tv/), [Radarr](https://radarr.video/), [Lidarr](https://lidarr.audio/) and [Whisparr](https://whisparr.com/) download them from TheTVDB, TMDb, fanart.tv, [MusicBrainz](https://musicbrainz.org/) and StashDB when a title is added, keep them on disk with smaller copies, and serve them through their own API. Two ways to show them on a friend's node:
 
 - The friend's node fetches each picture from those services itself. That is a call out to services the owner never pointed Nodearr at, which ADR 0018 rules out, and it tells each service what is being browsed.
 - The node that offers a title passes on the picture its own Arr app already has, over the same connection the catalog comes by.
@@ -51,4 +51,4 @@ A poster comes from the friend that offers the title, and nothing else is contac
 
 ## Follow-up work
 
-- Posters on the other pages: the cards on Home, the Send form, the Sharing page and Catalog > Local.
+- Posters on the other pages: the cards on **Home**, the Send form, the Sharing page and **Catalog > Local**.

@@ -6,7 +6,7 @@ Accepted. Built and checked in S8 on 2026-10-10, on one machine, and run between
 
 ## Context
 
-Until S8 Nodearr ran from a build folder, with the transport sidecar built separately and pointed to by an environment variable. That is fine for development and no use to anyone else. Most people who run Sonarr and Radarr run them in Docker, with a shared downloads folder. Nodearr has to fit into that without asking them to learn anything new.
+Until S8 Nodearr ran from a build folder, with the transport sidecar built separately and pointed to by an environment variable. That is fine for development and no use to anyone else. Most people who run [Sonarr](https://sonarr.tv/) and [Radarr](https://radarr.video/) run them in [Docker](https://docs.docker.com/), with a shared downloads folder. Nodearr has to fit into that without asking them to learn anything new.
 
 ## Decision
 
@@ -15,8 +15,8 @@ Until S8 Nodearr ran from a build folder, with the transport sidecar built separ
 `Dockerfile` at the repository root builds one image in four stages:
 
 1. The web UI, with Node and Yarn.
-2. The transport sidecar, with Rust.
-3. The application, with the .NET SDK.
+2. The transport sidecar, with [Rust](https://www.rust-lang.org/).
+3. The application, with the [.NET](https://dotnet.microsoft.com/) SDK.
 4. What runs: the ASP.NET runtime image with the three results copied in, and nothing they were built with.
 
 The sidecar sits next to the application, where Nodearr already looks for it, so nothing has to be configured for the two to find each other.
@@ -77,7 +77,7 @@ A node's name, as other nodes see it, is set with `Nodearr__Transport__NodeName`
 ## Amendments
 
 - 2026-10-11 (ADR 0018): the inherited update check, error reporting and analytics were removed. A container now contacts only what it is pointed at.
-- 2026-10-11 (ADR 0019): the settings have a page, Settings > Node. What the image and the compose file give in the environment stays fixed, and the page shows it. A node's name is now set there, not in the compose file.
+- 2026-10-11 (ADR 0019): the settings have a page, **Settings > Node**. What the image and the compose file give in the environment stays fixed, and the page shows it. A node's name is now set there, not in the compose file.
 
 - 2026-10-11 (ADR 0019): the image also fixes the port and address the web page and the API are served at, 6633 on every address, so they cannot be changed in the UI into something the published ports no longer match. A restart asked for in the UI happens inside the running container.
 
@@ -85,4 +85,4 @@ A node's name, as other nodes see it, is set with `Nodearr__Transport__NodeName`
 
 - ~~The two-machine run.~~ Done: ADR 0011, "Runs between two machines".
 - ~~A published image, built for amd64 and arm64.~~ Done: `ghcr.io/nodearr/nodearr`, built by the release workflow ([releases](../guides/releases.md)).
-- ~~A settings page for the transport options.~~ Done: Settings > Node (ADR 0019).
+- ~~A settings page for the transport options.~~ Done: **Settings > Node** (ADR 0019).

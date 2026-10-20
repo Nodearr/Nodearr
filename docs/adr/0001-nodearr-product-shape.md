@@ -6,7 +6,7 @@ Accepted.
 
 ## Context
 
-The Servarr ecosystem centers on self-hosted applications with local web UIs, API-key protected machine APIs, indexer integrations, download-client integrations, queues, history, settings, logs, and health checks.
+The [Servarr](https://wiki.servarr.com/) ecosystem centers on self-hosted applications with local web UIs, API-key protected machine APIs, indexer integrations, download-client integrations, queues, history, settings, logs, and health checks.
 
 Nodearr is not another media library manager and is not a public indexer. It is a trusted private peer-to-peer media availability and transfer service intended to fit into existing Arr workflows.
 
@@ -14,7 +14,7 @@ The central product boundary is:
 
 **Arr apps define what the media is. Nodearr defines who has an acceptable candidate and how to retrieve it.**
 
-V1 must support Sonarr and Radarr as catalog sources. Additional Arr-like applications are future iterative scope.
+V1 must support [Sonarr](https://sonarr.tv/) and [Radarr](https://radarr.video/) as catalog sources. Additional Arr-like applications are future iterative scope.
 
 ## Decision
 
@@ -70,5 +70,5 @@ Rejected. An indexer-only interface can expose candidates but cannot own transfe
 - ~~Define native API resource boundaries.~~ Done: the v5 API, ADR 0003.
 - ~~Define compatibility behavior for Sonarr and Radarr.~~ Done: ADR 0010.
 - ~~Define transfer job states.~~ Done: ADR 0016.
-- ~~Define the first local/simple transfer provider before replacing it with real P2P transport.~~ Not needed: the S2 spike went straight to iroh (ADR 0011, ADR 0012).
+- ~~Define the first local/simple transfer provider before replacing it with real P2P transport.~~ Not needed: the S2 spike went straight to [iroh](https://www.iroh.computer/) (ADR 0011, ADR 0012).
 

@@ -14,9 +14,9 @@ These repositories were inspected for architecture and product research. Nodearr
 
 ## Executive summary
 
-Sonarr, Radarr, and Whisparr share a common Servarr lineage. They are self-hosted web applications with:
+[Sonarr](https://sonarr.tv/), [Radarr](https://radarr.video/), and [Whisparr](https://whisparr.com/) share a common [Servarr](https://wiki.servarr.com/) lineage. They are self-hosted web applications with:
 
-- A .NET backend using ASP.NET Core hosting, MVC controllers, SignalR, OpenAPI/Swagger, background command/event patterns, and a historical `NzbDrone.*` project namespace.
+- A [.NET](https://dotnet.microsoft.com/) backend using ASP.NET Core hosting, MVC controllers, SignalR, OpenAPI/Swagger, background command/event patterns, and a historical `NzbDrone.*` project namespace.
 - Product-specific API and HTTP projects layered over shared core/common/host projects.
 - A provider/plugin model for indexers, download clients, notifications, import lists, metadata providers, and related integrations.
 - A React/TypeScript frontend compiled separately and served by the backend as a single-page application.
@@ -307,11 +307,11 @@ Representative inspected paths:
 
 The frontend uses:
 
-- React.
-- TypeScript.
+- [React](https://react.dev/).
+- [TypeScript](https://www.typescriptlang.org/).
 - Webpack.
 - CSS Modules and generated CSS typings.
-- React Router.
+- [React](https://react.dev/) Router.
 - React Query in newer Sonarr code.
 - Redux and other historical state utilities.
 - SignalR client.
@@ -428,7 +428,7 @@ Nodearr implication: Nodearr should separate boot-critical settings from runtime
 
 ## 10. Docker and runtime artifacts
 
-The inspected repositories include runtime packaging artifacts, systemd units, platform-specific packaging, and Docker build/test support.
+The inspected repositories include runtime packaging artifacts, systemd units, platform-specific packaging, and [Docker](https://docs.docker.com/) build/test support.
 
 Representative inspected paths:
 

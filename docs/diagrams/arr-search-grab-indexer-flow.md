@@ -2,9 +2,9 @@
 
 Nodearr is a Newznab indexer and a SABnzbd-compatible download client to the Arr apps. A search returns peer candidates. A grab returns a small NZB that is only a ticket naming one candidate. The Arr app hands that ticket to Nodearr's download client surface, which is where the transfer job is created.
 
-The messages below were first recorded in the S1 spike against Sonarr 4.0.20, Radarr 6.4.4 and Prowlarr 2.6.5, with the API key removed, and are what the real indexer and download client answer today ([ADR 0010](../adr/0010-arr-contract-newznab-indexer-and-sabnzbd-download-client.md)). Results come from what trusted nodes share, matched by ID ([ADR 0015](../adr/0015-the-indexer-id-matching-release-titles-and-candidate-ids.md)). The transfer behind a grab is in [the transfer flow](direct-transfer-download-client-flow.md).
+The messages below were first recorded in the S1 spike against [Sonarr](https://sonarr.tv/) 4.0.20, [Radarr](https://radarr.video/) 6.4.4 and [Prowlarr](https://prowlarr.com/) 2.6.5, with the API key removed, and are what the real indexer and download client answer today ([ADR 0010](../adr/0010-arr-contract-newznab-indexer-and-sabnzbd-download-client.md)). Results come from what trusted nodes share, matched by ID ([ADR 0015](../adr/0015-the-indexer-id-matching-release-titles-and-candidate-ids.md)). The transfer behind a grab is in [the transfer flow](direct-transfer-download-client-flow.md).
 
-Each app is registered on its own categories: Sonarr on TV (5030, 5040, 5045, and 5070 for anime), Radarr on Movies (2030, 2040, 2045), Whisparr on XXX (6000 and its subcategories), and Lidarr on Audio (3000, 3010, 3040). Whisparr and Lidarr search by text, below.
+Each app is registered on its own categories: Sonarr on TV (5030, 5040, 5045, and 5070 for anime), Radarr on Movies (2030, 2040, 2045), [Whisparr](https://whisparr.com/) on XXX (6000 and its subcategories), and [Lidarr](https://lidarr.audio/) on Audio (3000, 3010, 3040). Whisparr and Lidarr search by text, below.
 
 ## Direct: the Arr app has Nodearr as its indexer
 

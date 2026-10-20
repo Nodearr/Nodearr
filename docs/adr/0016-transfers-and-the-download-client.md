@@ -8,7 +8,7 @@ The direct-only rule this builds on (ADR 0011) was accepted on 2026-10-13, after
 
 ## Context
 
-After S6 a Sonarr or Radarr could find what a trusted node shares and fetch a ticket for it. Nothing happened next: the download client was still the S1 stub. S7 had to make a grab end in an import: fetch the file from the other node, be sure it is the right file, hand it to the Arr app, and report honestly when any of that fails.
+After S6 a [Sonarr](https://sonarr.tv/) or [Radarr](https://radarr.video/) could find what a trusted node shares and fetch a ticket for it. Nothing happened next: the download client was still the S1 stub. S7 had to make a grab end in an import: fetch the file from the other node, be sure it is the right file, hand it to the Arr app, and report honestly when any of that fails.
 
 ## Decision
 
@@ -20,11 +20,11 @@ After S6 a Sonarr or Radarr could find what a trusted node shares and fetch a ti
 
 ### The transfer protocol
 
-A second protocol on the same Iroh endpoint, `nodearr/transfer/1`, beside the control protocol.
+A second protocol on the same [Iroh](https://www.iroh.computer/) endpoint, `nodearr/transfer/1`, beside the control protocol.
 
 1. The node that wants the file connects and sends the peer's ID for the file, how many bytes it already holds, and the hash those bytes came from.
 2. The sending sidecar asks its Nodearr. Nodearr answers with a path on disk, or refuses.
-3. The sidecar works out the file's size and BLAKE3 hash, then sends a header with both. The hash is fixed before any data moves. It is cached for as long as the file's size and modified time stay the same.
+3. The sidecar works out the file's size and [BLAKE3](https://github.com/BLAKE3-team/BLAKE3) hash, then sends a header with both. The hash is fixed before any data moves. It is cached for as long as the file's size and modified time stay the same.
 4. The file follows, from the start or from where the receiver left off.
 5. The receiver hashes as it writes and compares at the end.
 
@@ -105,7 +105,7 @@ The plan also listed `Cancelled`. There is no such failure: a cancelled transfer
 - Deleting from the queue stops the transfer and removes what had arrived. Deleting from history removes the record, and the files when asked.
 - `get_config` lists every category the registered Arr apps use.
 
-Nodearr reports paths as it sees them. When the Arr app sees the download folder somewhere else, the Arr app is told with a remote path mapping, as for any download client on another machine. With one shared `/downloads` mount in Docker none is needed.
+Nodearr reports paths as it sees them. When the Arr app sees the download folder somewhere else, the Arr app is told with a remote path mapping, as for any download client on another machine. With one shared `/downloads` mount in [Docker](https://docs.docker.com/) none is needed.
 
 ## Evidence
 
@@ -170,5 +170,5 @@ Nodearr reports paths as it sees them. When the Arr app sees the download folder
   - Checked by unit tests, and by `acceptance/Run-IdenticalCopies.ps1` with three real nodes: the node B was fetching from was stopped at 4.2 MB, and the transfer carried on from the other node at 4.5 MB, not from the start. Sonarr imported the right file and recorded no failure.
   - Fetching parts of one file from several nodes at once is not done. The owner left it for when identical copies turn out to be common.
 
-- 2026-10-19: **current limits clarified.** Three attempts means the first attempt and at most two retries, with 15 seconds between retries. Switching to another identical copy gives that node its own attempts; each track of an album has its own attempts and stays with the same node. A friend returning after all attempts have failed does not restart the transfer by itself. The owner or Arr app must retry. Upload Limit is now on Settings > Node ([ADR 0019](0019-node-settings-saved-in-the-ui-fixed-by-the-environment.md)).
+- 2026-10-19: **current limits clarified.** Three attempts means the first attempt and at most two retries, with 15 seconds between retries. Switching to another identical copy gives that node its own attempts; each track of an album has its own attempts and stays with the same node. A friend returning after all attempts have failed does not restart the transfer by itself. The owner or Arr app must retry. Upload Limit is now on **Settings > Node** ([ADR 0019](0019-node-settings-saved-in-the-ui-fixed-by-the-environment.md)).
 

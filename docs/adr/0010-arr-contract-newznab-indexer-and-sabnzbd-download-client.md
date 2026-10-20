@@ -6,9 +6,9 @@ Accepted. Proven by the S1 spike on 2026-10-10.
 
 ## Context
 
-ADR 0005 decided that Nodearr is both an indexer and a download client, but left the download-client surface open. The V1 plan chose to emulate SABnzbd, with the grab returning a small NZB that carries a Nodearr candidate ID, and made proving that choice a go/no-go gate.
+ADR 0005 decided that Nodearr is both an indexer and a download client, but left the download-client surface open. The V1 plan chose to emulate [SABnzbd](https://sabnzbd.org/), with the grab returning a small NZB that carries a Nodearr candidate ID, and made proving that choice a go/no-go gate.
 
-The spike had to show a real import, not just accepted API calls: search, grab, NZB accepted, queue, history Completed, and the file landing in the Arr library. It had to work directly and through Prowlarr, and a failed transfer had to end up blocklisted.
+The spike had to show a real import, not just accepted API calls: search, grab, NZB accepted, queue, history Completed, and the file landing in the Arr library. It had to work directly and through [Prowlarr](https://prowlarr.com/), and a failed transfer had to end up blocklisted.
 
 ## Decision
 
@@ -29,7 +29,7 @@ Qualities and custom formats stay with the Arr apps, which parse the release tit
 
 `spikes/arr-contract/Run-ArrContractSpike.ps1` starts a fresh Nodearr and fresh containers, configures everything through the Arr APIs, and checks the results. The stub lives in `src/Nodearr.Http/ArrContractSpike/`. A "transfer" in the stub is a throttled local file copy.
 
-Versions: Sonarr 4.0.20.3014, Radarr 6.4.4.10685, Prowlarr 2.6.5.5623 (linuxserver images pinned by digest in `spikes/arr-contract/docker-compose.yml`).
+Versions: [Sonarr](https://sonarr.tv/) 4.0.20.3014, [Radarr](https://radarr.video/) 6.4.4.10685, Prowlarr 2.6.5.5623 (linuxserver images pinned by digest in `spikes/arr-contract/docker-compose.yml`).
 
 All nine scenarios passed:
 
@@ -129,7 +129,7 @@ These came out of the spike and were not known beforehand.
 - 2026-10-10, S7 replaced the download-client half of the stub with the real one (ADR 0016). Nothing of the stub is left. Finding 9: failures have names and a sentence written for the Arr app's history. Finding 11: Nodearr reports paths as it sees them, and an Arr app that sees the download folder elsewhere is told with a remote path mapping.
 - 2026-10-10, finding 7 implemented in S3: adding an application in Nodearr creates the download client and the indexer in the Arr app and sets the indexer's `downloadClientId` to that client.
 - 2026-10-11: **deleting an application takes Nodearr back out of the Arr app.** Until now the indexer and the download client that Nodearr had added stayed behind, both pointing at a Nodearr that no longer answered for that app. Deleting an application now deletes them first: the indexer, then the download client it is pinned to. They are found the way they are kept in step, by kind and by the name "Nodearr". It is tried once and waited on for 15 seconds. If the Arr app cannot be reached the application is deleted all the same, a warning is logged, and the two entries are left for the owner to delete. The question before deleting says so. Where two applications are set up for the one Arr app, deleting one leaves the registration for the other.
-- 2026-10-14: **a webhook connection as well.** The owner's direction: Nodearr hears of new, upgraded and deleted files from Sonarr and Radarr through the Arr apps' own webhook, which Nodearr adds itself. Beside its indexer and download client, Nodearr now keeps a third entry in each Arr app it registers in: a Webhook connection named "Nodearr", as a user would add one under Settings > Connect.
+- 2026-10-14: **a webhook connection as well.** The owner's direction: Nodearr hears of new, upgraded and deleted files from Sonarr and Radarr through the Arr apps' own webhook, which Nodearr adds itself. Beside its indexer and download client, Nodearr now keeps a third entry in each Arr app it registers in: a Webhook connection named "Nodearr", as a user would add one under **Settings > Connect**.
   - It posts to `/api/v5/arr/webhook/{application}` on the Nodearr address the application was set up with, and carries Nodearr's API key in an `X-Api-Key` header, which both Sonarr 4 and Radarr 6 have.
   - Sonarr's events are On File Import, On File Upgrade, On Rename, On Series Add, On Series Delete, On Episode File Delete and On Episode File Delete For Upgrade. Radarr's are their movie equivalents. Every other event is named and turned off, Import Complete included, since it repeats what each file's import says.
   - It is kept in step, and taken out on deleting the application, the same way as the other two: by kind and by name. It goes out first.

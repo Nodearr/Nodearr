@@ -13,11 +13,11 @@ The transfer has to satisfy rules that are specific to Nodearr:
 - Authorize every request against peer trust and share lists, and re-check on each request (plan S7).
 - Hold file data back unless the selected path is direct (ADR 0011).
 - Serve files where they already are, in the Arr library, without importing them into another store.
-- Verify with a whole-file BLAKE3 hash that is fixed when the transfer starts (plan decision 3).
+- Verify with a whole-file [BLAKE3](https://github.com/BLAKE3-team/BLAKE3) hash that is fixed when the transfer starts (plan decision 3).
 
 ## Decision
 
-V1 uses a custom protocol on a plain Iroh bidirectional stream, under a Nodearr ALPN.
+V1 uses a custom protocol on a plain [Iroh](https://www.iroh.computer/) bidirectional stream, under a Nodearr ALPN.
 
 The spike's protocol is the starting point: the fetcher opens a stream and sends a request, the provider authorizes the remote endpoint ID and answers with a header carrying size and BLAKE3 hash, then sends the file in chunks that are each gated on the direct-path rule. The fetcher writes to a partial file, verifies the hash, renames the file into place and sends a one-byte verdict.
 
@@ -58,5 +58,5 @@ The door stays open. The root hash `iroh-blobs` uses for a blob is the plain BLA
 ## Follow-up work
 
 - ~~S7: define the real request (candidate ID and authorization context instead of the spike's single file), range requests for resume, and cancellation.~~ Done: ADR 0016.
-- ~~S7: decide where the sidecar boundary sits (plan decision 4): the spike binary already has the provide and fetch halves that the .NET host would supervise.~~ Done: ADR 0013, "The sidecar boundary".
+- ~~S7: decide where the sidecar boundary sits (plan decision 4): the spike binary already has the provide and fetch halves that the [.NET](https://dotnet.microsoft.com/) host would supervise.~~ Done: ADR 0013, "The sidecar boundary".
 - Revisit `iroh-blobs` when it declares a production-quality release on Iroh 1.x. Its production release is still 0.35, built on iroh 0.35, and the owner decided on 2026-10-16 not to take Nodearr back to a pre-1.0 iroh for it.

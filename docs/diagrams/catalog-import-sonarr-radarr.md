@@ -2,7 +2,7 @@
 
 Adding an Arr app to Nodearr does two things. Nodearr registers itself inside the app as a download client, a pinned indexer and a webhook, and it imports the app's library into the local catalog. The Arr apps stay the source of truth for media identity, library membership, paths, quality and profiles ([ADR 0006](../adr/0006-arr-apps-as-catalog-source-of-truth.md)).
 
-Built in S3 for Sonarr and Radarr and checked by `acceptance/Run-S3CatalogImport.ps1`. Whisparr and Lidarr are read the same way, through their own APIs, below.
+Built in S3 for [Sonarr](https://sonarr.tv/) and [Radarr](https://radarr.video/) and checked by `acceptance/Run-S3CatalogImport.ps1`. [Whisparr](https://whisparr.com/) and [Lidarr](https://lidarr.audio/) are read the same way, through their own APIs, below.
 
 ## Adding an application
 
@@ -29,7 +29,7 @@ sequenceDiagram
     Nodearr->>Nodearr: Queue a catalog refresh for this application
 ```
 
-A sync every 6 hours repeats the lookups and only writes when something differs. With Full Sync it puts back anything changed by hand.
+A sync every 6 hours repeats the lookups and only writes when something differs. With **Full Sync** it puts back anything changed by hand.
 
 ## Refreshing the catalog
 

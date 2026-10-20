@@ -40,4 +40,4 @@ sequenceDiagram
 
 - The relay sees two node IDs, their addresses, and when they talk. It cannot read what passes through it.
 - A sidecar also asks the router to open its port (UPnP, NAT-PMP or PCP) unless that is turned off, which makes a direct path likelier.
-- With no relay (Settings > Node), nodes can only use addresses they already know for each other, such as on the same network or a forwarded port.
+- With no relay (**Settings > Node**), nodes can only use addresses they already know for each other, such as on the same network or a forwarded port.

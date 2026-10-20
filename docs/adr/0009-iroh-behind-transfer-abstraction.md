@@ -8,7 +8,7 @@ Accepted for current design direction.
 
 Nodearr needs endpoint identity, encrypted connections, peer discovery, NAT traversal, and direct peer-to-peer transfer support. Implementing those primitives from scratch would be risky and outside Nodearr's main product value.
 
-Iroh is a strong candidate because it provides endpoint identity, encrypted QUIC connections, discovery, NAT traversal, direct connection support, and file/blob transfer primitives.
+[Iroh](https://www.iroh.computer/) is a strong candidate because it provides endpoint identity, encrypted QUIC connections, discovery, NAT traversal, direct connection support, and file/blob transfer primitives.
 
 Iroh can also support relay-oriented architectures, but Nodearr's official policy rejects official media-byte relay.
 

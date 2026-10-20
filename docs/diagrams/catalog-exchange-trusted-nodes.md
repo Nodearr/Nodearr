@@ -51,7 +51,7 @@ sequenceDiagram
     NodeB->>NodeB: Replace John's catalog. The series is gone.
 ```
 
-Only taking something back is announced. What is newly shared waits for each friend's next fetch: every Catalog Sync Interval, 15 minutes by default, or when they press Sync Peer Catalogs. A missed hint likewise only delays the update until then.
+Only taking something back is announced. What is newly shared waits for each friend's next fetch: every Catalog Sync Interval, 15 minutes by default, or when they press **Sync Peer Catalogs**. A missed hint likewise only delays the update until then.
 
 ## When trust ends
 

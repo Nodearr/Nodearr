@@ -44,6 +44,6 @@ sequenceDiagram
     Note over Side,PeerSide: The next attempt carries on from what arrived, once a direct path is back
 ```
 
-Nodes > Trusted Nodes shows such a friend as **Relay only** after a connection check, and System > Status names them, with what to try: the [troubleshooting guide](../user-guide/troubleshooting.md#relay-only) goes through it.
+**Nodes > Trusted Nodes** shows such a friend as **Relay only** after a connection check, and **System > Status** names them, with what to try: the [troubleshooting guide](../user-guide/troubleshooting.md#relay-only) goes through it.
 
 The reset is built; counting relay bytes when a direct path is lost part way is still open in [ADR 0011](../adr/0011-direct-only-media-over-iroh-with-relay-for-coordination.md#follow-up-work).

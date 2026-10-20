@@ -17,7 +17,7 @@ Anything that lets someone:
 - learn more about a node's library than its owner shares;
 - run code on a node, or crash it remotely.
 
-Problems in Sonarr, Radarr, Prowlarr, Whisparr, Lidarr or iroh belong with those projects. Problems in how Nodearr uses them belong here.
+Problems in [Sonarr](https://sonarr.tv/), [Radarr](https://radarr.video/), [Prowlarr](https://prowlarr.com/), [Whisparr](https://whisparr.com/), [Lidarr](https://lidarr.audio/) or [iroh](https://www.iroh.computer/) belong with those projects. Problems in how Nodearr uses them belong here.
 
 ## Supported versions
 

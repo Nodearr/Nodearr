@@ -71,7 +71,7 @@ Rejected for the core architecture. A torrent-like provider may exist later, but
 
 ## Follow-up work
 
-- ~~Define normalized media and profile match inputs from Sonarr and Radarr.~~ Done: the catalog (ADR 0006) and quality rankings read from each profile (ADR 0014, amendments).
-- ~~Choose the first whole-file hash algorithm.~~ Done: BLAKE3 (ADR 0012, ADR 0016).
+- ~~Define normalized media and profile match inputs from [Sonarr](https://sonarr.tv/) and [Radarr](https://radarr.video/).~~ Done: the catalog (ADR 0006) and quality rankings read from each profile (ADR 0014, amendments).
+- ~~Choose the first whole-file hash algorithm.~~ Done: [BLAKE3](https://github.com/BLAKE3-team/BLAKE3) (ADR 0012, ADR 0016).
 - ~~Define file identity schema and migration/versioning.~~ Done: a file's hash kept with its size and modified time, worked out in the background (ADR 0016, amendments).
 - ~~Define how release candidate GUIDs map to media matches and file identities.~~ Done: candidate IDs, ADR 0015.

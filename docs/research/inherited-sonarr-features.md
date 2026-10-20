@@ -4,7 +4,7 @@ Written 2026-10-10 for slice S0 of the [V1 implementation plan](../plans/v1-impl
 
 > This is the S0 inventory, with some later work marked Done. Its API counts, placeholders, missing login page, unused Windows helpers and test results describe that baseline, not the current application. Use the [overview](../overview-end-to-end-design.md) and [user guide](../user-guide/README.md) for current behaviour.
 
-Nodearr's backend and frontend were ported from Sonarr `v5-develop` (see [NOTICE.md](../../NOTICE.md)), so the repository still contains a complete TV library manager. This document lists what was inherited and what V1 should do with each part. The plan's rule is to remove inherited features only where they get in the way, so most of this list is "leave it alone".
+Nodearr's backend and frontend were ported from [Sonarr](https://sonarr.tv/) `v5-develop` (see [NOTICE.md](../../NOTICE.md)), so the repository still contains a complete TV library manager. This document lists what was inherited and what V1 should do with each part. The plan's rule is to remove inherited features only where they get in the way, so most of this list is "leave it alone".
 
 Each item has one of four dispositions:
 
@@ -25,7 +25,7 @@ These are the items that need attention. Everything else in this document can wa
 | Microsoft.OpenApi 2.4.1 (via Swashbuckle 10.1.7) | A high-severity advisory failed restore in the same way. | Done in S0: Swashbuckle bumped to 10.2.3, which depends on the patched Microsoft.OpenApi 2.7.5. |
 | Default port 8989 | It is Sonarr's default port, so Nodearr and Sonarr collided on one host. | Done in S3: the default is 6633, which spells NODE on a phone keypad. |
 | Renamed cloud endpoints | The rename turned Sonarr's service hosts into `services.nodearr.com`, `skyhook.nodearr.com`, `sentry.nodearr.com` and `download.nodearr.com`. None of them resolve today. On every start `ServerSideNotificationService` logs "Failed to retrieve notifications" and `SystemTimeCheck` logs "Unable to verify system time". Sentry crash reporting is still registered with Sonarr's DSN keys against the renamed host, and analytics defaults to enabled. The project owner holds `nodearr.com`, so nothing can answer on those names unless the project sets it up. | Done on 2026-10-11: every call home was taken out (ADR 0018). |
-| Always-failing health checks | A fresh install shows two errors and two warnings on System > Status: `IndexerRssCheck`, `IndexerSearchCheck`, `DownloadClientCheck` and `UpdateCheck`. They describe Sonarr's need for indexers and download clients, which Nodearr does not have. | Done in S3 for `IndexerRssCheck`, `IndexerSearchCheck` and `DownloadClientCheck`, which are removed, and on 2026-10-11 for `UpdateCheck` (ADR 0018). |
+| Always-failing health checks | A fresh install shows two errors and two warnings on **System > Status**: `IndexerRssCheck`, `IndexerSearchCheck`, `DownloadClientCheck` and `UpdateCheck`. They describe Sonarr's need for indexers and download clients, which Nodearr does not have. | Done in S3 for `IndexerRssCheck`, `IndexerSearchCheck` and `DownloadClientCheck`, which are removed, and on 2026-10-11 for `UpdateCheck` (ADR 0018). |
 | TV scheduled tasks | `RssSync` (15 min), `RefreshSeries` (12 h), `ImportListSync` (5 min), `UpdateSceneMapping` (3 h), `RefreshMonitoredDownloads` (1 min) and `ApplicationUpdateCheck` (6 h) are all scheduled. They do nothing useful with an empty library, and some call the dead cloud hosts. | Done in S3: all six are unscheduled. `ApplicationIndexerSync` runs every 6 hours instead, and `CatalogRefresh` every 12 (every 6 when this was written). |
 | Table names `Series`, `Episodes`, `EpisodeFiles` | The 223 inherited migrations create Sonarr's library tables. S3 needs its own normalized series, episode, episode-file and movie tables. | Done in S3: Nodearr's tables are `CatalogSeries`, `CatalogEpisodes`, `CatalogEpisodeFiles`, `CatalogMovies`, `CatalogMovieFiles` and `CatalogQualityProfiles`. Sonarr's tables are left in place, unused. |
 | Copyright string | `src/Directory.Build.props` stamps assemblies with `Copyright 2014-<year> nodearr.com`, which no longer credits Sonarr. | Done on 2026-10-15: it reads `Copyright 2014-<year> sonarr.tv, and Nodearr's contributors`. See [NOTICE.md](../../NOTICE.md). |
@@ -37,14 +37,14 @@ All of this is kept. It is the reason for reusing Sonarr.
 | Feature | Where | Disposition |
 | --- | --- | --- |
 | Generic host, Kestrel, startup arguments (`-data`, `-nobrowser`), single-instance check | `NzbDrone.Host`, `NzbDrone.Console`, `NzbDrone.Common` | Keep |
-| Windows tray app and service helpers | `NzbDrone` (`Nodearr.csproj`), `NzbDrone.Windows`, `ServiceHelpers` | Unused. Docker is the V1 target. |
+| Windows tray app and service helpers | `NzbDrone` (`Nodearr.csproj`), `NzbDrone.Windows`, `ServiceHelpers` | Unused. [Docker](https://docs.docker.com/) is the V1 target. |
 | DryIoc container with assembly scanning | `NzbDrone.Common/Composition` | Keep |
 | NLog logging, log files, log database, Sentry target | `NzbDrone.Common/Instrumentation` | Keep, except Sentry (in the way) |
 | `config.xml` settings, API key generation, URL base, SSL | `NzbDrone.Core/Configuration` | Keep |
-| SQLite and PostgreSQL through Dapper and FluentMigrator | `NzbDrone.Core/Datastore` | Keep. Nodearr migrations start at 231. |
+| SQLite and [PostgreSQL](https://www.postgresql.org/) through Dapper and FluentMigrator | `NzbDrone.Core/Datastore` | Keep. Nodearr migrations start at 231. |
 | Command queue, scheduler, event aggregator | `NzbDrone.Core/Messaging`, `Jobs` | Keep. S3 and S7 build on these. |
 | SignalR broadcasting | `NzbDrone.SignalR` | Keep. S7 uses it for live transfers. |
-| API-key, forms and external authentication, first-run "Authentication Required" prompt | `Nodearr.Http/Authentication`, `NzbDrone.Core/Authentication` | Keep |
+| API-key, forms and external authentication, first-run "**Authentication Required**" prompt | `Nodearr.Http/Authentication`, `NzbDrone.Core/Authentication` | Keep |
 | Provider framework (definitions, schema, test, status, back-off) | `NzbDrone.Core/ThingiProvider` | Keep. Arr Apps already use it. |
 | HTTP client, proxy support, rate limiting | `NzbDrone.Common/Http` | Keep |
 | Backup, housekeeping, disk space, file system browser, tags, custom filters, localization | `NzbDrone.Core` | Keep |
@@ -74,7 +74,7 @@ Nodearr's own Arr-facing endpoints (Newznab indexer, SABnzbd-compatible API) do 
 | --- | --- | --- |
 | Series, seasons, episodes, monitoring, series statistics | `NzbDrone.Core/Tv`, `SeriesStats` | Unused. Arr apps own media identity (ADR 0006). |
 | Series metadata from SkyHook, scene mappings | `MetadataSource`, `DataAugmentation` | Unused. Calls a renamed host (in the way). |
-| Episode files, disk scan, import, rename, recycle bin, extras, subtitles | `MediaFiles`, `Organizer`, `Extras` | Unused. Sonarr and Radarr do the importing. |
+| Episode files, disk scan, import, rename, recycle bin, extras, subtitles | `MediaFiles`, `Organizer`, `Extras` | Unused. Sonarr and [Radarr](https://radarr.video/) do the importing. |
 | Root folders | `RootFolders` | Unused |
 | Media covers | `MediaCover` | Unused. Resizing removed in S0. |
 | Metadata file writers (Kodi, Plex, Roksbox, WDTV) | `Extras/Metadata/Consumers` | Unused |
@@ -86,13 +86,13 @@ Nodearr's own Arr-facing endpoints (Newznab indexer, SABnzbd-compatible API) do 
 | Feature | Where | Disposition |
 | --- | --- | --- |
 | Indexer clients (Newznab, Torznab, BroadcastheNet, Fanzub, FileList, HDBits, IPTorrents, Nyaa, Torrentleech, TorrentRss) | `Indexers` | Unused. The Newznab parser and capabilities model are a useful reference for the response shapes S1 and S6 must produce. |
-| Download client clients (SABnzbd, NZBGet, NzbVortex, qBittorrent, Deluge, Transmission, rTorrent, uTorrent, Vuze, Aria2, Flood, Hadouken, Download Station, Freebox, RQBit, Tribler, Blackhole, Pneumatic) | `Download/Clients` | Unused. The SABnzbd proxy and its response models show exactly what Sonarr expects from the API S1 emulates. |
+| Download client clients ([SABnzbd](https://sabnzbd.org/), NZBGet, NzbVortex, qBittorrent, Deluge, Transmission, rTorrent, uTorrent, Vuze, Aria2, Flood, Hadouken, Download Station, Freebox, RQBit, Tribler, Blackhole, Pneumatic) | `Download/Clients` | Unused. The SABnzbd proxy and its response models show exactly what Sonarr expects from the API S1 emulates. |
 | RSS sync, search, decision engine, delay and release profiles, pending releases | `IndexerSearch`, `DecisionEngine`, `Profiles`, `Download/Pending` | Unused |
 | Queue, tracked downloads, completed and failed download handling, history, blocklist | `Queue`, `Download`, `History`, `Blocklisting` | Unused. Nodearr's transfer job model (S7) is separate. |
 | Remote path mappings | `RemotePathMappings` | Reshape in S3, which needs path mappings between Arr and Nodearr. |
 | Release title parser, qualities, languages, custom formats | `Parser`, `Qualities`, `Languages`, `CustomFormats` | Reshape in S6. Nodearr must emit release titles that Sonarr and Radarr parse correctly, and these are the rules they are parsed with. |
 | Notifications (25 connections, including Discord, Email, Plex, Slack, Telegram, Webhook, custom script) | `Notifications` | Unused in V1. Their events are TV events. |
-| Applications sync, ported from Prowlarr, Sonarr only | `Applications` | Reshape in S3: register one Nodearr indexer and one download client, add Radarr, and fetch catalogs. |
+| Applications sync, ported from [Prowlarr](https://prowlarr.com/), Sonarr only | `Applications` | Reshape in S3: register one Nodearr indexer and one download client, add Radarr, and fetch catalogs. |
 
 ## Scheduled tasks
 
@@ -144,7 +144,7 @@ The routes are already Nodearr's: Catalog (`/`, `/catalog/local`, `/catalog/peer
 | Area | Where | Disposition |
 | --- | --- | --- |
 | App shell, sidebar, header, page, table, form, modal and menu components, styles, icons | `App`, `Components`, `Styles`, `Helpers`, `Utilities`, `Content` | Keep |
-| Redux store, React Query hooks, SignalR listener | `Store`, `App`, `Helpers/Hooks` | Keep |
+| Redux store, [React](https://react.dev/) Query hooks, SignalR listener | `Store`, `App`, `Helpers/Hooks` | Keep |
 | System pages (Status, Tasks, Backup, Logs, Events, Updates) | `System` | Keep. Only Status is routed. |
 | First-run authentication modal, OAuth hook | `FirstRun`, `OAuth` | Keep. Sonarr's `login.html` page was not ported, so forms login has no page yet. |
 | Arr Apps settings (from Prowlarr) | `Settings/Applications` | Reshape in S3 |
@@ -159,7 +159,7 @@ About 540 inherited test files across `NzbDrone.*.Test` and `Nodearr.Http.Test`,
 
 ## Baseline verified in S0
 
-On Windows 11 with .NET SDK 10.0.303, Node 20.20.2 and Yarn 4.15.0:
+On Windows 11 with [.NET](https://dotnet.microsoft.com/) SDK 10.0.303, Node 20.20.2 and Yarn 4.15.0:
 
 - `yarn build` compiles successfully into `_output/UI`.
 - `dotnet build src/Nodearr.sln` succeeds with 0 warnings and 0 errors, after the two dependency fixes above.
