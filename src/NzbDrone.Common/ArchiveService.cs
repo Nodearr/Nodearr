@@ -88,6 +88,17 @@ namespace NzbDrone.Common
                     // Manipulate the output filename here as desired.
                     var fullZipToPath = Path.Combine(destination, entryFileName);
                     var directoryName = Path.GetDirectoryName(fullZipToPath);
+
+                    // An entry named "../something", or rooted elsewhere, would be written outside the
+                    // folder being extracted to: a crafted backup could replace any file Nodearr can
+                    // write. Refused, as Sonarr has since refused it. Tar archives are guarded by
+                    // SharpZipLib itself.
+                    var root = Path.GetFullPath(destination).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+                    if (!Path.GetFullPath(fullZipToPath).StartsWith(root, StringComparison.Ordinal))
+                    {
+                        throw new IOException($"Entry is outside the target dir: {entryFileName}");
+                    }
+
                     if (directoryName.Length > 0)
                     {
                         Directory.CreateDirectory(directoryName);

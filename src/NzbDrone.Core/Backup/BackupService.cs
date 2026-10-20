@@ -130,7 +130,7 @@ namespace NzbDrone.Core.Backup
 
         public void Restore(string backupFileName)
         {
-            if (backupFileName.EndsWith(".zip"))
+            if (backupFileName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
             {
                 var restoredFile = false;
                 var temporaryPath = Path.Combine(_appFolderInfo.TempFolder, "nodearr_backup_restore");
@@ -174,6 +174,13 @@ namespace NzbDrone.Core.Backup
                 _diskProvider.DeleteFolder(temporaryPath, true);
 
                 return;
+            }
+
+            // A database file on its own. Anything else, such as a config.xml, is refused rather than
+            // put where the database is restored from, which would leave the next start without one.
+            if (!backupFileName.EndsWith(".db", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new RestoreBackupFailedException(HttpStatusCode.BadRequest, "A backup to restore is a .zip, or a database file ending in .db");
             }
 
             _diskProvider.MoveFile(backupFileName, _appFolderInfo.GetDatabaseRestore(), true);

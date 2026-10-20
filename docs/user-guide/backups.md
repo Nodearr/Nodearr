@@ -21,7 +21,7 @@ System > Backup lists them, scheduled and manual, to download or delete.
 
 ## Restoring
 
-On System > Backup, either press **Restore** beside one in the list, or **Restore Backup** at the top to upload one from elsewhere. Nodearr restarts with the restored settings and database. Sign in with the username and password saved in that backup. The restored key takes effect when the transport next starts, never under a running one, so the node is the one your friends know from the moment it reconnects ([ADR 0013](../adr/0013-node-identity-pairing-and-trust.md)).
+On System > Backup, either press **Restore** beside one in the list, or **Restore Backup** at the top to upload one from elsewhere: a backup's `.zip`, or a database file ending in `.db` on its own. Restore only backups you made, or got from someone you trust: a backup holds settings that Nodearr acts on. Nodearr restarts with the restored settings and database. Sign in with the username and password saved in that backup. The restored key takes effect when the transport next starts, never under a running one, so the node is the one your friends know from the moment it reconnects ([ADR 0013](../adr/0013-node-identity-pairing-and-trust.md)).
 
 ## Moving a node to a new machine
 
