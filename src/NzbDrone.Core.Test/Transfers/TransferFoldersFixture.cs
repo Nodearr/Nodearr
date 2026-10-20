@@ -37,6 +37,31 @@ namespace NzbDrone.Core.Test.Transfers
         }
 
         [Test]
+        public void each_category_should_have_its_folder_before_any_transfer_arrives()
+        {
+            var folders = WithFolder(TempFolder);
+
+            folders.EnsureCategoryFolders(new[] { "tv", "movies", "whisparr" });
+
+            Directory.Exists(Path.Combine(TempFolder, "complete", "tv")).Should().BeTrue();
+            Directory.Exists(Path.Combine(TempFolder, "complete", "movies")).Should().BeTrue();
+            Directory.Exists(Path.Combine(TempFolder, "complete", "whisparr")).Should().BeTrue();
+
+            // Again, with them there: nothing changes and nothing fails.
+            folders.EnsureCategoryFolders(new[] { "tv" });
+            Directory.Exists(Path.Combine(TempFolder, "complete", "tv")).Should().BeTrue();
+        }
+
+        [Test]
+        public void a_transfer_should_end_up_in_the_folder_made_for_its_category()
+        {
+            var folders = WithFolder(TempFolder);
+
+            Path.GetDirectoryName(folders.CompleteFolder(Job(category: "music"))).Should().Be(folders.CategoryFolder("music"));
+            folders.CategoryFolder("").Should().Be(Path.Combine(TempFolder, "complete", "default"));
+        }
+
+        [Test]
         public void a_transfer_should_arrive_in_its_own_folder_and_end_up_under_its_category()
         {
             var folders = WithFolder(TempFolder);

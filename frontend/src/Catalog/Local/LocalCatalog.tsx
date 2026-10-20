@@ -349,7 +349,11 @@ function LocalCatalog() {
                           title={
                             file.readable
                               ? file.localPath
-                              : `${translate('NotReadable')}: ${file.localPath}`
+                              : `${translate(
+                                  file.access === 'notAllowed'
+                                    ? 'CatalogFileNotAllowed'
+                                    : 'CatalogFileMissing'
+                                )}: ${file.localPath}`
                           }
                         />
                       )}

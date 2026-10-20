@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using NzbDrone.Common.Http;
 using NzbDrone.Core.Datastore;
@@ -7,7 +8,28 @@ namespace NzbDrone.Core.HealthCheck
 {
     public class HealthCheck : ModelBase
     {
+        // Where to read about what a check found: the troubleshooting page of the user guide on
+        // nodearr.com. It was Servarr's wiki, which has no page for Nodearr.
+        private const string GuidePage = "https://nodearr.com/guide/troubleshooting/";
+
         private static readonly Regex CleanFragmentRegex = new Regex("[^a-z ]", RegexOptions.Compiled);
+
+        // The section of that page for each of Nodearr's own checks, by its heading in
+        // docs/user-guide/troubleshooting.md. Other checks, inherited from Sonarr, keep the
+        // fragment they give, which leads to the top of the page.
+        private static readonly Dictionary<HealthCheckReason, string> GuideSections = new()
+        {
+            [HealthCheckReason.LibraryNotFound] = "#friends-are-refused-your-files",
+            [HealthCheckReason.LibraryNotReadable] = "#friends-are-refused-your-files",
+            [HealthCheckReason.LibraryFilesMissing] = "#friends-are-refused-your-files",
+            [HealthCheckReason.DownloadFolderNotWritable] = "#the-arr-app-does-not-import-what-arrived",
+            [HealthCheckReason.DownloadFolderNotShared] = "#the-arr-app-does-not-import-what-arrived",
+            [HealthCheckReason.PeerRelayOnly] = "#relay-only",
+            [HealthCheckReason.PeerNetworkVaryingPort] = "#relay-only",
+            [HealthCheckReason.PeerNetworkNoUdp] = "#a-friend-cannot-be-reached",
+            [HealthCheckReason.PeerTransportNotRunning] = "#a-friend-cannot-be-reached",
+            [HealthCheckReason.PairAttempts] = "#pairing-keeps-being-turned-away",
+        };
 
         public Type Source { get; set; }
         public HealthCheckResult Type { get; set; }
@@ -31,7 +53,7 @@ namespace NzbDrone.Core.HealthCheck
             Type = type;
             Reason = reason;
             Message = message;
-            WikiUrl = MakeWikiUrl(wikiFragment ?? MakeWikiFragment(message));
+            WikiUrl = MakeWikiUrl(wikiFragment ?? GuideSections.GetValueOrDefault(reason) ?? MakeWikiFragment(message));
         }
 
         private static string MakeWikiFragment(string message)
@@ -41,7 +63,7 @@ namespace NzbDrone.Core.HealthCheck
 
         private static HttpUri MakeWikiUrl(string fragment)
         {
-            return new HttpUri("https://wiki.servarr.com/nodearr/system") + new HttpUri(fragment);
+            return new HttpUri(GuidePage) + new HttpUri(fragment);
         }
     }
 
@@ -83,6 +105,8 @@ namespace NzbDrone.Core.HealthCheck
         IndexerSearchNoInteractive,
         IndexerStatusAllUnavailable,
         IndexerStatusUnavailable,
+        LibraryFilesMissing,
+        LibraryNotFound,
         LibraryNotReadable,
         MinimumApiKeyLength,
         MountSeries,

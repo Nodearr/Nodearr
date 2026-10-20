@@ -118,6 +118,7 @@ Then a settings page. ADR 0019. Branch `v1/s10-node-settings`.
 - Everything, by app: under each friend on Catalog > Sharing, a tick for each Arr app says which libraries "everything except Hidden" takes in, and Share With New Friends on each app says which a new friend gets, all but Whisparr unless changed (ADR 0014, amendments). Branch `v1/s59-share-by-app`.
 - Screenshots in the user guide, taken from the UI test kit's two nodes by `tools/docs-screenshots.mjs`, with anything of the machine's (folders, public and local addresses, the addresses inside an invite code) replaced by examples. Taking them found three things in the pages, fixed: words shown as their keys on a page drawn once before they arrived, a TVDB title's year shown twice, and a transfer's percentage cut off. Branch `v1/s60-docs-screenshots`.
 - 0.2.2, from an independent audit of the docs: a backup restore refuses zip entries that would land outside its folder (GHSA-gfvh-m4vj-ggh3, Sonarr's later fix ported) and takes only `.zip` or `.db`; `yarn typecheck` runs in CI; the guide's two out-of-date screenshots were taken again. Branch `v1/s61-fixes-0.2.2`.
+- 0.2.3: each category's download folder is made when an Arr app reads Nodearr's download client settings, so Sonarr no longer warns of a missing folder before the first transfer. The library check opens the files it samples and tells files that are not there from files Nodearr may not open. Both found on the owner's TrueNAS. Branch `v1/s62-category-folders`.
 
 ## Where V1 stands
 

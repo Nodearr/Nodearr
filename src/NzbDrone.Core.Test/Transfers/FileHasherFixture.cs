@@ -38,8 +38,8 @@ namespace NzbDrone.Core.Test.Transfers
             Mocker.GetMock<ICatalogFileLocator>()
                   .Setup(l => l.Locate(It.IsAny<IEnumerable<string>>()))
                   .Returns((IEnumerable<string> ids) => ids.ToDictionary(id => id, id => _unreadable.Contains(id)
-                      ? new LocatedFile { LocalPath = "/tv/" + id + ".mkv", Readable = false }
-                      : new LocatedFile { LocalPath = "/library/" + id + ".mkv", Readable = true }));
+                      ? new LocatedFile { LocalPath = "/tv/" + id + ".mkv", Exists = false }
+                      : new LocatedFile { LocalPath = "/library/" + id + ".mkv", Exists = true }));
             Mocker.GetMock<IUploadTracker>().Setup(u => u.All()).Returns(() => _uploads.ToList());
 
             // The transport reads a file only when it was not told a hash that still fits.

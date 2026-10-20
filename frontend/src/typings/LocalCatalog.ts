@@ -34,6 +34,7 @@ export interface LocalCatalogFile {
   path?: string;
   relativePath?: string;
   localPath?: string;
+  access: 'readable' | 'missing' | 'notAllowed';
   readable: boolean;
   size: number;
   quality?: string;

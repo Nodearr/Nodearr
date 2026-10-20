@@ -97,7 +97,12 @@ namespace Nodearr.Http.Sabnzbd
                 .Select(a => (a.Settings as ArrApplicationSettings)?.DownloadCategory)
                 .Concat(new[] { "tv", "movies" })
                 .Where(c => !string.IsNullOrWhiteSpace(c))
-                .Distinct(StringComparer.OrdinalIgnoreCase);
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            // Each category's folder exists from the start. The Arr apps check it when they read
+            // this, and Sonarr warned of a missing folder until the first transfer for it arrived.
+            _folders.EnsureCategoryFolders(names);
 
             var categories = new JsonArray { Category("*", string.Empty) };
 

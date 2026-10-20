@@ -7,52 +7,13 @@ interface HealthItemLinkProps {
   source: string;
 }
 
+// The page where what a check found is put right. Only checks with a page in Nodearr get a link:
+// the checks inherited from Sonarr for its own indexers, download clients, notifications and root
+// folders have none here, and a link to one led to the page for a page that does not exist.
 function HealthItemLink(props: HealthItemLinkProps) {
   const { source } = props;
 
   switch (source) {
-    case 'IndexerRssCheck':
-    case 'IndexerSearchCheck':
-    case 'IndexerStatusCheck':
-    case 'IndexerJackettAllCheck':
-    case 'IndexerLongTermStatusCheck':
-      return (
-        <IconButton
-          name={icons.SETTINGS}
-          title={translate('Settings')}
-          aria-label={translate('Settings')}
-          to="/settings/indexers"
-        />
-      );
-    case 'DownloadClientCheck':
-    case 'DownloadClientStatusCheck':
-    case 'ImportMechanismCheck':
-      return (
-        <IconButton
-          name={icons.SETTINGS}
-          title={translate('Settings')}
-          aria-label={translate('Settings')}
-          to="/settings/downloadclients"
-        />
-      );
-    case 'NotificationStatusCheck':
-      return (
-        <IconButton
-          name={icons.SETTINGS}
-          title={translate('Settings')}
-          aria-label={translate('Settings')}
-          to="/settings/connect"
-        />
-      );
-    case 'RootFolderCheck':
-      return (
-        <IconButton
-          name={icons.CATALOG}
-          title={translate('SeriesEditor')}
-          aria-label={translate('SeriesEditor')}
-          to="/serieseditor"
-        />
-      );
     case 'LibraryReadableCheck':
     case 'ApplicationDownloadFolderCheck':
       return (
@@ -60,7 +21,7 @@ function HealthItemLink(props: HealthItemLinkProps) {
           name={icons.SETTINGS}
           title={translate('Settings')}
           aria-label={translate('Settings')}
-          to="/settings/applications"
+          to="/settings/apps"
         />
       );
     case 'PeerTransportCheck':

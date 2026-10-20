@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.EnvironmentInfo;
@@ -13,7 +14,23 @@ namespace NzbDrone.Core.Catalog
     {
         // The Arr app's path, taken through the path mappings. It may still not be a path here.
         public string LocalPath { get; set; }
-        public bool Readable { get; set; }
+
+        // False for an unmapped path from an Arr app on another OS, which is no path here at all.
+        public bool IsPathHere { get; set; }
+
+        // There is a file at the path. Whether Nodearr may open it is Open's to say.
+        public bool Exists { get; set; }
+    }
+
+    public enum CatalogFileAccess
+    {
+        Readable,
+
+        // No file at the path, or no path here at all.
+        Missing,
+
+        // The file is there, and Nodearr may not open it or search its folder.
+        NotAllowed
     }
 
     public interface ICatalogFileLocator
@@ -29,6 +46,11 @@ namespace NzbDrone.Core.Catalog
         // The same for many files at once, with a few queries in all. A name with no file in the
         // catalog is left out.
         Dictionary<string, LocatedFile> Locate(IEnumerable<string> offerFileIds);
+
+        // Opens a located file and closes it again, to tell a file that is not there from one
+        // Nodearr may not read. It touches the disk once or twice, so it is for a page of files
+        // or a sample, not a whole library.
+        CatalogFileAccess Open(LocatedFile file);
     }
 
     // Path mappings are keyed by the Arr app's host, the same way the Arr apps key theirs by
@@ -117,6 +139,51 @@ namespace NzbDrone.Core.Catalog
             };
         }
 
+        public CatalogFileAccess Open(LocatedFile file)
+        {
+            if (file is not { IsPathHere: true })
+            {
+                return CatalogFileAccess.Missing;
+            }
+
+            try
+            {
+                using (_diskProvider.OpenReadStream(file.LocalPath))
+                {
+                    return CatalogFileAccess.Readable;
+                }
+            }
+            catch (FileNotFoundException)
+            {
+                // Said too when the file is there and its folder may not be searched, since that
+                // hides it from the check for whether it exists. The folder's listing tells which.
+                return InFolderListing(file.LocalPath);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                return ex is DirectoryNotFoundException ? CatalogFileAccess.Missing : CatalogFileAccess.NotAllowed;
+            }
+        }
+
+        private CatalogFileAccess InFolderListing(string path)
+        {
+            try
+            {
+                var listed = _diskProvider.GetFileInfos(Path.GetDirectoryName(path))
+                    .Any(f => string.Equals(f.FullName, path, OsInfo.IsWindows ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal));
+
+                return listed ? CatalogFileAccess.NotAllowed : CatalogFileAccess.Missing;
+            }
+            catch (Exception ex) when (ex is DirectoryNotFoundException or ArgumentException)
+            {
+                return CatalogFileAccess.Missing;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                return CatalogFileAccess.NotAllowed;
+            }
+        }
+
         private static bool TryParse(string offerFileId, out string kind, out int applicationId, out int arrId)
         {
             var parts = (offerFileId ?? string.Empty).Split('-');
@@ -141,7 +208,7 @@ namespace NzbDrone.Core.Catalog
             // An unmapped path from an Arr app on another OS is not a path here at all.
             var isPathHere = local.IsRooted && (OsInfo.IsWindows ? local.IsWindowsPath : local.IsUnixPath);
 
-            return new LocatedFile { LocalPath = local.FullPath, Readable = isPathHere && _diskProvider.FileExists(local.FullPath) };
+            return new LocatedFile { LocalPath = local.FullPath, IsPathHere = isPathHere, Exists = isPathHere && _diskProvider.FileExists(local.FullPath) };
         }
     }
 }

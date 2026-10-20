@@ -9033,6 +9033,14 @@
         ],
         "type": "string"
       },
+      "CatalogFileAccess": {
+        "enum": [
+          "readable",
+          "missing",
+          "notAllowed"
+        ],
+        "type": "string"
+      },
       "CertificateValidationType": {
         "enum": [
           "enabled",
@@ -10436,6 +10444,8 @@
           "indexerSearchNoInteractive",
           "indexerStatusAllUnavailable",
           "indexerStatusUnavailable",
+          "libraryFilesMissing",
+          "libraryNotFound",
           "libraryNotReadable",
           "minimumApiKeyLength",
           "mountSeries",
@@ -11246,6 +11256,9 @@
           "localPath": {
             "type": "string",
             "nullable": true
+          },
+          "access": {
+            "$ref": "#/components/schemas/CatalogFileAccess"
           },
           "readable": {
             "type": "boolean"

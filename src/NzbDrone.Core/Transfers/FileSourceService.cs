@@ -84,7 +84,7 @@ namespace NzbDrone.Core.Transfers
 
             var located = _locator.Locate(file);
 
-            if (located is not { Readable: true })
+            if (located is not { Exists: true })
             {
                 _logger.Warn("{0} asked for {1}, which cannot be read here ({2}). Check the path mappings.", peer.Name, file, located?.LocalPath ?? "not in the catalog");
 

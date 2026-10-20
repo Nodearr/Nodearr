@@ -302,7 +302,7 @@ namespace NzbDrone.Core.Transfers
             return offered
                 .OrderByDescending(o => o.Value ?? DateTime.MinValue)
                 .Select(o => (Id: o.Key, Located: located.GetValueOrDefault(o.Key)))
-                .Where(f => f.Located is { Readable: true })
+                .Where(f => f.Located is { Exists: true })
                 .Select(f => (f.Id, f.Located.LocalPath))
                 .DistinctBy(f => f.LocalPath, StringComparer.Ordinal)
                 .ToList();

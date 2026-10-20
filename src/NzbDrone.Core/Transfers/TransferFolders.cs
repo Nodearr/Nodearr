@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -15,6 +17,11 @@ namespace NzbDrone.Core.Transfers
         string IncompleteFolder(TransferJob job);
         string IncompleteFile(TransferJob job);
         string CompleteFolder(TransferJob job);
+
+        // The folder a category's transfers end up in, and making it before the first one does:
+        // the Arr apps check that the folder they are told about exists, and warn when it does not.
+        string CategoryFolder(string category);
+        void EnsureCategoryFolders(IEnumerable<string> categories);
     }
 
     // A transfer is written under incomplete/, and only a verified one is moved under complete/,
@@ -79,7 +86,28 @@ namespace NzbDrone.Core.Transfers
         // The same shape SABnzbd uses: one folder for each download, under the category's folder.
         public string CompleteFolder(TransferJob job)
         {
-            return Path.Combine(Complete, SafeName(job.Category.IsNullOrWhiteSpace() ? "default" : job.Category), SafeName(job.Title));
+            return Path.Combine(CategoryFolder(job.Category), SafeName(job.Title));
+        }
+
+        public string CategoryFolder(string category)
+        {
+            return Path.Combine(Complete, SafeName(category.IsNullOrWhiteSpace() ? "default" : category));
+        }
+
+        // A folder that cannot be made is left for later: the transfer that needs it makes it again,
+        // and System > Status already warns when an app cannot see the download folder.
+        public void EnsureCategoryFolders(IEnumerable<string> categories)
+        {
+            foreach (var category in categories)
+            {
+                try
+                {
+                    Directory.CreateDirectory(CategoryFolder(category));
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                }
+            }
         }
 
         private static string Shorten(string name)

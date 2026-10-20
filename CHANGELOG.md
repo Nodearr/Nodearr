@@ -2,6 +2,15 @@
 
 What changed in each release, newest first. Each item links to the decision record that explains it, and the [V1 plan](docs/plans/v1-implementation-plan.md) has the whole story, slice by slice.
 
+## 0.2.3 (pre-release)
+
+### Fixed
+
+- Sonarr, and the other Arr apps, warned that Nodearr's download folder for their category did not exist, such as `/downloads/complete/tv`, until the first transfer for it arrived. Nodearr now makes each category's folder when the app reads its download client settings.
+- The settings link beside a System > Status warning about reading a library or the download folder led to a page that does not exist; it opens Settings > Apps. Links for checks inherited from Sonarr, whose pages Nodearr does not have, are gone.
+- System > Status said Nodearr could not read files from an app when the files were not there, such as after a tool transcoded them to a new name and the app was not told. It said nothing when files were there and Nodearr was not allowed to open them. Nodearr now opens the files it checks, and the warning says which it found: no files at all, files it may not open, or files the app lists that are not on disk, with what to do for each. Catalog > Local's Readable column, which also only meant a file was there, now opens each file shown and says which.
+- The link the API gives with each warning pointed to Servarr's wiki, which has no page for Nodearr. It points to the troubleshooting guide on nodearr.com, at the section for that warning.
+
 ## 0.2.2 (pre-release)
 
 ### Security

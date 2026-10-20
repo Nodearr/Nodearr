@@ -168,7 +168,8 @@ public class LocalCatalogController : Controller
         var located = _locator.Locate(resource.ApplicationId, resource.Path);
 
         resource.LocalPath = located.LocalPath;
-        resource.Readable = located.Readable;
+        resource.Access = _locator.Open(located);
+        resource.Readable = resource.Access == CatalogFileAccess.Readable;
 
         return resource;
     }
