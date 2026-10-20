@@ -1,5 +1,6 @@
-// Takes the user guide's screenshots from the two set-ups of the UI test kit (tools/ui-test.ps1).
-// Run it again whenever the pages it shows change. From nothing:
+// Captures the user guide's screenshots from the two isolated UI test instances (A and B).
+// Run these commands from the repository root to recreate the kit and capture all screenshots.
+// The down command deletes the kit's existing test data; it does not affect an installed Nodearr.
 //
 //   powershell -ExecutionPolicy Bypass -File tools/ui-test.ps1 down
 //   powershell -ExecutionPolicy Bypass -File tools/ui-test.ps1 up -Solo
@@ -11,9 +12,9 @@
 // makes them friends, and has each send the other something it then gets: Alex sends Sam Cowboy
 // Bebop, and Sam sends Alex Spirited Away. Each step it finds done already is skipped.
 //
-// With no names it takes every shot. The "send" shot changes the set-ups: Sam sends Alex Frieren
-// and Alex gets it, so it can only be taken once per pair of set-ups. Name shots to take only
-// those.
+// With no arguments, the capture command takes every screenshot. Pass screenshot names to capture
+// only those pages. The "send" screenshot changes the test data: Sam sends Alex Frieren and Alex
+// requests it. Recreate the kit before capturing "send" a second time.
 //
 // It needs Playwright with Chromium, and sharp to make the files smaller, which are not among
 // Nodearr's dependencies: run it where they are installed, with NODE_PATH pointing there.

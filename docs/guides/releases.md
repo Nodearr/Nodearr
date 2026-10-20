@@ -1,6 +1,6 @@
 # Releases
 
-A Nodearr release matches Sonarr's and Radarr's own downloads, so it can be installed where they are: one package per platform, and an image for Docker.
+A Nodearr release includes platform-specific packages and a [Docker](https://docs.docker.com/) image, so it can run alongside [Sonarr](https://sonarr.tv/) and [Radarr](https://radarr.video/). This guide is for maintainers building a release; for installation, use the [user guide](../user-guide/installing.md).
 
 ## What a release has
 
@@ -23,10 +23,10 @@ The image is `ghcr.io/<owner>/nodearr`, for `linux/amd64` and `linux/arm64`. `0.
 
 Each package is one folder, `Nodearr`, holding:
 
-- the application, published self-contained, so the machine needs no .NET;
+- the application, published self-contained, so the machine needs no [.NET](https://dotnet.microsoft.com/);
 - the web UI;
 - the transport sidecar, `nodearr-transport`;
-- the licence and the notices (see "Licences" below).
+- the licence and the notices (see [Licences](#licences)).
 
 On Windows it also holds the tray application, `Nodearr.exe`, and `ServiceInstall.exe` / `ServiceUninstall.exe`. On Linux and macOS, start it with `./Nodearr`.
 
@@ -49,12 +49,12 @@ macOS marks a downloaded archive as quarantined. As with Sonarr, clear it before
 The installer puts Nodearr in Program Files and asks how it should start, as Sonarr's does:
 
 - **When you sign in, in the tray.** The default. A shortcut in your Startup folder runs `Nodearr.exe`, which shows an icon in the system tray. Its menu opens Nodearr or exits it. It runs as you, so it reads whatever your account can.
-- **When the computer starts, as a Windows service.** It runs whether anyone is signed in, as the `LocalService` account. That account may not be able to read your library, or a network share, until the service is given an account that can: Services, Nodearr, Properties, Log On. System > Status says when Nodearr cannot read the library.
+- **When the computer starts, as a Windows service.** It runs whether anyone is signed in, as the `LocalService` account. That account may not be able to read your library, or a network share, until the service is given an account that can: Services, Nodearr, Properties, Log On. **System > Status** says when Nodearr cannot read the library.
 - **Not automatically.** Start it from the Start menu when you want it.
 
 Either way, the installer adds a Windows Firewall rule that lets UDP in to `nodearr-transport.exe`, which is how other nodes reach this one. Windows would otherwise ask the first time. A service cannot ask, and would be blocked without anyone knowing. Uninstalling takes the rule out.
 
-As Sonarr's installer does, it also opens Nodearr's web port, 6633, so Sonarr and Radarr on other machines, or in Docker, can reach it. The page still asks whoever opens it to sign in. The rule is called Nodearr, and uninstalling takes it out with the other.
+As Sonarr's installer does, it also opens Nodearr's web port, 6633, so Sonarr and Radarr on other machines, or in [Docker](https://docs.docker.com/), can reach it. The page still asks whoever opens it to sign in. The rule is called Nodearr, and uninstalling takes it out with the other.
 
 The data folder, `C:\ProgramData\Nodearr`, is the same for the tray app, the service and the zip, and neither installing nor uninstalling touches it: the node keeps its key and its friends.
 
@@ -64,7 +64,7 @@ From the zip, `ServiceInstall.exe` and `ServiceUninstall.exe`, run as administra
 
 ### Not in a release
 
-- **FreeBSD.** Sonarr and Radarr release for it with a .NET runtime the community builds, from a package source of their own. Nodearr's sidecar is built on iroh, and iroh on FreeBSD has not been tried. Until both have been, there is no FreeBSD package.
+- **FreeBSD.** Sonarr and Radarr release for it with a .NET runtime the community builds, from a package source of their own. Nodearr's sidecar is built on [iroh](https://www.iroh.computer/), and iroh on FreeBSD has not been tried. Until both have been, there is no FreeBSD package.
 - **A macOS app bundle** (`Nodearr.app`). Sonarr has one. Nodearr has the plain archive for now.
 - **An updater.** Nodearr does not update itself (ADR 0018). A new version is installed over the old one, or pulled as a new image.
 
@@ -75,11 +75,11 @@ Nodearr is GPL-3.0, and a release carries other people's work under their own li
 | File | What it is |
 | --- | --- |
 | `LICENSE` | Nodearr's licence, GPL-3.0. |
-| `NOTICE.md` | What Nodearr is derived from: Sonarr and Prowlarr. |
-| `THIRD-PARTY-NOTICES.md` | Every Rust crate in the sidecar, NuGet package in the application and npm package in the web UI, with the text of each licence. |
+| `NOTICE.md` | What Nodearr is derived from: Sonarr and [Prowlarr](https://prowlarr.com/). |
+| `THIRD-PARTY-NOTICES.md` | Every [Rust](https://www.rust-lang.org/) crate in the sidecar, NuGet package in the application and npm package in the web UI, with the text of each licence. |
 | `dotnet-LICENSE.txt`, `dotnet-THIRD-PARTY-NOTICES.txt` | The .NET runtime's, in the self-contained packages, copied from the SDK that built them. The image is built on Microsoft's `aspnet` image, which carries its own. |
 
-Two entries need more than a licence text, and `THIRD-PARTY-NOTICES.md` gives it: `ffprobe`, a build of FFmpeg under the LGPL 3.0, says where its corresponding source is, and the two packages under the MPL 2.0, `attohttpc` and `IPAddressRange`, say where theirs is.
+Two entries need more than a licence text, and `THIRD-PARTY-NOTICES.md` gives it: `ffprobe`, a build of [FFmpeg](https://ffmpeg.org/) under the LGPL 3.0, says where its corresponding source is, and the two packages under the MPL 2.0, `attohttpc` and `IPAddressRange`, say where theirs is.
 
 `THIRD-PARTY-NOTICES.md` is generated, and committed so that a release does not need the tools that make it. Run this whenever a dependency is added, removed or updated, and commit the result:
 
@@ -111,7 +111,7 @@ Publishing the release rebuilds [nodearr.com](https://nodearr.com) with that rel
 
 ## Building one package yourself
 
-The scripts in `build/` are what the workflow runs. Each needs PowerShell 7.
+Run the following commands from the repository root using PowerShell 7. Install the [build prerequisites](../../CONTRIBUTING.md#prerequisites), then restore application and UI dependencies with `dotnet restore src/Nodearr.sln` and `yarn install`.
 
 1. Build the web UI:
 
@@ -153,7 +153,7 @@ The web UI and the application build once, on the machine doing the build. Only 
 
 `.github/workflows/ci.yml` runs on every push and pull request:
 
-- The web UI: lint, style lint, and a production build.
+- The web UI: lint, style lint, a [TypeScript](https://www.typescriptlang.org/) check with `yarn typecheck`, and a production build.
 - The application on Linux and on Windows: a build, then the unit tests one assembly at a time. As in Sonarr's own CI, it leaves out the manual, integration and automation tests, and the tests for the other operating system.
 - The sidecar: build and `cargo test`. There are currently no Rust unit tests; the acceptance scripts exercise the real sidecar.
 - The image, built for amd64.

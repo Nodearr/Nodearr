@@ -12,9 +12,8 @@
         powershell -ExecutionPolicy Bypass -File two-machine-test.ps1 receive CODE
             on the other, with the code "send" printed
 
-    Each side runs Nodearr from its release package and Radarr from Radarr's own Windows
-    package, both straight on the machine, in a folder of its own (~\nodearr-test-windows).
-    Nothing is installed. Radarr and ffmpeg are downloaded from their GitHub releases and
+    Each side runs isolated copies of Nodearr and Radarr from their Windows release packages
+    in ~\nodearr-test-windows. Neither application is installed. Radarr and ffmpeg are downloaded from their GitHub releases and
     checked against the SHA-256 GitHub publishes for them. The Nodearr package is the one
     downloaded from Nodearr's Releases page; the script looks for it in Downloads.
 

@@ -3,10 +3,10 @@
     Sets up Nodearr, Sonarr and Radarr on Windows for testing Nodearr by hand, in its own pages.
 
 .DESCRIPTION
-    The script only sets the scene. It starts Nodearr from its release package, and Sonarr and
-    Radarr from their own Windows packages, each with a small library of test videos. Everything
-    you test in Nodearr, from signing in to sending a friend a series, you do in Nodearr's pages.
-    The guide is docs/guides/ui-test.md.
+    Starts isolated copies of Nodearr, Sonarr and Radarr from their Windows release packages,
+    with small libraries of test videos. It does not configure Nodearr's app connections,
+    friends or sharing. Complete those steps yourself in the web UI, following
+    docs/guides/ui-test.md (https://github.com/Nodearr/Nodearr/blob/main/docs/guides/ui-test.md).
 
         up -Solo           two complete set-ups on this machine, A and B, to play both friends
         up -Library A      one set-up, with library A. Your friend runs "up -Library B" on theirs

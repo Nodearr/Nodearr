@@ -1,14 +1,14 @@
 # Acceptance tests
 
-Scripts that run a built Nodearr and check a whole slice of behaviour from the outside, through the HTTP APIs.
+These scripts test complete Nodearr workflows through its HTTP APIs and real Arr apps. Run commands from the repository root. They start isolated test instances, so check that their ports are free first.
 
-They need PowerShell 7 and, except for S8 which builds in Docker, a built Nodearr:
+They need PowerShell 7 and, except for S8 which builds in [Docker](https://docs.docker.com/), a built Nodearr:
 
 ```sh
 dotnet build src/Nodearr.sln
 ```
 
-Each script starts from nothing, takes a few minutes, prints one line per check and exits non-zero if any check fails. Everything it creates goes in `.run/`, which git ignores.
+Each script starts from nothing, takes a few minutes, prints one line per check and exits non-zero if any check fails. Test data is stored under `acceptance/.run/`, which Git ignores.
 
 The S3 script also needs Docker and ffmpeg. The S4 script needs neither, but needs the transport sidecar built:
 
@@ -22,7 +22,7 @@ cargo build --release --manifest-path transport/Cargo.toml
 pwsh acceptance/Run-S3CatalogImport.ps1
 ```
 
-Checks, against pinned Sonarr and Radarr containers:
+Checks, against pinned [Sonarr](https://sonarr.tv/) and [Radarr](https://radarr.video/) containers:
 
 - Adding an application registers one Nodearr download client and one pinned Nodearr indexer in the Arr app, even while Nodearr's catalog is empty.
 - Files the Arr apps import show up in the local catalog with their series or movie identity, quality and size, including one file that holds two episodes.
@@ -33,7 +33,7 @@ Checks, against pinned Sonarr and Radarr containers:
 
 Nodearr runs on the host on port 6633. The containers come from `spikes/arr-contract/docker-compose.yml` with `docker-compose.library.yml` layered on top, which puts the Arr libraries on the host so Nodearr can read them. They publish on 127.0.0.1 only, on ports 18989 and 17878.
 
-The Arr apps get their files from `Library.ps1`, which has them import synthetic ffmpeg test patterns (see "How the scripts fill a library" below).
+The Arr apps get their files from `Library.ps1`, which has them import synthetic ffmpeg test patterns (see [How the scripts fill a library](#how-the-scripts-fill-a-library)).
 
 Options:
 
@@ -66,7 +66,7 @@ The sidecars run with relays and port mapping off and use local addresses, so no
 pwsh acceptance/Run-S5Sharing.ps1
 ```
 
-Needs Docker and ffmpeg, like S3, and the transport sidecar, like S4. Node A imports a real catalog from Sonarr and Radarr containers. Node B imports from the same Sonarr only. The two pair, and the script reads what B holds after each change on A:
+Requires PowerShell 7, a built Nodearr, Docker, ffmpeg and a built transport sidecar. Node A imports a real catalog from Sonarr and Radarr containers. Node B imports from the same Sonarr only. The two pair, and the script reads what B holds after each change on A:
 
 - A peer paired with sharing everything unticked is offered nothing.
 - "Share everything" offers every file once B syncs. New sharing is not announced; taking a file back is.
@@ -83,7 +83,7 @@ Needs Docker and ffmpeg, like S3, and the transport sidecar, like S4. Node A imp
 pwsh acceptance/Run-S6Indexer.ps1
 ```
 
-Needs the same as S5. It starts four containers: node A's Sonarr and Radarr, which hold the files, and node B's Sonarr and Radarr, which know the same series and movie and hold nothing. The nodes pair, A shares, and the script searches from B's Sonarr and Radarr and reads what they make of Nodearr's answers:
+Requires PowerShell 7, a built Nodearr, Docker, ffmpeg and a built transport sidecar. It starts four containers: node A's Sonarr and Radarr, which hold the files, and node B's Sonarr and Radarr, which know the same series and movie and hold nothing. The nodes pair, A shares, and the script searches from B's Sonarr and Radarr and reads what they make of Nodearr's answers:
 
 - Sonarr and Radarr find A's files by ID, read the right episode and quality from the title, and approve them.
 - A file with no release name gets a title built from what A's Sonarr knows about it.
@@ -104,7 +104,7 @@ Needs the same as S5. It starts four containers: node A's Sonarr and Radarr, whi
 pwsh acceptance/Run-S7Transfers.ps1
 ```
 
-Needs the same as S6, and takes about five minutes. Node A's uploads are slowed so that the script can act in the middle of a transfer. It presses "search" in node B's Sonarr and Radarr and follows each grab:
+Requires PowerShell 7, a built Nodearr, Docker, ffmpeg and a built transport sidecar. Takes about five minutes. Node A's uploads are slowed so that the script can act in the middle of a transfer. It presses "search" in node B's Sonarr and Radarr and follows each grab:
 
 - The file comes from node A, is verified, and is imported. The imported file is the same, byte for byte.
 - Nothing appears under `complete` while a file is still arriving.
@@ -123,10 +123,10 @@ pwsh acceptance/Run-S7Transfers.ps1 -SetupOnly
 This builds the same environment, pairs the nodes, shares everything, and stops there with nothing grabbed. `acceptance/.run/s7/ready.txt` appears when it is ready, with the addresses. Then:
 
 1. Open node B's Sonarr at `http://localhost:28989`, go to Pingu, and search for one of the first three episodes of season 1. Use the interactive search to see Nodearr's result before grabbing it.
-2. Watch it arrive at `http://localhost:6634/activity/transfers`, under Receiving. The same page on node A, `http://localhost:6633/activity/transfers`, shows it leaving, under Sending.
+2. Watch it arrive at `http://localhost:6634/activity/transfers`, under **Receiving**. The same page on node A, `http://localhost:6633/activity/transfers`, shows it leaving, under **Sending**.
 3. Sonarr imports it within a minute. The episode then shows as downloaded.
 
-Node B's Radarr at `http://localhost:27878` has one movie to try the same with. Node A is at `http://localhost:6633`: Catalog > Sharing decides what B is offered, and Nodes > Trusted Nodes can revoke B.
+Node B's Radarr at `http://localhost:27878` has one movie to try the same with. Node A is at `http://localhost:6633`: **Catalog > Sharing** decides what B is offered, and **Nodes > Trusted Nodes** can revoke B.
 
 Add `-UploadLimitKbps 300` to make transfers slow enough to watch. To stop everything and remove the containers:
 
@@ -140,7 +140,7 @@ pwsh acceptance/Run-S7Transfers.ps1 -Down
 pwsh acceptance/Run-IdenticalCopies.ps1
 ```
 
-Needs the same as S7, and takes about four minutes. Three nodes on this machine: A and C read the same Sonarr library, so they hold the very same episode file, and B has its own Sonarr and trusts both. It checks:
+Requires PowerShell 7, a built Nodearr, Docker, ffmpeg and a built transport sidecar. Takes about four minutes. Three nodes on this machine: A and C read the same Sonarr library, so they hold the very same episode file, and B has its own Sonarr and trusts both. It checks:
 
 - A and C offer the file with the same hash, and B holds both copies.
 - B's Sonarr is shown the file once, not once for each node.
@@ -154,7 +154,7 @@ Needs the same as S7, and takes about four minutes. Three nodes on this machine:
 pwsh acceptance/Run-S8Docker.ps1
 ```
 
-Needs PowerShell 7, Docker and ffmpeg, with no .NET, Node or Rust on the host. The first run builds the Nodearr image and a small relay image used only by this test, which takes ten minutes or so. Later runs take about five. Add `-SkipBuild` to reuse the images.
+Needs PowerShell 7, Docker and ffmpeg, with no [.NET](https://dotnet.microsoft.com/), Node or [Rust](https://www.rust-lang.org/) on the host. The first run builds the Nodearr image and a small relay image used only by this test, which takes ten minutes or so. Later runs take about five. Add `-SkipBuild` to reuse the images.
 
 It runs `acceptance/docker-compose.s8.yml`: two complete deployments, John's and Ryan's, each a Nodearr container with its own Sonarr and Radarr, one shared `/downloads` volume and its libraries mounted read-only. The two sides reach each other over one network that stands in for a direct route, and a relay that stands in for a public one.
 
@@ -164,7 +164,7 @@ It runs `acceptance/docker-compose.s8.yml`: two complete deployments, John's and
 - Ryan's Nodearr container is replaced in the middle of a transfer. The new one is the same node and carries on.
 - John hides a series while Ryan's node is frozen and cannot hear of it. Ryan's node then uses a ticket it already held, and John's node refuses.
 - One byte of a file is changed on John's side after its hash was fixed. The transfer fails verification and nothing reaches Sonarr.
-- The direct network is unplugged. The transfer fails as `NoDirectRoute`, and the relay's counters show that no file data went through it. While only the relay is left, System > Status warns that there is no direct route, names the other node and says to check the firewall. The warning goes once the route is direct again. The failed transfer has the connection checked again unasked, and what Sonarr records says that the check found only a relay and where to look.
+- The direct network is unplugged. The transfer fails as `NoDirectRoute`, and the relay's counters show that no file data went through it. While only the relay is left, **System > Status** warns that there is no direct route, names the other node and says to check the firewall. The warning goes once the route is direct again. The failed transfer has the connection checked again unasked, and what Sonarr records says that the check found only a relay and where to look.
 - John blocks Ryan in the middle of a transfer. It is cut.
 - A connection check says "direct" between the two, and "relay" once the direct network is unplugged.
 - A third Nodearr, set up wrongly on purpose, is warned that it cannot read the library and that Sonarr cannot see its downloads. The two set up properly show no warnings.
@@ -178,7 +178,7 @@ It runs `acceptance/docker-compose.s8.yml`: two complete deployments, John's and
 pwsh acceptance/Run-NodeSettings.ps1
 ```
 
-Needs only the transport sidecar, and takes about two minutes. Two real nodes on this machine, as in S4. It changes one node's settings through the API, the way the page does, and checks what the running node then does:
+Requires PowerShell 7, a built Nodearr and a built transport sidecar. Docker and ffmpeg are not needed. Takes about two minutes and starts two local nodes. It changes one node's settings through the API, the way the page does, and checks what the running node then does:
 
 - Bad values are refused together, each named, and nothing is changed. A port another program holds is refused.
 - A setting fixed in the environment stays as it is.
@@ -194,7 +194,7 @@ Needs only the transport sidecar, and takes about two minutes. Two real nodes on
 pwsh acceptance/Run-GeneralSettings.ps1
 ```
 
-Needs Docker and the transport sidecar, and takes about three minutes. One real node on this machine, and a Sonarr container for the one check that needs an Arr app. Unlike the other scripts the node is not given its port, key or way of signing in through the environment, because those are what is being changed. It checks, through the API the way the page does:
+Requires PowerShell 7, a built Nodearr, Docker and a built transport sidecar. Takes about three minutes. One real node on this machine, and a Sonarr container for the one check that needs an Arr app. Unlike the other scripts the node is not given its port, key or way of signing in through the environment, because those are what is being changed. It checks, through the API the way the page does:
 
 - The page shows where Nodearr listens, its key, how signing in works, and which settings the environment fixes.
 - Settings that cannot work are refused, each named, and nothing is changed. A setting the environment fixes stays as it is.
@@ -207,14 +207,14 @@ Needs Docker and the transport sidecar, and takes about three minutes. One real 
 
 ## Between two machines
 
-`docs/guides/two-machine-test.md`, and for two Windows machines with nothing set up, `docs/guides/two-machine-test-windows.md`. No script here can do this one.
+Use [Testing between two machines](../docs/guides/two-machine-test.md) for Docker or existing Arr installations. For two Windows machines without Arr apps installed, use [the Windows test guide](../docs/guides/two-machine-test-windows.md). The acceptance scripts on this page test only one machine.
 
 ## What the scripts do not cover
 
 These were checked by hand against real apps, each recorded where it was decided, and have no script here:
 
-- **Prowlarr**: adding Nodearr to Prowlarr and switching its copies off (ADR 0007, amendments).
-- **Whisparr v3 and v2**: films and scenes read, shared, found by text and imported, including a v2 and a v3 finding each other's scenes (ADR 0015, amendments).
-- **Lidarr**: albums read, shared, found, moved as folders of tracks and imported, between two Lidarr 3.1 instances (ADR 0020).
-- **The Windows installer, tray app and service** (`docs/guides/releases.md`).
-- **The pairing limit**: covered by the unit tests only (ADR 0013, amendments).
+- [Prowlarr](https://prowlarr.com/): adding Nodearr to Prowlarr and switching its copies off ([ADR 0007](../docs/adr/0007-prowlarr-as-downstream-indexer-consumer.md#amendments)).
+- [Whisparr v3 and v2](https://whisparr.com/): films and scenes read, shared, found by text and imported, including a v2 and a v3 finding each other's scenes ([ADR 0015](../docs/adr/0015-the-indexer-id-matching-release-titles-and-candidate-ids.md#amendments)).
+- [Lidarr](https://lidarr.audio/): albums read, shared, found, moved as folders of tracks and imported, between two Lidarr 3.1 instances ([ADR 0020](../docs/adr/0020-lidarr-albums-shared-and-moved-as-folders-of-tracks.md)).
+- **The Windows installer, tray app and service** ([release guide](../docs/guides/releases.md#on-windows-the-installer)).
+- **The pairing limit**: covered by the unit tests only ([ADR 0013](../docs/adr/0013-node-identity-pairing-and-trust.md#amendments)).

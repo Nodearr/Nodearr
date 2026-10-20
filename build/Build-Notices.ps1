@@ -1,8 +1,8 @@
 #requires -Version 7
 <#
 .SYNOPSIS
-    Writes THIRD-PARTY-NOTICES.md: everything other people wrote that a Nodearr release carries,
-    with each licence's text.
+    Generates THIRD-PARTY-NOTICES.md with the dependencies included in a Nodearr release
+    and the text of each dependency's licence.
 
 .DESCRIPTION
     Three parts, each from what is really built and shipped:
