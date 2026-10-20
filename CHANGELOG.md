@@ -7,6 +7,8 @@ What changed in each release, newest first. Each item links to the decision reco
 ### Fixed
 
 - Sonarr, and the other Arr apps, warned that Nodearr's download folder for their category did not exist, such as `/downloads/complete/tv`, until the first transfer for it arrived. Nodearr now makes each category's folder when the app reads its download client settings.
+- The settings link beside a System > Status warning about reading a library or the download folder led to a page that does not exist; it opens Settings > Apps. Links for checks inherited from Sonarr, whose pages Nodearr does not have, are gone.
+- The link the API gives with each warning pointed to Servarr's wiki, which has no page for Nodearr. It points to the troubleshooting guide on nodearr.com, at the section for that warning.
 
 ## 0.2.2 (pre-release)
 
