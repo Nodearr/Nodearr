@@ -1,4 +1,5 @@
-// Renders the PNG and ICO files from the mark's SVGs (build/logo/make-logo.py writes those).
+// Renders the PNG and ICO files from the mark's SVGs, and the YouTube and Twitch banners' PNGs from
+// theirs (build/logo/make-logo.py writes those).
 //
 //   node build/logo/render-icons.mjs
 //
@@ -92,3 +93,13 @@ write(path.join(icons, 'mstile-310x150.png'), await tile(light, 558, 270, 180));
 
 // The program's icon: the exe, the tray and the installer.
 write(path.join(root, 'src', 'NzbDrone.Host', 'Nodearr.ico'), await ico(light, [16, 20, 24, 32, 40, 48, 64, 128, 256]));
+
+// The channels' banners, each at the size its SVG is drawn. YouTube wants at least 2048 x 1152,
+// and no more than 6 MB; Twitch recommends 1200 x 480.
+async function banner(name, width, height) {
+  const svg = readFileSync(path.join(root, 'Logo', `${name}.svg`));
+  write(path.join(root, 'Logo', `${name}.png`), await sharp(svg, { density: 72 }).resize(width, height).png({ compressionLevel: 9 }).toBuffer());
+}
+
+await banner('youtube-banner', 2560, 1440);
+await banner('twitch-banner', 1200, 480);
