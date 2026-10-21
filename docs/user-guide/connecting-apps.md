@@ -6,58 +6,112 @@ Nodearr connects to the Arr apps you already run. It reads their libraries and r
 
 To connect an app:
 
-1. In Nodearr, go to **Settings > Apps** and select **+**. You can also start from **Connect your Arr apps** on **Home**.
-2. Choose the app and fill in the fields below.
+1. In Nodearr, go to **Settings > Apps** and select **+**.
+2. Choose your library app. For Whisparr, choose the connection type for the version you run. Fill in the fields described in this section.
 3. Select **Test** to check the address, API key, app type and supported version.
 4. Select **Save**. Nodearr registers itself in the app and imports its library. A large library can take a few minutes.
 
 ## What to fill in
 
+<details>
+<summary>See the connection form</summary>
+
 ![Settings > Apps, editing Sonarr: its name, sync level, the two addresses and its API key](images/settings-apps-sonarr.png)
+
+</details>
 
 | Field | What it is |
 | --- | --- |
 | **Name** | A name you choose to identify this connection in Nodearr. |
-| **Sync Level** | **Full Sync** (recommended) maintains Nodearr's indexer, download client and webhook settings in the app, replacing changes you make there. **Add Only** creates missing entries and preserves your changes to existing ones. **Disabled** stops library imports and registration updates. |
+| **Sync Level** | Leave **Full Sync** selected for setup. It maintains Nodearr's indexer, download client and webhook settings in the app, replacing changes you make there. **Add Only** creates missing entries and preserves your changes to existing ones. **Disabled** stops library imports and registration updates. |
 | **Nodearr Server** | The address the Arr app uses to reach Nodearr. The default works when both run on the same machine outside [Docker](https://docs.docker.com/). |
 | **Application Server** | The address Nodearr uses to reach the Arr app. |
 | **API Key** | The Arr app's API key, found in that app under **Settings > General**. |
+| **Share With New Friends** | Includes this app's library when a friend is offered everything except **Hidden**. Applies to new friends and to existing friends when you add the app. Off by default for both [Whisparr](https://whisparr.com/) versions; on for other library apps. To change access for an existing friend, use [the per-friend app choices](friends-and-sharing.md#with-a-friend-everything-some-apps-or-lists) on **Catalog > Sharing**. |
+
+<details>
+<summary>Advanced connection fields</summary>
+
+| Field | What it is |
+| --- | --- |
 | **Username**, **Password** (advanced) | Credentials for a reverse proxy that requires HTTP Basic authentication. Leave these empty if the app is not behind such a proxy. |
 | **Download Category** (advanced) | The category the app uses when sending downloads to Nodearr. |
 | **Sync Categories** (advanced) | The categories the app searches on Nodearr's indexer. |
-| **Share With New Friends** | Includes this app's library when a friend is offered everything except **Hidden**. Applies to new friends and to existing friends when you add the app. Off by default for both [Whisparr](https://whisparr.com/) versions; on for other library apps. To change access for an existing friend, use [the per-friend app choices](friends-and-sharing.md#with-a-friend-everything-some-apps-or-lists) on **Catalog > Sharing**. |
+
+</details>
 
 The two server addresses point in opposite directions. Check both when an app runs in [Docker](https://docs.docker.com/) or on another machine.
 
 ### The defaults for each app
 
-| App | Address | Category | Searched in | Needs at least |
-| --- | --- | --- | --- | --- |
-| [Sonarr](https://sonarr.tv/) | `http://localhost:8989` | `tv` | 5030, 5040, 5045, and 5070 for anime | 3.0.5 |
-| [Radarr](https://radarr.video/) | `http://localhost:7878` | `movies` | 2030, 2040, 2045 | 3.0 |
-| Whisparr v3 | `http://localhost:6969` | `whisparr` | 6000, 6040, 6045, 6080, 6090 | 3.0 |
-| Whisparr v2 | `http://localhost:6969` | `whisparr` | 6000, 6040, 6045, 6080, 6090 | 2.0, below 3.0 |
-| [Lidarr](https://lidarr.audio/) | `http://localhost:8686` | `music` | 3000, 3010, 3040 | 2.0 |
-| [Prowlarr](https://prowlarr.com/) | `http://localhost:9696` | | | 1.0 |
+| App | Default address | Needs at least |
+| --- | --- | --- |
+| [Sonarr](https://sonarr.tv/) | `http://localhost:8989` | 3.0.5 |
+| [Radarr](https://radarr.video/) | `http://localhost:7878` | 3.0 |
+| Whisparr v3 | `http://localhost:6969` | 3.0 |
+| Whisparr v2 | `http://localhost:6969` | 2.0, below 3.0 |
+| [Lidarr](https://lidarr.audio/) | `http://localhost:8686` | 2.0 |
+| [Prowlarr](https://prowlarr.com/) | `http://localhost:9696` | 1.0 |
+
+<details>
+<summary>Default download and search categories</summary>
+
+| App | Download category | Searched in |
+| --- | --- | --- |
+| [Sonarr](https://sonarr.tv/) | `tv` | 5030, 5040, 5045, and 5070 for anime |
+| [Radarr](https://radarr.video/) | `movies` | 2030, 2040, 2045 |
+| Whisparr v3 | `whisparr` | 6000, 6040, 6045, 6080, 6090 |
+| Whisparr v2 | `whisparr` | 6000, 6040, 6045, 6080, 6090 |
+| [Lidarr](https://lidarr.audio/) | `music` | 3000, 3010, 3040 |
+| [Prowlarr](https://prowlarr.com/) |  |  |
+
+</details>
 
 Choose the Whisparr version you run. Both versions use the name Whisparr, but Nodearr has separate connection types for v2 and v3. **Test** reports a version mismatch if you choose the wrong one.
 
 ## When the apps are in Docker
 
-Inside a container, `localhost` means that container. Use addresses each application can reach:
+Inside a container, `localhost` means that container. Choose the arrangement you use. These examples use Sonarr; substitute your app's port and the service names from your Compose file.
 
-| Nodearr | The app | **Nodearr Server** | **Application Server** |
-| --- | --- | --- | --- |
-| On the machine | On the machine | `http://localhost:6633` | `http://localhost:8989` |
-| On the machine, or in Docker with the host's network | In Docker on a bridge | `http://host.docker.internal:6633` | `http://localhost:8989`, using Sonarr's published host port |
-| In Docker on the same bridge network | In Docker on that network | `http://nodearr:6633` | `http://sonarr:8989` |
+<!-- tabs:app-network -->
 
-These examples use Sonarr. Substitute your app's port, and use the service names from your Docker Compose file. The second row requires the app's port to be published on the host. On Linux, also add this to the Arr app's service so it can resolve `host.docker.internal`:
+### Both on the host
+
+When both apps run directly on the same machine:
+
+| Field | Value |
+| --- | --- |
+| **Nodearr Server** | `http://localhost:6633` |
+| **Application Server** | `http://localhost:8989` |
+
+### Nodearr on the host
+
+When Nodearr runs on the machine or uses Docker's host network, and Sonarr runs in a bridge container:
+
+| Field | Value |
+| --- | --- |
+| **Nodearr Server** | `http://host.docker.internal:6633` |
+| **Application Server** | `http://localhost:8989`, using Sonarr's published host port |
+
+The app's port must be published on the host. On Linux, also add this to the Arr app's service so it can resolve `host.docker.internal`:
 
 ```yaml
 extra_hosts:
   - "host.docker.internal:host-gateway"
 ```
+
+### Both on a bridge
+
+When Nodearr and Sonarr use the same Docker bridge network:
+
+| Field | Value |
+| --- | --- |
+| **Nodearr Server** | `http://nodearr:6633` |
+| **Application Server** | `http://sonarr:8989` |
+
+Use your Compose service names. Both containers must be on the same network for those names to resolve.
+
+<!-- /tabs -->
 
 ## What Nodearr adds to each app
 
@@ -92,6 +146,10 @@ To send a library file to a friend, Nodearr reads the path reported by the Arr a
 Check **Catalog > Local** to see each file's path and whether Nodearr can read it. **System > Status** warns about missing files and permission problems; see [Friends are refused your files](troubleshooting.md#friends-are-refused-your-files). These files can still appear in a friend's catalog, but transfers fail until Nodearr can read them.
 
 ## Each app
+
+Choose the app you are connecting. The connection steps and folder requirements above apply to every library app.
+
+<!-- tabs:arr-app -->
 
 ### Sonarr
 
@@ -140,6 +198,8 @@ Prowlarr manages indexers rather than a media library. Connecting it adds an ind
 Prowlarr's copies of the Nodearr indexer are not assigned to Nodearr's download client. Downloads through those copies could go to the wrong client and fail. To prevent this, Nodearr creates a sync profile named **Nodearr** in Prowlarr with RSS, automatic search and interactive search disabled. The indexers copied to your apps are therefore disabled.
 
 Connect each library app directly to Nodearr using [the connection steps](#adding-an-app) at the start of this page. The app uses the indexer and download client registered by that direct connection.
+
+<!-- /tabs -->
 
 ## Reading the library again
 

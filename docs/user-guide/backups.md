@@ -6,7 +6,8 @@ A backup ZIP contains the node's settings (`config.xml`), SQLite database (`node
 
 Restoring a backup that includes `node.key` preserves that identity, so friends do not need to pair again. Older backups, or backups made before the transport first starts, may lack the key. Check the ZIP before using it to move a node. Without the original key, you must pair with each friend again.
 
-**Keep backups private.** Anyone who has one can pretend to be your node to your friends.
+> [!CAUTION]
+> **Keep backups private.** Anyone who has one can pretend to be your node to your friends.
 
 A backup excludes your media library and download folder. Back up those files separately if you need them.
 
