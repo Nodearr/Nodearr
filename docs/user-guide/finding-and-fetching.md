@@ -23,6 +23,19 @@ Filter by friend or select a status to show only matching files. To refresh all 
 
 **Home** shows how many files your friends have that you are missing or could upgrade.
 
+## Try your first transfer
+
+Both nodes must be running, and your friend must share at least one file you want.
+
+1. In Nodearr, go to **Nodes > Trusted Nodes** and select **Check connection** for your friend. **Direct** means files can move. **Relay only** allows messages but no media transfers; if it stays that way, see [Relay only](troubleshooting.md#relay-only).
+2. Open **Catalog > Peer Catalog** and select **Sync Peer Catalogs**. Find a file your friend shares. If their catalog is empty, ask them to check their app choices and **Hidden** on **Catalog > Sharing**.
+3. In your Arr app, add the series, movie, scene or album if it is not already in your library. Run an interactive search for it. Choose an acceptable result from the **Nodearr** indexer. If the app rejects a result, read its reason; your quality profile or other rules may exclude it.
+4. In Nodearr, open **Activity > Transfers** and wait for **Completed**. The file has then passed verification. Your Arr app imports it at its next download-client check, usually within a minute, then removes the completed download from Nodearr.
+5. Check the title in your Arr app to confirm that the file was imported. If the transfer completed but import failed, check the app's queue and Nodearr's **System > Status** for a folder-access warning.
+
+> [!NOTE]
+> Sharing a library does not immediately download its files. Nodearr's indexer has RSS disabled by default; your Arr apps find shared files when they search.
+
 ## How your Arr apps find it
 
 After you [connect an Arr app](connecting-apps.md), it searches Nodearr alongside its other indexers. Nodearr returns matching files from your friends' catalogs. The Arr app decides whether to download a result using its own quality profiles and other rules.
@@ -31,7 +44,13 @@ After you [connect an Arr app](connecting-apps.md), it searches Nodearr alongsid
 - Automatic searches can select a Nodearr result when it is the best acceptable match.
 - Newly shared files do not trigger downloads by default. Nodearr registers its indexer with RSS disabled. Search in the Arr app to discover those files.
 
-To enable RSS searches, first set the app's **Sync Level** to **Add Only** in Nodearr under **Settings > Apps**. Then edit the **Nodearr** indexer in the Arr app under **Settings > Indexers** and turn on **Enable RSS**. With **Full Sync**, Nodearr restores RSS to its disabled default at the next sync.
+To enable RSS searches:
+
+1. In Nodearr, go to **Settings > Apps**, edit the app, set **Sync Level** to **Add Only** and select **Save**.
+2. In the Arr app, go to **Settings > Indexers**, edit the **Nodearr** indexer, turn on **Enable RSS** and save it.
+
+> [!NOTE]
+> With **Full Sync**, Nodearr restores RSS to its disabled default at the next sync.
 
 Results use the release name saved by the sender's Arr app, or a title Nodearr builds from the catalog metadata. The receiving app evaluates quality and custom formats from that title as it does for any indexer.
 
@@ -52,10 +71,10 @@ When an Arr app grabs a Nodearr result, it sends the request to Nodearr's downlo
 
 ![Activity > Transfers: three episodes of Frieren coming from Sam, part way, and Cowboy Bebop sent to Sam earlier](images/transfers.png)
 
-1. **Queued**: waiting for a slot. Three transfers run at once.
-2. **Downloading**: arriving from your friend, with its progress. Your Arr app's queue shows the same.
-3. **Completed**: it arrived, matched the hash your friend's node gave before sending, and was moved into place in one step. Your Arr app imports it at its next check, usually within a minute, and then asks Nodearr to remove it.
-4. **Failed**: the transfer stopped without a verified file. **Activity > Transfers** and the Arr app's history show the reason. See [When a transfer fails](#when-a-transfer-fails).
+- **Queued**: waiting for a slot. Three transfers run at once.
+- **Downloading**: arriving from your friend, with its progress. Your Arr app's queue shows the same.
+- **Completed**: it arrived, matched the hash your friend's node gave before sending, and was moved into place in one step. Your Arr app imports it at its next check, usually within a minute, and then asks Nodearr to remove it.
+- **Failed**: the transfer stopped without a verified file. **Activity > Transfers** and the Arr app's history show the reason. See [When a transfer fails](#when-a-transfer-fails).
 
 Nodearr writes incoming files under `incomplete` in its download folder. After verification, it moves them into `complete` for the Arr app to import. An album becomes available for import only after every track has arrived and passed verification.
 

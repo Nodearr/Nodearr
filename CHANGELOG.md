@@ -2,6 +2,20 @@
 
 What changed in each release, newest first. Each item links to the decision record that explains it, and the [V1 plan](docs/plans/v1-implementation-plan.md) has the whole story, slice by slice.
 
+## 0.2.5 (pre-release)
+
+### Documentation
+
+- Added a complete [Getting started guide](https://nodearr.com/getting-started/) with downloads, installation, app connections, pairing and checks for the first transfer on one page.
+- Reorganized the website around setup, everyday use, reference and releases. The homepage's main action is **Get started**; packages and downloads remain available on their own page.
+- Grouped platform, app, networking and invite alternatives into tabs. Procedures use numbered steps, important notes use callouts, and optional instructions use expandable sections. The shared guide remains readable on GitHub.
+- Expanded installation and connection instructions with inline Docker examples, folder access and permissions, app addresses, and host or bridge networking. Windows startup choices and both invite roles include the context each reader needs.
+- Matched the website's header, homepage title and API header to the repository's two-color Nodearr wordmark in light and dark themes.
+
+### Fixed
+
+- The website's API reference returned 404 at `/api/` during local development. It now opens at `/api` and `/api/` in development and production builds.
+
 ## 0.2.4 (pre-release)
 
 ### Documentation

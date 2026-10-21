@@ -4,13 +4,20 @@ Two Nodearr instances become trusted friends when one redeems the other's invite
 
 ## Inviting a friend
 
-In Nodearr, go to **Nodes > Invites**. You can also create an invite from **Connect with a friend** on **Home**.
+Keep your node running and online while your friend redeems the invite. In Nodearr, go to **Nodes > Invites**.
+
+<details>
+<summary>See an invite ready to send</summary>
 
 ![Nodes > Invites, with a new invite labelled For Sam and its code ready to copy](images/invites.png)
+
+</details>
 
 1. Set **Valid For** to the invite's lifetime. The default is 24 hours. Enter a **Label** to remind yourself who it is for.
 2. Choose what to share. The sharing checkbox, **Share everything except Hidden with whoever redeems this invite, from the apps shared with new friends**, is selected by default. It includes existing and future files from apps with **Share With New Friends** enabled. That setting starts on for [Sonarr](https://sonarr.tv/), [Radarr](https://radarr.video/) and [Lidarr](https://lidarr.audio/), and off for both [Whisparr](https://whisparr.com/) versions. Clear the checkbox to share only lists you assign to this friend.
 3. Select **Create Invite** and copy the code. Send it privately to your friend.
+
+When your friend redeems the code, both nodes appear as **Trusted** on **Nodes > Trusted Nodes**.
 
 An invite can be used once by one node, before it expires. **Nodes > Invites** shows whether an invite is open, used or expired.
 
@@ -18,9 +25,9 @@ The code contains your node's ID, network addresses, expiry time and a secret. A
 
 ## Using a friend's invite
 
-1. In Nodearr, go to **Nodes > Invites** and paste the code under **Redeem Invite**. Alternatively, use **Have a code?** on **Home**.
+1. In Nodearr, go to **Nodes > Invites** and paste the code under **Redeem Invite**.
 2. Choose what you will share with this friend. The checkbox **Share everything except Hidden with them, from the apps shared with new friends** includes apps with **Share With New Friends** enabled; both Whisparr versions are excluded by default. Clear the checkbox to share only lists.
-3. Select **Redeem Invite**. On **Home**, select **Connect** instead.
+3. Select **Redeem Invite**.
 
 Your node connects to your friend's node and redeems the invite. After pairing succeeds, both nodes appear as **Trusted** on **Nodes > Trusted Nodes**, under the names you each chose.
 

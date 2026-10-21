@@ -136,6 +136,8 @@ Follow the [Google developer documentation style guide](https://developers.googl
 - Link third-party projects at their first useful mention on a page. Use official project pages for introductions and specific documentation for instructions. Use descriptive link text and avoid repeatedly linking the same destination unless a long page has separate entry points.
 - Use the same term for the same thing. Distinguish a default from a requirement, and explain unfamiliar terms where the reader needs them. Read the whole section after editing to catch repetition, missing context and awkward transitions.
 
+The website uses Starlight components while the user guide stays readable on GitHub. In `docs/user-guide/`, use ordinary numbered lists for procedures and GitHub alerts (`> [!NOTE]`, `> [!WARNING]`) for callouts. Surround alternative sections with `<!-- tabs:group-name -->` and `<!-- /tabs -->`; headings at the same level become tabs on the site and remain headings on GitHub. Keep shared instructions outside the group, and keep existing headings when other pages link to them. The site's sync script handles the conversion; do not put MDX imports or Starlight tags in the shared Markdown. Getting started embeds procedures from these files. Keep required setup instructions complete in their source sections, and preserve named `<!-- setup:name -->` excerpt boundaries when editing them. See the [site README](https://github.com/Nodearr/nodearr.github.io#writing-with-starlight) for examples.
+
 UI help strings are plain text unless their component supports markup. Do not insert Markdown into a string that would display the formatting characters to users.
 
 ## Licence
