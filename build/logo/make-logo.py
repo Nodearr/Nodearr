@@ -7,8 +7,8 @@ between them is split in two, each half the colour of the arc it faces: what fri
 belongs to both. It sits on a disc, as the Arr apps' marks do.
 
 Writes the SVGs here: Logo/Nodearr.svg (light disc), Logo/Nodearr-dark.svg (dark disc, for dark
-backgrounds), the web UI's logo and Safari mask, and the README banners. The PNG and ICO files are
-rendered from them by build/logo/render-icons.mjs.
+backgrounds), the web UI's logo and Safari mask, the README banners, and the YouTube and Twitch
+banners. The PNG and ICO files are rendered from them by build/logo/render-icons.mjs.
 """
 
 import math
@@ -79,41 +79,66 @@ def mask():
 FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif"
 
 
-def banner(theme):
+def banner(theme, *, width=1280, height=420, scale=1, frame=True):
+    """The name over the mark, large and faint. The README's banners are framed, with rounded
+    corners and a border; a banner for another site is not, as that site crops it.
+
+    Everything is laid out from the banner's centre, so a larger banner is the same banner scaled."""
     t = {
         'light': dict(bg0='#FFFFFF', bg1='#E6F4F2', yours=DARK, faint=0.10, name='#0F172A', accent='#0D9488', note='#0F766E', border='#D0D7DE'),
         'dark': dict(bg0='#0D1117', bg1='#0B2A28', yours=LIGHT, faint=0.12, name='#F0F6FC', accent='#5EEAD4', note='#5EEAD4', border='#30363D'),
     }[theme]
+    cx, cy = width / 2, height / 2
     # The mark, large and faint behind the name, whole: 1.08 times, centred on the banner.
-    k = 1.08
-    tx, ty = 640 - 256 * k, 210 - 256 * k
-    return f'''<svg width="1280" height="420" viewBox="0 0 1280 420" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title">
+    k = 1.08 * scale
+    tx, ty = cx - 256 * k, cy - 256 * k
+    n = lambda v: f'{v:g}'
+    corners = f' rx="{n(24 * scale)}"' if frame else ''
+    clip = f'\n    <clipPath id="frame"><rect width="{width}" height="{height}"{corners}/></clipPath>' if frame else ''
+    border = (f'\n  <rect x="0.5" y="0.5" width="{width - 1}" height="{height - 1}" rx="23.5" fill="none" stroke="{t["border"]}"/>\n'
+              if frame else '')
+    faint = f'<g transform="translate({tx:g} {ty:g}) scale({n(k)})" opacity="{t["faint"]}">'
+    return f'''<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title">
   <title id="title">Nodearr: your friends' libraries, in your Arr apps</title>
   <!-- Drawn by build/logo/make-logo.py. -->
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="420" gradientUnits="userSpaceOnUse">
+    <linearGradient id="bg" x1="0" y1="0" x2="{width}" y2="{height}" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="{t['bg0']}"/>
       <stop offset="100%" stop-color="{t['bg1']}"/>
-    </linearGradient>
-    <clipPath id="frame"><rect width="1280" height="420" rx="24"/></clipPath>
+    </linearGradient>{clip}
   </defs>
 
-  <rect width="1280" height="420" rx="24" fill="url(#bg)"/>
+  <rect width="{width}" height="{height}"{corners} fill="url(#bg)"/>
 
-  <g clip-path="url(#frame)">
-    <g transform="translate({tx:g} {ty:g}) scale({k})" opacity="{t['faint']}">
+  <g{' clip-path="url(#frame)"' if frame else ''}>
+    {faint}
       {mark(t['yours'], TEAL, prefix='banner-')}
     </g>
   </g>
-
-  <rect x="0.5" y="0.5" width="1279" height="419" rx="23.5" fill="none" stroke="{t['border']}"/>
-
+{border}
   <g font-family="{FONT}" text-anchor="middle">
-    <text x="640" y="236" font-size="144" font-weight="700" letter-spacing="-4" fill="{t['name']}">Node<tspan fill="{t['accent']}">arr</tspan></text>
-    <text x="640" y="300" font-size="30" font-weight="600" letter-spacing="1.5" fill="{t['note']}">YOUR FRIENDS' LIBRARIES, IN YOUR ARR APPS</text>
+    <text x="{n(cx)}" y="{n(cy + 26 * scale)}" font-size="{n(144 * scale)}" font-weight="700" letter-spacing="{n(-4 * scale)}" fill="{t['name']}">Node<tspan fill="{t['accent']}">arr</tspan></text>
+    <text x="{n(cx)}" y="{n(cy + 90 * scale)}" font-size="{n(30 * scale)}" font-weight="600" letter-spacing="{n(1.5 * scale)}" fill="{t['note']}">YOUR FRIENDS' LIBRARIES, IN YOUR ARR APPS</text>
   </g>
 </svg>
 '''
+
+
+def youtube():
+    """The channel's banner, 2560 x 1440, YouTube's recommended size; it takes 2048 x 1152 at the
+    least. A television shows all of it, but a computer or a phone shows only the 1546 x 423 in
+    the middle, so the name and the line under it are kept inside that, and the background and the
+    mark run to the edges. The dark banner, scaled 1.6 times. Uploaded by hand, in YouTube Studio:
+    Customisation > Branding > Banner image."""
+    return banner('dark', width=2560, height=1440, scale=1.6, frame=False)
+
+
+def twitch():
+    """The channel's profile banner, 1200 x 480, Twitch's recommended size. The dark banner at
+    the README's size, unframed, with the name and the line under it kept to the middle, so a
+    crop at the top or bottom leaves them whole. Uploaded by hand, in the Creator Dashboard:
+    Settings > Channel > Brand > Profile Banner."""
+    return banner('dark', width=1200, height=480, scale=1, frame=False)
 
 
 def write(path, text):
@@ -166,5 +191,7 @@ write('Logo/social-preview.svg', social())
 write('Logo/Nodearr-dark.svg', icon(DARK, LIGHT, 'Nodearr'))
 write('Logo/banner-light.svg', banner('light'))
 write('Logo/banner-dark.svg', banner('dark'))
+write('Logo/youtube-banner.svg', youtube())
+write('Logo/twitch-banner.svg', twitch())
 write('frontend/src/Content/Images/logo.svg', icon(LIGHT, DARK, 'Nodearr'))
 write('frontend/src/Content/Images/Icons/safari-pinned-tab.svg', mask())
