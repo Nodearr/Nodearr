@@ -22,6 +22,7 @@ interface CssExports {
   'peerRow': string;
   'peerShare': string;
   'posterCell': string;
+  'posterMini': string;
   'posterNone': string;
   'posterSquare': string;
   'posterThumb': string;
@@ -35,6 +36,7 @@ interface CssExports {
   'tiles': string;
   'title': string;
   'titles': string;
+  'withPoster': string;
 }
 export const cssExports: CssExports;
 export default cssExports;

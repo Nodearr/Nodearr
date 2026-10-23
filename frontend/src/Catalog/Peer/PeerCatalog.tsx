@@ -23,7 +23,7 @@ import formatDateTime from 'Utilities/Date/formatDateTime';
 import formatBytes from 'Utilities/Number/formatBytes';
 import titleWithYear from 'Utilities/String/titleWithYear';
 import translate from 'Utilities/String/translate';
-import Poster from '../Poster';
+import Poster, { peerPosterSrc } from '../Poster';
 import {
   PeerCatalogItem,
   PeerCatalogTitle,
@@ -173,7 +173,7 @@ function TitleTile({ title }: { title: PeerCatalogTitle }) {
   return (
     <div className={styles.tile}>
       <Poster
-        itemId={title.posterItemId}
+        src={peerPosterSrc(title.posterItemId)}
         title={describeTitle(title)}
         size="tile"
         isSquare={title.mediaKind === 'music'}
@@ -441,7 +441,7 @@ function PeerCatalog() {
                   <TableRow key={item.id}>
                     <TableRowCell className={styles.posterCell}>
                       <Poster
-                        itemId={item.id}
+                        src={peerPosterSrc(item.id)}
                         title={item.title ?? ''}
                         size="thumb"
                         isSquare={item.mediaKind === 'music'}

@@ -1,20 +1,54 @@
 import React, { useCallback, useState } from 'react';
 import Icon from 'Components/Icon';
 import { icons } from 'Helpers/Props';
+import { PosterSubject } from 'typings/LocalCatalog';
+import { TitleKey } from './useSharing';
 import styles from './Catalog.css';
 
 // The poster of the title a friend's catalog item belongs to. Nodearr keeps a copy, so a
-// poster is fetched from the friend once. A title without one shows a plain frame. An album
-// cover is square.
+// poster is fetched from the friend once.
+export function peerPosterSrc(itemId: number) {
+  return `${window.Nodearr.urlBase}/api/v5/catalog/posters/peer/${itemId}`;
+}
+
+// The poster of a title in this node's own library, from its own Arr app.
+export function localPosterSrc(
+  applicationId: number,
+  subject: PosterSubject,
+  arrId: number
+) {
+  return `${window.Nodearr.urlBase}/api/v5/catalog/posters/local/${applicationId}/${subject}/${arrId}`;
+}
+
+// The poster of a whole title on the Sharing page. An artist has none to ask for: Lidarr's
+// pictures are its albums'.
+export function titlePosterSrc(title: TitleKey) {
+  switch (title.mediaKind) {
+    case 'tv':
+      return localPosterSrc(title.applicationId, 'series', title.arrId);
+    case 'movie':
+      return localPosterSrc(title.applicationId, 'movie', title.arrId);
+    default:
+      return null;
+  }
+}
+
+const SHAPES = {
+  mini: styles.posterMini,
+  thumb: styles.posterThumb,
+  tile: styles.posterTile,
+};
+
+// A title's poster. A title without one shows a plain frame. An album cover is square.
 function Poster({
-  itemId,
+  src,
   title,
   size,
   isSquare = false,
 }: {
-  itemId: number;
+  src: string | null;
   title: string;
-  size: 'thumb' | 'tile';
+  size: 'mini' | 'thumb' | 'tile';
   isSquare?: boolean;
 }) {
   const [isMissing, setIsMissing] = useState(false);
@@ -23,10 +57,10 @@ function Poster({
     setIsMissing(true);
   }, []);
 
-  const shape = size === 'tile' ? styles.posterTile : styles.posterThumb;
+  const shape = SHAPES[size];
   const className = isSquare ? `${shape} ${styles.posterSquare}` : shape;
 
-  if (isMissing) {
+  if (isMissing || !src) {
     return (
       <div className={`${className} ${styles.posterNone}`} title={title}>
         <Icon name={icons.EPISODE_FILE} size={size === 'tile' ? 32 : 14} />
@@ -37,7 +71,7 @@ function Poster({
   return (
     <img
       className={className}
-      src={`${window.Nodearr.urlBase}/api/v5/catalog/posters/peer/${itemId}`}
+      src={src}
       alt={title}
       title={title}
       loading="lazy"

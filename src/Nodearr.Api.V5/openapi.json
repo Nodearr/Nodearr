@@ -3947,6 +3947,67 @@
         }
       }
     },
+    "/api/v5/catalog/local/titles": {
+      "get": {
+        "tags": [
+          "LocalCatalog"
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          },
+          {
+            "name": "sortKey",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortDirection",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/SortDirection"
+            }
+          },
+          {
+            "name": "applicationId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocalCatalogTitleResourcePagingResource"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v5/catalog/local/episodefile": {
       "get": {
         "tags": [
@@ -5612,6 +5673,46 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/v5/catalog/posters/local/{applicationId}/{subject}/{arrId}": {
+      "get": {
+        "tags": [
+          "Poster"
+        ],
+        "parameters": [
+          {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "subject",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "arrId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
           }
         }
       }
@@ -11217,6 +11318,13 @@
             "type": "integer",
             "format": "int32"
           },
+          "posterSubject": {
+            "$ref": "#/components/schemas/PosterSubject"
+          },
+          "posterArrId": {
+            "type": "integer",
+            "format": "int32"
+          },
           "tvdbId": {
             "type": "integer",
             "format": "int32"
@@ -11411,6 +11519,75 @@
           },
           "lastSyncError": {
             "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "LocalCatalogTitleResource": {
+        "type": "object",
+        "properties": {
+          "applicationId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "applicationName": {
+            "type": "string",
+            "nullable": true
+          },
+          "mediaType": {
+            "type": "string",
+            "nullable": true
+          },
+          "posterSubject": {
+            "$ref": "#/components/schemas/PosterSubject"
+          },
+          "posterArrId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "year": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "files": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LocalCatalogTitleResourcePagingResource": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sortKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "sortDirection": {
+            "$ref": "#/components/schemas/SortDirection"
+          },
+          "totalRecords": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LocalCatalogTitleResource"
+            },
             "nullable": true
           }
         },
@@ -12907,6 +13084,14 @@
         },
         "additionalProperties": false
       },
+      "PosterSubject": {
+        "enum": [
+          "series",
+          "movie",
+          "album"
+        ],
+        "type": "string"
+      },
       "PrivacyLevel": {
         "enum": [
           "normal",
@@ -13458,6 +13643,11 @@
           },
           "getItMessage": {
             "type": "string",
+            "nullable": true
+          },
+          "posterItemId": {
+            "type": "integer",
+            "format": "int32",
             "nullable": true
           }
         },

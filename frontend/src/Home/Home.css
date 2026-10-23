@@ -301,6 +301,17 @@
   background-color: var(--cardBackgroundColor);
 }
 
+.receivedWithPoster {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.receivedBody {
+  flex: 1;
+  min-width: 0;
+}
+
 .receivedHeader {
   display: flex;
   align-items: center;

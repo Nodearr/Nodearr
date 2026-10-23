@@ -1,3 +1,4 @@
+using NzbDrone.Core.Applications;
 using NzbDrone.Core.Catalog;
 
 namespace Nodearr.Api.V5.Catalog;
@@ -53,6 +54,11 @@ public class LocalCatalogFileResource
 
     public string? Title { get; set; }
     public int Year { get; set; }
+
+    // The title its poster belongs to: GET catalog/posters/local/{applicationId}/{posterSubject}/{posterArrId}.
+    public PosterSubject PosterSubject { get; set; }
+    public int PosterArrId { get; set; }
+
     public int TvdbId { get; set; }
     public int TmdbId { get; set; }
     public string? ImdbId { get; set; }
@@ -105,4 +111,17 @@ public class LocalCatalogFileResource
             MissingSince = file.MissingSince
         };
     }
+}
+
+// A series or movie in the local catalog, for the Posters view.
+public class LocalCatalogTitleResource
+{
+    public int ApplicationId { get; set; }
+    public string? ApplicationName { get; set; }
+    public string MediaType { get; set; } = string.Empty;
+    public PosterSubject PosterSubject { get; set; }
+    public int PosterArrId { get; set; }
+    public string? Title { get; set; }
+    public int Year { get; set; }
+    public int Files { get; set; }
 }

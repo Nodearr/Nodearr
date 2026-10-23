@@ -41,6 +41,37 @@ public class LocalCatalogController : Controller
         return TypedResults.Ok(_catalogService.GetSummaries().ConvertAll(LocalCatalogSummaryResource.FromModel));
     }
 
+    // One entry for each series or movie with a file, by sort title, for the Posters view.
+    [HttpGet("titles")]
+    [Produces("application/json")]
+    public Ok<PagingResource<LocalCatalogTitleResource>> GetTitles([FromQuery] PagingRequestResource paging, [FromQuery] int? applicationId = null)
+    {
+        var page = Math.Max(paging.Page ?? 1, 1);
+        var pageSize = Math.Clamp(paging.PageSize ?? 50, 1, 250);
+        var titles = _catalogService.GetTitles(applicationId);
+        var applications = GetApplications();
+
+        return TypedResults.Ok(new PagingResource<LocalCatalogTitleResource>
+        {
+            Page = page,
+            PageSize = pageSize,
+            SortKey = "title",
+            SortDirection = SortDirection.Ascending,
+            TotalRecords = titles.Count,
+            Records = titles.Skip((page - 1) * pageSize).Take(pageSize).Select(t => new LocalCatalogTitleResource
+            {
+                ApplicationId = t.ApplicationId,
+                ApplicationName = applications.TryGetValue(t.ApplicationId, out var application) ? application.Name : null,
+                MediaType = t.Subject == PosterSubject.Series ? "series" : "movie",
+                PosterSubject = t.Subject,
+                PosterArrId = t.ArrId,
+                Title = t.Title,
+                Year = t.Year,
+                Files = t.Files
+            }).ToList()
+        });
+    }
+
     [HttpGet("episodefile")]
     [Produces("application/json")]
     public Ok<PagingResource<LocalCatalogFileResource>> GetEpisodeFiles([FromQuery] PagingRequestResource paging, [FromQuery] int? applicationId = null)
@@ -81,6 +112,8 @@ public class LocalCatalogController : Controller
             {
                 var resource = LocalCatalogFileResource.FromFile(file, "episode");
 
+                resource.PosterSubject = PosterSubject.Series;
+                resource.PosterArrId = file.ArrSeriesId;
                 resource.SeasonNumber = file.SeasonNumber;
 
                 if (series.TryGetValue((file.ApplicationId, file.ArrSeriesId), out var parent))
@@ -135,6 +168,9 @@ public class LocalCatalogController : Controller
             file =>
             {
                 var resource = LocalCatalogFileResource.FromFile(file, "movie");
+
+                resource.PosterSubject = PosterSubject.Movie;
+                resource.PosterArrId = file.ArrMovieId;
 
                 if (movies.TryGetValue((file.ApplicationId, file.ArrMovieId), out var parent))
                 {

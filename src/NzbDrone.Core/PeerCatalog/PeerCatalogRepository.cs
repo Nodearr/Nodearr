@@ -10,6 +10,7 @@ namespace NzbDrone.Core.PeerCatalog
     public interface IPeerCatalogRepository : IBasicRepository<PeerCatalogItem>
     {
         List<PeerCatalogItem> ForPeer(int peerId);
+        List<PeerCatalogItem> ForRemoteIds(int peerId, IEnumerable<string> remoteIds);
         PeerCatalogItem FindByCandidateId(string candidateId);
         List<PeerCatalogItem> FindByMediaIds(MediaKind kind, int tvdbId, int tmdbId, string imdbId);
 
@@ -40,6 +41,13 @@ namespace NzbDrone.Core.PeerCatalog
         public List<PeerCatalogItem> ForPeer(int peerId)
         {
             return Query(i => i.PeerId == peerId);
+        }
+
+        public List<PeerCatalogItem> ForRemoteIds(int peerId, IEnumerable<string> remoteIds)
+        {
+            var ids = remoteIds.Distinct().ToList();
+
+            return ids.Count == 0 ? new List<PeerCatalogItem>() : Query(i => i.PeerId == peerId && ids.Contains(i.RemoteId));
         }
 
         public PeerCatalogItem FindByCandidateId(string candidateId)

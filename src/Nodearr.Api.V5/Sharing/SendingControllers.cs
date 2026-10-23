@@ -7,6 +7,7 @@ using NzbDrone.Core.Datastore.Events;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Nodes;
 using NzbDrone.Core.Nodes.Transport;
+using NzbDrone.Core.PeerCatalog;
 using NzbDrone.Core.Sharing;
 using NzbDrone.SignalR;
 
@@ -105,6 +106,10 @@ public class ReceivedTitleResource : RestResource
     public int Year { get; set; }
     public GetItState GetItState { get; set; }
     public string? GetItMessage { get; set; }
+
+    // An item of this node's copy of the friend's catalog that is one of the files sent, whose
+    // poster is the title's: GET catalog/posters/peer/{posterItemId}. Null until the catalog has one.
+    public int? PosterItemId { get; set; }
 
     public static ReceivedTitleResource FromModel(ReceivedTitle received, Dictionary<int, Peer> peers)
     {
@@ -223,10 +228,12 @@ public class SendController : Controller, IHandle<SentTitlesChangedEvent>, IHand
     private readonly IPeerService _peerService;
     private readonly IGetItService _getItService;
     private readonly IBroadcastSignalRMessage _broadcaster;
+    private readonly IPeerCatalogService _peerCatalog;
 
-    public SendController(ISendService sendService, IReceivedService receivedService, IPeerService peerService, IGetItService getItService, IBroadcastSignalRMessage broadcaster)
+    public SendController(ISendService sendService, IReceivedService receivedService, IPeerService peerService, IGetItService getItService, IBroadcastSignalRMessage broadcaster, IPeerCatalogService peerCatalog)
     {
         _getItService = getItService;
+        _peerCatalog = peerCatalog;
         _sendService = sendService;
         _receivedService = receivedService;
         _peerService = peerService;
@@ -301,7 +308,14 @@ public class SendController : Controller, IHandle<SentTitlesChangedEvent>, IHand
     {
         var peers = Peers();
 
-        return TypedResults.Ok(_receivedService.Waiting().ConvertAll(r => ReceivedTitleResource.FromModel(r, peers)));
+        return TypedResults.Ok(_receivedService.Waiting().ConvertAll(r =>
+        {
+            var resource = ReceivedTitleResource.FromModel(r, peers);
+
+            resource.PosterItemId = _peerCatalog.FindItemId(r.PeerId, resource.OfferIds);
+
+            return resource;
+        }));
     }
 
     [HttpPost("received/{id:int}/dismiss")]
