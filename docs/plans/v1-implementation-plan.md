@@ -142,7 +142,7 @@ V1 is done. What follows is open, most useful first. Each item in the first list
 2. **Posters, part 2: everywhere else.** The cards on **Home** for what was sent, the Send form, the Sharing page and **Catalog > Local**.
 3. **Node settings: a download limit, and a relay checked before it is saved** (ADR 0019). The download limit would sit beside the upload limit, in the sidecar. A relay address that does not answer would be refused with the reason, as an Arr app's connection test refuses one.
 4. **PROPER and REPACK** (ADR 0015). An offered file would say which revision it is, as the Arr apps record it, and the release title would carry PROPER or REPACK, so the Arr apps prefer it as they prefer any other proper.
-5. **Clean-up: inherited pages no route leads to, and the S1 spike harness.** The pages still hold links to pages that do not exist; the harness no longer runs on later branches, and the acceptance scripts replaced it.
+5. ~~**Clean-up: inherited pages no route leads to, and the S1 spike harness.**~~ Done in [#41](https://github.com/Nodearr/Nodearr/issues/41): the pages, the dead help links, the series metadata host and both spikes. The inherited backend behind those pages is [#43](https://github.com/Nodearr/Nodearr/issues/43).
 6. **Get it for Whisparr v2** (ADR 0021). A v2 sender's catalog would name each scene's site by its ID in v2's metadata, so a v2 receiver could add the site and then the scene. Whisparr v2 is the older of the two, so this comes last.
 
 These open items have no slice numbers yet. The earlier proposed S58 to S60 numbers were used for the UI test kit, sharing by app and screenshots above.
