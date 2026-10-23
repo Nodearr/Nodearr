@@ -2,6 +2,12 @@
 
 What changed in each release, newest first. Each item links to the decision record that explains it, and the [V1 plan](docs/plans/v1-implementation-plan.md) has the whole story, slice by slice.
 
+## Unreleased
+
+### Fixed
+
+- One invite could pair two nodes, when both used it at the same moment: each could find it unused before either marked it redeemed. Redeeming it is now a single step in the database, so only one of them pairs ([#31](https://github.com/Nodearr/Nodearr/issues/31)).
+
 ## 0.2.6 (pre-release)
 
 ### Security

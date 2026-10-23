@@ -488,8 +488,9 @@ namespace NzbDrone.Core.Nodes
 
             var invite = _invites.FindBySecretHash(InviteCode.HashSecret(message.InviteSecret));
 
-            // One answer for every kind of bad invite, so a stranger learns nothing by guessing.
-            if (invite == null || invite.RedeemedAt.HasValue || invite.Expires <= now)
+            // One answer for every kind of bad invite, so a stranger learns nothing by guessing. The
+            // last check redeems it, so that of two requests with the same secret only one pairs.
+            if (invite == null || invite.RedeemedAt.HasValue || invite.Expires <= now || !_invites.TryRedeem(invite.Id, remoteNodeId, now))
             {
                 switch (_pairAttempts.Failed(remoteNodeId, now))
                 {
@@ -511,7 +512,6 @@ namespace NzbDrone.Core.Nodes
 
             invite.RedeemedAt = now;
             invite.RedeemedByNodeId = remoteNodeId;
-            _invites.Update(invite);
 
             var wasTrusted = peer is { State: PeerState.Trusted };
 

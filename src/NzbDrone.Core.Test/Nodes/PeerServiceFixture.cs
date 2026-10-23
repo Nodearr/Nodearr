@@ -70,6 +70,26 @@ namespace NzbDrone.Core.Test.Nodes
             ExceptionVerification.ExpectedWarns(1);
         }
 
+        // Two requests with the same secret, the second read while the first was redeeming the
+        // invite: both saw it unused. Only the one that redeemed it pairs.
+        [Test]
+        public void an_invite_another_node_redeemed_after_it_was_read_should_not_pair()
+        {
+            var code = _alice.Service.CreateInvite(TimeSpan.FromHours(1), null).Code;
+            var stored = _alice.Invites.Single();
+            var asRead = new PeerInvite { Id = stored.Id, SecretHash = stored.SecretHash, Created = stored.Created, Expires = stored.Expires, ShareAll = stored.ShareAll };
+
+            _bob.Service.RedeemInvite(code);
+            _alice.InviteRepository.Setup(r => r.FindBySecretHash(stored.SecretHash)).Returns(asRead);
+
+            Assert.Throws<PeerException>(() => _carol.Service.RedeemInvite(code));
+            _alice.PeerFor(_carol).Should().BeNull();
+            _alice.PeerFor(_bob).State.Should().Be(PeerState.Trusted);
+            stored.RedeemedByNodeId.Should().Be(_bob.NodeId);
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
         [Test]
         public void a_reused_invite_should_not_cost_a_node_the_trust_it_already_has()
         {
@@ -517,6 +537,8 @@ namespace NzbDrone.Core.Test.Nodes
         // One node: a peer service wired to in-memory storage and the in-memory network.
         private class TestNode
         {
+            public Mock<IPeerInviteRepository> InviteRepository { get; private set; }
+
             public TestNode(InMemoryNetwork network, string name, Logger logger)
             {
                 NodeId = (name.ToLowerInvariant() + new string('0', 64))[..64];
@@ -539,10 +561,28 @@ namespace NzbDrone.Core.Test.Nodes
                 });
 
                 var invites = new Mock<IPeerInviteRepository>();
+                InviteRepository = invites;
 
                 invites.Setup(r => r.All()).Returns(() => Invites.ToList());
                 invites.Setup(r => r.FindBySecretHash(It.IsAny<string>())).Returns<string>(hash => Invites.SingleOrDefault(i => i.SecretHash == hash));
                 invites.Setup(r => r.Update(It.IsAny<PeerInvite>())).Returns<PeerInvite>(i => i);
+                invites.Setup(r => r.TryRedeem(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<DateTime>())).Returns<int, string, DateTime>((id, nodeId, at) =>
+                {
+                    lock (Invites)
+                    {
+                        var invite = Invites.Single(i => i.Id == id);
+
+                        if (invite.RedeemedAt.HasValue)
+                        {
+                            return false;
+                        }
+
+                        invite.RedeemedAt = at;
+                        invite.RedeemedByNodeId = nodeId;
+
+                        return true;
+                    }
+                });
                 invites.Setup(r => r.Insert(It.IsAny<PeerInvite>())).Returns<PeerInvite>(i =>
                 {
                     i.Id = Invites.Count + 1;
