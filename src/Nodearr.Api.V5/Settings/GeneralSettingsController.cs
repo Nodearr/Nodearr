@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Nodearr.Http;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Common.Network;
 using NzbDrone.Core.Authentication;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Update;
@@ -35,6 +36,7 @@ public class GeneralSettingsController : SettingsController<GeneralSettingsResou
         SharedValidator.RuleFor(c => c.Port).ValidPort();
 
         SharedValidator.RuleFor(c => c.UrlBase).ValidUrlBase();
+        SharedValidator.RuleFor(c => c.TrustedNetworks).ValidIpNetworks();
         SharedValidator.RuleFor(c => c.InstanceName).StartsOrEndsWithNodearr();
 
         SharedValidator.RuleFor(c => c.Username).NotEmpty().When(c => c.AuthenticationMethod == AuthenticationType.Forms);
@@ -109,6 +111,8 @@ public class GeneralSettingsController : SettingsController<GeneralSettingsResou
 
     public override Results<Accepted<GeneralSettingsResource>, NotFound> SaveSettings(GeneralSettingsResource resource)
     {
+        resource.TrustedNetworks = IPNetworkParser.NormalizeList(resource.TrustedNetworks);
+
         // A setting the environment fixes stays as it is, whatever is sent. Written to the file it
         // would do nothing now, and would take effect by surprise if the environment ever changed.
         var current = GetResourceById(resource.Id);

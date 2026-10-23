@@ -9294,6 +9294,10 @@
             "type": "string",
             "nullable": true
           },
+          "trustedNetworks": {
+            "type": "string",
+            "nullable": true
+          },
           "instanceName": {
             "type": "string",
             "nullable": true

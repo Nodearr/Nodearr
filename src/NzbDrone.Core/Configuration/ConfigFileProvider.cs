@@ -49,6 +49,7 @@ namespace NzbDrone.Core.Configuration
         string SslKeyPath { get; }
         string SslCertPassword { get; }
         string UrlBase { get; }
+        string TrustedNetworks { get; }
         string UiFolder { get; }
         string InstanceName { get; }
         bool UpdateAutomatically { get; }
@@ -286,6 +287,11 @@ namespace NzbDrone.Core.Configuration
                 return "/" + urlBase;
             }
         }
+
+        // Reverse proxies whose X-Forwarded-For is believed, besides this machine's own. None by
+        // default: a device on the network could otherwise claim any address, the loopback address
+        // included, and pass a sign-in that is turned off for local addresses or localhost.
+        public string TrustedNetworks => _serverOptions.TrustedNetworks ?? GetValue("TrustedNetworks", string.Empty);
 
         public string UiFolder => BuildInfo.IsDebug ? Path.Combine("..", "UI") : "UI";
 

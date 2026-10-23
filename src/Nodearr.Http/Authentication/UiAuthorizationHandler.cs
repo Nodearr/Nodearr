@@ -2,6 +2,7 @@ using System.Net;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.HttpOverrides;
 using Nodearr.Http.Extensions;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Authentication;
@@ -27,7 +28,8 @@ namespace NzbDrone.Http.Authentication
             if (_authenticationRequired == AuthenticationRequiredType.DisabledForLocalAddresses)
             {
                 if (context.Resource is HttpContext httpContext &&
-                    IPAddress.TryParse(httpContext.GetRemoteIP(), out var ipAddress))
+                    IPAddress.TryParse(httpContext.GetRemoteIP(), out var ipAddress) &&
+                    IsClientAddressKnown(httpContext))
                 {
                     if (ipAddress.IsLocalAddress() ||
                         (_configService.TrustCgnatIpAddresses && ipAddress.IsCgnatIpAddress()))
@@ -40,6 +42,7 @@ namespace NzbDrone.Http.Authentication
             {
                 if (context.Resource is HttpContext httpContext &&
                     IPAddress.TryParse(httpContext.GetRemoteIP(), out var ipAddress) &&
+                    IsClientAddressKnown(httpContext) &&
                     IPAddress.IsLoopback(ipAddress))
                 {
                     context.Succeed(requirement);
@@ -47,6 +50,14 @@ namespace NzbDrone.Http.Authentication
             }
 
             return Task.CompletedTask;
+        }
+
+        // A forwarded address left in the request came from a sender that is not a trusted proxy, or
+        // past the end of the chain of trusted ones, so the address the request seems to come from
+        // is not known to be the client's.
+        private static bool IsClientAddressKnown(HttpContext httpContext)
+        {
+            return !httpContext.Request.Headers.ContainsKey(ForwardedHeadersDefaults.XForwardedForHeaderName);
         }
 
         public void Handle(ConfigSavedEvent message)

@@ -51,9 +51,12 @@ A new port, bind address or URL base takes effect after a restart. If you change
 | **Username**, **Password** | | |
 | **API Key** | Made on the first start | `Nodearr__Auth__ApiKey` |
 | **Certificate Validation** | **Enabled** | |
+| **Trusted Networks** | Empty | `Nodearr__Server__TrustedNetworks` |
 
 - **Forms (Login Page)** is a sign-in page and the choice offered in the UI. The inherited `Basic` configuration value is migrated to `Forms`. The configuration values `External` and `None` disable Nodearr's sign-in page and can be set in `config.xml` or the environment. Use `External` only when a reverse proxy or another service authenticates requests before they reach Nodearr.
 - **Disabled for Local Addresses** lets anyone on your home network in without signing in, and **Disabled for Localhost** only someone on the same machine. Your friends' nodes never use the web UI or the API: they talk to the transport, which only trusts nodes you paired with.
+- In Docker on the default bridge network, every connection to the published port looks as if it came from the bridge, a local address. So **Disabled for Local Addresses** lets in anything that can reach that port, from outside your network too if the port is open to it.
+- **Trusted Networks** lists the reverse proxies whose `X-Forwarded-For` header Nodearr believes, so that it sees the address of the person behind the proxy. Nodearr always believes a proxy on the same machine. Leave it empty unless a reverse proxy runs on another address, such as another container: then add that address, or its network in CIDR notation, such as `172.17.0.1` or `10.0.0.0/8`. Add only a proxy that sets the header itself, since anything on a trusted network can claim to be any address. Takes effect after a restart.
 - The **API Key** is what your Arr apps and [Prowlarr](https://prowlarr.com/) use to reach Nodearr. Resetting it gives the new one to every app set to **Full Sync**. Change it by hand in any other.
 
 ### Logging
