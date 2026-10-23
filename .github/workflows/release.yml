@@ -171,6 +171,26 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: CHANGELOG.md
+          sparse-checkout-cone-mode: false
+
+      # The notes open with the changelog's section for this version, which says what changed and
+      # why. GitHub's generated notes follow it, for the pull requests and the comparison; alone they
+      # list only pull requests merged here, and miss a fix merged from a security advisory's
+      # private fork.
+      - name: Notes
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          awk -v v="$VERSION" '/^## /{ if (f) exit; f = ($0 == "## " v || index($0, "## " v " ") == 1); next } f' CHANGELOG.md > notes.md
+          if grep -q '[^[:space:]]' notes.md; then
+            cat notes.md
+          else
+            echo "::warning::CHANGELOG.md has no section for $VERSION, so the notes are GitHub's alone"
+          fi
+
       - uses: actions/download-artifact@v5
         with:
           pattern: package-*
@@ -186,6 +206,7 @@ jobs:
           name: Nodearr ${{ needs.version.outputs.version }}
           draft: true
           prerelease: ${{ needs.version.outputs.prerelease == 'true' }}
+          body_path: notes.md
           generate_release_notes: true
           files: packages/*
 

@@ -103,6 +103,8 @@ git push origin v0.1.0
 
 `.github/workflows/release.yml` builds every package, drafts a GitHub release with them and `SHA256SUMS` attached, and pushes the image. The draft is not published until someone publishes it from the Releases page.
 
+The draft's notes are the version's section of `CHANGELOG.md`, followed by GitHub's list of the pull requests merged since the last release and a link comparing the two. So write the changelog section before tagging: GitHub's list names only pull requests merged in this repository, and misses a fix merged from a security advisory's private fork. A tag with no section in the changelog gets GitHub's list alone, and the run warns.
+
 A version is three numbers with an optional pre-release tag: `0.1.0`, `0.1.0-beta.1`. The application reports the three numbers and a fourth, `0.1.0.0`, without the tag. A tag with a pre-release part makes the GitHub release a pre-release.
 
 Run the workflow by hand from the Actions tab, with a version, to build the packages without drafting or pushing anything. They are kept as the run's artifacts.
