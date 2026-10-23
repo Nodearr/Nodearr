@@ -120,6 +120,8 @@ Then a settings page. ADR 0019. Branch `v1/s10-node-settings`.
 - 0.2.2, from an independent audit of the docs: a backup restore refuses zip entries that would land outside its folder (GHSA-gfvh-m4vj-ggh3, Sonarr's later fix ported) and takes only `.zip` or `.db`; `yarn typecheck` runs in CI; the guide's two out-of-date screenshots were taken again. Branch `v1/s61-fixes-0.2.2`.
 - 0.2.3: each category's download folder is made when an Arr app reads Nodearr's download client settings, so Sonarr no longer warns of a missing folder before the first transfer. The library check opens the files it samples and tells files that are not there from files Nodearr may not open. Both found on the owner's TrueNAS. Branch `v1/s62-category-folders`.
 - 0.2.4: an editorial sweep of the user guide, the contributor and test guides, and the help texts in the UI, by Codex, with the guide's screenshots taken again from a package of the branch. Branch `docs/editorial-sweep`.
+- 0.2.5: the website reorganised around setup, everyday use, reference and releases, with a Getting started guide on one page, and its API reference opening at `/api` in development too. Branch `docs/starlight-structure`.
+- 0.2.6, from a code audit of the app and the site: forwarded client addresses are believed only from a proxy on the same machine and from a new **Trusted Networks** setting (Sonarr's later fix, ported), so a forged `X-Forwarded-For` no longer passes a sign-in turned off for local addresses or localhost; a change to sharing makes a friend part way through a catalog fetch start again, so a newly hidden title is not in its later pages. The audit's other findings are issues #31-#34 and the site's #8. Branch `v1/s63-security-0.2.6`.
 
 ## Where V1 stands
 
