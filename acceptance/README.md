@@ -109,6 +109,7 @@ Requires PowerShell 7, a built Nodearr, Docker, ffmpeg and a built transport sid
 - The file comes from node A, is verified, and is imported. The imported file is the same, byte for byte.
 - Nothing appears under `complete` while a file is still arriving.
 - The same ticket twice gives one transfer. Deleting it from the queue leaves nothing behind.
+- A download limit on node B, a quarter of A's upload limit, holds a transfer to it.
 - Node B is killed in the middle and started again. The transfer carries on from what had arrived.
 - Node A revokes trust in the middle. The transfer stops, and Sonarr records why and blocklists the release.
 - B's Sonarr is switched to call the series daily, while A's still calls it standard. It then asks by the day the episode aired, is answered with a title written by day, and imports the file.
@@ -182,7 +183,7 @@ Requires PowerShell 7, a built Nodearr and a built transport sidecar. Docker and
 
 - Bad values are refused together, each named, and nothing is changed. A port another program holds is refused.
 - A setting fixed in the environment stays as it is.
-- A new name reaches a trusted node. A new port, upload limit and wait restart the transport, which comes back as the same node, and the trusted node reaches it at the new port without pairing again.
+- A new name reaches a trusted node. A new port, upload and download limits and wait restart the transport, which comes back as the same node, and the trusted node reaches it at the new port without pairing again.
 - A new download folder is created and is what Sonarr and Radarr are then told.
 - Everything survives a restart of Nodearr.
 

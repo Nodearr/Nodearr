@@ -37,6 +37,9 @@ namespace NzbDrone.Core.Nodes.Settings
         // The most each upload may send, in kilobytes per second. Zero is no limit.
         public int UploadLimitKbps { get; set; }
 
+        // The most each download may take, in kilobytes per second. Zero is no limit.
+        public int DownloadLimitKbps { get; set; }
+
         // Minutes between asking each trusted node what changed in its catalog, like Sonarr's RSS
         // Sync Interval: 10 to 120, or 0 to ask only when told or asked by hand.
         public int CatalogSyncInterval { get; set; }

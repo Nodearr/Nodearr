@@ -7,6 +7,7 @@ What changed in each release, newest first. Each item links to the decision reco
 ### Added
 
 - Posters everywhere a title is shown, not only in a friend's catalog: **Catalog > Local** shows each file's poster and has a **Posters** view, one tile per series or movie with how many files it has; the **Sharing** page's lists and the Send form show a small poster beside each series and movie; and a card on **Home** for what a friend sent shows the title's poster. Your own titles' posters come from your own Arr apps, and nothing new goes between nodes ([#42](https://github.com/Nodearr/Nodearr/issues/42)).
+- A download limit on **Settings > Node**, beside the upload limit: the most each download from a friend may take, 0 for none, or `Nodearr__Transport__DownloadLimitKbps` in the environment. A relay of your own is asked before a new address is saved, and one where no relay answers is refused with what happened, instead of being found out when the transport starts ([#48](https://github.com/Nodearr/Nodearr/issues/48)).
 
 ### Changed
 

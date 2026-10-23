@@ -276,6 +276,24 @@ function NodeSettings() {
                   />
                 )}
               </FormGroup>
+
+              <FormGroup>
+                <FormLabel>{translate('NodeSettingsDownloadLimit')}</FormLabel>
+
+                {isFixed('downloadLimitKbps') ? (
+                  <FixedSetting value={settings.downloadLimitKbps.value} />
+                ) : (
+                  <FormInputGroup
+                    type={inputTypes.NUMBER}
+                    name="downloadLimitKbps"
+                    min={0}
+                    unit="KB/s"
+                    helpText={translate('NodeSettingsDownloadLimitHelpText')}
+                    onChange={handleInputChange}
+                    {...settings.downloadLimitKbps}
+                  />
+                )}
+              </FormGroup>
             </FieldSet>
 
             <FieldSet legend={translate('Catalog')}>

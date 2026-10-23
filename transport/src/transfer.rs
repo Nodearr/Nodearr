@@ -127,6 +127,8 @@ pub struct Transfers {
     direct_timeout: Duration,
     /// Bytes per second each upload may send. Zero means no limit.
     upload_limit: u64,
+    /// Bytes per second each download may take. Zero means no limit.
+    download_limit: u64,
     downloads: Mutex<HashMap<String, Download>>,
     uploads: Mutex<HashMap<u64, (EndpointId, Connection)>>,
     upload_states: Mutex<HashMap<u64, UploadState>>,
@@ -138,10 +140,11 @@ pub struct Transfers {
 }
 
 impl Transfers {
-    pub fn new(direct_timeout: Duration, upload_limit: u64) -> Self {
+    pub fn new(direct_timeout: Duration, upload_limit: u64, download_limit: u64) -> Self {
         Self {
             direct_timeout,
             upload_limit,
+            download_limit,
             downloads: Mutex::new(HashMap::new()),
             uploads: Mutex::new(HashMap::new()),
             upload_states: Mutex::new(HashMap::new()),
@@ -558,9 +561,10 @@ pub fn start(transfers: &Arc<Transfers>, endpoint: Endpoint, request: DownloadRe
     let state = Arc::new(Mutex::new(DownloadState { id: request.id.clone(), state: "connecting", bytes_done: 0, size: 0, blake3: None, failure: None }));
     let task_state = state.clone();
     let id = request.id.clone();
+    let limit = transfers.download_limit;
 
     let task = tokio::spawn(async move {
-        if let Err(failure) = receive_file(&endpoint, &request, &task_state).await {
+        if let Err(failure) = receive_file(&endpoint, &request, &task_state, limit).await {
             let mut state = task_state.lock().unwrap();
             state.state = "failed";
             state.failure = Some(failure);
@@ -574,7 +578,8 @@ fn failure(kind: &'static str, message: impl Into<String>) -> Failure {
     Failure { kind, message: message.into() }
 }
 
-async fn receive_file(endpoint: &Endpoint, request: &DownloadRequest, state: &Mutex<DownloadState>) -> std::result::Result<(), Failure> {
+/// `limit` is the most bytes per second it may take, zero for no limit.
+async fn receive_file(endpoint: &Endpoint, request: &DownloadRequest, state: &Mutex<DownloadState>, limit: u64) -> std::result::Result<(), Failure> {
     let disk = |err: std::io::Error| failure("DiskError", err.to_string());
 
     let conn = match tokio::time::timeout(Duration::from_secs(30), endpoint.connect(request.target.clone(), TRANSFER_ALPN)).await {
@@ -645,6 +650,12 @@ async fn receive_file(endpoint: &Endpoint, request: &DownloadRequest, state: &Mu
                 file.write_all(&buffer[..read]).await.map_err(disk)?;
                 bytes += read as u64;
                 state.lock().unwrap().bytes_done = bytes;
+
+                // Reading more slowly holds the sender back too: QUIC's flow control stops it
+                // once what is not yet read fills the window.
+                if limit > 0 {
+                    tokio::time::sleep(Duration::from_secs_f64(read as f64 / limit as f64)).await;
+                }
             }
             Ok(None) => break,
             Err(err) => {

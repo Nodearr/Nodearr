@@ -31,6 +31,7 @@ namespace NzbDrone.Core.Nodes.Settings
         public const int MinDirectTimeout = 5;
         public const int MaxDirectTimeout = 120;
         public const int MinUploadLimit = 16;
+        public const int MinDownloadLimit = 16;
 
         private static readonly TimeSpan RestartWait = TimeSpan.FromSeconds(20);
 
@@ -39,15 +40,17 @@ namespace NzbDrone.Core.Nodes.Settings
         private readonly IPeerTransport _transport;
         private readonly ITransferRepository _transfers;
         private readonly IEventAggregator _eventAggregator;
+        private readonly IRelayProbe _relayProbe;
         private readonly Logger _logger;
 
-        public NodeSettingsService(INodeSettingsProvider provider, IConfigService configService, IPeerTransport transport, ITransferRepository transfers, IEventAggregator eventAggregator, Logger logger)
+        public NodeSettingsService(INodeSettingsProvider provider, IConfigService configService, IPeerTransport transport, ITransferRepository transfers, IEventAggregator eventAggregator, IRelayProbe relayProbe, Logger logger)
         {
             _provider = provider;
             _configService = configService;
             _transport = transport;
             _transfers = transfers;
             _eventAggregator = eventAggregator;
+            _relayProbe = relayProbe;
             _logger = logger;
         }
 
@@ -89,7 +92,10 @@ namespace NzbDrone.Core.Nodes.Settings
 
             Check(nameof(NodeSettings.RelayUrl), () =>
             {
-                if (settings.Relay != RelayMode.Custom)
+                // The relay the environment fixes is the one used, whatever was sent.
+                var relay = fixedNames.Contains(nameof(NodeSettings.Relay)) ? current.Relay : settings.Relay;
+
+                if (relay != RelayMode.Custom)
                 {
                     return null;
                 }
@@ -99,9 +105,16 @@ namespace NzbDrone.Core.Nodes.Settings
                     return "A relay of your own needs its address";
                 }
 
-                return Uri.TryCreate(settings.RelayUrl.Trim(), UriKind.Absolute, out var url) && url.Scheme is "http" or "https" && url.Host.Length > 0
-                    ? null
-                    : "A relay address looks like https://relay.example.com";
+                if (!Uri.TryCreate(settings.RelayUrl.Trim(), UriKind.Absolute, out var url) || url.Scheme is not ("http" or "https") || url.Host.Length == 0)
+                {
+                    return "A relay address looks like https://relay.example.com";
+                }
+
+                // Asked only when it is new, so a relay that is down for a moment does not stop the
+                // rest of the page being saved.
+                var unchanged = current.Relay == RelayMode.Custom && settings.RelayUrl.Trim() == (current.RelayUrl ?? string.Empty).Trim();
+
+                return unchanged ? null : _relayProbe.Check(url);
             });
 
             Check(nameof(NodeSettings.Port), () =>
@@ -130,6 +143,11 @@ namespace NzbDrone.Core.Nodes.Settings
             Check(nameof(NodeSettings.UploadLimitKbps), () =>
                 settings.UploadLimitKbps != 0 && settings.UploadLimitKbps < MinUploadLimit
                     ? $"Use 0 for no limit, or at least {MinUploadLimit} KB/s"
+                    : null);
+
+            Check(nameof(NodeSettings.DownloadLimitKbps), () =>
+                settings.DownloadLimitKbps != 0 && settings.DownloadLimitKbps < MinDownloadLimit
+                    ? $"Use 0 for no limit, or at least {MinDownloadLimit} KB/s"
                     : null);
 
             Check(nameof(NodeSettings.DownloadFolder), () => CheckDownloadFolder(settings.DownloadFolder, current.DownloadFolder));
@@ -175,6 +193,7 @@ namespace NzbDrone.Core.Nodes.Settings
             Write(nameof(NodeSettings.DirectTimeoutSeconds), before.DirectTimeoutSeconds, settings.DirectTimeoutSeconds, v => _configService.TransferDirectTimeout = v);
             Write(nameof(NodeSettings.DownloadFolder), before.DownloadFolder ?? string.Empty, (settings.DownloadFolder ?? string.Empty).Trim(), v => _configService.TransferDownloadFolder = v);
             Write(nameof(NodeSettings.UploadLimitKbps), before.UploadLimitKbps, settings.UploadLimitKbps, v => _configService.TransferUploadLimit = v);
+            Write(nameof(NodeSettings.DownloadLimitKbps), before.DownloadLimitKbps, settings.DownloadLimitKbps, v => _configService.TransferDownloadLimit = v);
             Write(nameof(NodeSettings.CatalogSyncInterval), before.CatalogSyncInterval, settings.CatalogSyncInterval, v => _configService.CatalogSyncInterval = v);
 
             var after = _provider.Get();
@@ -195,7 +214,8 @@ namespace NzbDrone.Core.Nodes.Settings
                                    before.Port != after.Port ||
                                    before.PortMapping != after.PortMapping ||
                                    before.DirectTimeoutSeconds != after.DirectTimeoutSeconds ||
-                                   before.UploadLimitKbps != after.UploadLimitKbps;
+                                   before.UploadLimitKbps != after.UploadLimitKbps ||
+                                   before.DownloadLimitKbps != after.DownloadLimitKbps;
 
             if (transportChanged && _transport.IsRunning)
             {

@@ -484,6 +484,12 @@ namespace NzbDrone.Core.Nodes.Transport
                 startInfo.ArgumentList.Add(settings.UploadLimitKbps.ToString());
             }
 
+            if (settings.DownloadLimitKbps > 0)
+            {
+                startInfo.ArgumentList.Add("--download-limit-kbps");
+                startInfo.ArgumentList.Add(settings.DownloadLimitKbps.ToString());
+            }
+
             // The token never appears on the command line, where other local users could read it.
             startInfo.Environment["NODEARR_TRANSPORT_TOKEN"] = token;
 
