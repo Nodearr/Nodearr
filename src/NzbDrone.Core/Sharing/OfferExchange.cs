@@ -17,9 +17,13 @@ namespace NzbDrone.Core.Sharing
     // The first page builds the peer's offer afresh. If the peer holds the version this node last
     // sent it, and can take changes, it is sent only the files added or changed since and the IDs
     // of those removed. Otherwise it is sent the whole catalog. Either way the reply is remembered,
-    // so the following pages come from the same snapshot even if sharing changes in between. A
+    // so the following pages come from the same snapshot even if the library changes in between. A
     // peer that asks for a later page of a snapshot that has been replaced is told to start again.
-    public class OfferExchange : IOfferExchange, IHandle<PeerDeletedEvent>
+    //
+    // A change to what is shared drops every snapshot, so a peer part way through is told to start
+    // again too. Otherwise a title put on Hidden after the first page would still be in the later
+    // pages, for as long as the peer took to ask for them.
+    public class OfferExchange : IOfferExchange, IHandle<PeerDeletedEvent>, IHandle<SharingChangedEvent>
     {
         public const int PageSize = 500;
 
@@ -80,6 +84,11 @@ namespace NzbDrone.Core.Sharing
         {
             _snapshots.TryRemove(message.PeerId, out _);
             _records.DeleteForPeer(message.PeerId);
+        }
+
+        public void Handle(SharingChangedEvent message)
+        {
+            _snapshots.Clear();
         }
 
         // Only what changed, when this node knows what the peer holds and the peer can take it.
