@@ -401,6 +401,11 @@ const shots = {
     await a.getByText('Table', { exact: true }).click();
     await open(a, A, '/catalog/local');
     await shoot(a, 'local-catalog');
+    await a.getByText('Posters', { exact: true }).click();
+    await a.waitForLoadState('networkidle');
+    await a.waitForTimeout(1200);
+    await shoot(a, 'local-catalog-posters');
+    await a.getByText('Table', { exact: true }).click();
   },
 
   async settings({ a }) {

@@ -128,7 +128,9 @@ function TitleTile({ title }: { title: LocalCatalogTitle }) {
       </div>
 
       <div className={catalogStyles.tileDetails}>
-        {title.files} {translate('Files')}
+        {title.files === 1
+          ? translate('SharingOneFile')
+          : translate('SharingFileCount', { count: title.files })}
       </div>
       <div className={catalogStyles.tileDetails}>{title.applicationName}</div>
     </div>

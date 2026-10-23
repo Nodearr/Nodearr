@@ -207,6 +207,8 @@ Nodearr refreshes each app's library every 12 hours. Webhooks trigger a refresh 
 
 **Catalog > Local** shows each file with its title's poster, from your own Arr app. Select **Posters** to see one tile per series or movie instead, with how many files each has.
 
+![The Posters view of Alex's own catalog: one tile each for Back to the Future, Cowboy Bebop and Spirited Away, with how many files each has](images/local-catalog-posters.png)
+
 To refresh all libraries now, go to **Catalog > Local** and select **Refresh Catalog**. Files an app no longer reports are marked missing, then removed from Nodearr's catalog after 7 days. Select **Purge Missing** to remove those catalog entries immediately.
 
 ![Catalog > Local: what each app reported, and each file's path and whether Nodearr can read it](images/local-catalog.png)
