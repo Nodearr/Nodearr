@@ -1,10 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Routing;
-using Microsoft.AspNetCore.Routing.Internal;
 using Nodearr.Http;
-using Nodearr.Http.Validation;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Configuration;
@@ -24,9 +21,6 @@ public class SystemController : Controller
     private readonly IMainDatabase _database;
     private readonly ILifecycleService _lifecycleService;
     private readonly IDeploymentInfoProvider _deploymentInfoProvider;
-    private readonly EndpointDataSource _endpointData;
-    private readonly DfaGraphWriter _graphWriter;
-    private readonly DuplicateEndpointDetector _detector;
 
     public SystemController(IAppFolderInfo appFolderInfo,
                             IRuntimeInfo runtimeInfo,
@@ -35,10 +29,7 @@ public class SystemController : Controller
                             IConfigFileProvider configFileProvider,
                             IMainDatabase database,
                             ILifecycleService lifecycleService,
-                            IDeploymentInfoProvider deploymentInfoProvider,
-                            EndpointDataSource endpoints,
-                            DfaGraphWriter graphWriter,
-                            DuplicateEndpointDetector detector)
+                            IDeploymentInfoProvider deploymentInfoProvider)
     {
         _appFolderInfo = appFolderInfo;
         _runtimeInfo = runtimeInfo;
@@ -48,9 +39,6 @@ public class SystemController : Controller
         _database = database;
         _lifecycleService = lifecycleService;
         _deploymentInfoProvider = deploymentInfoProvider;
-        _endpointData = endpoints;
-        _graphWriter = graphWriter;
-        _detector = detector;
     }
 
     [HttpGet("status")]
@@ -91,25 +79,6 @@ public class SystemController : Controller
             PackageUpdateMechanism = _deploymentInfoProvider.PackageUpdateMechanism,
             PackageUpdateMechanismMessage = _deploymentInfoProvider.PackageUpdateMechanismMessage
         });
-    }
-
-    [HttpGet("routes")]
-    [Produces("application/json")]
-    public ContentHttpResult GetRoutes()
-    {
-        using (var sw = new StringWriter())
-        {
-            _graphWriter.Write(_endpointData, sw);
-            var graph = sw.ToString();
-            return TypedResults.Content(graph, "text/plain");
-        }
-    }
-
-    [HttpGet("routes/duplicate")]
-    [Produces("application/json")]
-    public Ok<Dictionary<string, List<string>>> DuplicateRoutes()
-    {
-        return TypedResults.Ok(_detector.GetDuplicateEndpoints(_endpointData));
     }
 
     [HttpPost("shutdown")]

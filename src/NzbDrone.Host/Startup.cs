@@ -14,7 +14,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi;
 using NLog.Extensions.Logging;
-using Nodearr.Api.V5.Series;
+using Nodearr.Api.V5.Applications;
 using Nodearr.Http;
 using Nodearr.Http.Authentication;
 using Nodearr.Http.ClientSchema;
@@ -87,7 +87,7 @@ namespace NzbDrone.Host
             })
 
             // Register all controllers from the API and HTTP projects
-            .AddApplicationPart(typeof(SeriesLookupController).Assembly)
+            .AddApplicationPart(typeof(ApplicationController).Assembly)
             .AddApplicationPart(typeof(StaticResourceController).Assembly)
             .AddJsonOptions(options =>
             {
@@ -178,11 +178,6 @@ namespace NzbDrone.Host
                     versions.AddRange(type
                         .GetCustomAttributes(true)
                         .OfType<VersionedApiControllerAttribute>()
-                        .Select(attr => attr.Version));
-
-                    versions.AddRange(type
-                        .GetCustomAttributes(true)
-                        .OfType<VersionedFeedControllerAttribute>()
                         .Select(attr => attr.Version));
 
                     // Return anything with no version or a matching version

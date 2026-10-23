@@ -70,3 +70,4 @@ Deferred. Nodearr should first be searchable and grabbable as an indexer, not re
 
 - 2026-10-19: **a grab link returns a ticket.** The original decision described grab links as creating a transfer. As built, `t=get` only returns the NZB ticket. A job is created when the Arr app uploads it to `/sabnzbd/api` with `mode=addfile` ([ADR 0010](0010-arr-contract-newznab-indexer-and-sabnzbd-download-client.md)).
 
+- 2026-10-23: **the native API is only Nodearr's.** It was Sonarr's v5 API with Nodearr's areas added, beside Sonarr's v3. Both carried Sonarr's TV library, indexer and download client endpoints, which nothing in Nodearr called. They are gone ([#43](https://github.com/Nodearr/Nodearr/issues/43)): v3 entirely, and in v5 everything but the Arr apps, catalogs, nodes, sharing, transfers, the system pages and their settings, and the Arr apps' webhook. The compatibility boundary itself is unchanged.

@@ -28,16 +28,4 @@ public class LocalizationController : RestController<LocalizationResource>
     {
         return TypedResults.Ok(GetResourceById(1));
     }
-
-    [HttpGet("language")]
-    [Produces("application/json")]
-    public Ok<LocalizationLanguageResource> GetLanguage()
-    {
-        var identifier = _localizationService.GetLanguageIdentifier();
-
-        return TypedResults.Ok(new LocalizationLanguageResource
-        {
-            Identifier = identifier
-        });
-    }
 }

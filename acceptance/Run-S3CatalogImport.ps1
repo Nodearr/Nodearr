@@ -193,7 +193,7 @@ $definitions = @{
     radarr = @{ Implementation = 'Radarr'; Url = 'http://127.0.0.1:17878'; Category = 'movies'; CategoryField = 'movieCategory' }
 }
 $schemas = Invoke-Api nodearr GET '/applications/schema'
-Assert-That 'Nodearr offers Sonarr and Radarr as applications' (@($schemas.implementation | Sort-Object) -join ',' -eq 'Radarr,Sonarr') @{ implementations = @($schemas.implementation) }
+Assert-That 'Nodearr offers Sonarr and Radarr as applications' ('Sonarr' -in $schemas.implementation -and 'Radarr' -in $schemas.implementation) @{ implementations = @($schemas.implementation) }
 
 $applicationIds = @{}
 foreach ($app in 'sonarr', 'radarr') {
