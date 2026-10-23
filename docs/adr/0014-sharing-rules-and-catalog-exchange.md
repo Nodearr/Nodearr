@@ -166,6 +166,8 @@ The marks are worked out again whenever the local catalog is refreshed.
 
 - 2026-10-19: **Have means no upgrade under the local profile.** Since the quality-profile amendment, Have does not always mean the local file has the higher quality. Upgrades may be off, the cutoff may be met, or the offered quality may be disallowed. These marks do not filter indexer search results.
 
+- 2026-10-23: **a peer's catalog has a limit.** A node fetching a peer's catalog believed the number of pages the peer said, up to 10,000, and kept every item of every page, however many ([#33](https://github.com/Nodearr/Nodearr/issues/33)). Past 10,000 pages it stopped quietly and took what it had for the whole catalog. A node takes at most 200,000 files from a peer now, three times the library measured above, in at most 400 pages of at most 500. A peer that says more, or sends more on a page, is refused at once: nothing of that fetch is kept, the catalog held before stays, and the peer's catalog error says why. A genuine node never sends more than a page holds.
+
 ## Follow-up work
 
 - ~~S6: turn peer catalog rows into indexer results, with the opaque file identifier inside a signed GUID.~~ Done: ADR 0015.

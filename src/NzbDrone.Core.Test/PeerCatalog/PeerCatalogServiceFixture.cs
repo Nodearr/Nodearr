@@ -10,6 +10,7 @@ using NzbDrone.Core.PeerCatalog;
 using NzbDrone.Core.PeerIndexer;
 using NzbDrone.Core.Sharing;
 using NzbDrone.Core.Test.Framework;
+using NzbDrone.Test.Common;
 
 namespace NzbDrone.Core.Test.PeerCatalog
 {
@@ -189,6 +190,49 @@ namespace NzbDrone.Core.Test.PeerCatalog
 
             Stored.Should().HaveCount(3);
             StoredPeer.Should().Match<Peer>(p => p.CatalogError == "no route" && p.CatalogVersion == "v1");
+        }
+
+        // A node that is not genuine can claim a catalog of any size. What this node already holds
+        // is kept, nothing of the claimed one is, and it stops after the first page.
+        [TestCase(401, 0)]
+        [TestCase(1, 200001)]
+        public void should_refuse_a_catalog_larger_than_it_takes(int pages, int files)
+        {
+            Subject.Sync(_alice.Id);
+            Mocker.GetMock<IPeerService>().Invocations.Clear();
+
+            Mocker.GetMock<IPeerService>()
+                  .Setup(s => s.Ask(It.IsAny<Peer>(), It.IsAny<PeerMessage>()))
+                  .Returns(new PeerReply { Ok = true, CatalogVersion = "huge", CatalogTotalPages = pages, CatalogItemCount = files, CatalogItems = _offered.Take(2).ToList() });
+
+            Subject.Sync(_alice.Id);
+
+            Stored.Should().HaveCount(3);
+            StoredPeer.Should().Match<Peer>(p => p.CatalogVersion == "v1" && p.CatalogError.StartsWith("Its catalog is larger than this node takes"));
+            Mocker.GetMock<IPeerService>().Verify(s => s.Ask(It.IsAny<Peer>(), It.IsAny<PeerMessage>()), Times.Once());
+
+            ExceptionVerification.ExpectedWarns(1);
+        }
+
+        [Test]
+        public void should_refuse_a_page_with_more_than_a_page_holds()
+        {
+            Subject.Sync(_alice.Id);
+
+            var overfull = Enumerable.Range(0, OfferExchange.PageSize + 1)
+                .Select(n => new OfferItem { Id = "e-2-" + n, Kind = MediaKind.Tv, TvdbId = 75669, Title = "Pingu", SeasonNumber = 2, EpisodeNumbers = new List<int> { n } })
+                .ToList();
+
+            Mocker.GetMock<IPeerService>()
+                  .Setup(s => s.Ask(It.IsAny<Peer>(), It.IsAny<PeerMessage>()))
+                  .Returns<Peer, PeerMessage>((_, request) => new PeerReply { Ok = true, CatalogVersion = "big", CatalogTotalPages = 2, CatalogItems = request.CatalogPage == 0 ? _offered.Take(2).ToList() : overfull });
+
+            Subject.Sync(_alice.Id);
+
+            Stored.Should().HaveCount(3);
+            StoredPeer.Should().Match<Peer>(p => p.CatalogVersion == "v1" && p.CatalogError.StartsWith("Its catalog is larger than this node takes"));
+
+            ExceptionVerification.ExpectedWarns(1);
         }
 
         [Test]
