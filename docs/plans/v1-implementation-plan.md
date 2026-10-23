@@ -122,6 +122,7 @@ Then a settings page. ADR 0019. Branch `v1/s10-node-settings`.
 - 0.2.4: an editorial sweep of the user guide, the contributor and test guides, and the help texts in the UI, by Codex, with the guide's screenshots taken again from a package of the branch. Branch `docs/editorial-sweep`.
 - 0.2.5: the website reorganised around setup, everyday use, reference and releases, with a Getting started guide on one page, and its API reference opening at `/api` in development too. Branch `docs/starlight-structure`.
 - 0.2.6, from a code audit of the app and the site: forwarded client addresses are believed only from a proxy on the same machine and from a new **Trusted Networks** setting (Sonarr's later fix, ported), so a forged `X-Forwarded-For` no longer passes a sign-in turned off for local addresses or localhost; a change to sharing makes a friend part way through a catalog fetch start again, so a newly hidden title is not in its later pages. The audit's other findings are issues #31-#34 and the site's #8. Branch `v1/s63-security-0.2.6`.
+- 0.2.7, the code audit's remaining findings: an invite is redeemed in one database step, so two nodes using it at once cannot both pair (#31); a finished download goes next to one of the same name, as `Title.1`, instead of replacing it (#32); a peer's catalog is limited to 200,000 files in pages of at most 500 (#33); the hashing pass stores its hashes in batches, 2.6 s instead of 145 s for 66,000 files (#34). Each on the branch GitHub made from its issue.
 
 ## Where V1 stands
 
