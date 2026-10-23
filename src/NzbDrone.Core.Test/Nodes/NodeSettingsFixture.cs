@@ -28,6 +28,7 @@ namespace NzbDrone.Core.Test.Nodes
         private List<TransferJob> _activeTransfers;
         private TransportOptions _environment;
         private Mock<IEventAggregator> _events;
+        private Mock<IRelayProbe> _relayProbe;
 
         [SetUp]
         public void Setup()
@@ -44,6 +45,9 @@ namespace NzbDrone.Core.Test.Nodes
             _activeTransfers = new List<TransferJob>();
             _environment = new TransportOptions();
             _events = new Mock<IEventAggregator>();
+
+            // A relay answers unless a test says otherwise.
+            _relayProbe = new Mock<IRelayProbe>();
         }
 
         private NodeSettingsProvider Provider
@@ -66,7 +70,7 @@ namespace NzbDrone.Core.Test.Nodes
 
                 transfers.Setup(t => t.Active()).Returns(() => _activeTransfers);
 
-                return new NodeSettingsService(Provider, _config.Object, _transport, transfers.Object, _events.Object, TestLogger);
+                return new NodeSettingsService(Provider, _config.Object, _transport, transfers.Object, _events.Object, _relayProbe.Object, TestLogger);
             }
         }
 
@@ -92,7 +96,7 @@ namespace NzbDrone.Core.Test.Nodes
         [Test]
         public void a_new_node_should_use_public_relays_any_port_and_a_folder_beside_its_data()
         {
-            Provider.Get().Should().BeEquivalentTo(new NodeSettings { Relay = RelayMode.N0, Port = 0, PortMapping = true, DirectTimeoutSeconds = 20, UploadLimitKbps = 0, CatalogSyncInterval = 15 });
+            Provider.Get().Should().BeEquivalentTo(new NodeSettings { Relay = RelayMode.N0, Port = 0, PortMapping = true, DirectTimeoutSeconds = 20, UploadLimitKbps = 0, DownloadLimitKbps = 0, CatalogSyncInterval = 15 });
             Provider.FixedByEnvironment().Should().BeEmpty();
             Provider.NodeName.Should().Be(Environment.MachineName);
             Provider.DownloadFolder.Should().Be(Path.Combine(TempFolder, "data", "downloads"));
@@ -135,10 +139,12 @@ namespace NzbDrone.Core.Test.Nodes
             {
                 s.NodeName = "  John  ";
                 s.UploadLimitKbps = 500;
+                s.DownloadLimitKbps = 2000;
             });
 
             Provider.NodeName.Should().Be("John");
             Provider.Get().UploadLimitKbps.Should().Be(500);
+            Provider.Get().DownloadLimitKbps.Should().Be(2000);
         }
 
         [Test]
@@ -147,11 +153,12 @@ namespace NzbDrone.Core.Test.Nodes
             _config.Object.NodeName = "Saved";
             _config.Object.TransportPort = 1111;
             _config.Object.TransportPortMapping = true;
-            _environment = new TransportOptions { NodeName = "From the environment", Port = 6633, DisablePortMapping = true, Relay = "disabled", DownloadFolder = Path.Combine(TempFolder, "mounted") };
+            _config.Object.TransferDownloadLimit = 100;
+            _environment = new TransportOptions { NodeName = "From the environment", Port = 6633, DisablePortMapping = true, Relay = "disabled", DownloadFolder = Path.Combine(TempFolder, "mounted"), DownloadLimitKbps = 4000 };
 
-            Provider.Get().Should().Match<NodeSettings>(s => s.NodeName == "From the environment" && s.Port == 6633 && !s.PortMapping && s.Relay == RelayMode.Disabled);
+            Provider.Get().Should().Match<NodeSettings>(s => s.NodeName == "From the environment" && s.Port == 6633 && !s.PortMapping && s.Relay == RelayMode.Disabled && s.DownloadLimitKbps == 4000);
             Provider.DownloadFolder.Should().Be(Path.Combine(TempFolder, "mounted"));
-            Provider.FixedByEnvironment().Should().BeEquivalentTo("NodeName", "Port", "PortMapping", "Relay", "DownloadFolder");
+            Provider.FixedByEnvironment().Should().BeEquivalentTo("NodeName", "Port", "PortMapping", "Relay", "DownloadFolder", "DownloadLimitKbps");
         }
 
         [Test]
@@ -240,6 +247,62 @@ namespace NzbDrone.Core.Test.Nodes
             }).Should().BeEmpty();
         }
 
+        [Test]
+        public void a_new_relay_of_ones_own_that_does_not_answer_should_be_refused_with_the_reason()
+        {
+            _relayProbe.Setup(p => p.Check(It.IsAny<Uri>())).Returns("No relay answered at relay.example.com: connection refused");
+
+            var failures = Service.Validate(new NodeSettings { Relay = RelayMode.Custom, RelayUrl = "https://relay.example.com", DirectTimeoutSeconds = 20 });
+
+            failures.Should().ContainSingle();
+            failures[0].PropertyName.Should().Be("RelayUrl");
+            failures[0].ErrorMessage.Should().Contain("connection refused");
+            _relayProbe.Verify(p => p.Check(new Uri("https://relay.example.com")), Times.Once());
+        }
+
+        [Test]
+        public void a_relay_already_in_use_should_not_be_asked_again()
+        {
+            _config.Object.TransportRelay = "custom";
+            _config.Object.TransportRelayUrl = "https://relay.example.com";
+            _relayProbe.Setup(p => p.Check(It.IsAny<Uri>())).Returns("No relay answered at relay.example.com: timed out");
+
+            // A relay that is down for a moment does not stop the rest of the page being saved.
+            Problems(s => s.NodeName = "John").Should().BeEmpty();
+            _relayProbe.Verify(p => p.Check(It.IsAny<Uri>()), Times.Never());
+
+            // A new address is asked, and so is the old one when relays of one's own are turned on again.
+            Problems(s => s.RelayUrl = "https://other.example.com").Should().Equal("RelayUrl");
+            _config.Object.TransportRelay = "n0";
+            Problems(s => s.Relay = RelayMode.Custom).Should().Equal("RelayUrl");
+        }
+
+        [Test]
+        public void a_relay_address_should_not_matter_when_the_environment_fixes_another_relay()
+        {
+            _environment = new TransportOptions { Relay = "disabled" };
+
+            Problems(s =>
+            {
+                s.Relay = RelayMode.Custom;
+                s.RelayUrl = "relay.example.com";
+            }).Should().BeEmpty();
+
+            _relayProbe.Verify(p => p.Check(It.IsAny<Uri>()), Times.Never());
+        }
+
+        [Test]
+        public void a_relay_address_of_the_wrong_shape_should_not_be_asked()
+        {
+            Problems(s =>
+            {
+                s.Relay = RelayMode.Custom;
+                s.RelayUrl = "relay.example.com";
+            }).Should().Equal("RelayUrl");
+
+            _relayProbe.Verify(p => p.Check(It.IsAny<Uri>()), Times.Never());
+        }
+
         [TestCase(4)]
         [TestCase(121)]
         public void a_wait_that_is_too_short_or_too_long_should_be_refused(int seconds)
@@ -253,6 +316,22 @@ namespace NzbDrone.Core.Test.Nodes
         public void an_upload_limit_too_low_to_work_should_be_refused(int limit)
         {
             Problems(s => s.UploadLimitKbps = limit).Should().Equal("UploadLimitKbps");
+        }
+
+        [TestCase(1)]
+        [TestCase(15)]
+        [TestCase(-5)]
+        public void a_download_limit_too_low_to_work_should_be_refused(int limit)
+        {
+            Problems(s => s.DownloadLimitKbps = limit).Should().Equal("DownloadLimitKbps");
+        }
+
+        [TestCase(0)]
+        [TestCase(16)]
+        [TestCase(100000)]
+        public void no_download_limit_or_one_that_works_should_be_allowed(int limit)
+        {
+            Problems(s => s.DownloadLimitKbps = limit).Should().BeEmpty();
         }
 
         [Test]
@@ -298,7 +377,8 @@ namespace NzbDrone.Core.Test.Nodes
             Save(s => s.DirectTimeoutSeconds = 30).TransportRestarted.Should().BeTrue();
             Save(s => s.PortMapping = false).TransportRestarted.Should().BeTrue();
             Save(s => s.Relay = RelayMode.Disabled).TransportRestarted.Should().BeTrue();
-            _transport.Restarts.Should().Be(4);
+            Save(s => s.DownloadLimitKbps = 2000).TransportRestarted.Should().BeTrue();
+            _transport.Restarts.Should().Be(5);
         }
 
         [Test]
@@ -315,9 +395,9 @@ namespace NzbDrone.Core.Test.Nodes
         [Test]
         public void failures_should_name_the_setting_so_the_form_can_point_at_it()
         {
-            var failures = Service.Validate(new NodeSettings { Relay = RelayMode.Custom, Port = 80, DirectTimeoutSeconds = 1, UploadLimitKbps = 3, NodeName = "a\tb", DownloadFolder = "relative" });
+            var failures = Service.Validate(new NodeSettings { Relay = RelayMode.Custom, Port = 80, DirectTimeoutSeconds = 1, UploadLimitKbps = 3, DownloadLimitKbps = 3, NodeName = "a\tb", DownloadFolder = "relative" });
 
-            failures.Select(f => f.PropertyName).Should().BeEquivalentTo("NodeName", "RelayUrl", "Port", "DirectTimeoutSeconds", "UploadLimitKbps", "DownloadFolder");
+            failures.Select(f => f.PropertyName).Should().BeEquivalentTo("NodeName", "RelayUrl", "Port", "DirectTimeoutSeconds", "UploadLimitKbps", "DownloadLimitKbps", "DownloadFolder");
             failures.Should().OnlyContain((ValidationFailure f) => f.ErrorMessage.Length > 10);
         }
     }

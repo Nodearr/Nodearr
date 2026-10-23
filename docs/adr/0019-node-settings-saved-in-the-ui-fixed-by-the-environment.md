@@ -12,7 +12,7 @@ A settings page has to live alongside those variables, not replace them. A conta
 
 ## Decision
 
-### Eight settings, on Settings > Node
+### The settings on Settings > Node
 
 | Setting | Default | Takes effect |
 | --- | --- | --- |
@@ -24,6 +24,7 @@ A settings page has to live alongside those variables, not replace them. A conta
 | Wait for a direct route | 20 seconds | Transport restarts |
 | Download folder | `downloads` in the data folder | At once |
 | Upload limit | None | Transport restarts |
+| Download limit (since #48) | None | Transport restarts |
 
 ### The environment wins, and the page says so
 
@@ -42,6 +43,7 @@ Every problem is reported at once, each against its own field, and nothing is sa
 - **UDP port.** 0, or 1024 to 65535. A port other than the one in use is tried first: if something else on the machine has it, it is refused.
 - **Wait for a direct route.** 5 to 120 seconds.
 - **Upload limit.** 0, or at least 16 KB/s.
+- **Download limit** (since #48). 0, or at least 16 KB/s.
 - **Download folder.** A whole path, not the root of a disk. It is created and written to before it is accepted. It cannot be changed while transfers are under way, because they know where they are by it.
 
 A setting the environment fixes is not checked. It is not the user's to get wrong.
@@ -90,8 +92,8 @@ The name and the download folder are read when they are needed, so they need no 
 
 ## Follow-up work
 
-- Check that a relay answers before saving its address.
-- A download limit, to go with the upload limit.
+- ~~Check that a relay answers before saving its address.~~ Done in [#48](https://github.com/Nodearr/Nodearr/issues/48) (amendments).
+- ~~A download limit, to go with the upload limit.~~ Done in [#48](https://github.com/Nodearr/Nodearr/issues/48) (amendments).
 
 ## Amendments
 
@@ -112,3 +114,7 @@ The name and the download folder are read when they are needed, so they need no 
   The page is one file, `frontend/src/login.html`, which the build already copied for any HTML it found. It stands alone, because the app's scripts are not handed out before signing in. It posts back to the address it was opened at, which carries the page to go to afterwards. The General settings acceptance now loads it, and the [Docker](https://docs.docker.com/) run checks the image carries it.
 
 - 2026-10-19: **the later settings and backup pages.** Catalog Sync Interval is a ninth setting on **Settings > Node**: 15 minutes by default, 10 to 120, or zero to stop scheduled catalog syncs ([ADR 0014](0014-sharing-rules-and-catalog-exchange.md), amendments). **Settings > General** now includes backup folder, interval and retention. **System > Backup** lists, creates, downloads and restores backups, including `node.key` when it exists ([the backup guide](../user-guide/backups.md)). These supersede the earlier note that backups had no page.
+- 2026-10-23: **a download limit, and a relay asked before it is saved** ([#48](https://github.com/Nodearr/Nodearr/issues/48)). The two follow-ups above.
+  - **Download limit.** Beside the upload limit, and kept the same way: the most each download from another node may take, 0 or at least 16 KB/s, `Nodearr__Transport__DownloadLimitKbps` in the environment, and the transport restarts to take it. The sidecar reads more slowly, and QUIC's flow control holds the sender back to match. `acceptance/Run-S7Transfers.ps1` sets one a quarter of the sender's upload limit and measures the transfer held to it.
+  - **A relay of your own is asked before it is saved.** Nodearr asks it what iroh's own nodes ask a relay to measure how far away it is, `GET /ping` at the root of its host, which a relay answers with 200. An address where nothing answers, or where something else answers, is refused with what happened, against the relay address field, and nothing is saved. It is asked only when the address is new or relays of one's own have just been chosen, so a relay that is down for a moment does not stop the rest of the page being saved. The trade-off above, that a relay address is checked only for its shape, no longer holds.
+  - **The relay the environment fixes is the one judged.** A relay address was required, and is now asked, only when the relay in force is one's own. Before, the relay sent with the save was used even where the environment fixed another.

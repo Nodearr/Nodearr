@@ -12,12 +12,13 @@ These settings control your node's name, peer connections and download storage (
 | --- | --- | --- | --- | --- |
 | **Name** | The machine's name | The name shown to friends. They receive a changed name the next time the nodes communicate. | Immediately in this UI | `Nodearr__Transport__NodeName` |
 | **Relay** | **Public relays** | **Public relays**: n0's, which help two nodes find each other and never carry downloaded media. **A relay of your own**: one you run, entered in **Relay Address**, with the same direct-only rule for media. **No relay**: nodes behind home routers then usually cannot find each other. Use it only when both have addresses the other can reach. | The transport restarts | `Nodearr__Transport__Relay`: `n0`, `custom` or `disabled` |
-| **Relay Address** | | The address of your own relay. | The transport restarts | `Nodearr__Transport__RelayUrl` |
+| **Relay Address** | | The address of your own relay. Nodearr asks it before saving a new one, and refuses an address where no relay answers. | The transport restarts | `Nodearr__Transport__RelayUrl` |
 | **UDP Port** | 0 | The port friends' nodes connect to. 0 lets the system pick one each time. Set one when you need to forward or allow it. | The transport restarts | `Nodearr__Transport__Port` |
 | **Ask the Router to Open the Port** | On | Asks the router to open the UDP port (UPnP, NAT-PMP or PCP). | The transport restarts | `Nodearr__Transport__DisablePortMapping=true` turns it off |
 | **Wait for a Direct Route** | 20 seconds | How long a transfer waits for a direct connection before it fails with `NoDirectRoute`. | The transport restarts | `Nodearr__Transport__DirectTimeoutSeconds` |
 | **Download Folder** | `downloads` in the data folder | Where transfers are written: `incomplete` while they arrive, `complete` once checked. Your Arr apps must see this same folder. It cannot be moved while transfers are under way. | At once | `Nodearr__Transport__DownloadFolder` |
 | **Upload Limit** | None | The most each upload to a friend may send, in kilobytes per second. 0 is no limit. | The transport restarts | `Nodearr__Transport__UploadLimitKbps` |
+| **Download Limit** | None | The most each download from a friend may take, in kilobytes per second. 0 is no limit. | The transport restarts | `Nodearr__Transport__DownloadLimitKbps` |
 | **Catalog Sync Interval** | 15 minutes | Minutes between scheduled catalog refreshes: 10 to 120. Set 0 to disable scheduled refreshes. Pairing, sends, removal notices and **Sync Peer Catalogs** can still trigger a refresh. | At once | |
 
 When the transport restarts, connections drop for a moment and transfers carry on once it is back. If the new settings stop it starting, the page says so; change them back.

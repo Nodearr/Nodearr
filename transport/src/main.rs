@@ -86,6 +86,9 @@ struct Args {
     /// The most each upload may send, in kilobytes per second. Zero means no limit.
     #[arg(long, default_value_t = 0)]
     upload_limit_kbps: u64,
+    /// The most each download may take, in kilobytes per second. Zero means no limit.
+    #[arg(long, default_value_t = 0)]
+    download_limit_kbps: u64,
 }
 
 #[derive(ValueEnum, Clone, Copy, PartialEq, Eq, Debug)]
@@ -149,7 +152,7 @@ async fn main() -> Result<()> {
     let (incoming_tx, incoming_rx) = mpsc::channel(64);
     let app = Arc::new(App {
         endpoint: endpoint.clone(),
-        transfers: Arc::new(transfer::Transfers::new(Duration::from_secs(args.direct_timeout_secs), args.upload_limit_kbps * 1024)),
+        transfers: Arc::new(transfer::Transfers::new(Duration::from_secs(args.direct_timeout_secs), args.upload_limit_kbps * 1024, args.download_limit_kbps * 1024)),
         token,
         blocked: RwLock::new(HashSet::new()),
         incoming: tokio::sync::Mutex::new(incoming_rx),

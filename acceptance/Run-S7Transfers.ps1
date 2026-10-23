@@ -515,6 +515,35 @@ try {
         $deleted.status -and $afterCancel.Transfers -eq 0 -and -not $afterCancel.Incomplete -and $afterCancel.Complete -eq 0
     ) $afterCancel
 
+    # --- 3b. A download limit on the receiving node ------------------------------------------------
+
+    # A sends at up to its upload limit. B is set to take a quarter of that, and the transfer is
+    # watched for ten seconds. Setting it restarts B's transport, as the upload limit does. The
+    # ticket goes in under a category of its own: under Sonarr's, Sonarr would take the transfer
+    # for one of its downloads, see it deleted, and turn the release down when it searches next.
+    $downloadLimit = [math]::Max(64, [math]::Floor($UploadLimitKbps / 4))
+    $settingsB = Invoke-Node B GET '/settings/node'
+    $settingsB.downloadLimitKbps = $downloadLimit
+    $limited = Invoke-Node B PUT "/settings/node/$($settingsB.id)" $settingsB
+    Invoke-WebRequest "http://127.0.0.1:$($nodes.B.Port)/newznab/api?t=get&id=$candidateId&apikey=$($nodes.B.Key)" -OutFile $ticketFile
+    $slow = Invoke-RestMethod ($addUrl -replace 'cat=tv', 'cat=limit-test') -Method Post -Form @{ name = Get-Item $ticketFile }
+    $startedSlow = Wait-Transferring 1
+    $from = [long]$startedSlow.bytesDone
+    $watch = [Diagnostics.Stopwatch]::StartNew()
+    Start-Sleep -Seconds 10
+    $to = [long](Get-Transfers | Where-Object downloadId -eq $startedSlow.downloadId | Select-Object -First 1).bytesDone
+    $rateKbps = [math]::Round(($to - $from) / 1024 / $watch.Elapsed.TotalSeconds)
+    Assert-That 'A download limit on the receiving node holds a transfer to it, below what the sender would send' (
+        $limited.downloadLimitKbps -eq $downloadLimit -and $limited.transportRestarted -and $limited.transportRunning -and
+        $rateKbps -gt 0 -and $rateKbps -le ($downloadLimit * 1.25)
+    ) @{ downloadLimitKbps = $downloadLimit; uploadLimitKbps = $UploadLimitKbps; measuredKbps = $rateKbps; restarted = $limited.transportRestarted }
+
+    Invoke-Sab "mode=queue&name=delete&del_files=1&value=$($slow.nzo_ids[0])" | Out-Null
+    Wait-Until -What 'the limited transfer to be removed' -TimeoutSec 30 -Condition { (Get-Transfers).Count -eq 0 } | Out-Null
+    $settingsB = Invoke-Node B GET '/settings/node'
+    $settingsB.downloadLimitKbps = 0
+    Invoke-Node B PUT "/settings/node/$($settingsB.id)" $settingsB | Out-Null
+
     # --- 4. Node B restarts in the middle ----------------------------------------------------------
 
     Invoke-Arr sonarrB POST '/command' @{ name = 'EpisodeSearch'; episodeIds = @($episodesB[1].id) } | Out-Null
@@ -621,7 +650,7 @@ try {
     $uploads = @(Invoke-Node A GET '/transfers/uploads')
     $ended = { param([string] $name, [string] $state, [string] $failure) @($uploads | Where-Object { $_.title -eq "$name.mkv" -and $_.state -eq $state -and (-not $failure -or $_.failure -eq $failure) }).Count }
 
-    # Episode 2 was cancelled by B once and cut off by B stopping once. Which of the two words A
+    # Episode 2 was cancelled by B twice and cut off by B stopping once. Which of the two words A
     # uses for B stopping depends on what it notices first: the connection closing, or the direct
     # path to B going with it.
     $wentAway = (& $ended $episodeNames[1] 'failed' 'Stopped') + (& $ended $episodeNames[1] 'failed' 'DirectPathLost')

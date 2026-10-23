@@ -150,7 +150,7 @@ This has worked between two home networks with no port forwarded, and between a 
 | **Nodes > Invites** | Creating invites and using a friend's. |
 | **Activity > Transfers** | What is being fetched, and what failed and why. |
 | **Settings > Apps** | The Arr apps, and Prowlarr. |
-| **Settings > Node** | This node's name, the relay, the UDP port, port mapping, the download folder and the upload limit ([ADR 0019](adr/0019-node-settings-saved-in-the-ui-fixed-by-the-environment.md)). |
+| **Settings > Node** | This node's name, the relay, the UDP port, port mapping, the download folder, and the upload and download limits ([ADR 0019](adr/0019-node-settings-saved-in-the-ui-fixed-by-the-environment.md)). |
 | **Settings > General** | The web port, sign-in, the API key and backups. |
 | System | Status and health, Tasks, Backup, Events and Log Files. |
 

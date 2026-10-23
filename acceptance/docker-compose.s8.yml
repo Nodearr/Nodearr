@@ -110,7 +110,13 @@ services:
       - b-downloads:/downloads
       - b-tv:/tv:ro
       - b-movies:/movies:ro
-    networks: [side-b, wan]
+    # Docker Desktop forwards the published port through the network that is the default
+    # gateway, chosen afresh each time the container is made when no priority is given. The script
+    # takes wan away to leave only the relay, which must not take the port with it.
+    networks:
+      side-b:
+        gw_priority: 1
+      wan: {}
     ports:
       - "127.0.0.1:6634:6633/tcp"
 
