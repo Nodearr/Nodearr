@@ -51,6 +51,9 @@ namespace NzbDrone.Core.Transfers
         public const int MaxConcurrent = 3;
         public const int MaxAttempts = 3;
 
+        // Folders named alike waiting under complete/ before one more is refused.
+        private const int MaxSameNamedFolders = 100;
+
         private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(15);
 
         private readonly ITransferRepository _jobs;
@@ -498,14 +501,11 @@ namespace NzbDrone.Core.Transfers
         private void Complete(TransferJob job)
         {
             var from = _folders.IncompleteFolder(job);
-            var to = _folders.CompleteFolder(job);
+            string to;
 
             try
             {
-                // Left behind by an earlier download of the same release.
-                DeleteFolder(to);
-                Directory.CreateDirectory(Path.GetDirectoryName(to));
-                Directory.Move(from, to);
+                to = MoveToUnusedFolder(from, _folders.CompleteFolder(job));
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
@@ -523,6 +523,37 @@ namespace NzbDrone.Core.Transfers
             job.Ended = DateTime.UtcNow;
             _jobs.Update(job);
             _logger.Info("Transfer {0} completed: {1}", job.DownloadId, job.Title);
+        }
+
+        // A folder already there is another download's, until its Arr app has imported it: two
+        // releases can be named alike, and a peer chooses the name. As SABnzbd does, this one goes
+        // next to it as Title.1, Title.2 and so on, and the Arr app is told the folder it is in.
+        private static string MoveToUnusedFolder(string from, string folder)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(folder));
+
+            for (var n = 0; n < MaxSameNamedFolders; n++)
+            {
+                var to = n == 0 ? folder : $"{folder}.{n}";
+
+                if (Directory.Exists(to) || File.Exists(to))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    Directory.Move(from, to);
+
+                    return to;
+                }
+                catch (IOException) when (Directory.Exists(to) || File.Exists(to))
+                {
+                    // Another transfer of the same name took it a moment before.
+                }
+            }
+
+            throw new IOException($"{MaxSameNamedFolders} folders named {Path.GetFileName(folder)} are waiting to be imported already");
         }
 
         private void Failed(TransferJob job, TransferFailure failure, string detail)

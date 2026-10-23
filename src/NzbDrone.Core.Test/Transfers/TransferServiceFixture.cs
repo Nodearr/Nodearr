@@ -507,9 +507,53 @@ namespace NzbDrone.Core.Test.Transfers
             Subject.Tick();
             GivenTransport(again, FileTransferState.Completed, 1000);
             Subject.Tick();
+
+            var againOutput = Stored(again).OutputPath;
+
             Subject.Remove(again.DownloadId, true);
 
-            Directory.Exists(output).Should().BeFalse();
+            Directory.Exists(againOutput).Should().BeFalse();
+            Directory.Exists(output).Should().BeTrue();
+        }
+
+        // Two releases named alike, from two friends or from one choosing the name: neither is
+        // lost. The second goes next to the first, and its Arr app is told where.
+        [Test]
+        public void a_second_download_of_the_same_name_should_not_replace_the_first()
+        {
+            GivenCandidate("candidate-2", "e-1-502", Title);
+
+            var first = GivenDownloading();
+            GivenTransport(first, FileTransferState.Completed, 1000);
+            Subject.Tick();
+
+            var second = Subject.Add("candidate-2", "tv");
+            Subject.Tick();
+            GivenTransport(second, FileTransferState.Completed, 1000);
+            Subject.Tick();
+
+            var folder = Path.Combine(TempFolder, "complete", "tv", Title);
+
+            Stored(first).OutputPath.Should().Be(folder);
+            Stored(second).Should().Match<TransferJob>(j => j.State == TransferState.Completed && j.OutputPath == folder + ".1");
+            File.Exists(Path.Combine(folder, Title + ".mkv")).Should().BeTrue();
+            File.Exists(Path.Combine(folder + ".1", Title + ".mkv")).Should().BeTrue();
+        }
+
+        [Test]
+        public void each_further_download_of_the_same_name_should_have_a_folder_of_its_own()
+        {
+            var folder = Path.Combine(TempFolder, "complete", "tv", Title);
+            Directory.CreateDirectory(folder);
+            Directory.CreateDirectory(folder + ".1");
+
+            var job = GivenDownloading();
+            GivenTransport(job, FileTransferState.Completed, 1000);
+            Subject.Tick();
+
+            Stored(job).OutputPath.Should().Be(folder + ".2");
+            Directory.Exists(folder).Should().BeTrue();
+            Directory.Exists(folder + ".1").Should().BeTrue();
         }
 
         [Test]

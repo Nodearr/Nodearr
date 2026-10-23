@@ -7,6 +7,7 @@ What changed in each release, newest first. Each item links to the decision reco
 ### Fixed
 
 - One invite could pair two nodes, when both used it at the same moment: each could find it unused before either marked it redeemed. Redeeming it is now a single step in the database, so only one of them pairs ([#31](https://github.com/Nodearr/Nodearr/issues/31)).
+- Two downloads with the same release title went to the same folder, and finishing the second deleted the first before its Arr app had imported it. Like SABnzbd, Nodearr now puts the second next to the first, as `Title.1`, `Title.2` and so on, and tells the Arr app which folder it is in ([#32](https://github.com/Nodearr/Nodearr/issues/32)).
 
 ## 0.2.6 (pre-release)
 
