@@ -113,7 +113,6 @@ export default function QueuedTaskRow(props: QueuedTaskRowProps) {
     status,
     duration,
     message,
-    body,
     clientUserAgent,
   } = props;
 
@@ -186,7 +185,6 @@ export default function QueuedTaskRow(props: QueuedTaskRowProps) {
 
       <QueuedTaskRowNameCell
         commandName={commandName}
-        body={body}
         clientUserAgent={clientUserAgent}
       />
 

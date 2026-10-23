@@ -24,7 +24,7 @@ These are the items that need attention. Everything else in this document can wa
 | Cover image resizing (SixLabors.ImageSharp 3.1.12) | Five advisories published 2026-10-07 made every project fail restore, because warnings are errors. The only patched release is 4.1.2 or later, and 4.x runs a license-key check during Release builds. | Done in S0: the resizer and the package were removed. Covers are still downloaded, and both `MediaCoverController` and `MediaCoverMapper` already fall back to the full-size image when a resized one is missing. |
 | Microsoft.OpenApi 2.4.1 (via Swashbuckle 10.1.7) | A high-severity advisory failed restore in the same way. | Done in S0: Swashbuckle bumped to 10.2.3, which depends on the patched Microsoft.OpenApi 2.7.5. |
 | Default port 8989 | It is Sonarr's default port, so Nodearr and Sonarr collided on one host. | Done in S3: the default is 6633, which spells NODE on a phone keypad. |
-| Renamed cloud endpoints | The rename turned Sonarr's service hosts into `services.nodearr.com`, `skyhook.nodearr.com`, `sentry.nodearr.com` and `download.nodearr.com`. None of them resolve today. On every start `ServerSideNotificationService` logs "Failed to retrieve notifications" and `SystemTimeCheck` logs "Unable to verify system time". Sentry crash reporting is still registered with Sonarr's DSN keys against the renamed host, and analytics defaults to enabled. The project owner holds `nodearr.com`, so nothing can answer on those names unless the project sets it up. | Done on 2026-10-11: every call home was taken out (ADR 0018). |
+| Renamed cloud endpoints | The rename turned Sonarr's service hosts into `services.nodearr.com`, `skyhook.nodearr.com`, `sentry.nodearr.com` and `download.nodearr.com`. None of them resolve today. On every start `ServerSideNotificationService` logs "Failed to retrieve notifications" and `SystemTimeCheck` logs "Unable to verify system time". Sentry crash reporting is still registered with Sonarr's DSN keys against the renamed host, and analytics defaults to enabled. The project owner holds `nodearr.com`, so nothing can answer on those names unless the project sets it up. | Done on 2026-10-11: every call home was taken out (ADR 0018). Done on 2026-10-23 for what still used `services.nodearr.com`, reachable only by turning a feature on: the proxy check's ping, the scene mapping fetch and the MyAnimeList import list (#43). |
 | Always-failing health checks | A fresh install shows two errors and two warnings on **System > Status**: `IndexerRssCheck`, `IndexerSearchCheck`, `DownloadClientCheck` and `UpdateCheck`. They describe Sonarr's need for indexers and download clients, which Nodearr does not have. | Done in S3 for `IndexerRssCheck`, `IndexerSearchCheck` and `DownloadClientCheck`, which are removed, and on 2026-10-11 for `UpdateCheck` (ADR 0018). |
 | TV scheduled tasks | `RssSync` (15 min), `RefreshSeries` (12 h), `ImportListSync` (5 min), `UpdateSceneMapping` (3 h), `RefreshMonitoredDownloads` (1 min) and `ApplicationUpdateCheck` (6 h) are all scheduled. They do nothing useful with an empty library, and some call the dead cloud hosts. | Done in S3: all six are unscheduled. `ApplicationIndexerSync` runs every 6 hours instead, and `CatalogRefresh` every 12 (every 6 when this was written). |
 | Table names `Series`, `Episodes`, `EpisodeFiles` | The 223 inherited migrations create Sonarr's library tables. S3 needs its own normalized series, episode, episode-file and movie tables. | Done in S3: Nodearr's tables are `CatalogSeries`, `CatalogEpisodes`, `CatalogEpisodeFiles`, `CatalogMovies`, `CatalogMovieFiles` and `CatalogQualityProfiles`. Sonarr's tables are left in place, unused. |
@@ -58,11 +58,12 @@ All of this is kept. It is the reason for reusing Sonarr.
 
 | Feature | Disposition |
 | --- | --- |
-| `system/status`, `system/task`, `system/backup`, `health`, `log`, `command`, `tag`, `customfilter`, `filesystem`, `diskspace`, `localization`, `update`, settings controllers | Keep |
+| `system/status`, `system/task`, `system/backup`, `health`, `log`, `command`, `tag`, `filesystem`, `localization`, `update`, `remotepathmapping`, the general and node settings | Keep |
+| `customfilter`, `diskspace`, `tag/detail`, and the UI, naming, media management, indexer, import list and update settings | Done on 2026-10-23: removed (#43). |
 | `applications` (V5 only) | Reshape in S3 |
-| `series`, `episode`, `episodefile`, `seasonpass`, `calendar`, `wanted/missing`, `wanted/cutoff`, `rename`, `manualimport`, `rootfolder`, `importlist`, `metadata`, `mediacover` | Unused |
-| `indexer`, `downloadclient`, `release`, `release/push`, `queue`, `history`, `blocklist`, `remotepathmapping`, `parse` | Unused. These are Sonarr acting as a client of indexers and download clients. Nodearr is the server side of both. |
-| `qualityprofile`, `qualitydefinition`, `customformat`, `releaseprofile`, `delayprofile`, `language`, `autotagging` | Unused in V1. Profile filtering is UI-only (plan decision 2). |
+| `series`, `episode`, `episodefile`, `seasonpass`, `calendar`, `wanted/missing`, `wanted/cutoff`, `rename`, `manualimport`, `rootfolder`, `importlist`, `metadata`, `mediacover` | Done on 2026-10-23: removed (#43). |
+| `indexer`, `downloadclient`, `release`, `release/push`, `queue`, `history`, `blocklist`, `parse`, `connection` | Done on 2026-10-23: removed (#43). These are Sonarr acting as a client of indexers and download clients. Nodearr is the server side of both. |
+| `qualityprofile`, `qualitydefinition`, `customformat`, `releaseprofile`, `delayprofile`, `language`, `autotagging` | Done on 2026-10-23: removed (#43). Profile filtering is UI-only (plan decision 2). |
 | Feed route `feed/v3/calendar/nodearr.ics` | Done on 2026-10-23: removed with V3, where it lived (#43). |
 | V3 as a whole | Done on 2026-10-23: removed, with Sonarr's integration tests that drove it (#43). A crawl of every page and dialog found the UI calling V5 only. `GET /api` reports V5 alone. |
 
@@ -73,12 +74,12 @@ Nodearr's own Arr-facing endpoints (Newznab indexer, SABnzbd-compatible API) do 
 | Feature | Where | Disposition |
 | --- | --- | --- |
 | Series, seasons, episodes, monitoring, series statistics | `NzbDrone.Core/Tv`, `SeriesStats` | Unused. Arr apps own media identity (ADR 0006). |
-| Series metadata from SkyHook, scene mappings | `MetadataSource`, `DataAugmentation` | Unused. Calls a renamed host (in the way). |
+| Series metadata from SkyHook, scene mappings | `MetadataSource`, `DataAugmentation` | Done: the SkyHook client in #41, and on 2026-10-23 the rest of `MetadataSource` with adding and refreshing series, and the scene mappings from `services.nodearr.com` (#43). XEM's mappings remain, unused with no series. |
 | Episode files, disk scan, import, rename, recycle bin, extras, subtitles | `MediaFiles`, `Organizer`, `Extras` | Unused. Sonarr and [Radarr](https://radarr.video/) do the importing. |
 | Root folders | `RootFolders` | Unused |
 | Media covers | `MediaCover` | Unused. Resizing removed in S0. |
 | Metadata file writers (Kodi, Plex, Roksbox, WDTV) | `Extras/Metadata/Consumers` | Unused |
-| Import lists (AniList, MyAnimeList, Plex, RSS, Simkl, Sonarr, Trakt, custom) | `ImportLists` | Unused |
+| Import lists (Plex, RSS, Sonarr, custom) | `ImportLists` | Unused. Nothing syncs them since 2026-10-23, when AniList, MyAnimeList, Simkl and Trakt, which signed in through `auth.servarr.com` apps named for Nodearr or fetched from `services.nodearr.com`, were removed with the sync (#43). |
 | Auto tagging | `AutoTagging` | Unused |
 
 ## Search, grab and download pipeline
@@ -91,7 +92,7 @@ Nodearr's own Arr-facing endpoints (Newznab indexer, SABnzbd-compatible API) do 
 | Queue, tracked downloads, completed and failed download handling, history, blocklist | `Queue`, `Download`, `History`, `Blocklisting` | Unused. Nodearr's transfer job model (S7) is separate. |
 | Remote path mappings | `RemotePathMappings` | Reshape in S3, which needs path mappings between Arr and Nodearr. |
 | Release title parser, qualities, languages, custom formats | `Parser`, `Qualities`, `Languages`, `CustomFormats` | Reshape in S6. Nodearr must emit release titles that Sonarr and Radarr parse correctly, and these are the rules they are parsed with. |
-| Notifications (25 connections, including Discord, Email, Plex, Slack, Telegram, Webhook, custom script) | `Notifications` | Unused in V1. Their events are TV events. |
+| Notifications (25 connections, including Discord, Email, Plex, Slack, Telegram, Webhook, custom script) | `Notifications` | Unused in V1. Their events are TV events. Trakt was removed on 2026-10-23, with the API for connections (#43). |
 | Applications sync, ported from [Prowlarr](https://prowlarr.com/), Sonarr only | `Applications` | Reshape in S3: register one Nodearr indexer and one download client, add Radarr, and fetch catalogs. |
 
 ## Scheduled tasks
@@ -107,8 +108,8 @@ Read from `GET /api/v5/system/task` on a fresh install.
 | CleanUpRecycleBin | 24 h | Unused |
 | RefreshMonitoredDownloads | 1 min | Unscheduled in S3 |
 | RssSync | 15 min | Unscheduled in S3 |
-| RefreshSeries | 12 h | Unscheduled in S3 |
-| ImportListSync | 5 min | Unscheduled in S3 |
+| RefreshSeries | 12 h | Unscheduled in S3. Removed on 2026-10-23 (#43). |
+| ImportListSync | 5 min | Unscheduled in S3. Removed on 2026-10-23 (#43). |
 | UpdateSceneMapping | 3 h | Unscheduled in S3 |
 | ApplicationUpdateCheck | 6 h | Unscheduled in S3 |
 | CatalogRefresh | 12 h (6 h until 2026-10-14) | Added in S3. As often as Sonarr's RefreshSeries. |
@@ -119,7 +120,7 @@ Read from `GET /api/v5/system/task` on a fresh install.
 
 | Check | Disposition |
 | --- | --- |
-| ApiKeyValidationCheck, AppDataLocationCheck, MountCheck, ProxyCheck, PackageGlobalMessageCheck | Keep |
+| ApiKeyValidationCheck, AppDataLocationCheck, MountCheck, ProxyCheck, PackageGlobalMessageCheck | Keep. Since 2026-10-23 ProxyCheck checks only that the proxy's name resolves; it pinged `services.nodearr.com` through it (#43). |
 | SystemTimeCheck | In the way. Calls a renamed host. |
 | UpdateCheck | In the way. Fails on a development build because the UI folder is not writable. |
 | IndexerRssCheck, IndexerSearchCheck, DownloadClientCheck | Removed in S3. They always failed in Nodearr. |

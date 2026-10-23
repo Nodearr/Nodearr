@@ -1,10 +1,10 @@
 using System.Data.SQLite;
 using FluentAssertions;
 using NUnit.Framework;
+using NzbDrone.Core.Catalog;
 using NzbDrone.Core.Datastore.Converters;
 using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.Test.Framework;
-using NzbDrone.Core.Tv.Commands;
 
 namespace NzbDrone.Core.Test.Datastore.Converters
 {
@@ -22,7 +22,7 @@ namespace NzbDrone.Core.Test.Datastore.Converters
         [Test]
         public void should_return_json_string_when_saving_boolean_to_db()
         {
-            var command = new RefreshSeriesCommand();
+            var command = new CatalogRefreshCommand();
 
             Subject.SetValue(_param, command);
             _param.Value.Should().BeOfType<string>();
@@ -38,9 +38,9 @@ namespace NzbDrone.Core.Test.Datastore.Converters
         [Test]
         public void should_return_command_when_getting_json_from_db()
         {
-            var data = "{\"name\": \"RefreshSeries\"}";
+            var data = "{\"name\": \"CatalogRefresh\"}";
 
-            Subject.Parse(data).Should().BeOfType<RefreshSeriesCommand>();
+            Subject.Parse(data).Should().BeOfType<CatalogRefreshCommand>();
         }
 
         [Test]
