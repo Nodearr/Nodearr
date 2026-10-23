@@ -60,7 +60,11 @@ namespace NzbDrone.Core.Test.Sharing
         [Test]
         public void two_requests_at_once_should_make_one_hidden_list()
         {
-            Task.WaitAll(Task.Run(() => Subject.All()), Task.Run(() => Subject.All()));
+            // Made before the two threads, since the test container that makes it is not safe for two
+            // threads at once. What runs concurrently is the service, which is what is tested.
+            var subject = Subject;
+
+            Task.WaitAll(Task.Run(() => subject.All()), Task.Run(() => subject.All()));
 
             _lists.Count(l => l.IsHidden).Should().Be(1);
         }
