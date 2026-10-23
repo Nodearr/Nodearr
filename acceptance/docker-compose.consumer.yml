@@ -1,4 +1,4 @@
-# Adds a second Sonarr and Radarr to spikes/arr-contract/docker-compose.yml: the ones that belong
+# Adds a second Sonarr and Radarr to docker-compose.arr.yml: the ones that belong
 # to the node that wants the files. They have the series and the movie, and no files.
 services:
   sonarr-b:

@@ -27,6 +27,8 @@ Qualities and custom formats stay with the Arr apps, which parse the release tit
 
 ## Evidence
 
+> The spike was removed once the acceptance scripts had replaced it ([#41](https://github.com/Nodearr/Nodearr/issues/41)). It is kept at [bf4476a](https://github.com/Nodearr/Nodearr/tree/bf4476a/spikes/arr-contract). Its compose file for the Arr apps lives on as `acceptance/docker-compose.arr.yml`.
+
 `spikes/arr-contract/Run-ArrContractSpike.ps1` starts a fresh Nodearr and fresh containers, configures everything through the Arr APIs, and checks the results. The stub lives in `src/Nodearr.Http/ArrContractSpike/`. A "transfer" in the stub is a throttled local file copy.
 
 Versions: [Sonarr](https://sonarr.tv/) 4.0.20.3014, [Radarr](https://radarr.video/) 6.4.4.10685, Prowlarr 2.6.5.5623 (linuxserver images pinned by digest in `spikes/arr-contract/docker-compose.yml`).

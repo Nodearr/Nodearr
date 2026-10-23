@@ -2,6 +2,12 @@
 
 What changed in each release, newest first. Each item links to the decision record that explains it, and the [V1 plan](docs/plans/v1-implementation-plan.md) has the whole story, slice by slice.
 
+## Unreleased
+
+### Changed
+
+- What came from Sonarr and nothing in Nodearr reaches is gone: 1,000 files of pages and parts no route led to, with the UI built from what is left byte for byte the same; Sonarr's series metadata client, whose host `skyhook.nodearr.com` serves nothing; and the S1 and S2 spikes, which the acceptance scripts and the transport replaced. The inherited API endpoints that looked up or added a series now answer that Nodearr does not, instead of failing on a request that could not succeed. Help links the API gives for the Custom Script and Webhook connections and for custom formats lead to Sonarr's wiki instead of a page that did not exist ([#41](https://github.com/Nodearr/Nodearr/issues/41)). The backend half is [#43](https://github.com/Nodearr/Nodearr/issues/43).
+
 ## 0.2.7 (pre-release)
 
 ### Fixed

@@ -30,6 +30,8 @@ Use the coordinated mode by default.
 
 ## Evidence
 
+> The spike was removed once the transport sidecar had replaced it ([#41](https://github.com/Nodearr/Nodearr/issues/41)). It is kept at [bf4476a](https://github.com/Nodearr/Nodearr/tree/bf4476a/spikes/iroh-direct).
+
 `spikes/iroh-direct` is a standalone [Rust](https://www.rust-lang.org/) binary on `iroh = "=1.3.0"`. `Run-IrohSpike.ps1` runs it as provider and fetcher against a self-hosted `iroh-relay` 1.3.0 in dev mode. Relayed bytes are measured two ways that do not depend on each other: Iroh's per-path counters on both endpoints, and the relay server's own `relayserver_bytes_sent_total` metric.
 
 Both endpoints ran on one Windows machine. The file was 16,777,216 bytes. To make the connection start on the relay the way it does across NATs, the fetcher was given a ticket without the provider's IP addresses.

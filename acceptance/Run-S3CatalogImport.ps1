@@ -36,7 +36,7 @@ Set-StrictMode -Version 1
 $root = $PSScriptRoot
 $repo = Resolve-Path (Join-Path $root '..')
 $run = Join-Path $root '.run'
-$composeFiles = @('-f', (Join-Path $repo 'spikes/arr-contract/docker-compose.yml'), '-f', (Join-Path $root 'docker-compose.library.yml'))
+$composeFiles = @('-f', (Join-Path $root 'docker-compose.arr.yml'), '-f', (Join-Path $root 'docker-compose.library.yml'))
 $envFile = Join-Path $run '.env'
 $pidFile = Join-Path $run 'nodearr.pid'
 $nodearrData = Join-Path $run 'nodearr-data'
@@ -89,7 +89,7 @@ function New-Media {
     if ($LASTEXITCODE -ne 0) { throw 'ffmpeg failed' }
 }
 
-# Sized to pass Sonarr's minimum size and both apps' sample detection. See spikes/arr-contract.
+# Sized to pass Sonarr's minimum size and both apps' sample detection. See ADR 0010, point 8.
 $tvMedia = Join-Path $peerLibrary 'episode-720p.mkv'
 $doubleMedia = Join-Path $peerLibrary 'double-episode-720p.mkv'
 $movieMedia = Join-Path $peerLibrary 'movie-720p.mkv'
