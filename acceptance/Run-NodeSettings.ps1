@@ -214,10 +214,12 @@ try {
 
     $newFolder = Join-Path $run 'moved-downloads'
     $folderSaved = Set-Settings A @{ downloadFolder = $newFolder }
+    # Nodearr makes complete/ and its category folders at once, so the Arr apps find the folder they
+    # are told about. The check for writing leaves no file behind.
     $reported = (Invoke-RestMethod "http://127.0.0.1:$($nodes.A.Port)/sabnzbd/api?mode=get_config&output=json&apikey=$($nodes.A.Key)").config.misc.complete_dir
     Assert-That 'A new download folder is made, checked for writing, and is what Sonarr and Radarr are told' (
         $folderSaved.downloadFolder -eq $newFolder -and -not $folderSaved.transportRestarted -and (Test-Path $newFolder) -and
-        $reported -eq (Join-Path $newFolder 'complete') -and @(Get-ChildItem $newFolder -Force).Count -eq 0
+        $reported -eq (Join-Path $newFolder 'complete') -and @(Get-ChildItem $newFolder -Recurse -File -Force).Count -eq 0
     ) @{ saved = $folderSaved.downloadFolder; exists = (Test-Path $newFolder); toldToArr = $reported }
 
     # --- It all survives a restart of Nodearr -----------------------------------------------------

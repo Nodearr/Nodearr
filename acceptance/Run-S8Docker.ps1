@@ -509,7 +509,9 @@ try {
     # --- 5. A file changes on the sender after its hash was fixed --------------------------------
 
     # A first request makes John's node work out the hash of episode 3. It is cancelled, and one
-    # byte of the file is then changed without changing its size or its time.
+    # byte of the file is then changed without changing its size or its time. The first attempt
+    # fails verification. John's node forgets the hash on hearing that, and the next attempt brings
+    # the changed file, as S7 checks on the host.
     $ticket = Join-Path $run 'ticket-corrupt.nzb'
     Get-Ticket 2 $ticket
     $warm = Add-Ticket $ticket
@@ -520,15 +522,28 @@ try {
     docker exec $arr.sonarrA.Container sh -c "touch -r '$target' /tmp/when && printf '\377' | dd of='$target' bs=1 seek=5000000 conv=notrunc 2>/dev/null && touch -r /tmp/when '$target'" | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Unable to change the file on node A' }
 
+    $changedHash = ("$(docker exec $arr.sonarrA.Container sha256sum $target)" -split ' ')[0]
+
     Search-Episode 2
-    $corrupt = Wait-Failed $null 120
-    $corruptMessage = Wait-SonarrFailure $corrupt.downloadId
-    $leftBehind = @(Get-FilesUnder $nodes.B.Container '/downloads/complete') + @(Get-FilesUnder $nodes.B.Container '/downloads/incomplete')
-    Assert-That 'A file that does not match its hash is thrown away, never reaches Sonarr, and Sonarr is told why' (
-        $corrupt.failure -eq 'verificationFailed' -and $corruptMessage -match 'VerificationFailed' -and $leftBehind.Count -eq 0 -and
-        -not (Invoke-Arr sonarrB GET "/episode/$($episodesB[2].id)").hasFile
-    ) @{ failure = $corrupt.failure; sonarrSays = $corruptMessage; filesLeft = $leftBehind.Count }
-    Get-Transfers | ForEach-Object { Remove-Transfer $_.downloadId }
+    $sawMismatch = $false
+    $lastSeen = $null
+    $importedChanged = Wait-Until -What "Ryan's Sonarr to import the changed episode" -TimeoutSec 240 -EverySec 2 -Condition {
+        $transfer = Get-Transfers | Where-Object title -eq $episodeNames[2] | Select-Object -First 1
+        if ($transfer) {
+            $script:lastSeen = $transfer
+            if ($transfer.failure -eq 'verificationFailed') { $script:sawMismatch = $true }
+        }
+        Invoke-Arr sonarrB POST '/command' @{ name = 'RefreshMonitoredDownloads' } | Out-Null
+        $episode = Invoke-Arr sonarrB GET "/episode/$($episodesB[2].id)"
+        if ($episode.hasFile) { $episode }
+    }
+    $fileChanged = Invoke-Arr sonarrB GET "/episodefile/$($importedChanged.episodeFileId)"
+    $landedChanged = ("$(docker exec $arr.sonarrB.Container sha256sum $fileChanged.path)" -split ' ')[0]
+    $failedInSonarr = @(Invoke-Arr sonarrB GET "/history/series?seriesId=$($series.sonarrB.id)" | Where-Object { $_.eventType -eq 'downloadFailed' -and $_.downloadId -eq $lastSeen.downloadId }).Count
+    Assert-That 'A file that changed on the sending node without its size or time changing costs one attempt, not the release: the next attempt brings the changed file' (
+        $sawMismatch -and $lastSeen.attempts -eq 2 -and $landedChanged -eq $changedHash -and $failedInSonarr -eq 0
+    ) @{ sawMismatch = $sawMismatch; attempts = $lastSeen.attempts; hashMatchesChangedFile = ($landedChanged -eq $changedHash); failedInSonarr = $failedInSonarr }
+    Wait-Until -What 'the finished download to be cleared' -TimeoutSec 60 -Condition { (Get-Transfers).Count -eq 0 } | Out-Null
 
     # --- 6. The direct route goes away, and only the relay is left -------------------------------
 
