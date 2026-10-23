@@ -80,6 +80,45 @@ namespace NzbDrone.Core.Test.Transfers
             Subject.Status().Should().Match<HashingStatus>(s => s.Shared == 2 && s.Hashed == 2 && s.Current == null && s.LastPass != null);
         }
 
+        // A pass stores its hashes in batches. One that stops part way still keeps what it found.
+        [Test]
+        public void a_pass_stopped_part_way_should_keep_the_hashes_it_found()
+        {
+            GivenShared(_bob, Item("e-1-501", 1), Item("e-1-502", 2), Item("e-1-503", 3));
+
+            using var stop = new CancellationTokenSource();
+
+            Mocker.GetMock<IFileTransport>()
+                  .Setup(t => t.Hash(It.IsAny<string>(), It.IsAny<HashedFile>()))
+                  .Returns((string path, HashedFile _) =>
+                  {
+                      stop.Cancel();
+
+                      return new HashedFile { Size = 100, ModifiedNs = 5, Blake3 = "hash-of-" + path };
+                  });
+
+            Subject.HashShared(stop.Token).Should().BeFalse();
+
+            Subject.Known("/library/e-1-501.mkv").Should().NotBeNull();
+            Subject.Known("/library/e-1-502.mkv").Should().BeNull();
+        }
+
+        [Test]
+        public void a_pass_cut_short_by_the_transport_should_keep_the_hashes_it_found()
+        {
+            GivenShared(_bob, Item("e-1-501", 1), Item("e-1-502", 2));
+
+            Mocker.GetMock<IFileTransport>()
+                  .Setup(t => t.Hash(It.IsAny<string>(), It.IsAny<HashedFile>()))
+                  .Returns((string path, HashedFile _) => path.EndsWith("e-1-502.mkv")
+                      ? throw new TransportException(TransportFailure.Unavailable, "stopped")
+                      : new HashedFile { Size = 100, ModifiedNs = 5, Blake3 = "hash-of-" + path });
+
+            Subject.HashShared(CancellationToken.None).Should().BeFalse();
+
+            Subject.Known("/library/e-1-501.mkv").Should().NotBeNull();
+        }
+
         [Test]
         public void each_kept_hash_should_say_which_offered_file_it_is_for()
         {
