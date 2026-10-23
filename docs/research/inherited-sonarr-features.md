@@ -63,8 +63,8 @@ All of this is kept. It is the reason for reusing Sonarr.
 | `series`, `episode`, `episodefile`, `seasonpass`, `calendar`, `wanted/missing`, `wanted/cutoff`, `rename`, `manualimport`, `rootfolder`, `importlist`, `metadata`, `mediacover` | Unused |
 | `indexer`, `downloadclient`, `release`, `release/push`, `queue`, `history`, `blocklist`, `remotepathmapping`, `parse` | Unused. These are Sonarr acting as a client of indexers and download clients. Nodearr is the server side of both. |
 | `qualityprofile`, `qualitydefinition`, `customformat`, `releaseprofile`, `delayprofile`, `language`, `autotagging` | Unused in V1. Profile filtering is UI-only (plan decision 2). |
-| Feed route `feed/v3/calendar/nodearr.ics` | Unused |
-| V3 as a whole | Unused. Nothing in Nodearr's frontend needs the deprecated version, but removing it is not required for V1. |
+| Feed route `feed/v3/calendar/nodearr.ics` | Done on 2026-10-23: removed with V3, where it lived (#43). |
+| V3 as a whole | Done on 2026-10-23: removed, with Sonarr's integration tests that drove it (#43). A crawl of every page and dialog found the UI calling V5 only. `GET /api` reports V5 alone. |
 
 Nodearr's own Arr-facing endpoints (Newznab indexer, SABnzbd-compatible API) do not exist yet. S1 adds them. They must not be confused with the inherited `Indexers` and `Download` namespaces, which implement the opposite side of the same protocols.
 

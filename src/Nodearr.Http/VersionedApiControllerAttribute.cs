@@ -26,14 +26,6 @@ namespace Nodearr.Http
         public int Version { get; set; }
     }
 
-    public class V3ApiControllerAttribute : VersionedApiControllerAttribute
-    {
-        public V3ApiControllerAttribute(string resource = "[controller]")
-            : base(3, resource)
-        {
-        }
-    }
-
     public class V5ApiControllerAttribute : VersionedApiControllerAttribute
     {
         public V5ApiControllerAttribute(string resource = "[controller]")

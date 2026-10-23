@@ -81,7 +81,7 @@ jobs:
         shell: pwsh
         run: |
           $filter = 'TestCategory!=ManualTest&TestCategory!=${{ matrix.exclude-category }}&TestCategory!=IntegrationTest&TestCategory!=AutomationTest'
-          $skip = '${{ matrix.skip-assembly }}', 'Nodearr.Automation.Test', 'Nodearr.Integration.Test'
+          $skip = '${{ matrix.skip-assembly }}', 'Nodearr.Automation.Test'
           $failed = @()
 
           foreach ($assembly in Get-ChildItem _tests/net10.0 -Filter 'Nodearr.*.Test.dll') {
