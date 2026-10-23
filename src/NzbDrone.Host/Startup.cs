@@ -14,7 +14,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi;
 using NLog.Extensions.Logging;
-using Nodearr.Api.V3.System;
 using Nodearr.Api.V5.Series;
 using Nodearr.Http;
 using Nodearr.Http.Authentication;
@@ -88,7 +87,6 @@ namespace NzbDrone.Host
             })
 
             // Register all controllers from the API and HTTP projects
-            .AddApplicationPart(typeof(SystemController).Assembly)
             .AddApplicationPart(typeof(SeriesLookupController).Assembly)
             .AddApplicationPart(typeof(StaticResourceController).Assembly)
             .AddJsonOptions(options =>
@@ -104,18 +102,6 @@ namespace NzbDrone.Host
 
             services.AddSwaggerGen(c =>
             {
-                c.SwaggerDoc("v3", new OpenApiInfo
-                {
-                    Version = "3.0.0",
-                    Title = "Nodearr",
-                    Description = "Nodearr's v3 API: Sonarr's, kept for compatibility and deprecated. Nodearr's own API is v5.",
-                    License = new OpenApiLicense
-                    {
-                        Name = "GPL-3.0",
-                        Url = new Uri("https://github.com/Nodearr/Nodearr/blob/main/LICENSE")
-                    }
-                });
-
                 c.SwaggerDoc("v5", new OpenApiInfo
                 {
                     Version = "5.0.0",
@@ -342,7 +328,7 @@ namespace NzbDrone.Host
             app.UseMiddleware<StartingUpMiddleware>();
             app.UseMiddleware<CacheHeaderMiddleware>();
             app.UseMiddleware<IfModifiedMiddleware>();
-            app.UseMiddleware<BufferingMiddleware>(new List<string> { "/api/v3/command", "/api/v5/command" });
+            app.UseMiddleware<BufferingMiddleware>(new List<string> { "/api/v5/command" });
 
             app.UseWebSockets();
             app.UseMiniProfiler();

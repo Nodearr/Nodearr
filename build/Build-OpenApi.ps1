@@ -1,11 +1,11 @@
 #requires -Version 7
 <#
 .SYNOPSIS
-    Writes the OpenAPI documents, src/Nodearr.Api.V5/openapi.json and src/Nodearr.Api.V3/openapi.json,
+    Writes the OpenAPI document, src/Nodearr.Api.V5/openapi.json,
     from the API as it is built.
 
 .DESCRIPTION
-    A debug build serves its OpenAPI documents at /docs/v5/openapi.json and /docs/v3/openapi.json,
+    A debug build serves its OpenAPI document at /docs/v5/openapi.json,
     generated from the controllers. This builds Nodearr in Debug, starts it on a free port with a
     data folder of its own, fetches both, writes them into the repository, and stops it again.
 
@@ -70,7 +70,7 @@ try {
 
     if (-not $ready) { throw "Nodearr did not start on port $port" }
 
-    foreach ($version in 'v5', 'v3') {
+    foreach ($version in 'v5') {
         $target = Join-Path $repo "src/Nodearr.Api.$($version.ToUpperInvariant())/openapi.json"
         $json = (Invoke-WebRequest "$base/docs/$version/openapi.json" -Headers @{ 'X-Api-Key' = $apiKey }).Content
 

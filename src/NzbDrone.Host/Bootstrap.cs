@@ -39,7 +39,6 @@ namespace NzbDrone.Host
             "Nodearr.Host",
             "Nodearr.Core",
             "Nodearr.SignalR",
-            "Nodearr.Api.V3",
             "Nodearr.Api.V5",
             "Nodearr.Http"
         };

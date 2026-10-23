@@ -2,7 +2,11 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { ModelBaseSetting } from 'Store/Selectors/selectSettings';
 import Field, { FieldSelectOption } from 'typings/Field';
-import fetchJson, { ApiError, urlBase } from 'Utilities/Fetch/fetchJson';
+import fetchJson, {
+  ApiError,
+  apiRoot,
+  urlBase,
+} from 'Utilities/Fetch/fetchJson';
 
 export interface ProviderOptions extends ModelBaseSetting {
   fields?: Field[];
@@ -74,7 +78,7 @@ export default function useProviderOptions({
           { options?: FieldSelectOption<unknown>[] },
           typeof flattenedData
         >({
-          path: `${urlBase}/api/v3/${provider}/action/${action}`,
+          path: `${urlBase}${apiRoot}/${provider}/action/${action}`,
           method: 'POST',
           body: flattenedData,
           headers: {

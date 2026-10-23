@@ -90,7 +90,7 @@ Build first, then run the unit-test assemblies one at a time, as CI does. They s
 
 ```powershell
 $excludedPlatform = if ($IsWindows) { 'LINUX' } else { 'WINDOWS' }
-$skip = @('Nodearr.Automation.Test', 'Nodearr.Integration.Test')
+$skip = @('Nodearr.Automation.Test')
 $skip += if ($IsWindows) { 'Nodearr.Mono.Test' } else { 'Nodearr.Windows.Test' }
 $filter = "TestCategory!=ManualTest&TestCategory!=IntegrationTest&TestCategory!=AutomationTest&TestCategory!=$excludedPlatform"
 $failed = @()
@@ -114,7 +114,7 @@ if ($failed) { throw "Tests failed: $($failed -join ', ')" }
 - **The user guide** ([`docs/user-guide/`](docs/user-guide/README.md)), when it changes something a person sees or does. When a page in its screenshots changes, take them again with `tools/docs-screenshots.mjs`, which says how.
 - **The changelog** ([CHANGELOG.md](CHANGELOG.md)), under Unreleased.
 - **The third-party notices**, when it adds, removes or updates a dependency: `pwsh build/Build-Notices.ps1`, and commit the result ([licences](docs/guides/releases.md#licences)).
-- **The API description**, when it changes the API: `pwsh build/Build-OpenApi.ps1`, and commit `src/Nodearr.Api.V5/openapi.json` and `src/Nodearr.Api.V3/openapi.json`.
+- **The API description**, when it changes the API: `pwsh build/Build-OpenApi.ps1`, and commit `src/Nodearr.Api.V5/openapi.json`.
 - **The V1 plan** ([`docs/plans/v1-implementation-plan.md`](docs/plans/v1-implementation-plan.md)): a line for the slice, and anything it leaves open under "What is still open".
 
 ## Branches and commits

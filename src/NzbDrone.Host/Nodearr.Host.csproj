@@ -15,7 +15,6 @@
 		<ProjectReference Include="..\NzbDrone.Common\Nodearr.Common.csproj" />
 		<ProjectReference Include="..\NzbDrone.Core\Nodearr.Core.csproj" />
 		<ProjectReference Include="..\NzbDrone.SignalR\Nodearr.SignalR.csproj" />
-		<ProjectReference Include="..\Nodearr.Api.V3\Nodearr.Api.V3.csproj" />
 		<ProjectReference Include="..\Nodearr.Api.V5\Nodearr.Api.V5.csproj" />
 		<ProjectReference Include="..\Nodearr.Http\Nodearr.Http.csproj" />
 	</ItemGroup>

@@ -13,7 +13,7 @@ Nodearr is not affiliated with, sponsored by or endorsed by the [Sonarr](https:/
 
 What is derived from Sonarr:
 
-- Nearly everything under `src/`: the `NzbDrone.*` projects, and `Nodearr.Api.V3`, `Nodearr.Api.V5` and `Nodearr.Http`, which are Sonarr's `Sonarr.Api.V3`, `Sonarr.Api.V5` and `Sonarr.Http` renamed.
+- Nearly everything under `src/`: the `NzbDrone.*` projects, and `Nodearr.Api.V5` and `Nodearr.Http`, which are Sonarr's `Sonarr.Api.V5` and `Sonarr.Http` renamed.
 - The `frontend/` application, its build configuration, and the root `package.json`, lint and [TypeScript](https://www.typescriptlang.org/) configuration.
 - The test projects and their fixtures.
 
