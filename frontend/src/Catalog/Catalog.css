@@ -190,9 +190,9 @@
 /* Small enough for a list of hundreds of titles, such as Hidden. */
 .posterMini {
   display: flex;
-  flex: none;
   align-items: center;
   justify-content: center;
+  flex: none;
   margin-right: 8px;
   width: 20px;
   height: 30px;
