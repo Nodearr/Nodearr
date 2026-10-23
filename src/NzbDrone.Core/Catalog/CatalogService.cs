@@ -12,6 +12,18 @@ using NzbDrone.Core.ThingiProvider.Events;
 
 namespace NzbDrone.Core.Catalog
 {
+    // A series or movie in this node's own catalog, with how many files its Arr app reports.
+    public class CatalogTitle
+    {
+        public int ApplicationId { get; set; }
+        public PosterSubject Subject { get; set; }
+        public int ArrId { get; set; }
+        public string Title { get; set; }
+        public string SortTitle { get; set; }
+        public int Year { get; set; }
+        public int Files { get; set; }
+    }
+
     public class CatalogApplicationSummary
     {
         public int ApplicationId { get; set; }
@@ -43,6 +55,9 @@ namespace NzbDrone.Core.Catalog
         List<CatalogSeries> GetSeries(int applicationId, IEnumerable<int> arrSeriesIds);
         List<CatalogEpisode> GetEpisodesForFiles(int applicationId, IEnumerable<int> arrEpisodeFileIds);
         List<CatalogMovie> GetMovies(int applicationId, IEnumerable<int> arrMovieIds);
+
+        // Every series and movie with a file, by sort title.
+        List<CatalogTitle> GetTitles(int? applicationId);
     }
 
     public class CatalogService : ICatalogService,
@@ -247,6 +262,37 @@ namespace NzbDrone.Core.Catalog
         public List<CatalogMovie> GetMovies(int applicationId, IEnumerable<int> arrMovieIds)
         {
             return _movies.ForArrIds(applicationId, arrMovieIds);
+        }
+
+        // The files are counted by the database. The titles come from the series and movies, which
+        // are few beside the files.
+        public List<CatalogTitle> GetTitles(int? applicationId)
+        {
+            var series = _series.All().Where(s => s.MissingSince == null).ToDictionary(s => (s.ApplicationId, s.ArrId));
+            var movies = _movies.All().Where(m => m.MissingSince == null).ToDictionary(m => (m.ApplicationId, m.ArrId));
+            var titles = new List<CatalogTitle>();
+
+            foreach (var count in _episodeFiles.FilesPerSeries())
+            {
+                if (series.TryGetValue((count.ApplicationId, count.ArrId), out var s))
+                {
+                    titles.Add(new CatalogTitle { ApplicationId = count.ApplicationId, Subject = PosterSubject.Series, ArrId = count.ArrId, Title = s.Title, SortTitle = s.SortTitle, Year = s.Year, Files = count.Files });
+                }
+            }
+
+            foreach (var count in _movieFiles.FilesPerMovie())
+            {
+                if (movies.TryGetValue((count.ApplicationId, count.ArrId), out var m))
+                {
+                    titles.Add(new CatalogTitle { ApplicationId = count.ApplicationId, Subject = PosterSubject.Movie, ArrId = count.ArrId, Title = m.Title, SortTitle = m.SortTitle, Year = m.Year, Files = count.Files });
+                }
+            }
+
+            return titles
+                .Where(t => applicationId == null || t.ApplicationId == applicationId)
+                .OrderBy(t => t.SortTitle ?? t.Title, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(t => t.Year)
+                .ToList();
         }
 
         private void Refresh(IApplication application, bool purgeMissing)

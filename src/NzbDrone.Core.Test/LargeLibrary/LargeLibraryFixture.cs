@@ -214,6 +214,9 @@ namespace NzbDrone.Core.Test.LargeLibrary
             Time("hashing pass, first time (no real hashing, every hash stored)", () => hasher.HashShared(CancellationToken.None));
             Time("hashing pass, all hashed already", () => hasher.HashShared(CancellationToken.None));
 
+            // The Posters view of Catalog > Local: every series and movie with a file, counted.
+            Time("list the local catalog's titles, with file counts", () => Mocker.Resolve<CatalogService>().GetTitles(null));
+
             // Unsharing, with uploads under way.
             Mocker.GetMock<IFileTransport>().Setup(t => t.ListUploads()).Returns(Enumerable.Range(1, 3).Select(i => new FileUploadProgress { Id = $"{i}", RemoteNodeId = "bob", File = $"e-1-{i}", State = UploadState.Sending }).ToList());
             var source = Mocker.Resolve<FileSourceService>();

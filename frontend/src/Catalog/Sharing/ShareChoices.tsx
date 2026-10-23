@@ -4,6 +4,7 @@ import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import { icons } from 'Helpers/Props';
 import titleWithYear from 'Utilities/String/titleWithYear';
 import translate from 'Utilities/String/translate';
+import Poster, { titlePosterSrc } from '../Poster';
 import {
   albumShareId,
   episodeShareId,
@@ -25,6 +26,7 @@ export function Check({
   isChecked,
   isIndeterminate = false,
   className,
+  poster,
   onToggle,
 }: {
   id: string;
@@ -32,6 +34,7 @@ export function Check({
   isChecked: boolean;
   isIndeterminate?: boolean;
   className?: string;
+  poster?: React.ReactNode;
   onToggle: (id: string) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -48,7 +51,11 @@ export function Check({
   }, [id, onToggle]);
 
   return (
-    <label className={className ?? styles.check}>
+    <label
+      className={`${className ?? styles.check}${
+        poster ? ` ${styles.withPoster}` : ''
+      }`}
+    >
       <input
         ref={inputRef}
         className={styles.checkBox}
@@ -56,6 +63,7 @@ export function Check({
         checked={isChecked}
         onChange={handleChange}
       />
+      {poster}
       {label}
     </label>
   );
@@ -188,6 +196,7 @@ export function SeriesChoice({
           isChecked={isWhole}
           isIndeterminate={isPart}
           className={styles.inlineCheck}
+          poster={<TitlePoster title={title} />}
           onToggle={handleSeriesToggle}
         />
       </div>
@@ -359,6 +368,7 @@ export function ArtistChoice({
           isChecked={isWhole}
           isIndeterminate={isPart}
           className={styles.inlineCheck}
+          poster={<TitlePoster title={title} />}
           onToggle={handleArtistToggle}
         />
       </div>
@@ -394,6 +404,17 @@ export function ArtistChoice({
         </div>
       ) : null}
     </div>
+  );
+}
+
+// A whole title's poster, for the row it is chosen by.
+export function TitlePoster({ title }: { title: ShareableTitle }) {
+  return (
+    <Poster
+      src={titlePosterSrc(title)}
+      title={titleWithYear(title.title, title.year)}
+      size="mini"
+    />
   );
 }
 

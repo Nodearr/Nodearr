@@ -329,6 +329,8 @@ export interface ReceivedTitle {
   year: number;
   getItState: GetItState;
   getItMessage?: string;
+  // An item of this node's copy of the friend's catalog for its poster, once it has one.
+  posterItemId?: number | null;
 }
 
 export type GetItState = 'none' | 'working' | 'done' | 'failed';

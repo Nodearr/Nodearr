@@ -34,6 +34,7 @@ import {
   Check,
   describeTitle,
   SeriesChoice,
+  TitlePoster,
   toggle,
 } from './ShareChoices';
 import styles from '../Catalog.css';
@@ -268,6 +269,7 @@ function ShareListEditor({
                   label={describeTitle(title)}
                   isChecked={items.has(titleId(title))}
                   className={styles.movieCheck}
+                  poster={<TitlePoster title={title} />}
                   onToggle={handleItemToggle}
                 />
               );

@@ -18,6 +18,20 @@ export interface LocalCatalogSummary {
 
 export type LocalCatalogMediaType = 'episode' | 'movie';
 
+export type PosterSubject = 'series' | 'movie' | 'album';
+
+// A series or movie in the local catalog, for the Posters view.
+export interface LocalCatalogTitle {
+  applicationId: number;
+  applicationName?: string;
+  mediaType: 'series' | 'movie';
+  posterSubject: PosterSubject;
+  posterArrId: number;
+  title?: string;
+  year: number;
+  files: number;
+}
+
 export interface LocalCatalogFile {
   id: number;
   mediaType: LocalCatalogMediaType;
@@ -25,6 +39,8 @@ export interface LocalCatalogFile {
   applicationName?: string;
   title?: string;
   year: number;
+  posterSubject: PosterSubject;
+  posterArrId: number;
   tvdbId: number;
   tmdbId: number;
   imdbId?: string;

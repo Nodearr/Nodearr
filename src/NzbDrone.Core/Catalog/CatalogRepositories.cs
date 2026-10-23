@@ -100,8 +100,18 @@ namespace NzbDrone.Core.Catalog
         }
     }
 
+    // How many files a title has, counted by the database: a page of titles must not load every file.
+    public class TitleFileCount
+    {
+        public int ApplicationId { get; set; }
+        public int ArrId { get; set; }
+        public int Files { get; set; }
+    }
+
     public interface ICatalogEpisodeFileRepository : ICatalogRepository<CatalogEpisodeFile>
     {
+        // Files the Arr app still reports, per series.
+        List<TitleFileCount> FilesPerSeries();
     }
 
     public class CatalogEpisodeFileRepository : CatalogRepository<CatalogEpisodeFile>, ICatalogEpisodeFileRepository
@@ -109,6 +119,13 @@ namespace NzbDrone.Core.Catalog
         public CatalogEpisodeFileRepository(IMainDatabase database, IEventAggregator eventAggregator)
             : base(database, eventAggregator)
         {
+        }
+
+        public List<TitleFileCount> FilesPerSeries()
+        {
+            using var connection = _database.OpenConnection();
+
+            return connection.Query<TitleFileCount>($"SELECT \"ApplicationId\", \"ArrSeriesId\" AS \"ArrId\", COUNT(*) AS \"Files\" FROM \"{_table}\" WHERE \"MissingSince\" IS NULL GROUP BY \"ApplicationId\", \"ArrSeriesId\"").ToList();
         }
     }
 
@@ -126,6 +143,8 @@ namespace NzbDrone.Core.Catalog
 
     public interface ICatalogMovieFileRepository : ICatalogRepository<CatalogMovieFile>
     {
+        // Files the Arr app still reports, per movie.
+        List<TitleFileCount> FilesPerMovie();
     }
 
     public class CatalogMovieFileRepository : CatalogRepository<CatalogMovieFile>, ICatalogMovieFileRepository
@@ -133,6 +152,13 @@ namespace NzbDrone.Core.Catalog
         public CatalogMovieFileRepository(IMainDatabase database, IEventAggregator eventAggregator)
             : base(database, eventAggregator)
         {
+        }
+
+        public List<TitleFileCount> FilesPerMovie()
+        {
+            using var connection = _database.OpenConnection();
+
+            return connection.Query<TitleFileCount>($"SELECT \"ApplicationId\", \"ArrMovieId\" AS \"ArrId\", COUNT(*) AS \"Files\" FROM \"{_table}\" WHERE \"MissingSince\" IS NULL GROUP BY \"ApplicationId\", \"ArrMovieId\"").ToList();
         }
     }
 

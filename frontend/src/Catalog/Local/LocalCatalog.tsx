@@ -26,16 +26,37 @@ import {
   LocalCatalogFile,
   LocalCatalogMediaType,
   LocalCatalogSummary,
+  LocalCatalogTitle,
 } from 'typings/LocalCatalog';
 import formatDateTime from 'Utilities/Date/formatDateTime';
 import formatBytes from 'Utilities/Number/formatBytes';
 import titleWithYear from 'Utilities/String/titleWithYear';
 import translate from 'Utilities/String/translate';
+import Poster, { localPosterSrc } from '../Poster';
+import catalogStyles from '../Catalog.css';
 import styles from './LocalCatalog.css';
 
 const PAGE_SIZE = 50;
 
+// A grid of posters fills a page with fewer, larger items.
+const POSTER_PAGE_SIZE = 48;
+
+type View = 'table' | 'posters';
+
+const VIEW_KEY = 'nodearr.localCatalog.view';
+
+function readView(): View {
+  try {
+    return window.localStorage.getItem(VIEW_KEY) === 'posters'
+      ? 'posters'
+      : 'table';
+  } catch {
+    return 'table';
+  }
+}
+
 const COLUMNS: Column[] = [
+  { name: 'poster', label: '', isVisible: true },
   {
     name: 'applicationName',
     label: () => translate('SourceApplication'),
@@ -87,6 +108,33 @@ function describe(file: LocalCatalogFile) {
   return `${file.title} - S${pad(file.seasonNumber ?? 0)}${episodes}`;
 }
 
+function TitleTile({ title }: { title: LocalCatalogTitle }) {
+  const name = titleWithYear(title.title, title.year);
+
+  return (
+    <div className={catalogStyles.tile}>
+      <Poster
+        src={localPosterSrc(
+          title.applicationId,
+          title.posterSubject,
+          title.posterArrId
+        )}
+        title={name}
+        size="tile"
+      />
+
+      <div className={catalogStyles.tileTitle} title={name}>
+        {name}
+      </div>
+
+      <div className={catalogStyles.tileDetails}>
+        {title.files} {translate('Files')}
+      </div>
+      <div className={catalogStyles.tileDetails}>{title.applicationName}</div>
+    </div>
+  );
+}
+
 // What an app's library holds, in its own terms.
 function countsText(application: LocalCatalogSummary) {
   switch (application.implementation) {
@@ -114,6 +162,7 @@ function countsText(application: LocalCatalogSummary) {
 function LocalCatalog() {
   const [mediaType, setMediaType] = useState<LocalCatalogMediaType>('episode');
   const [page, setPage] = useState(1);
+  const [view, setView] = useState<View>(readView);
   const [sortKey, setSortKey] = useState('path');
   const [sortDirection, setSortDirection] = useState<SortDirection>(
     'ascending' as SortDirection
@@ -146,12 +195,44 @@ function LocalCatalog() {
     pageSize: PAGE_SIZE,
     sortKey,
     sortDirection,
+    queryOptions: { enabled: view === 'table' },
   });
+
+  const titles = usePagedApiQuery<LocalCatalogTitle>({
+    path: '/catalog/local/titles',
+    page,
+    pageSize: POSTER_PAGE_SIZE,
+    queryOptions: { enabled: view === 'posters' },
+  });
+
+  const pages = view === 'posters' ? titles.totalPages : totalPages;
+
+  const handleViewPress = useCallback((next: View) => {
+    setView(next);
+    setPage(1);
+
+    try {
+      window.localStorage.setItem(VIEW_KEY, next);
+    } catch {
+      // Remembered for this visit only.
+    }
+  }, []);
+
+  const handleTableViewPress = useCallback(() => {
+    handleViewPress('table');
+  }, [handleViewPress]);
+
+  const handlePosterViewPress = useCallback(() => {
+    handleViewPress('posters');
+  }, [handleViewPress]);
+
+  const refetchTitles = titles.refetch;
 
   const reload = useCallback(() => {
     refetchSummary();
     refetch();
-  }, [refetchSummary, refetch]);
+    refetchTitles();
+  }, [refetchSummary, refetch, refetchTitles]);
 
   const handleRefreshPress = useCallback(() => {
     executeCommand({ name: CommandNames.CatalogRefresh }, reload);
@@ -183,12 +264,12 @@ function LocalCatalog() {
   }, []);
 
   const handleNextPagePress = useCallback(() => {
-    setPage((current) => Math.min(totalPages, current + 1));
-  }, [totalPages]);
+    setPage((current) => Math.min(pages, current + 1));
+  }, [pages]);
 
   const handleLastPagePress = useCallback(() => {
-    setPage(totalPages);
-  }, [totalPages]);
+    setPage(pages);
+  }, [pages]);
 
   const handleSortPress = useCallback(
     (name: string, direction?: SortDirection) => {
@@ -226,6 +307,21 @@ function LocalCatalog() {
             iconName={icons.DELETE}
             isDisabled={isRefreshing || missingCount === 0}
             onPress={handlePurgePress}
+          />
+        </PageToolbarSection>
+
+        <PageToolbarSection alignContent="right">
+          <PageToolbarButton
+            label={translate('Table')}
+            iconName={icons.TABLE}
+            isDisabled={view === 'table'}
+            onPress={handleTableViewPress}
+          />
+          <PageToolbarButton
+            label={translate('Posters')}
+            iconName={icons.POSTER}
+            isDisabled={view === 'posters'}
+            onPress={handlePosterViewPress}
           />
         </PageToolbarSection>
       </PageToolbar>
@@ -278,7 +374,36 @@ function LocalCatalog() {
           ))}
         </div>
 
-        {summary.length > 0 ? (
+        {view === 'posters' && titles.isLoading ? <LoadingIndicator /> : null}
+
+        {view === 'posters' &&
+        !titles.isLoading &&
+        titles.records.length > 0 ? (
+          <div>
+            <div className={catalogStyles.tiles}>
+              {titles.records.map((title) => (
+                <TitleTile
+                  key={`${title.applicationId}-${title.posterSubject}-${title.posterArrId}`}
+                  title={title}
+                />
+              ))}
+            </div>
+
+            <TablePager
+              page={page}
+              totalPages={titles.totalPages}
+              totalRecords={titles.totalRecords}
+              isFetching={titles.isFetching}
+              onFirstPagePress={handleFirstPagePress}
+              onPreviousPagePress={handlePreviousPagePress}
+              onNextPagePress={handleNextPagePress}
+              onLastPagePress={handleLastPagePress}
+              onPageSelect={setPage}
+            />
+          </div>
+        ) : null}
+
+        {view === 'table' && summary.length > 0 ? (
           <div className={styles.mediaTypes}>
             <Button
               kind={mediaType === 'episode' ? kinds.PRIMARY : kinds.DEFAULT}
@@ -296,9 +421,9 @@ function LocalCatalog() {
           </div>
         ) : null}
 
-        {isLoading ? <LoadingIndicator /> : null}
+        {view === 'table' && isLoading ? <LoadingIndicator /> : null}
 
-        {!isLoading && records.length > 0 ? (
+        {view === 'table' && !isLoading && records.length > 0 ? (
           <div>
             <Table
               columns={COLUMNS}
@@ -313,6 +438,18 @@ function LocalCatalog() {
                     key={file.id}
                     className={file.missingSince ? styles.missing : undefined}
                   >
+                    <TableRowCell className={catalogStyles.posterCell}>
+                      <Poster
+                        src={localPosterSrc(
+                          file.applicationId,
+                          file.posterSubject,
+                          file.posterArrId
+                        )}
+                        title={file.title ?? ''}
+                        size="thumb"
+                      />
+                    </TableRowCell>
+
                     <TableRowCell>{file.applicationName}</TableRowCell>
 
                     <TableRowCell className={styles.title}>

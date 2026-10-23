@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. Part 1 built on 2026-10-16 (S57): a friend's catalog with posters. Part 2, the other pages, is still open in the [V1 plan](../plans/v1-implementation-plan.md#what-is-still-open). S58 was used for the UI test kit.
+Accepted. Part 1 built on 2026-10-16 (S57): a friend's catalog with posters. Part 2 built on 2026-10-23 ([#42](https://github.com/Nodearr/Nodearr/issues/42)): posters on the other pages, see the amendment. S58 was used for the UI test kit.
 
 ## Context
 
@@ -49,6 +49,14 @@ A poster comes from the friend that offers the title, and nothing else is contac
 - Whisparr v3 keeps a scene's screenshot at one size, so those are larger to send.
 - The browsing node's disk holds a copy of every poster it has shown. At about 70 KB each, 10,000 titles are under a gigabyte.
 
+## Amendments
+
+- 2026-10-23: **posters on the other pages** ([#42](https://github.com/Nodearr/Nodearr/issues/42)).
+  - **Catalog > Local** shows each file's poster, and a **Posters** view with one tile per series or movie and how many files it has, as on a friend's catalog. The titles come from `GET /api/v5/catalog/local/titles`, which counts the files in the database rather than loading them.
+  - Your own titles' posters come from your own Arr apps through the same cache a friend is answered from, at `GET /api/v5/catalog/posters/local/{applicationId}/{subject}/{arrId}`, signed in to as the other poster address is. Nothing new goes between nodes.
+  - The **Sharing** page's lists and the Send form show a small poster beside each series or movie. An artist shows the plain frame: Lidarr's pictures are its albums', and the list chooses the artist.
+  - A card on **Home** for what a friend sent shows the title's poster from that friend, through an item of the friend's catalog this node holds. Until the catalog holds one, the card shows the plain frame.
+
 ## Follow-up work
 
-- Posters on the other pages: the cards on **Home**, the Send form, the Sharing page and **Catalog > Local**.
+- ~~Posters on the other pages: the cards on **Home**, the Send form, the Sharing page and **Catalog > Local**.~~ Done, see the amendment of 2026-10-23.

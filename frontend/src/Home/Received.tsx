@@ -19,6 +19,7 @@ import { getErrorMessage } from 'Nodes/useNodes';
 import { InputChanged } from 'typings/inputs';
 import formatBytes from 'Utilities/Number/formatBytes';
 import translate from 'Utilities/String/translate';
+import Poster, { peerPosterSrc } from '../Catalog/Poster';
 import styles from './Home.css';
 
 const SERIES_TYPES = [
@@ -298,28 +299,39 @@ function ReceivedCard({ received }: { received: ReceivedTitle }) {
     : received.title ?? '';
 
   return (
-    <div className={styles.received}>
-      <div className={styles.receivedHeader}>
-        <div className={styles.receivedText}>
-          <Icon name={icons.DOWNLOAD} />{' '}
-          {translate('ReceivedSentYou', {
-            name: received.peerName ?? '',
-            title: what,
-          })}
+    <div className={`${styles.received} ${styles.receivedWithPoster}`}>
+      <Poster
+        src={
+          received.posterItemId ? peerPosterSrc(received.posterItemId) : null
+        }
+        title={received.title ?? ''}
+        size="thumb"
+        isSquare={received.mediaKind === 'music'}
+      />
+
+      <div className={styles.receivedBody}>
+        <div className={styles.receivedHeader}>
+          <div className={styles.receivedText}>
+            <Icon name={icons.DOWNLOAD} />{' '}
+            {translate('ReceivedSentYou', {
+              name: received.peerName ?? '',
+              title: what,
+            })}
+          </div>
+
+          <div className={styles.receivedButtons}>
+            <Link className={styles.cardLink} to="/catalog/peers">
+              {translate('ReceivedSeeIt')}
+            </Link>
+
+            <Button isDisabled={isPending} onPress={handleDismissPress}>
+              {translate('ReceivedPutAway')}
+            </Button>
+          </div>
         </div>
 
-        <div className={styles.receivedButtons}>
-          <Link className={styles.cardLink} to="/catalog/peers">
-            {translate('ReceivedSeeIt')}
-          </Link>
-
-          <Button isDisabled={isPending} onPress={handleDismissPress}>
-            {translate('ReceivedPutAway')}
-          </Button>
-        </div>
+        <GetItSection received={received} />
       </div>
-
-      <GetItSection received={received} />
     </div>
   );
 }

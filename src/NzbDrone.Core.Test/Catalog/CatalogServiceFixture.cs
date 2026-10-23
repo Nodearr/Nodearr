@@ -313,5 +313,41 @@ namespace NzbDrone.Core.Test.Catalog
             Mocker.Resolve<ICatalogAlbumRepository>().ForApplication(ApplicationId).Should().OnlyContain(a => a.MissingSince == null);
             Mocker.Resolve<ICatalogArtistRepository>().ForApplication(ApplicationId).Should().HaveCount(2);
         }
+
+        // The Posters view of the local catalog: one entry for each series or movie with a file, by sort
+        // title, with how many files the Arr app still reports.
+        [Test]
+        public void titles_should_count_the_files_each_series_and_movie_has()
+        {
+            Mocker.Resolve<ICatalogSeriesRepository>().InsertMany(new List<CatalogSeries>
+            {
+                new() { ApplicationId = 1, ArrId = 10, Title = "The Wire", SortTitle = "wire", Year = 2002 },
+                new() { ApplicationId = 1, ArrId = 11, Title = "No Files Yet", SortTitle = "no files yet", Year = 2020 },
+                new() { ApplicationId = 1, ArrId = 12, Title = "Gone", SortTitle = "gone", Year = 1999, MissingSince = DateTime.UtcNow }
+            });
+            Mocker.Resolve<ICatalogEpisodeFileRepository>().InsertMany(new List<CatalogEpisodeFile>
+            {
+                new() { ApplicationId = 1, ArrId = 100, ArrSeriesId = 10, Path = "/tv/w/1.mkv" },
+                new() { ApplicationId = 1, ArrId = 101, ArrSeriesId = 10, Path = "/tv/w/2.mkv" },
+                new() { ApplicationId = 1, ArrId = 102, ArrSeriesId = 10, Path = "/tv/w/3.mkv", MissingSince = DateTime.UtcNow },
+                new() { ApplicationId = 1, ArrId = 103, ArrSeriesId = 12, Path = "/tv/g/1.mkv" }
+            });
+            Mocker.Resolve<ICatalogMovieRepository>().InsertMany(new List<CatalogMovie>
+            {
+                new() { ApplicationId = 2, ArrId = 20, Title = "Akira", SortTitle = "akira", Year = 1988 }
+            });
+            Mocker.Resolve<ICatalogMovieFileRepository>().InsertMany(new List<CatalogMovieFile>
+            {
+                new() { ApplicationId = 2, ArrId = 200, ArrMovieId = 20, Path = "/movies/a.mkv" }
+            });
+
+            var titles = Subject.GetTitles(null);
+
+            titles.Select(t => (t.Title, t.Subject, t.ArrId, t.Files)).Should().Equal(
+                ("Akira", PosterSubject.Movie, 20, 1),
+                ("The Wire", PosterSubject.Series, 10, 2));
+
+            Subject.GetTitles(2).Select(t => t.Title).Should().Equal("Akira");
+        }
     }
 }

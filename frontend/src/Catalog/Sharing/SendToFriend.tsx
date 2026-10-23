@@ -27,6 +27,7 @@ import {
   Check,
   describeTitle,
   SeriesChoice,
+  TitlePoster,
 } from './ShareChoices';
 import styles from '../Catalog.css';
 
@@ -240,6 +241,7 @@ function SendToFriend({
                     label={describeTitle(chosen)}
                     isChecked={items.has(titleId(chosen))}
                     className={styles.movieCheck}
+                    poster={<TitlePoster title={chosen} />}
                     onToggle={handleMovieToggle}
                   />
                 ) : null}
@@ -266,6 +268,7 @@ function SendToFriend({
                     label={describeTitle(title)}
                     isChecked={false}
                     className={styles.movieCheck}
+                    poster={<TitlePoster title={title} />}
                     onToggle={handleChoose}
                   />
                 ))}
