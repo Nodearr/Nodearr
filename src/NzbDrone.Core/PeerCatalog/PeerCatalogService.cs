@@ -51,7 +51,13 @@ namespace NzbDrone.Core.PeerCatalog
                                       IHandle<PeerDeletedEvent>
     {
         private const int MaxAttempts = 3;
-        private const int MaxPages = 10000;
+
+        // The most of a peer's catalog this node takes: three times the largest library measured,
+        // 66,000 files in a 38 MB catalog (ADR 0014). A node that says it has more, or sends more
+        // on a page than a page holds, is refused, so a peer cannot have this node read and keep a
+        // catalog of any size it claims.
+        private const int MaxItems = 200000;
+        private const int MaxPages = MaxItems / OfferExchange.PageSize;
 
         private readonly IPeerRepository _peers;
         private readonly IPeerService _peerService;
@@ -297,6 +303,13 @@ namespace NzbDrone.Core.PeerCatalog
                     return null;
                 }
 
+                if (first.CatalogTotalPages > MaxPages || first.CatalogItemCount > MaxItems)
+                {
+                    throw TooLarge(peer, $"it says {first.CatalogItemCount:N0} files in {first.CatalogTotalPages:N0} pages");
+                }
+
+                CheckPage(peer, first);
+
                 var fetched = new Fetched
                 {
                     Version = first.CatalogVersion,
@@ -307,7 +320,7 @@ namespace NzbDrone.Core.PeerCatalog
                 };
                 var complete = true;
 
-                for (var page = 1; page < Math.Min(first.CatalogTotalPages, MaxPages); page++)
+                for (var page = 1; page < first.CatalogTotalPages; page++)
                 {
                     var next = _peerService.Ask(peer, new PeerMessage { Type = PeerMessageTypes.Catalog, CatalogPage = page, CatalogVersion = fetched.Version });
 
@@ -318,6 +331,7 @@ namespace NzbDrone.Core.PeerCatalog
                         break;
                     }
 
+                    CheckPage(peer, next);
                     fetched.Items.AddRange(next.CatalogItems ?? new List<OfferItem>());
                 }
 
@@ -328,6 +342,24 @@ namespace NzbDrone.Core.PeerCatalog
             }
 
             throw new PeerException("The node's catalog kept changing while it was being read");
+        }
+
+        // OfferExchange puts at most a page's worth on each page.
+        private void CheckPage(Peer peer, PeerReply reply)
+        {
+            var count = reply.CatalogItems?.Count ?? 0;
+
+            if (count > OfferExchange.PageSize)
+            {
+                throw TooLarge(peer, $"it sent {count:N0} files on one page, where a page holds {OfferExchange.PageSize:N0}");
+            }
+        }
+
+        private PeerException TooLarge(Peer peer, string detail)
+        {
+            _logger.Warn("The catalog {0} sent was refused, and nothing of it kept: {1}. This node takes at most {2:N0} files from a node", peer.Name, detail, MaxItems);
+
+            return new PeerException($"Its catalog is larger than this node takes, at most {MaxItems:N0} files");
         }
 
         private class Fetched
