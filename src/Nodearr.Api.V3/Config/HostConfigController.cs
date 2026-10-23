@@ -8,6 +8,7 @@ using Nodearr.Http.REST;
 using Nodearr.Http.REST.Attributes;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Common.Network;
 using NzbDrone.Core.Authentication;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Update;
@@ -39,6 +40,7 @@ namespace Nodearr.Api.V3.Config
             SharedValidator.RuleFor(c => c.Port).ValidPort();
 
             SharedValidator.RuleFor(c => c.UrlBase).ValidUrlBase();
+            SharedValidator.RuleFor(c => c.TrustedNetworks).ValidIpNetworks();
             SharedValidator.RuleFor(c => c.InstanceName).StartsOrEndsWithNodearr();
 
             SharedValidator.RuleFor(c => c.Username).NotEmpty().When(c => c.AuthenticationMethod == AuthenticationType.Forms);
@@ -120,6 +122,8 @@ namespace Nodearr.Api.V3.Config
         [RestPutById]
         public ActionResult<HostConfigResource> SaveHostConfig([FromBody] HostConfigResource resource)
         {
+            resource.TrustedNetworks = IPNetworkParser.NormalizeList(resource.TrustedNetworks);
+
             var dictionary = resource.GetType()
                                      .GetProperties(BindingFlags.Instance | BindingFlags.Public)
                                      .ToDictionary(prop => prop.Name, prop => prop.GetValue(resource, null));

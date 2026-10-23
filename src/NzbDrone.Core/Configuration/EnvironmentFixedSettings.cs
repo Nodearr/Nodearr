@@ -49,6 +49,7 @@ namespace NzbDrone.Core.Configuration
             Add("sslCertPath", _server.SslCertPath);
             Add("sslKeyPath", _server.SslKeyPath);
             Add("sslCertPassword", _server.SslCertPassword);
+            Add("trustedNetworks", _server.TrustedNetworks);
             Add("instanceName", _app.InstanceName);
             Add("launchBrowser", _app.LaunchBrowser);
             Add("apiKey", _auth.ApiKey);

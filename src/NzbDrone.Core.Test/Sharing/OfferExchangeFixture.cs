@@ -66,11 +66,29 @@ namespace NzbDrone.Core.Test.Sharing
             GivenOffer("v1", OfferExchange.PageSize + 5);
             var first = Ask(0);
 
-            // Sharing changes between pages. The page already promised still belongs to v1.
+            // The library changes between pages. The page already promised still belongs to v1.
             GivenOffer("v2", 1);
 
             Ask(1, first.CatalogVersion).CatalogItems.Should().HaveCount(5);
             Mocker.GetMock<ISharingService>().Verify(s => s.BuildOffer(_peer, It.IsAny<bool>()), Times.Once());
+        }
+
+        // A title put on Hidden after the first page must not be in the later ones: the peer is told
+        // to start again, and the first page then comes from what is shared now.
+        [Test]
+        public void a_change_to_sharing_between_pages_should_make_the_peer_start_again()
+        {
+            GivenOffer("v1", OfferExchange.PageSize + 5);
+            var first = Ask(0);
+
+            GivenOffer("v2", OfferExchange.PageSize + 4);
+            Subject.Handle(new SharingChangedEvent());
+
+            Ask(1, first.CatalogVersion).Should().Match<PeerReply>(r => !r.Ok && r.Error == "CatalogChanged");
+
+            var again = Ask(0);
+            again.CatalogVersion.Should().Be("v2");
+            Ask(1, again.CatalogVersion).CatalogItems.Should().HaveCount(4);
         }
 
         [Test]

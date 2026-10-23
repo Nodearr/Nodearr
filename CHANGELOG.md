@@ -2,6 +2,16 @@
 
 What changed in each release, newest first. Each item links to the decision record that explains it, and the [V1 plan](docs/plans/v1-implementation-plan.md) has the whole story, slice by slice.
 
+## 0.2.6 (pre-release)
+
+### Security
+
+- **With sign-in turned off for local addresses or localhost, a device on the network could get past it** by sending an `X-Forwarded-For` header that claimed a local address: Nodearr believed that header from every private network. Sign-in on, the default, was not affected. Nodearr now believes it only from a proxy on the same machine and from the networks in the new **Trusted Networks** setting, empty by default, and never skips sign-in for a forwarded address it did not believe, as Sonarr has since done ([GHSA-w69m-gw3g-623m](https://github.com/Nodearr/Nodearr/security/advisories/GHSA-w69m-gw3g-623m)).
+
+### Fixed
+
+- A title put on **Hidden** while a friend was part way through fetching your catalog could still reach them in the catalog's later pages. Any change to sharing now makes a friend part way through start again, from what is shared now. Files were never sent: each file request is checked against sharing as it is.
+
 ## 0.2.5 (pre-release)
 
 ### Documentation

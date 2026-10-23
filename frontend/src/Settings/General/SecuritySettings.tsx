@@ -99,6 +99,7 @@ interface SecuritySettingsProps {
   passwordConfirmation: PendingSection<GeneralSettingsModel>['passwordConfirmation'];
   apiKey: PendingSection<GeneralSettingsModel>['apiKey'];
   certificateValidation: PendingSection<GeneralSettingsModel>['certificateValidation'];
+  trustedNetworks: PendingSection<GeneralSettingsModel>['trustedNetworks'];
   isResettingApiKey: boolean;
   isFixed: (name: string) => boolean;
   onInputChange: (change: InputChanged) => void;
@@ -112,6 +113,7 @@ function SecuritySettings({
   passwordConfirmation,
   apiKey,
   certificateValidation,
+  trustedNetworks,
   isResettingApiKey,
   isFixed,
   onInputChange,
@@ -273,6 +275,23 @@ function SecuritySettings({
           onChange={onInputChange}
           {...certificateValidation}
         />
+      </FormGroup>
+
+      <FormGroup>
+        <FormLabel>{translate('TrustedNetworks')}</FormLabel>
+
+        {isFixed('trustedNetworks') ? (
+          <FixedSetting value={trustedNetworks.value} />
+        ) : (
+          <FormInputGroup
+            type={inputTypes.TEXT}
+            name="trustedNetworks"
+            helpText={translate('TrustedNetworksHelpText')}
+            helpTextWarning={translate('RestartRequiredHelpTextWarning')}
+            onChange={onInputChange}
+            {...trustedNetworks}
+          />
+        )}
       </FormGroup>
 
       <ConfirmModal
