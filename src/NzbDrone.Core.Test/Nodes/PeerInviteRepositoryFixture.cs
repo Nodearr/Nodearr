@@ -33,9 +33,13 @@ namespace NzbDrone.Core.Test.Nodes
         {
             var invite = GivenInvite();
 
+            // GivenInvite has made the repository already: the test container is not safe for many
+            // threads at once. What runs concurrently is the redeeming, which is what is tested.
+            var subject = Subject;
+
             var results = Enumerable.Range(0, 16)
                 .AsParallel()
-                .Select(i => Subject.TryRedeem(invite.Id, "node-" + i, DateTime.UtcNow))
+                .Select(i => subject.TryRedeem(invite.Id, "node-" + i, DateTime.UtcNow))
                 .ToList();
 
             results.Count(r => r).Should().Be(1);
