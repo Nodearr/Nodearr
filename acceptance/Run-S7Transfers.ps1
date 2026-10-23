@@ -66,7 +66,7 @@ $repo = Resolve-Path (Join-Path $root '..')
 $run = Join-Path $root '.run/s7'
 $dll = $NodearrDll ? $NodearrDll : (Join-Path $repo '_output/net10.0/Nodearr.Console.dll')
 $composeFiles = @(
-    '-f', (Join-Path $repo 'spikes/arr-contract/docker-compose.yml'),
+    '-f', (Join-Path $root 'docker-compose.arr.yml'),
     '-f', (Join-Path $root 'docker-compose.library.yml'),
     '-f', (Join-Path $root 'docker-compose.consumer.yml'))
 $envFile = Join-Path $run '.env'

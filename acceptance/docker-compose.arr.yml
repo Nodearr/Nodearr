@@ -1,6 +1,7 @@
-# S1 spike: pinned Sonarr, Radarr and Prowlarr that share one /downloads folder with a Nodearr
-# running on the host. API keys come from .run/.env, which Run-ArrContractSpike.ps1 generates.
-name: nodearr-s1
+# Pinned Sonarr, Radarr and Prowlarr that share one /downloads folder with a Nodearr running on the
+# host, for the acceptance scripts. Each script names its own compose project and passes the API
+# keys in an env file it writes under .run/. Started as the S1 spike's (ADR 0010).
+name: nodearr-acceptance
 
 x-arr-common: &arr-common
   restart: "no"

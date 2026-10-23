@@ -49,7 +49,7 @@ $pidFile = Join-Path $run 'A.pid'
 $envFile = Join-Path $run '.env'
 $configFile = Join-Path $data 'config.xml'
 $dll = Join-Path $repo '_output/net10.0/Nodearr.Console.dll'
-$composeFile = Join-Path $repo 'spikes/arr-contract/docker-compose.yml'
+$composeFile = Join-Path $root 'docker-compose.arr.yml'
 $sonarrUrl = 'http://127.0.0.1:18989'
 
 function New-Key { -join ((1..32) | ForEach-Object { '{0:x}' -f (Get-Random -Maximum 16) }) }

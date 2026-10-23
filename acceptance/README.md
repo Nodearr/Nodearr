@@ -31,7 +31,7 @@ Checks, against pinned [Sonarr](https://sonarr.tv/) and [Radarr](https://radarr.
 - Syncing again creates no duplicates, the scheduled jobs are the right ones, and deleting an application removes its catalog.
 - Deleting an application also takes Nodearr out of that Arr app, as indexer and download client, and leaves the other app as it was. An application whose Arr app has been stopped can still be deleted, without a long wait.
 
-Nodearr runs on the host on port 6633. The containers come from `spikes/arr-contract/docker-compose.yml` with `docker-compose.library.yml` layered on top, which puts the Arr libraries on the host so Nodearr can read them. They publish on 127.0.0.1 only, on ports 18989 and 17878.
+Nodearr runs on the host on port 6633. The containers come from `docker-compose.arr.yml` with `docker-compose.library.yml` layered on top, which puts the Arr libraries on the host so Nodearr can read them. They publish on 127.0.0.1 only, on ports 18989 and 17878.
 
 The Arr apps get their files from `Library.ps1`, which has them import synthetic ffmpeg test patterns (see [How the scripts fill a library](#how-the-scripts-fill-a-library)).
 
