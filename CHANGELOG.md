@@ -9,6 +9,7 @@ What changed in each release, newest first. Each item links to the decision reco
 - One invite could pair two nodes, when both used it at the same moment: each could find it unused before either marked it redeemed. Redeeming it is now a single step in the database, so only one of them pairs ([#31](https://github.com/Nodearr/Nodearr/issues/31)).
 - Two downloads with the same release title went to the same folder, and finishing the second deleted the first before its Arr app had imported it. Like SABnzbd, Nodearr now puts the second next to the first, as `Title.1`, `Title.2` and so on, and tells the Arr app which folder it is in ([#32](https://github.com/Nodearr/Nodearr/issues/32)).
 - A friend's node could make yours fetch and keep a catalog of any size, by claiming up to 10,000 pages and filling each one. Nodearr now takes at most 200,000 files from a friend, three times the largest library measured, and refuses a catalog that says more or a page that holds more. What it had from that friend stays. A real catalog over 10,000 pages was also cut short without a word, and taken for the whole ([#33](https://github.com/Nodearr/Nodearr/issues/33)).
+- Preparing shared files for friends stored each file's hash with its own database write. On a library of 66,000 files that took 2 minutes 25 seconds before any file was read. The hashes are now stored in batches, at least every 5 seconds, and the same work takes under 3 seconds ([#34](https://github.com/Nodearr/Nodearr/issues/34)).
 
 ## 0.2.6 (pre-release)
 

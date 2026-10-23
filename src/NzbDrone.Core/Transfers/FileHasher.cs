@@ -52,12 +52,18 @@ namespace NzbDrone.Core.Transfers
                               IHandleAsync<PeerStateChangedEvent>,
                               IHandle<UploadVerificationFailedEvent>
     {
+        // A pass stores what it finds in batches, not a file at a time: 66,000 single writes took
+        // 145 s. A hash waits at most SaveWithin, so a file request soon finds it, and whatever a
+        // pass found is stored however the pass ends.
+        private const int SaveEvery = 500;
+
         private static readonly TimeSpan Interval = TimeSpan.FromHours(6);
         private static readonly TimeSpan RetryAfter = TimeSpan.FromMinutes(1);
         private static readonly TimeSpan UploadCheck = TimeSpan.FromSeconds(5);
 
         // A hash for a file that is no longer shared is kept this long, in case it is shared again.
         private static readonly TimeSpan KeepUnshared = TimeSpan.FromDays(30);
+        private static readonly TimeSpan SaveWithin = TimeSpan.FromSeconds(5);
 
         private readonly IPeerRepository _peers;
         private readonly ISharingService _sharing;
@@ -163,79 +169,119 @@ namespace NzbDrone.Core.Transfers
 
             _status = status;
 
-            foreach (var (offerFileId, path) in files)
+            var added = new List<FileHash>();
+            var changed = new List<FileHash>();
+            var renamed = new List<FileHash>();
+            var saved = DateTime.UtcNow;
+
+            void Save()
             {
-                if (cancellation.IsCancellationRequested)
+                if (added.Count > 0)
                 {
-                    return false;
+                    _hashes.InsertMany(added);
                 }
 
-                kept.TryGetValue(path, out var known);
-
-                // A file with no hash yet has to be read. That waits until nothing is being sent.
-                if (known == null && !WaitForUploads(status, cancellation))
+                if (changed.Count > 0)
                 {
-                    return false;
+                    _hashes.UpdateMany(changed);
                 }
 
-                status.Current = path;
-
-                HashedFile hashed;
-
-                try
+                if (renamed.Count > 0)
                 {
-                    hashed = _transport.Hash(path, known?.ToHashedFile());
-                }
-                catch (TransportException ex)
-                {
-                    _logger.Debug(ex, "Stopped hashing: the transport is not available");
-                    status.Current = null;
-
-                    return false;
+                    _hashes.SetFields(renamed, h => h.OfferFileId);
                 }
 
-                if (hashed == null)
-                {
-                    continue;
-                }
-
-                if (known == null)
-                {
-                    _hashes.Insert(new FileHash { Path = path, OfferFileId = offerFileId, Size = hashed.Size, ModifiedNs = hashed.ModifiedNs, Blake3 = hashed.Blake3, Hashed = DateTime.UtcNow });
-                    status.Hashed++;
-                    _logger.Debug("Hashed {0}", path);
-                }
-                else if (!known.Matches(hashed))
-                {
-                    // The file changed since it was last hashed.
-                    known.Size = hashed.Size;
-                    known.ModifiedNs = hashed.ModifiedNs;
-                    known.Blake3 = hashed.Blake3;
-                    known.OfferFileId = offerFileId;
-                    known.Hashed = DateTime.UtcNow;
-                    _hashes.Update(known);
-                    _logger.Debug("Hashed {0} again, because it changed", path);
-                }
-                else if (known.OfferFileId != offerFileId)
-                {
-                    // Kept from before hashes named their file, or the Arr app's name for it changed.
-                    known.OfferFileId = offerFileId;
-                    _hashes.SetFields(known, h => h.OfferFileId);
-                }
+                added.Clear();
+                changed.Clear();
+                renamed.Clear();
+                saved = DateTime.UtcNow;
             }
 
-            status.Current = null;
-            status.LastPass = DateTime.UtcNow;
-
-            var shared = files.Select(f => f.Path).ToHashSet(StringComparer.Ordinal);
-            var stale = kept.Values.Where(h => !shared.Contains(h.Path) && h.Hashed < DateTime.UtcNow - KeepUnshared).Select(h => h.Id).ToList();
-
-            if (stale.Count > 0)
+            try
             {
-                _hashes.DeleteMany(stale);
-            }
+                foreach (var (offerFileId, path) in files)
+                {
+                    if (added.Count + changed.Count + renamed.Count >= SaveEvery || DateTime.UtcNow - saved >= SaveWithin)
+                    {
+                        Save();
+                    }
 
-            return true;
+                    if (cancellation.IsCancellationRequested)
+                    {
+                        return false;
+                    }
+
+                    kept.TryGetValue(path, out var known);
+
+                    // A file with no hash yet has to be read. That waits until nothing is being sent.
+                    if (known == null && !WaitForUploads(status, cancellation))
+                    {
+                        return false;
+                    }
+
+                    status.Current = path;
+
+                    HashedFile hashed;
+
+                    try
+                    {
+                        hashed = _transport.Hash(path, known?.ToHashedFile());
+                    }
+                    catch (TransportException ex)
+                    {
+                        _logger.Debug(ex, "Stopped hashing: the transport is not available");
+                        status.Current = null;
+
+                        return false;
+                    }
+
+                    if (hashed == null)
+                    {
+                        continue;
+                    }
+
+                    if (known == null)
+                    {
+                        added.Add(new FileHash { Path = path, OfferFileId = offerFileId, Size = hashed.Size, ModifiedNs = hashed.ModifiedNs, Blake3 = hashed.Blake3, Hashed = DateTime.UtcNow });
+                        status.Hashed++;
+                        _logger.Debug("Hashed {0}", path);
+                    }
+                    else if (!known.Matches(hashed))
+                    {
+                        // The file changed since it was last hashed.
+                        known.Size = hashed.Size;
+                        known.ModifiedNs = hashed.ModifiedNs;
+                        known.Blake3 = hashed.Blake3;
+                        known.OfferFileId = offerFileId;
+                        known.Hashed = DateTime.UtcNow;
+                        changed.Add(known);
+                        _logger.Debug("Hashed {0} again, because it changed", path);
+                    }
+                    else if (known.OfferFileId != offerFileId)
+                    {
+                        // Kept from before hashes named their file, or the Arr app's name for it changed.
+                        known.OfferFileId = offerFileId;
+                        renamed.Add(known);
+                    }
+                }
+
+                status.Current = null;
+                status.LastPass = DateTime.UtcNow;
+
+                var shared = files.Select(f => f.Path).ToHashSet(StringComparer.Ordinal);
+                var stale = kept.Values.Where(h => !shared.Contains(h.Path) && h.Hashed < DateTime.UtcNow - KeepUnshared).Select(h => h.Id).ToList();
+
+                if (stale.Count > 0)
+                {
+                    _hashes.DeleteMany(stale);
+                }
+
+                return true;
+            }
+            finally
+            {
+                Save();
+            }
         }
 
         private void Run()
