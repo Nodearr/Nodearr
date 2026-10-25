@@ -229,7 +229,7 @@ function TransferRow({ transfer, isBusy, onAction }: TransferRowProps) {
 }
 
 function Transfers() {
-  const { data: transfers = [], isLoading, error } = useTransfers();
+  const { data: transfers = [], isLoading, error } = useTransfers(15000);
   const { data: uploads = [], error: uploadsError } = useUploads();
   const { mutate, isPending, error: actionError } = useTransferAction();
 
