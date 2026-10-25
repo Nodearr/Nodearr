@@ -42,10 +42,7 @@ namespace NzbDrone.Core.Applications.Lidarr
         {
             var catalog = new ApplicationCatalog();
 
-            foreach (var profile in _proxy.Get<List<ArrQualityProfileResource>>(Settings, "/qualityprofile"))
-            {
-                catalog.QualityProfiles.Add(profile.ToCatalog());
-            }
+            AddQualityProfiles(catalog);
 
             var artists = _proxy.Get<List<LidarrArtistResource>>(Settings, "/artist");
 

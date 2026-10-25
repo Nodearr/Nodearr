@@ -45,10 +45,7 @@ namespace NzbDrone.Core.Applications.Whisparr
         {
             var catalog = new ApplicationCatalog();
 
-            foreach (var profile in _proxy.Get<List<ArrQualityProfileResource>>(Settings, "/qualityprofile"))
-            {
-                catalog.QualityProfiles.Add(profile.ToCatalog());
-            }
+            AddQualityProfiles(catalog);
 
             // Each film's or scene's file comes inline, as Radarr's do.
             foreach (var movie in _proxy.Get<List<WhisparrMovieResource>>(Settings, "/movie"))

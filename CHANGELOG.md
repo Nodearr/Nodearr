@@ -2,6 +2,12 @@
 
 What changed in each release, newest first. Each item links to the decision record that explains it, and the [V1 plan](docs/plans/v1-implementation-plan.md) has the whole story, slice by slice.
 
+## Unreleased
+
+### Added
+
+- A friend's PROPER or REPACK is offered as one. Each file's revision is read from its Arr app and sent with it, the release title Nodearr gives the Arr apps says PROPER, REPACK or REAL the way they read it, and **Catalog > Local** and a friend's catalog show **Proper** or **Repack** beside the quality. A PROPER of the quality you have is an upgrade where your Arr app would take it, unless its Propers and Repacks setting says not to upgrade to them ([#51](https://github.com/Nodearr/Nodearr/issues/51)).
+
 ## 0.3.0 (pre-release)
 
 ### Added

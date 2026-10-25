@@ -472,6 +472,9 @@ function PeerCatalog() {
 
                     <TableRowCell>
                       {item.quality ? <Label>{item.quality}</Label> : null}
+                      {item.revision ? (
+                        <Label kind={kinds.PRIMARY}>{item.revision}</Label>
+                      ) : null}
                     </TableRowCell>
 
                     <TableRowCell>{formatBytes(item.size)}</TableRowCell>

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Serializer;
+using NzbDrone.Core.Qualities;
 
 namespace NzbDrone.Core.Catalog
 {
@@ -12,6 +13,10 @@ namespace NzbDrone.Core.Catalog
     public class QualityRanking
     {
         public bool UpgradeAllowed { get; set; }
+
+        // The Arr app's Propers and Repacks setting is "Prefer and upgrade", its default, so a later
+        // revision of the quality a file has replaces it. A ranking kept before this was read has it.
+        public bool UpgradeToPropers { get; set; } = true;
 
         // The rank at which the Arr app stops looking for something better. -1 when not known.
         public int CutoffRank { get; set; } = -1;
@@ -33,9 +38,27 @@ namespace NzbDrone.Core.Catalog
         // Custom formats are left to the Arr app, which judges them when it searches.
         public bool IsUpgrade(string current, string candidate)
         {
+            return IsUpgrade(current, new Revision(), candidate, new Revision());
+        }
+
+        // Sonarr's rule, which Radarr, Lidarr and Whisparr share: the same quality at a later
+        // revision is taken even past the cutoff and with upgrades turned off, unless the app is
+        // told not to upgrade to propers. Anything else as above.
+        public bool IsUpgrade(string current, Revision currentRevision, string candidate, Revision candidateRevision)
+        {
             var wanted = Find(candidate);
 
-            if (wanted == null || !wanted.Allowed || !UpgradeAllowed)
+            if (wanted == null || !wanted.Allowed)
+            {
+                return false;
+            }
+
+            if (UpgradeToPropers && string.Equals(current, candidate, StringComparison.OrdinalIgnoreCase) && candidateRevision.CompareTo(currentRevision) > 0)
+            {
+                return true;
+            }
+
+            if (!UpgradeAllowed)
             {
                 return false;
             }

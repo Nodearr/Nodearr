@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Core.Parser;
 using NzbDrone.Core.PeerCatalog;
 using NzbDrone.Core.Sharing;
 
@@ -76,7 +77,7 @@ namespace NzbDrone.Core.PeerIndexer
             if (item.MediaKind == MediaKind.Movie)
             {
                 // Radarr reads a movie title up to its year.
-                return item.Year == 0 || sceneName.Contains(item.Year.ToString(CultureInfo.InvariantCulture));
+                return (item.Year == 0 || sceneName.Contains(item.Year.ToString(CultureInfo.InvariantCulture))) && SaysRevisionOf(sceneName, item);
             }
 
             try
@@ -89,12 +90,21 @@ namespace NzbDrone.Core.PeerIndexer
                 }
 
                 // A release named by day is no use to a search by number, and the other way round.
-                return airDate == null ? !parsed.IsDaily : parsed.IsDaily && parsed.AirDate == airDate;
+                return (airDate == null ? !parsed.IsDaily : parsed.IsDaily && parsed.AirDate == airDate) && SaysRevisionOf(sceneName, item);
             }
             catch (Exception)
             {
                 return false;
             }
+        }
+
+        // Whether a release name says the revision the peer's Arr app recorded for the file. One that
+        // says otherwise would have it taken for something it is not, and a title is built instead.
+        private static bool SaysRevisionOf(string sceneName, PeerCatalogItem item)
+        {
+            var said = QualityParser.ParseQuality(sceneName).Revision;
+
+            return said.Version == item.RevisionVersion && said.Real == item.RevisionReal && said.IsRepack == item.RevisionIsRepack;
         }
 
         public static string Build(PeerCatalogItem item)
@@ -155,6 +165,7 @@ namespace NzbDrone.Core.PeerIndexer
                 parts.Add($"S{item.TitleSeasonNumber:00}" + string.Concat(episodes.Select(e => $"E{e:00}")));
             }
 
+            parts.AddRange(RevisionTokens(item.RevisionVersion, item.RevisionReal, item.RevisionIsRepack));
             parts.AddRange(LanguageTokens(item.Languages));
             parts.Add(QualityTokens(item.Quality));
             parts.AddRange(Tokens(item.VideoDynamicRange).Where(t => !t.Equals("SDR", StringComparison.OrdinalIgnoreCase)));
@@ -207,6 +218,32 @@ namespace NzbDrone.Core.PeerIndexer
         }
 
         // What an Arr app calls a quality, written the way release names write it.
+        // A revision the way the Arr apps read one from a release name (Sonarr's QualityParser, which
+        // the others share): PROPER is version 2, REPACK a version 2 repack, REPACK2 a version 3 one,
+        // and so on, and each REAL counts. A later version that is not a repack can only be written
+        // PROPER: REPACK2 would make it a repack, which an Arr app turns down from another group.
+        public static IEnumerable<string> RevisionTokens(int version, int real, bool isRepack)
+        {
+            for (var i = 0; i < Math.Min(real, 3); i++)
+            {
+                yield return "REAL";
+            }
+
+            if (version <= 1)
+            {
+                yield break;
+            }
+
+            if (isRepack)
+            {
+                yield return version == 2 ? "REPACK" : $"REPACK{Math.Min(version - 1, 9)}";
+            }
+            else
+            {
+                yield return "PROPER";
+            }
+        }
+
         public static string QualityTokens(string qualityName)
         {
             qualityName = (qualityName ?? string.Empty).Trim();

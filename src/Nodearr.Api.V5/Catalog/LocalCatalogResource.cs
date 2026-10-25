@@ -79,6 +79,9 @@ public class LocalCatalogFileResource
 
     public long Size { get; set; }
     public string? Quality { get; set; }
+
+    // Proper, Repack or Real, as the Arr app recorded it. Null for a first release.
+    public string? Revision { get; set; }
     public int Resolution { get; set; }
     public string? Languages { get; set; }
     public string? CustomFormats { get; set; }
@@ -100,6 +103,7 @@ public class LocalCatalogFileResource
             RelativePath = file.RelativePath,
             Size = file.Size,
             Quality = file.Quality,
+            Revision = RevisionLabel.For(file.RevisionVersion, file.RevisionReal, file.RevisionIsRepack),
             Resolution = file.Resolution,
             Languages = file.Languages,
             CustomFormats = file.CustomFormats,

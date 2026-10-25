@@ -104,6 +104,7 @@ export interface PeerCatalogItem {
   trackCount: number;
   releaseTitle?: string;
   quality?: string;
+  revision?: string;
   resolution: number;
   size: number;
   dateAdded?: string;

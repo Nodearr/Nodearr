@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Nodearr.Http;
 using Nodearr.Http.Extensions;
+using NzbDrone.Core.Catalog;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Core.PeerCatalog;
 using NzbDrone.Core.Sharing;
@@ -44,6 +45,9 @@ public class PeerCatalogItemResource
     public int TrackCount { get; set; }
     public string? ReleaseTitle { get; set; }
     public string? Quality { get; set; }
+
+    // Proper, Repack or Real, as the peer's Arr app recorded it. Null for a first release.
+    public string? Revision { get; set; }
     public int Resolution { get; set; }
     public long Size { get; set; }
     public string? Languages { get; set; }
@@ -188,6 +192,7 @@ public class PeerCatalogController : Controller
             TrackCount = item.IsAlbum ? item.GetTracks().Count : 0,
             ReleaseTitle = item.ReleaseTitle,
             Quality = item.Quality,
+            Revision = RevisionLabel.For(item.RevisionVersion, item.RevisionReal, item.RevisionIsRepack),
             Resolution = item.Resolution,
             Size = item.Size,
             Languages = item.Languages,

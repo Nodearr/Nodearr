@@ -52,9 +52,9 @@ namespace NzbDrone.Core.Test.PeerCatalog
             return new ArrQualityProfileItemResource { Allowed = allowed, Quality = new ArrQualityResource { Id = id, Name = name } };
         }
 
-        private PeerItemStatus Classify(string quality, int resolution, string source)
+        private PeerItemStatus Classify(string quality, int resolution, string source, int version = 1, int real = 0, bool repack = false, bool upgradeToPropers = true)
         {
-            var profile = _profile.ToCatalog();
+            var profile = _profile.ToCatalog(upgradeToPropers);
             profile.ApplicationId = 1;
 
             var holdings = new LocalHoldings(
@@ -73,8 +73,66 @@ namespace NzbDrone.Core.Test.PeerCatalog
                 EpisodeNumbers = "1",
                 Quality = quality,
                 Resolution = resolution,
-                QualitySource = source
+                QualitySource = source,
+                RevisionVersion = version,
+                RevisionReal = real,
+                RevisionIsRepack = repack
             });
+        }
+
+        // Sonarr's UpgradableSpecification: the same quality at a later revision is taken even past
+        // the cutoff and with upgrades turned off, unless Propers and Repacks says otherwise.
+        [TestCase(2, false)]
+        [TestCase(2, true)]
+        [TestCase(3, true)]
+        public void a_later_revision_of_the_same_quality_should_be_an_upgrade(int version, bool repack)
+        {
+            Classify("WEBDL-720p", 720, "web", version, repack: repack).Should().Be(PeerItemStatus.Upgrade);
+        }
+
+        [Test]
+        public void a_proper_should_be_an_upgrade_past_the_cutoff_and_with_upgrades_turned_off()
+        {
+            _file.Quality = "WEBDL-1080p";
+            _file.Resolution = 1080;
+            _profile.UpgradeAllowed = false;
+
+            Classify("WEBDL-1080p", 1080, "web", 2).Should().Be(PeerItemStatus.Upgrade);
+        }
+
+        [Test]
+        public void a_proper_should_not_be_an_upgrade_when_the_app_does_not_upgrade_to_propers()
+        {
+            Classify("WEBDL-720p", 720, "web", 2, upgradeToPropers: false).Should().Be(PeerItemStatus.Have);
+        }
+
+        [Test]
+        public void a_proper_of_another_quality_in_the_same_group_should_not_be_an_upgrade()
+        {
+            Classify("WEBRip-720p", 720, "webRip", 2).Should().Be(PeerItemStatus.Have);
+        }
+
+        [Test]
+        public void the_same_revision_or_an_earlier_one_should_not_be_an_upgrade()
+        {
+            _file.RevisionVersion = 2;
+
+            Classify("WEBDL-720p", 720, "web", 2).Should().Be(PeerItemStatus.Have);
+            Classify("WEBDL-720p", 720, "web", 1).Should().Be(PeerItemStatus.Have);
+        }
+
+        [Test]
+        public void a_real_should_outrank_a_later_version()
+        {
+            _file.RevisionVersion = 2;
+
+            Classify("WEBDL-720p", 720, "web", 1, real: 1).Should().Be(PeerItemStatus.Upgrade);
+        }
+
+        [Test]
+        public void a_ranking_kept_before_propers_were_read_should_upgrade_to_them()
+        {
+            QualityRanking.FromStored("{\"upgradeAllowed\":true,\"cutoffRank\":-1,\"qualities\":[]}").UpgradeToPropers.Should().BeTrue();
         }
 
         [Test]
@@ -139,6 +197,10 @@ namespace NzbDrone.Core.Test.PeerCatalog
                 new[] { new CatalogQualityProfile { ApplicationId = 1, ArrId = ProfileId } });
 
             holdings.Classify(new PeerCatalogItem { MediaKind = MediaKind.Tv, TvdbId = 75669, SeasonNumber = 1, EpisodeNumbers = "1", Quality = "Bluray-1080p", Resolution = 1080, QualitySource = "bluray" })
+                .Should().Be(PeerItemStatus.Upgrade);
+
+            // A later revision of the same quality counts there too, as the Arr apps' default does.
+            holdings.Classify(new PeerCatalogItem { MediaKind = MediaKind.Tv, TvdbId = 75669, SeasonNumber = 1, EpisodeNumbers = "1", Quality = "WEBDL-720p", Resolution = 720, QualitySource = "web", RevisionVersion = 2 })
                 .Should().Be(PeerItemStatus.Upgrade);
         }
 

@@ -4157,6 +4157,10 @@
             "type": "string",
             "nullable": true
           },
+          "revision": {
+            "type": "string",
+            "nullable": true
+          },
           "resolution": {
             "type": "integer",
             "format": "int32"
@@ -4690,6 +4694,10 @@
             "nullable": true
           },
           "quality": {
+            "type": "string",
+            "nullable": true
+          },
+          "revision": {
             "type": "string",
             "nullable": true
           },

@@ -9,7 +9,7 @@
 | Status | Meaning |
 | --- | --- |
 | **Missing** | The series, movie, scene or album is in one of your Arr apps, and you have no file for it. |
-| **Upgrade** | You have a file, and your friend's is one your Arr app's quality profile would take in its place: better, with your copy still below the profile's cutoff and upgrades allowed. |
+| **Upgrade** | You have a file, and your friend's is one your Arr app's quality profile would take in its place: better, with your copy still below the profile's cutoff and upgrades allowed. A PROPER or REPACK of the quality you have counts too, unless your Arr app's **Propers and Repacks** setting says not to upgrade to them. The quality then has a **Proper** or **Repack** label beside it. |
 | **Have** | You have a file, and this offer is not an upgrade under your local quality profile. This also applies when upgrades are off or the cutoff is met. |
 | **Not in library** | None of your Arr apps has it. Add it there first if you want it. |
 

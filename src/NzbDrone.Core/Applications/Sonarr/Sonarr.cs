@@ -42,10 +42,7 @@ namespace NzbDrone.Core.Applications.Sonarr
         {
             var catalog = new ApplicationCatalog();
 
-            foreach (var profile in _proxy.Get<List<ArrQualityProfileResource>>(Settings, "/qualityprofile"))
-            {
-                catalog.QualityProfiles.Add(profile.ToCatalog());
-            }
+            AddQualityProfiles(catalog);
 
             // Sonarr has no bulk endpoint for episodes or episode files, so this is two requests per series.
             foreach (var series in _proxy.Get<List<SonarrSeriesResource>>(Settings, "/series"))

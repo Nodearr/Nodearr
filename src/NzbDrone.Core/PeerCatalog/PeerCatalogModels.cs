@@ -86,6 +86,12 @@ namespace NzbDrone.Core.PeerCatalog
         public string Quality { get; set; }
         public string QualitySource { get; set; }
         public int Resolution { get; set; }
+
+        // The quality's revision, as the peer's Arr app recorded it. A peer that does not send it
+        // has a first release.
+        public int RevisionVersion { get; set; } = 1;
+        public int RevisionReal { get; set; }
+        public bool RevisionIsRepack { get; set; }
         public long Size { get; set; }
         public string Languages { get; set; }
         public string CustomFormats { get; set; }
@@ -230,6 +236,11 @@ namespace NzbDrone.Core.PeerCatalog
                 Quality = offer.Quality,
                 QualitySource = offer.QualitySource,
                 Resolution = offer.Resolution,
+
+                // Kept to what a release name can say.
+                RevisionVersion = Math.Clamp(offer.RevisionVersion ?? 1, 1, 9),
+                RevisionReal = Math.Clamp(offer.RevisionReal ?? 0, 0, 3),
+                RevisionIsRepack = offer.RevisionIsRepack == true,
                 Size = offer.Size,
                 Languages = offer.Languages,
                 CustomFormats = offer.CustomFormats,

@@ -47,10 +47,7 @@ namespace NzbDrone.Core.Applications.Whisparr
         {
             var catalog = new ApplicationCatalog();
 
-            foreach (var profile in _proxy.Get<List<ArrQualityProfileResource>>(Settings, "/qualityprofile"))
-            {
-                catalog.QualityProfiles.Add(profile.ToCatalog());
-            }
+            AddQualityProfiles(catalog);
 
             // One request per site, for its scenes with their files.
             foreach (var site in _proxy.Get<List<WhisparrV2SiteResource>>(Settings, "/series"))
