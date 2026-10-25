@@ -4,6 +4,10 @@ What changed in each release, newest first. Each item links to the decision reco
 
 ## Unreleased
 
+### Fixed
+
+- **Get it** on Home updates empty or removed root folders and profiles when the Arr app's choices change, while keeping choices that still work. Invalid choices are refused before adding is queued, and failures are logged. A successful card goes away once the local catalog shows you have what was sent, or 24 hours after success; failed cards stay until retried or put away ([#53](https://github.com/Nodearr/Nodearr/issues/53)).
+
 ### Added
 
 - A friend's PROPER or REPACK is offered as one. Each file's revision is read from its Arr app and sent with it, the release title Nodearr gives the Arr apps says PROPER, REPACK or REAL the way they read it, and **Catalog > Local** and a friend's catalog show **Proper** or **Repack** beside the quality. A PROPER of the quality you have is an upgrade where your Arr app would take it, unless its Propers and Repacks setting says not to upgrade to them ([#51](https://github.com/Nodearr/Nodearr/issues/51)).

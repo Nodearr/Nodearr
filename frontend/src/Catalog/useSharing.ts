@@ -373,7 +373,13 @@ const RECEIVED_PATH = '/sharing/sends/received';
 export const useSends = () => useApiQuery<SentTitle[]>({ path: SENDS_PATH });
 
 export const useReceived = () =>
-  useApiQuery<ReceivedTitle[]>({ path: RECEIVED_PATH });
+  useApiQuery<ReceivedTitle[]>({
+    path: RECEIVED_PATH,
+    queryOptions: {
+      refetchInterval: (query) =>
+        query.state.data?.some((r) => r.getItState === 'done') ? 30_000 : false,
+    },
+  });
 
 // To a friend, or, without one, to someone new with an invite of its own.
 export const useSendTitle = () => {
@@ -434,8 +440,11 @@ export const useGetIt = () => {
   return useMutation<unknown, ApiError, { id: number; options: GetItOptions }>({
     mutationFn: ({ id, options }) =>
       send('POST', `${RECEIVED_PATH}/${id}/getit`, options),
-    onSettled: () => {
+    onSettled: (_data, _error, { id }) => {
       queryClient.invalidateQueries({ queryKey: [RECEIVED_PATH] });
+      queryClient.invalidateQueries({
+        queryKey: [`${RECEIVED_PATH}/${id}/getit`],
+      });
     },
   });
 };

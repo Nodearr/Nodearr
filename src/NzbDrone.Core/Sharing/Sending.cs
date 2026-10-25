@@ -55,7 +55,7 @@ namespace NzbDrone.Core.Sharing
         public string OfferIds { get; set; }
         public DateTime Received { get; set; }
 
-        // Set when the person puts it away.
+        // Set when the person puts it away, or a successful Get it no longer needs the card.
         public DateTime? Handled { get; set; }
 
         // What the Arr apps know the title by, so it can be added (Get it).
@@ -77,6 +77,7 @@ namespace NzbDrone.Core.Sharing
 
         public GetItState GetItState { get; set; }
         public string GetItMessage { get; set; }
+        public DateTime? GetItCompletedAt { get; set; }
 
         public SentParts GetParts()
         {

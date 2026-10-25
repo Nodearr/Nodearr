@@ -5,6 +5,7 @@ using FluentAssertions;
 using Moq;
 using NUnit.Framework;
 using NzbDrone.Core.Applications;
+using NzbDrone.Core.Catalog;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Nodes;
 using NzbDrone.Core.PeerCatalog;
@@ -25,6 +26,7 @@ namespace NzbDrone.Core.Test.Sharing
         {
             Mocker.SetConstant<IReceivedTitleRepository>(Mocker.Resolve<ReceivedTitleRepository>());
             Mocker.SetConstant<IPeerRepository>(Mocker.Resolve<PeerRepository>());
+            Mocker.SetConstant<IPeerCatalogRepository>(Mocker.Resolve<PeerCatalogRepository>());
 
             _alice = Mocker.Resolve<IPeerRepository>().Insert(new Peer { NodeId = "alice", Name = "Alice", State = PeerState.Trusted, Added = DateTime.UtcNow, StateChanged = DateTime.UtcNow });
         }
@@ -142,6 +144,131 @@ namespace NzbDrone.Core.Test.Sharing
             Subject.Dismiss(Subject.Waiting().Single().Id);
 
             Subject.Waiting().Should().BeEmpty();
+        }
+
+        private ReceivedTitle Done(DateTime? completedAt = null)
+        {
+            Receive(Pingu());
+            var received = Mocker.Resolve<IReceivedTitleRepository>().All().Single();
+
+            received.GetItState = GetItState.Done;
+            received.GetItCompletedAt = completedAt ?? DateTime.UtcNow;
+            Mocker.Resolve<IReceivedTitleRepository>().Update(received);
+
+            return received;
+        }
+
+        private void GivenSentEpisodes(bool haveSecond = true, int localResolution = 1080)
+        {
+            var peerItems = Mocker.Resolve<IPeerCatalogRepository>();
+
+            foreach (var episode in new[] { 1, 2 })
+            {
+                peerItems.Insert(new PeerCatalogItem
+                {
+                    PeerId = _alice.Id,
+                    RemoteId = $"e-1-{500 + episode}",
+                    MediaKind = MediaKind.Tv,
+                    TvdbId = 75669,
+                    SeasonNumber = 1,
+                    EpisodeNumbers = episode.ToString(),
+                    Resolution = 1080,
+                    LocalStatus = PeerItemStatus.Missing
+                });
+            }
+
+            var holdings = new LocalHoldings(
+                new[] { new CatalogSeries { ApplicationId = 1, ArrId = 10, TvdbId = 75669 } },
+                new[]
+                {
+                    new CatalogEpisode { ApplicationId = 1, ArrSeriesId = 10, SeasonNumber = 1, EpisodeNumber = 1, ArrEpisodeFileId = 101 },
+                    new CatalogEpisode { ApplicationId = 1, ArrSeriesId = 10, SeasonNumber = 1, EpisodeNumber = 2, ArrEpisodeFileId = haveSecond ? 102 : 0 }
+                },
+                new[]
+                {
+                    new CatalogEpisodeFile { ApplicationId = 1, ArrId = 101, Resolution = localResolution },
+                    new CatalogEpisodeFile { ApplicationId = 1, ArrId = 102, Resolution = localResolution }
+                },
+                Array.Empty<CatalogMovie>(),
+                Array.Empty<CatalogMovieFile>());
+
+            Mocker.GetMock<ILocalHoldingsFactory>().Setup(f => f.Load()).Returns(holdings);
+        }
+
+        [Test]
+        public void a_done_card_should_leave_when_every_sent_file_is_had_locally()
+        {
+            var received = Done();
+            GivenSentEpisodes();
+
+            Subject.Waiting().Should().BeEmpty();
+            Mocker.Resolve<IReceivedTitleRepository>().Get(received.Id).Handled.Should().NotBeNull();
+            Subject.Waiting().Should().BeEmpty();
+        }
+
+        [Test]
+        public void a_partly_imported_send_should_keep_its_card()
+        {
+            Done();
+            GivenSentEpisodes(haveSecond: false);
+
+            Subject.Waiting().Should().ContainSingle();
+        }
+
+        [Test]
+        public void a_lower_quality_copy_should_keep_the_card_until_the_upgrade_or_timeout()
+        {
+            Done();
+            GivenSentEpisodes(localResolution: 720);
+
+            Subject.Waiting().Should().ContainSingle();
+        }
+
+        [Test]
+        public void a_missing_offer_should_not_count_as_imported()
+        {
+            Done();
+            GivenSentEpisodes();
+            Mocker.Resolve<IPeerCatalogRepository>().DeleteForPeer(_alice.Id, new[] { "e-1-502" });
+
+            Subject.Waiting().Should().ContainSingle();
+        }
+
+        [Test]
+        public void a_done_card_should_leave_after_a_day_even_without_a_catalog()
+        {
+            var received = Done(DateTime.UtcNow.AddHours(-25));
+
+            Subject.Waiting().Should().BeEmpty();
+            Mocker.Resolve<IReceivedTitleRepository>().Get(received.Id).Handled.Should().NotBeNull();
+            Mocker.GetMock<ILocalHoldingsFactory>().Verify(f => f.Load(), Times.Never());
+        }
+
+        [Test]
+        public void the_day_should_start_at_success_rather_than_when_the_title_was_received()
+        {
+            var received = Done();
+
+            received.Received = DateTime.UtcNow.AddDays(-7);
+            Mocker.Resolve<IReceivedTitleRepository>().Update(received);
+
+            Subject.Waiting().Should().ContainSingle();
+        }
+
+        [TestCase(GetItState.None)]
+        [TestCase(GetItState.Working)]
+        [TestCase(GetItState.Failed)]
+        public void an_unsuccessful_card_should_stay_even_after_a_day_and_with_local_files(GetItState state)
+        {
+            var received = Done(DateTime.UtcNow.AddHours(-25));
+
+            received.GetItState = state;
+            Mocker.Resolve<IReceivedTitleRepository>().Update(received);
+            GivenSentEpisodes();
+
+            Subject.Waiting().Should().ContainSingle();
+            Mocker.Resolve<IReceivedTitleRepository>().Get(received.Id).Handled.Should().BeNull();
+            Mocker.GetMock<ILocalHoldingsFactory>().Verify(f => f.Load(), Times.Never());
         }
 
         [Test]
