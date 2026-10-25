@@ -483,7 +483,7 @@ try {
     $fileChanged = Invoke-Arr sonarrB GET "/episodefile/$($importedChanged.episodeFileId)"
     $landedChanged = docker exec nodearr-s7-sonarr-b-1 sha256sum $fileChanged.path
     $failedInSonarr = @(Get-History sonarrB "/history/series?seriesId=$($series.sonarrB.id)" | Where-Object { $_.eventType -eq 'downloadFailed' -and $_.downloadId -eq $lastSeen.downloadId }).Count
-    $mismatchUploads = @(Invoke-Node A GET '/transfers/uploads' | Where-Object { $_.title -eq "$($episodeNames[0]).mkv" -and $_.failure -eq 'VerificationFailed' }).Count
+    $mismatchUploads = @(Invoke-Node A GET '/transfers/uploads' | Where-Object { $_.title -eq "$($episodeNames[0]).mkv" -and $_.state -eq 'completed' -and $_.attempts -eq 2 -and $_.lastFailure -eq 'VerificationFailed' }).Count
     Assert-That 'A file that changed on the sending node without its size or time changing costs one attempt, not the release: the next attempt brings the changed file' (
         $sawMismatch -and $lastSeen.attempts -eq 2 -and "$landedChanged" -match $changedHash -and $changedHash -ne $tvHash -and
         $failedInSonarr -eq 0 -and $mismatchUploads -eq 1
@@ -675,21 +675,23 @@ try {
 
     # --- 6. What the sending node saw of all that ---------------------------------------------------
 
-    # The first episode was sent three times: by number, by day, and after it changed, which took
-    # a second attempt.
+    # The first episode was fetched by number, by day, and after it changed. The changed file took
+    # two attempts, which should remain one completed upload row.
     $uploads = @(Invoke-Node A GET '/transfers/uploads')
     $ended = { param([string] $name, [string] $state, [string] $failure) @($uploads | Where-Object { $_.title -eq "$name.mkv" -and $_.state -eq $state -and (-not $failure -or $_.failure -eq $failure) }).Count }
+    $completedAttempts = @($uploads | Where-Object { $_.title -eq "$($episodeNames[0]).mkv" -and $_.state -eq 'completed' -and $_.attempts -eq 2 -and $_.lastFailure -eq 'VerificationFailed' }).Count
+    $resumedUpload = @($uploads | Where-Object { $_.title -eq "$($episodeNames[1]).mkv" -and $_.state -eq 'completed' -and $_.attempts -ge 2 }).Count
 
     # Episode 2 was cancelled by B twice and cut off by B stopping once. Which of the two words A
     # uses for B stopping depends on what it notices first: the connection closing, or the direct
     # path to B going with it.
     $wentAway = (& $ended $episodeNames[1] 'failed' 'Stopped') + (& $ended $episodeNames[1] 'failed' 'DirectPathLost')
     Assert-That 'Afterwards the sending node lists each upload and how it ended: sent, stopped by the other side, cut when unshared, or cut when trust ended' (
-        (& $ended $episodeNames[0] 'completed') -eq 3 -and (& $ended $episodeNames[0] 'failed' 'VerificationFailed') -eq 1 -and (& $ended $movieName 'completed') -eq 1 -and
-        (& $ended $episodeNames[1] 'completed') -eq 1 -and $wentAway -ge 2 -and
+        (& $ended $episodeNames[0] 'completed') -eq 3 -and (& $ended $episodeNames[0] 'failed' 'VerificationFailed') -eq 0 -and $completedAttempts -eq 1 -and (& $ended $movieName 'completed') -eq 1 -and
+        (& $ended $episodeNames[1] 'completed') -eq 1 -and $resumedUpload -eq 1 -and $wentAway -ge 2 -and
         (& $ended $episodeNames[2] 'failed' 'NotAuthorized') -eq 1 -and
         (& $ended $episodeNames[2] 'failed' 'Revoked') -eq 1 -and @($uploads | Where-Object { $_.state -in 'sending', 'preparing' }).Count -eq 0
-    ) @{ uploads = @($uploads | ForEach-Object { "$($_.title -replace '\.720p.*', '') -> $($_.state) $($_.failure) $($_.bytesSent)/$($_.size)" }) }
+    ) @{ uploads = @($uploads | ForEach-Object { "$($_.title -replace '\.720p.*', '') -> $($_.state) attempts=$($_.attempts) previous=$($_.lastFailure) failure=$($_.failure) $($_.bytesSent)/$($_.size)" }) }
 }
 catch {
     Write-Host "Stopped: $_" -ForegroundColor Red

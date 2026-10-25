@@ -29,6 +29,9 @@ namespace NzbDrone.Core.Transfers
         public UploadState State { get; set; }
         public long Size { get; set; }
         public long BytesSent { get; set; }
+        public int Attempts { get; set; }
+        public string LastFailure { get; set; }
+        public string LastFailureMessage { get; set; }
 
         // Why it stopped, in the transport's word for it. Null unless it failed.
         public string Failure { get; set; }
@@ -177,20 +180,27 @@ namespace NzbDrone.Core.Transfers
 
         private static bool Follow(Upload upload, FileUploadProgress progress)
         {
-            var before = (upload.State, upload.BytesSent, upload.Size, upload.Failure);
+            var before = (upload.State, upload.BytesSent, upload.Size, upload.Failure, upload.Attempts, upload.LastFailure, upload.LastFailureMessage);
 
             upload.State = progress.State;
             upload.Size = progress.Size;
             upload.BytesSent = progress.BytesSent;
             upload.Failure = progress.FailureKind;
             upload.FailureMessage = progress.FailureMessage;
+            upload.Attempts = Math.Max(progress.Attempts, 1);
+            upload.LastFailure = progress.LastFailureKind;
+            upload.LastFailureMessage = progress.LastFailureMessage;
 
-            if (!upload.IsActive)
+            if (upload.IsActive)
+            {
+                upload.Ended = null;
+            }
+            else
             {
                 upload.Ended ??= DateTime.UtcNow;
             }
 
-            return before != (upload.State, upload.BytesSent, upload.Size, upload.Failure);
+            return before != (upload.State, upload.BytesSent, upload.Size, upload.Failure, upload.Attempts, upload.LastFailure, upload.LastFailureMessage);
         }
 
         // The transport may run on another system's idea of a path, so both separators count.
@@ -211,6 +221,9 @@ namespace NzbDrone.Core.Transfers
                 State = upload.State,
                 Size = upload.Size,
                 BytesSent = upload.BytesSent,
+                Attempts = upload.Attempts,
+                LastFailure = upload.LastFailure,
+                LastFailureMessage = upload.LastFailureMessage,
                 Failure = upload.Failure,
                 FailureMessage = upload.FailureMessage,
                 Started = upload.Started,

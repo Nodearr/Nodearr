@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using NLog;
 using NzbDrone.Common.Exceptions;
@@ -313,9 +314,11 @@ namespace NzbDrone.Core.Nodes
                 throw new PeerException("Only a trusted node can be contacted");
             }
 
+            var roundTrip = Stopwatch.StartNew();
             try
             {
                 var reply = Send(peer, NewMessage(PeerMessageTypes.Ping, _transport.GetLocalAddress()));
+                var roundTripMs = roundTrip.ElapsedMilliseconds;
 
                 if (reply is not { Ok: true })
                 {
@@ -332,12 +335,14 @@ namespace NzbDrone.Core.Nodes
 
                 peer.ConnectionPath = probe.Path;
                 peer.ConnectionAddress = probe.RemoteAddress;
+                _logger.Info("Connection check to {0} ({1}) found {2} path via {3} in {4} ms", peer.Name, peer.NodeId, probe.Path, probe.RemoteAddress ?? "no selected address", roundTripMs);
             }
             catch (TransportException ex)
             {
                 peer.LastError = $"{ex.Failure}: {ex.Message}";
                 peer.ConnectionPath = ConnectionPath.Unknown;
                 peer.ConnectionAddress = null;
+                _logger.Info("Connection check to {0} ({1}) failed after {2} ms: {3}: {4}", peer.Name, peer.NodeId, roundTrip.ElapsedMilliseconds, ex.Failure, ex.Message);
             }
 
             peer.ConnectionChecked = DateTime.UtcNow;
