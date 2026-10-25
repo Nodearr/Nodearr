@@ -215,8 +215,11 @@ export const useHashingStatus = () =>
     queryOptions: { refetchInterval: 5000 },
   });
 
-export const usePeerCatalogSummaries = () =>
-  useApiQuery<PeerCatalogSummary[]>({ path: '/catalog/peers' });
+export const usePeerCatalogSummaries = (refetchInterval?: number) =>
+  useApiQuery<PeerCatalogSummary[]>({
+    path: '/catalog/peers',
+    queryOptions: { refetchInterval },
+  });
 
 export const useSaveShareList = () => {
   const queryClient = useQueryClient();

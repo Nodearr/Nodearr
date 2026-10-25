@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using NLog;
@@ -69,6 +70,7 @@ namespace NzbDrone.Core.PeerCatalog
         private readonly ILocalHoldingsFactory _holdings;
         private readonly ICandidateIdProvider _candidateIds;
         private readonly Logger _logger;
+        private readonly ConcurrentDictionary<int, object> _syncLocks = new();
 
         public PeerCatalogService(IPeerRepository peers, IPeerService peerService, IPeerCatalogRepository items, ILocalHoldingsFactory holdings, ICandidateIdProvider candidateIds, Logger logger)
         {
@@ -192,10 +194,25 @@ namespace NzbDrone.Core.PeerCatalog
 
         public void Handle(PeerDeletedEvent message)
         {
-            _items.DeleteForPeer(message.PeerId);
+            Purge(message.PeerId);
         }
 
         private void Sync(Peer peer)
+        {
+            // Pairing, catalog notices and manual sync can arrive together. Each must start
+            // from the previous sync's version and finish replacing its rows before the next.
+            lock (_syncLocks.GetOrAdd(peer.Id, _ => new object()))
+            {
+                var current = _peers.Find(peer.Id);
+
+                if (current is { State: PeerState.Trusted })
+                {
+                    SyncCurrent(current);
+                }
+            }
+        }
+
+        private void SyncCurrent(Peer peer)
         {
             try
             {
@@ -391,6 +408,14 @@ namespace NzbDrone.Core.PeerCatalog
         }
 
         private void Purge(int peerId)
+        {
+            lock (_syncLocks.GetOrAdd(peerId, _ => new object()))
+            {
+                PurgeCurrent(peerId);
+            }
+        }
+
+        private void PurgeCurrent(int peerId)
         {
             _items.DeleteForPeer(peerId);
 

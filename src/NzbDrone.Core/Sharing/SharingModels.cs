@@ -131,6 +131,10 @@ namespace NzbDrone.Core.Sharing
         public List<int> EpisodeNumbers { get; set; } = new();
         public List<string> EpisodeTitles { get; set; } = new();
 
+        // Standard is implicit, so existing offers keep the same fingerprints.
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string SeriesType { get; set; }
+
         // The day each episode aired, as yyyy-MM-dd, where the Arr app knows it. Sonarr asks for
         // daily shows by day and not by number.
         public List<string> AirDates { get; set; } = new();

@@ -28,6 +28,7 @@
 //
 // It needs Playwright with Chromium, and sharp to make the files smaller, which are not among
 // Nodearr's dependencies: run it where they are installed, with NODE_PATH pointing there.
+// NODEARR_SCREENSHOT_BROWSER can select an already installed Chromium executable.
 // Sign-in comes from NODEARR_USERNAME and NODEARR_PASSWORD, the same on both set-ups, and the kit's
 // folder from NODEARR_KIT, ~/nodearr-ui-test unless set.
 //
@@ -206,13 +207,14 @@ if (process.argv[2] === 'prepare') {
 
 // Runs in the page: every text and form value with something of this machine's in it is replaced
 // by an example.
-function mask() {
+function mask(kitFolder) {
+  const kitPattern = kitFolder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const rules = [
     // The kit's folders: ...\nodearr-ui-test\a\tv\Cowboy Bebop becomes D:\Media\TV\Cowboy Bebop.
-    [/[A-Za-z]:\\Users\\[^\\]+\\nodearr-ui-test\\[ab]\\tv/gi, 'D:\\Media\\TV'],
-    [/[A-Za-z]:\\Users\\[^\\]+\\nodearr-ui-test\\[ab]\\movies/gi, 'D:\\Media\\Movies'],
-    [/[A-Za-z]:\\Users\\[^\\]+\\nodearr-ui-test\\[ab]\\nodearr-data/gi, 'C:\\ProgramData\\Nodearr'],
-    [/[A-Za-z]:\\Users\\[^\\]+\\nodearr-ui-test\\[ab]/gi, 'D:\\Media'],
+    [new RegExp(`${kitPattern}[\\\\/][ab][\\\\/]tv`, 'gi'), 'D:\\Media\\TV'],
+    [new RegExp(`${kitPattern}[\\\\/][ab][\\\\/]movies`, 'gi'), 'D:\\Media\\Movies'],
+    [new RegExp(`${kitPattern}[\\\\/][ab][\\\\/]nodearr-data`, 'gi'), 'C:\\ProgramData\\Nodearr'],
+    [new RegExp(`${kitPattern}[\\\\/][ab]`, 'gi'), 'D:\\Media'],
     [/[A-Za-z]:\\Users\\[^\\\s]+/gi, 'C:\\Users\\you'],
     // Addresses: a public one becomes one kept for documentation (RFC 5737), a local one a home
     // network's.
@@ -281,7 +283,7 @@ const TOPBAR = 60;
 async function shoot(target, name, { chrome = false } = {}) {
   const page = target.page ? target.page() : target;
   const file = path.join(out, `${name}.png`);
-  await page.evaluate(mask);
+  await page.evaluate(mask, kit);
 
   if (target === page) {
     const view = page.viewportSize();
@@ -394,6 +396,11 @@ const shots = {
   async catalog({ a }) {
     await open(a, A, '/catalog/peers');
     await shoot(a, 'peer-catalog');
+    await a.getByRole('button', { name: 'Get it', exact: true }).first().click();
+    await a.locator('select[name="qualityProfileId"]').waitFor({ state: 'visible' });
+    await a.waitForLoadState('networkidle');
+    await shoot(a, 'peer-catalog-get-it', { chrome: true });
+    await a.keyboard.press('Escape');
     await a.getByText('Posters', { exact: true }).click();
     await a.waitForLoadState('networkidle');
     await a.waitForTimeout(1200);
@@ -479,7 +486,7 @@ async function slowedTransfer(a, b, start) {
 }
 
 const wanted = process.argv.slice(2);
-const browser = await chromium.launch();
+const browser = await chromium.launch({ executablePath: process.env.NODEARR_SCREENSHOT_BROWSER });
 // Twice the pixels, so text stays sharp when the guide shows a screenshot smaller than it was.
 const options = { viewport: { width: 1280, height: 800 }, deviceScaleFactor: 2, colorScheme: 'dark' };
 const a = await signIn(await browser.newContext(options), A);

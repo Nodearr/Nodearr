@@ -23,6 +23,7 @@ import formatDateTime from 'Utilities/Date/formatDateTime';
 import formatBytes from 'Utilities/Number/formatBytes';
 import titleWithYear from 'Utilities/String/titleWithYear';
 import translate from 'Utilities/String/translate';
+import CatalogGetItButton from '../GetIt/CatalogGetItButton';
 import Poster, { peerPosterSrc } from '../Poster';
 import {
   PeerCatalogItem,
@@ -83,6 +84,7 @@ const COLUMNS: Column[] = [
     label: () => translate('ReleaseTitle'),
     isVisible: true,
   },
+  { name: 'getIt', label: '', isVisible: true },
 ];
 
 const STATUSES: PeerItemStatus[] = [
@@ -185,6 +187,14 @@ function TitleTile({ title }: { title: PeerCatalogTitle }) {
 
       <div className={styles.tileDetails}>{counts.join(', ')}</div>
       <div className={styles.tileDetails}>{title.peerNames.join(', ')}</div>
+      {title.missing + title.upgrade + title.notInLibrary > 0 ? (
+        <CatalogGetItButton
+          itemId={title.posterItemId}
+          scope="title"
+          mediaKind={title.mediaKind}
+          title={describeTitle(title)}
+        />
+      ) : null}
     </div>
   );
 }
@@ -205,7 +215,7 @@ function PeerCatalog() {
     isLoading: isSummaryLoading,
     error: summaryError,
     refetch: refetchSummaries,
-  } = usePeerCatalogSummaries();
+  } = usePeerCatalogSummaries(5000);
 
   const {
     records,
@@ -222,7 +232,7 @@ function PeerCatalog() {
     sortKey,
     sortDirection,
     queryParams: status ? { status } : undefined,
-    queryOptions: { enabled: view === 'table' },
+    queryOptions: { enabled: view === 'table', refetchInterval: 5000 },
   });
 
   const titles = usePagedApiQuery<PeerCatalogTitle>({
@@ -230,7 +240,7 @@ function PeerCatalog() {
     page,
     pageSize: POSTER_PAGE_SIZE,
     queryParams: status ? { status } : undefined,
-    queryOptions: { enabled: view === 'posters' },
+    queryOptions: { enabled: view === 'posters', refetchInterval: 5000 },
   });
 
   const handleViewPress = useCallback((next: View) => {
@@ -481,6 +491,16 @@ function PeerCatalog() {
 
                     <TableRowCell className={styles.release}>
                       {item.releaseTitle}
+                    </TableRowCell>
+                    <TableRowCell>
+                      {item.localStatus === 'have' ? null : (
+                        <CatalogGetItButton
+                          itemId={item.id}
+                          scope="file"
+                          mediaKind={item.mediaKind}
+                          title={describe(item)}
+                        />
+                      )}
                     </TableRowCell>
                   </TableRow>
                 ))}

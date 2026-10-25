@@ -1,5 +1,9 @@
+using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using FluentAssertions;
 using Moq;
 using NUnit.Framework;
@@ -86,6 +90,56 @@ namespace NzbDrone.Core.Test.PeerCatalog
         }
 
         [Test]
+        public async Task overlapping_syncs_should_use_the_latest_version_and_store_each_offer_once()
+        {
+            var versions = new ConcurrentQueue<string>();
+            using var started = new Barrier(2);
+            using var overlapping = new ManualResetEventSlim();
+            var fullReads = 0;
+            Mocker.GetMock<IPeerService>()
+                  .Setup(s => s.Ask(It.IsAny<Peer>(), It.Is<PeerMessage>(m => m.Type == PeerMessageTypes.Catalog)))
+                  .Returns<Peer, PeerMessage>((_, request) =>
+                  {
+                      if (request.CatalogPage == 0)
+                      {
+                          versions.Enqueue(request.CatalogKnownVersion);
+                          if (request.CatalogKnownVersion == _version)
+                          {
+                              return new PeerReply { Ok = true, CatalogVersion = _version, CatalogUnchanged = true };
+                          }
+
+                          // A slow first reply lets the competing request begin. Before the fix
+                          // both fetched the same whole catalog from an empty local snapshot.
+                          if (Interlocked.Increment(ref fullReads) == 1)
+                          {
+                              overlapping.Wait(TimeSpan.FromSeconds(1));
+                          }
+                          else
+                          {
+                              overlapping.Set();
+                          }
+                      }
+
+                      return new PeerReply
+                      {
+                          Ok = true,
+                          CatalogVersion = _version,
+                          CatalogTotalPages = 2,
+                          CatalogItems = _offered.Skip(request.CatalogPage * 2).Take(2).ToList()
+                      };
+                  });
+            var service = Subject;
+            await Task.WhenAll(Enumerable.Range(0, 2).Select(_ => Task.Run(() =>
+            {
+                started.SignalAndWait();
+                service.Sync((int?)_alice.Id);
+            })));
+
+            versions.Should().Equal(new string[] { null, "v1" });
+            Stored.Select(i => i.RemoteId).Should().BeEquivalentTo("e-1-1", "e-1-2", "e-1-3");
+        }
+
+        [Test]
         public void should_give_each_file_the_id_and_the_title_the_arr_apps_will_see()
         {
             Subject.Sync(_alice.Id);
@@ -103,6 +157,20 @@ namespace NzbDrone.Core.Test.PeerCatalog
 
             Stored.Single(i => i.RemoteId == _offered[0].Id).GetAirDates().Should().Equal("2024-05-17", "2024-05-19");
             Stored.Where(i => i.RemoteId != _offered[0].Id).Should().OnlyContain(i => i.GetAirDates().Count == 0);
+        }
+
+        [TestCase("anime", "anime")]
+        [TestCase("daily", "daily")]
+        [TestCase("standard", "standard")]
+        [TestCase(null, null)]
+        [TestCase("not-a-series-type", null)]
+        public void should_keep_only_known_series_types_and_accept_older_offers(string offered, string kept)
+        {
+            _offered[0].SeriesType = offered;
+
+            Subject.Sync(_alice.Id);
+
+            Stored.Single(i => i.RemoteId == _offered[0].Id).SeriesType.Should().Be(kept);
         }
 
         [Test]

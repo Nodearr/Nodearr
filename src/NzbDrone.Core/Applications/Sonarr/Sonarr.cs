@@ -168,9 +168,10 @@ namespace NzbDrone.Core.Applications.Sonarr
             // takes only season packs for a season that ended long ago (Sonarr's Season Search
             // Maximum Single Episode Age), and a friend offers episode files one by one.
             var offered = request.OfferedEpisodes.Select(o => (o.SeasonNumber, o.EpisodeNumber)).ToHashSet();
+            var upgrades = request.UpgradeEpisodes.Select(o => (o.SeasonNumber, o.EpisodeNumber)).ToHashSet();
             var search = episodes
                 .Where(e => (Wanted(e.Value<int>("seasonNumber"), request.Whole, seasons) && e.Value<bool>("monitored")) || wantedEpisodes.Contains(e.Value<int>("id")))
-                .Where(e => !e.Value<bool>("hasFile"))
+                .Where(e => !e.Value<bool>("hasFile") || upgrades.Contains((e.Value<int>("seasonNumber"), e.Value<int>("episodeNumber"))))
                 .Where(e => offered.Count == 0 || offered.Contains((e.Value<int>("seasonNumber"), e.Value<int>("episodeNumber"))))
                 .Select(e => e.Value<int>("id"))
                 .Distinct()

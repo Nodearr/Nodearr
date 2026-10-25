@@ -125,6 +125,7 @@ Then a settings page. ADR 0019. Branch `v1/s10-node-settings`.
 - 0.2.7, the code audit's remaining findings: an invite is redeemed in one database step, so two nodes using it at once cannot both pair (#31); a finished download goes next to one of the same name, as `Title.1`, instead of replacing it (#32); a peer's catalog is limited to 200,000 files in pages of at most 500 (#33); the hashing pass stores its hashes in batches, 2.6 s instead of 145 s for 66,000 files (#34). Each on the branch GitHub made from its issue.
 - 0.3.0, the clean-up of what came from Sonarr and two of the open items below: the pages no route led to, the dead help links and the series metadata host go (#41); posters on every page that shows a title (#42); Sonarr's v3 API, the v5 endpoints nothing calls and the last calls to `services.nodearr.com` and the renamed `auth.servarr.com` sign-ins go (#43), which is why it is 0.3.0 and not 0.2.8; and a download limit, and a relay of your own asked before it is saved (#48). Each on the branch GitHub made from its issue.
 - Get it cards recover from changed Arr app root folders and profiles without a page reload, refuse stale choices before queueing, and log failures. Successful cards leave Home when the sent files are held locally or 24 hours after success; failed cards stay ([#53](https://github.com/Nodearr/Nodearr/issues/53), ADR 0021). Branch `fix/53-get-it-choices-and-card-lifecycle`.
+- Get it is also available beside peer catalog files and under posters, using Home's shared form and library operation. TV can be selected by episode file, season or whole series; music by album. The command checks current trusted offers and holdings before adding, monitoring and searching in the chosen app ([#54](https://github.com/Nodearr/Nodearr/issues/54), ADR 0021). Branch `54-get-it-from-a-friends-catalog-fetch-any-title-a-friend-offers-from-the-peer-catalog`.
 
 ## Where V1 stands
 
@@ -137,6 +138,8 @@ On 2026-10-14 two home networks connected directly and moved a file: two Windows
 ## What is still open
 
 V1 is done. What follows is open, most useful first. Each item in the first list is a slice that needs nothing but this machine.
+
+The catalog's Get it action is implemented in #54. Next are connection-loss diagnosis and upload history (#55 and #56), LAN throughput measurement (#57), catalog views (#58), Send it (#59), and the Activity badge (#60). Throughput measurement needs the owner's second machine.
 
 ### Next, in order
 

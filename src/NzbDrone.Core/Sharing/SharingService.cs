@@ -334,6 +334,7 @@ namespace NzbDrone.Core.Sharing
                     item.ImdbId = parent.ImdbId;
                     item.Title = parent.Title;
                     item.Year = parent.Year;
+                    item.SeriesType = parent.SeriesType is "anime" or "daily" ? parent.SeriesType : null;
                     item.SeasonNumber = file.SeasonNumber;
                     item.EpisodeNumbers = contained.Select(e => e.EpisodeNumber).ToList();
                     item.EpisodeTitles = contained.Select(e => e.Title ?? string.Empty).ToList();

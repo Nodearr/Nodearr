@@ -34,6 +34,7 @@ namespace NzbDrone.Core.Test.Sharing
             Mocker.SetConstant<ICatalogSeriesRepository>(Mocker.Resolve<CatalogSeriesRepository>());
             Mocker.SetConstant<ICatalogMovieRepository>(Mocker.Resolve<CatalogMovieRepository>());
             Mocker.SetConstant<ICatalogArtistRepository>(Mocker.Resolve<CatalogArtistRepository>());
+            Mocker.SetConstant<ILibraryGetItService>(Mocker.Resolve<LibraryGetItService>());
 
             _alice = Mocker.Resolve<IPeerRepository>().Insert(new Peer { NodeId = "alice", Name = "Alice", State = PeerState.Trusted, Added = DateTime.UtcNow, StateChanged = DateTime.UtcNow });
 
@@ -213,7 +214,7 @@ namespace NzbDrone.Core.Test.Sharing
             peerItems.Insert(new PeerCatalogItem { PeerId = _alice.Id, RemoteId = "e-1-502", MediaKind = MediaKind.Tv, TvdbId = 75669, SeasonNumber = 2, EpisodeNumbers = "3,4" });
             peerItems.Insert(new PeerCatalogItem { PeerId = _alice.Id, RemoteId = "e-1-900", MediaKind = MediaKind.Tv, TvdbId = 1, SeasonNumber = 1, EpisodeNumbers = "1" });
 
-            Subject.Execute(new GetItCommand { ReceivedTitleId = Received(r => r.IsWhole = true).Id, ApplicationId = 1 });
+            Subject.Execute(new GetItCommand { ReceivedTitleId = Received(r => r.IsWhole = true).Id, ApplicationId = 1, RootFolderPath = "/tv", QualityProfileId = 1 });
 
             _asked.OfferedEpisodes.Select(e => (e.SeasonNumber, e.EpisodeNumber)).Should().BeEquivalentTo(new[] { (1, 1), (2, 3), (2, 4) });
         }
@@ -261,7 +262,7 @@ namespace NzbDrone.Core.Test.Sharing
 
             var received = Received();
 
-            Subject.Execute(new GetItCommand { ReceivedTitleId = received.Id, ApplicationId = 1 });
+            Subject.Execute(new GetItCommand { ReceivedTitleId = received.Id, ApplicationId = 1, RootFolderPath = "/tv", QualityProfileId = 1 });
 
             Reload(received).Should().Match<ReceivedTitle>(r => r.GetItState == GetItState.Failed && r.GetItMessage == "Sonarr could not find it on TheTVDB");
             ExceptionVerification.ExpectedWarns(1);

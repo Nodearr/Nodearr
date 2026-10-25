@@ -144,6 +144,18 @@ Open **Catalog > Peer Catalog**. If it is empty, select **Sync Peer Catalogs**. 
 - [ ] Select **Posters**: a grid with one tile for the film and one for the series, with three files. Select **Table** to go back.
 - [ ] Each poster appeared within a second or two. Reload the page: they appear at once now. Nodearr kept a copy.
 
+Each missing file and poster has **Get it**. It opens the same choices as Home's send card. For TV, the dialog offers an episode file, season or whole series. To keep the later walkthrough's library unchanged, run the following checks separately on a fresh kit after connecting, pairing and sharing:
+
+- [ ] On B, use **Get it** on A's movie row. Root folder and profile are filled in. Submit, follow progress in the dialog and **Activity > Transfers**, and confirm Radarr imports it. The row becomes **Have** with no action after the local catalog updates.
+- [ ] Open a TV row's Get it immediately after loading the page. The scope choice stays disabled until the plan loads; then switching to **Season** selects an offered season and shows the app choices.
+- [ ] On a Cowboy Bebop row, choose **Episode file**. Submit and confirm Sonarr imports only that file's episodes; the others stay unmonitored. Reopen Get it, select **Season**, choose season 1, and confirm the other two files arrive.
+- [ ] On a fresh kit, switch to **Posters** and select the series' **Get it**. It starts at **Whole series**. Switch to **Episode file**, **Season**, then back, and check the choices remain usable. Submit; Sonarr monitors the series and searches only offered episodes.
+- [ ] While the add command is working, close and reopen the dialog. Its progress remains visible and a second add cannot be submitted. After the app grabs it, the dialog's link opens **Activity > Transfers**.
+- [ ] With two Sonarr or Radarr apps connected, choose the second app and confirm its defaults appear. Stop that test app: the dialog says it did not answer. Start it and return to the dialog: it recovers while keeping valid choices.
+- [ ] On an app with no root folder, the dialog explains what to add. Add a root folder in the app, return to the dialog, and check Get it becomes usable without reloading. Select another valid root or profile, let the plan refresh, and check it stays selected. Delete that unused choice in the app and check it is replaced. Repeat on Home's send card.
+- [ ] With the music fixture from `acceptance/Run-CatalogGetIt.ps1 -KeepRunning`, open the album's Get it from the row and poster. Check Lidarr's root, quality and metadata profiles, then confirm all tracks import as one album. A Whisparr v2 scene instead shows the same explanation as Home.
+- [ ] An **Upgrade** has Get it; your Arr app's search rules still apply. A withdrawn offer or revoked friendship cannot be requested from a dialog left open. Catalog requests create no new send card on Home.
+
 ## 7. Choose what to share
 
 On the side that has Cowboy Bebop, A, open **Catalog > Sharing**.

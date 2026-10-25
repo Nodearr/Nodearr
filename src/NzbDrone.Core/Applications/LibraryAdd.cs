@@ -46,6 +46,7 @@ namespace NzbDrone.Core.Applications
         // thousand episodes does not become a thousand searches of every indexer the app has.
         // Empty when the friend's catalog has not said, and then what was sent is searched for.
         public List<SeasonEpisode> OfferedEpisodes { get; set; } = new();
+        public List<SeasonEpisode> UpgradeEpisodes { get; set; } = new();
         public List<string> OfferedAlbums { get; set; } = new();
 
         // How to add it, when it is not there yet.

@@ -48,6 +48,7 @@ namespace NzbDrone.Core.PeerCatalog
         public int SeasonNumber { get; set; }
         public string EpisodeNumbers { get; set; }
         public string EpisodeTitles { get; set; }
+        public string SeriesType { get; set; }
 
         // The day each episode aired, as yyyy-MM-dd, comma separated. Empty when the peer did not say.
         public string AirDates { get; set; }
@@ -212,6 +213,7 @@ namespace NzbDrone.Core.PeerCatalog
                 SeasonNumber = offer.SeasonNumber,
                 EpisodeNumbers = string.Join(",", offer.EpisodeNumbers ?? new List<int>()),
                 EpisodeTitles = string.Join(" + ", offer.EpisodeTitles ?? new List<string>()),
+                SeriesType = offer.Kind == MediaKind.Tv && offer.SeriesType is "standard" or "anime" or "daily" ? offer.SeriesType : null,
                 AirDates = string.Join(",", (offer.AirDates ?? new List<string>()).Where(IsAirDate)),
                 SceneSeasonNumber = AreSceneNumbers(offer) ? offer.SceneSeasonNumber : null,
                 SceneEpisodeNumbers = AreSceneNumbers(offer) ? string.Join(",", offer.SceneEpisodeNumbers) : null,

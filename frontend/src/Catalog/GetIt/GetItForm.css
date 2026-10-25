@@ -1,0 +1,35 @@
+.getIt {
+  margin-top: 12px;
+}
+
+.getItChoices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.getItChoice {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.getItLabel {
+  margin-bottom: 4px;
+  font-weight: bold;
+  font-size: 13px;
+}
+
+.getItNote {
+  margin: 8px 0;
+  color: var(--helpTextColor);
+  font-size: 13px;
+}
+
+.getItDone {
+  margin-top: 10px;
+}
+
+.getItError {
+  margin: 8px 0;
+  color: var(--dangerColor);
+}

@@ -141,6 +141,31 @@ namespace NzbDrone.Core.Test.Applications
             done.Should().Contain("monitoring 1 episode, and searching for 1 episode").And.Contain("does not list 1 of the episodes");
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void an_existing_episode_should_be_searched_only_when_the_friend_offers_an_upgrade(bool upgrade)
+        {
+            var episode = new SeasonEpisode { SeasonNumber = 1, EpisodeNumber = 2 };
+            Subject.AddAndSearch(Pingu(r =>
+            {
+                r.Episodes.Add(episode);
+                r.OfferedEpisodes.Add(episode);
+                if (upgrade)
+                {
+                    r.UpgradeEpisodes.Add(episode);
+                }
+            }));
+
+            if (upgrade)
+            {
+                Commands("EpisodeSearch").Single()["episodeIds"].Values<int>().Should().Equal(102);
+            }
+            else
+            {
+                Commands("EpisodeSearch").Should().BeEmpty();
+            }
+        }
+
         [Test]
         public void a_series_sonarr_has_should_have_the_seasons_sent_monitored_on_it()
         {
