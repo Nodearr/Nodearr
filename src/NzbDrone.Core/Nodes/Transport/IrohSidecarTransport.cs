@@ -281,6 +281,9 @@ namespace NzbDrone.Core.Nodes.Transport
                     State = Enum.TryParse<Transfers.UploadState>(s.State, true, out var state) ? state : Transfers.UploadState.Failed,
                     BytesSent = s.BytesSent,
                     Size = s.Size,
+                    Attempts = s.Attempts,
+                    LastFailureKind = s.LastFailure?.Kind,
+                    LastFailureMessage = s.LastFailure?.Message,
                     FailureKind = s.Failure?.Kind,
                     FailureMessage = s.Failure?.Message
                 });
@@ -499,7 +502,7 @@ namespace NzbDrone.Core.Nodes.Transport
             {
                 if (e.Data.IsNotNullOrWhiteSpace())
                 {
-                    _logger.Debug("transport: {0}", e.Data);
+                    _logger.Info("transport: {0}", e.Data);
                 }
             };
             process.BeginErrorReadLine();
@@ -766,6 +769,8 @@ namespace NzbDrone.Core.Nodes.Transport
             public string State { get; set; }
             public long BytesSent { get; set; }
             public long Size { get; set; }
+            public int Attempts { get; set; }
+            public TransferFailureBody LastFailure { get; set; }
             public TransferFailureBody Failure { get; set; }
         }
 

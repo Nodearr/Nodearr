@@ -26,11 +26,11 @@ namespace NzbDrone.Core.Test.Transfers
                   .Returns(new List<Peer> { new() { NodeId = "bob", Name = "Bob" } });
         }
 
-        private FileUploadProgress GivenUpload(string id, UploadState state, long sent, long size = 1000, string path = "/tv/Pingu/Season 1/Pingu.S01E01.mkv", string node = "bob", string failure = null)
+        private FileUploadProgress GivenUpload(string id, UploadState state, long sent, long size = 1000, string path = "/tv/Pingu/Season 1/Pingu.S01E01.mkv", string node = "bob", string failure = null, int attempts = 0, string lastFailure = null, string lastFailureMessage = null)
         {
             _reported.RemoveAll(u => u.Id == id);
 
-            var upload = new FileUploadProgress { Id = id, RemoteNodeId = node, File = "e-1-501", Path = path, State = state, BytesSent = sent, Size = size, FailureKind = failure };
+            var upload = new FileUploadProgress { Id = id, RemoteNodeId = node, File = "e-1-501", Path = path, State = state, BytesSent = sent, Size = size, FailureKind = failure, Attempts = attempts, LastFailureKind = lastFailure, LastFailureMessage = lastFailureMessage };
 
             _reported.Add(upload);
 
@@ -98,6 +98,43 @@ namespace NzbDrone.Core.Test.Transfers
             Subject.Tick();
 
             Subject.All().Single().Should().Match<Upload>(u => u.State == UploadState.Completed && u.BytesSent == 1000 && u.Ended != null);
+        }
+
+        [Test]
+        public void a_retry_should_replace_the_failed_row_and_keep_its_reason_until_it_completes()
+        {
+            GivenUpload("transfer-1", UploadState.Sending, 400, attempts: 1);
+            Subject.Tick();
+            GivenUpload("transfer-1", UploadState.Failed, 400, failure: "DirectPathLost", attempts: 1);
+            Subject.Tick();
+
+            GivenUpload("transfer-1", UploadState.Sending, 400, attempts: 2, lastFailure: "DirectPathLost", lastFailureMessage: "route changed");
+            Subject.Tick();
+
+            var retrying = Subject.All().Should().ContainSingle().Which;
+            retrying.State.Should().Be(UploadState.Sending);
+            retrying.Attempts.Should().Be(2);
+            retrying.Failure.Should().BeNull();
+            retrying.LastFailure.Should().Be("DirectPathLost");
+            retrying.LastFailureMessage.Should().Be("route changed");
+            retrying.Ended.Should().BeNull();
+
+            GivenUpload("transfer-1", UploadState.Completed, 1000, attempts: 2, lastFailure: "DirectPathLost", lastFailureMessage: "route changed");
+            Subject.Tick();
+
+            Subject.All().Should().ContainSingle().Which.Should().Match<Upload>(u =>
+                u.State == UploadState.Completed && u.Attempts == 2 && u.LastFailure == "DirectPathLost" && u.Ended != null);
+        }
+
+        [Test]
+        public void separate_transfers_of_the_same_file_should_remain_separate_uploads()
+        {
+            GivenUpload("transfer-1", UploadState.Completed, 1000, attempts: 1);
+            GivenUpload("transfer-2", UploadState.Completed, 1000, attempts: 1);
+
+            Subject.Tick();
+
+            Subject.All().Should().HaveCount(2);
         }
 
         private List<string> Mismatches => Mocker.GetMock<IEventAggregator>().Invocations

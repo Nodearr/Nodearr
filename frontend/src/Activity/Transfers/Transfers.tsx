@@ -95,6 +95,21 @@ function UploadRow({ upload }: { upload: Upload }) {
       <TableRowCell className={styles.title}>
         {upload.title}
 
+        {(state === 'preparing' || state === 'sending') &&
+        upload.attempts > 1 &&
+        upload.lastFailure ? (
+          <div className={styles.muted}>
+            {translate('UploadRetrying', {
+              attempts: upload.attempts,
+              failure: `${upload.lastFailure}${
+                upload.lastFailureMessage
+                  ? `: ${upload.lastFailureMessage}`
+                  : ''
+              }`,
+            })}
+          </div>
+        ) : null}
+
         {state === 'failed' && upload.failure ? (
           <div className={styles.error}>
             {upload.failure}
@@ -107,7 +122,11 @@ function UploadRow({ upload }: { upload: Upload }) {
 
       <TableRowCell>
         <Label kind={UPLOAD_KINDS[state]}>
-          {translate(UPLOAD_LABELS[state])}
+          {state === 'completed' && upload.attempts > 1
+            ? translate('UploadCompletedAfterAttempts', {
+                attempts: upload.attempts,
+              })
+            : translate(UPLOAD_LABELS[state])}
         </Label>
       </TableRowCell>
 

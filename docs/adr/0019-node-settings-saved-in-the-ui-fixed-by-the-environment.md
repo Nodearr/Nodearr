@@ -97,6 +97,8 @@ The name and the download folder are read when they are needed, so they need no 
 
 ## Amendments
 
+- 2026-10-24 (#55): **connection checks and route changes are recorded at Info.** A check records whether the peer was reached directly or by relay, the selected remote address and the control request round-trip time. The sidecar records path events and connection close reasons; when a selected path disappears, the transfer wait uses this setting's **Wait for a Direct Route** value before it ends a stream that has no selected route.
+
 - 2026-10-11: **Settings > General is a real page, on the same rule.** The sidebar entry led to a placeholder, so after the first-run sign-in set-up there was nowhere to change the password, read or replace the API key, move the page to another port, or turn on debug logging. The page [Sonarr](https://sonarr.tv/) had for this was still in the code. It is wired in, cut down to what Nodearr has: where the page is served (address, port, URL base, HTTPS), signing in, the API key, certificate checking, and logging. The proxy, update and backup sections are left out. Updating was removed (ADR 0018), and backups have no page to list or restore them yet.
 
   - **A setting given in the environment is shown and cannot be changed**, as on **Settings > Node**. Sent anyway, it is ignored and not written to the file, where it would do nothing now and take effect by surprise if the environment ever changed.

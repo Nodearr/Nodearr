@@ -21,7 +21,7 @@ use std::{
 
 use anyhow::{anyhow, bail, Result};
 use iroh::{
-    endpoint::{Connection, ConnectionError, PathEvent, ReadError, RecvStream, SendStream, VarInt},
+    endpoint::{Connection, ConnectionError, ReadError, RecvStream, SendStream, VarInt},
     Endpoint, EndpointAddr, EndpointId,
 };
 use n0_future::StreamExt;
@@ -55,6 +55,9 @@ struct FileRequest {
     offset: u64,
     /// The hash of the file those bytes came from. The sender resumes only if it still matches.
     if_hash: Option<String>,
+    /// The receiving node's transfer id, used to keep retries in one upload history row.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    transfer: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -97,6 +100,12 @@ pub struct UploadState {
     pub bytes_sent: u64,
     pub size: u64,
     pub failure: Option<Failure>,
+    pub attempts: u32,
+    pub last_failure: Option<Failure>,
+    #[serde(skip)]
+    transfer: Option<String>,
+    #[serde(skip)]
+    blake3: Option<String>,
     #[serde(skip)]
     finished: Option<Instant>,
 }
@@ -198,6 +207,35 @@ impl Transfers {
                 upload.failure = Some(Failure { kind, message });
             }
         });
+    }
+
+    fn track_upload_attempt(&self, id: u64, remote: EndpointId, request: &FileRequest, path: &Path, blake3: &str) -> u64 {
+        let mut states = self.upload_states.lock().unwrap();
+        let remote_id = remote.to_string();
+        let matching = states.iter().find_map(|(old_id, old)| {
+            (*old_id != id && is_retry_request(old, &remote_id, request)).then_some(*old_id)
+        });
+
+        if let Some(previous_id) = matching {
+            states.remove(&id);
+            let previous = states.get_mut(&previous_id).expect("matched upload remains present");
+            previous.attempts += 1;
+            previous.last_failure = previous.failure.take();
+            previous.state = "preparing";
+            previous.path = path.display().to_string();
+            previous.failure = None;
+            previous.bytes_sent = request.offset;
+            previous.size = 0;
+            previous.blake3 = Some(blake3.to_string());
+            previous.transfer = request.transfer.clone().or_else(|| previous.transfer.clone());
+            previous.finished = None;
+            return previous_id;
+        }
+
+        if let Some(upload) = states.get_mut(&id) {
+            upload.blake3 = Some(blake3.to_string());
+        }
+        id
     }
 
     /// Cuts every upload to a node. Used when Nodearr stops trusting it part way through.
@@ -306,47 +344,123 @@ async fn read_json<T: for<'de> Deserialize<'de>>(recv: &mut RecvStream) -> Resul
 // Paths
 // ---------------------------------------------------------------------------------------------
 
-/// Follows whether a connection's selected path is a direct IP path right now.
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum SelectedPath {
+    None,
+    Direct { local: String, remote: String },
+    Relay { local: String, remote: String },
+}
+
+impl SelectedPath {
+    fn is_direct(&self) -> bool {
+        matches!(self, Self::Direct { .. })
+    }
+
+    fn description(&self) -> String {
+        match self {
+            Self::None => "none".to_string(),
+            Self::Direct { local, remote } => format!("direct {local} -> {remote}"),
+            Self::Relay { local, remote } => format!("relay {local} -> {remote}"),
+        }
+    }
+}
+
+fn is_retry_request(old: &UploadState, remote: &str, request: &FileRequest) -> bool {
+    if old.remote_node_id != remote {
+        return false;
+    }
+
+    let correlated = request.transfer.as_ref().is_some_and(|transfer| old.transfer.as_ref() == Some(transfer));
+    let legacy_resume = request.transfer.is_none()
+        && old.transfer.is_none()
+        && old.file == request.file
+        && old.failure.is_some()
+        && request.offset > 0
+        && request.offset == old.bytes_sent
+        && request.if_hash.as_deref() == old.blake3.as_deref();
+
+    correlated || legacy_resume
+}
+
+/// Follows a connection's selected path and keeps route types distinct during path changes.
 pub(crate) struct PathMonitor {
-    direct: watch::Receiver<bool>,
+    selected: watch::Receiver<SelectedPath>,
 }
 
 impl PathMonitor {
     pub(crate) fn spawn(conn: &Connection) -> Self {
-        let (tx, rx) = watch::channel(is_direct(conn));
+        let mut events = conn.path_events();
+        let (tx, rx) = watch::channel(selected_path_state(conn));
         let conn = conn.clone();
+        let remote = conn.remote_id();
 
         tokio::spawn(async move {
-            let mut events = conn.path_events();
             while let Some(event) = events.next().await {
-                if matches!(event, PathEvent::Opened { .. } | PathEvent::Selected { .. } | PathEvent::Closed { .. }) {
-                    // Recompute from the connection rather than trusting event order.
-                    if tx.send(is_direct(&conn)).is_err() {
-                        return;
-                    }
+                let state = selected_path_state(&conn);
+                tracing::info!(remote = %remote, event = ?event, selected = %state.description(), "iroh path event");
+                if tx.send(state).is_err() {
+                    return;
                 }
             }
         });
 
-        Self { direct: rx }
+        Self { selected: rx }
     }
 
     fn is_direct(&self) -> bool {
-        *self.direct.borrow()
+        self.selected.borrow().is_direct()
+    }
+
+    fn selected(&self) -> SelectedPath {
+        self.selected.borrow().clone()
     }
 
     pub(crate) async fn wait_direct(&mut self, timeout: Duration) -> bool {
-        tokio::time::timeout(timeout, self.direct.wait_for(|direct| *direct)).await.map(|r| r.is_ok()).unwrap_or(false)
+        tokio::time::timeout(timeout, async {
+            loop {
+                match self.selected() {
+                    SelectedPath::Direct { .. } => return true,
+                    SelectedPath::Relay { .. } | SelectedPath::None => {
+                        if self.selected.changed().await.is_err() {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }).await.unwrap_or(false)
     }
 
-    /// Resolves when the selected path stops being direct.
-    async fn lost_direct(&mut self) {
-        let _ = self.direct.wait_for(|direct| !*direct).await;
+    async fn wait_direct_after_loss(&mut self, timeout: Duration) -> bool {
+        tokio::time::timeout(timeout, async {
+            loop {
+                match self.selected() {
+                    SelectedPath::Direct { .. } => return true,
+                    SelectedPath::Relay { .. } => return false,
+                    SelectedPath::None => {
+                        if self.selected.changed().await.is_err() {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }).await.unwrap_or(false)
+    }
+
+    async fn changed(&mut self) -> bool {
+        self.selected.changed().await.is_ok()
     }
 }
 
-fn is_direct(conn: &Connection) -> bool {
-    conn.paths().iter().find(|p| p.is_selected()).map(|p| p.is_ip()).unwrap_or(false)
+fn selected_path_state(conn: &Connection) -> SelectedPath {
+    conn.paths().iter().find(|p| p.is_selected()).map(|path| {
+        let local = format!("{:?}", path.local_addr());
+        let remote = match path.remote_addr() {
+            iroh::TransportAddr::Ip(ip) => ip.to_string(),
+            iroh::TransportAddr::Relay(url) => url.to_string(),
+            other => format!("{other:?}"),
+        };
+        if path.is_ip() { SelectedPath::Direct { local, remote } } else { SelectedPath::Relay { local, remote } }
+    }).unwrap_or(SelectedPath::None)
 }
 
 /// The path a connection is using right now: whether it is direct, and the address at the far end.
@@ -403,15 +517,18 @@ pub async fn serve(transfers: Arc<Transfers>, conn: Connection, queue: mpsc::Sen
 
     // Registered before anything is sent, so a node that stops being trusted can be cut off.
     transfers.uploads.lock().unwrap().insert(upload, (remote, conn.clone()));
-    if let Err(err) = send_file(&transfers, &conn, remote, upload, &queue).await {
-        tracing::debug!("upload to {remote} ended: {err:#}");
+    let mut tracked_upload = upload;
+    if let Err(err) = send_file(&transfers, &conn, remote, &mut tracked_upload, &queue).await {
+        tracing::info!(remote = %remote, upload = tracked_upload, close_reason = ?conn.close_reason(), error = %format!("{err:#}"), "upload stream ended");
         // Anything not already explained: the other node went away, or cancelled.
-        transfers.upload_failed(upload, "Stopped", format!("{err:#}"));
+        transfers.upload_failed(tracked_upload, "Stopped", format!("{err:#}"));
     }
     transfers.uploads.lock().unwrap().remove(&upload);
+    transfers.uploads.lock().unwrap().remove(&tracked_upload);
+    tracing::info!(remote = %remote, upload = tracked_upload, close_reason = ?conn.close_reason(), "upload connection closed");
 }
 
-async fn send_file(transfers: &Transfers, conn: &Connection, remote: EndpointId, upload: u64, queue: &mpsc::Sender<Incoming>) -> Result<()> {
+async fn send_file(transfers: &Transfers, conn: &Connection, remote: EndpointId, upload: &mut u64, queue: &mpsc::Sender<Incoming>) -> Result<()> {
     let mut paths = PathMonitor::spawn(conn);
     let (mut send, mut recv) = conn.accept_bi().await.map_err(|e| anyhow!("accept_bi: {e}"))?;
     let request: FileRequest = read_json(&mut recv).await?;
@@ -443,7 +560,7 @@ async fn send_file(transfers: &Transfers, conn: &Connection, remote: EndpointId,
 
     // From here on it is an upload worth showing. A request that was refused never was one.
     transfers.upload_states.lock().unwrap().insert(
-        upload,
+        *upload,
         UploadState {
             id: upload.to_string(),
             remote_node_id: remote.to_string(),
@@ -453,6 +570,10 @@ async fn send_file(transfers: &Transfers, conn: &Connection, remote: EndpointId,
             bytes_sent: 0,
             size: 0,
             failure: None,
+            attempts: 1,
+            last_failure: None,
+            transfer: request.transfer.clone(),
+            blake3: None,
             finished: None,
         },
     );
@@ -461,16 +582,25 @@ async fn send_file(transfers: &Transfers, conn: &Connection, remote: EndpointId,
     let FileHash { size, blake3, .. } = match transfers.hash(&path).await {
         Ok(hashed) => hashed,
         Err(err) => {
-            transfers.upload_failed(upload, "NotFound", format!("{err:#}"));
+            transfers.upload_failed(*upload, "NotFound", format!("{err:#}"));
             conn.close(VarInt::from_u32(CODE_NOT_FOUND), b"NotFound");
             bail!("cannot read {}: {err:#}", path.display());
         }
     };
 
+    let previous_upload = *upload;
+    *upload = transfers.track_upload_attempt(previous_upload, remote, &request, &path, &blake3);
+    if *upload != previous_upload {
+        let mut uploads = transfers.uploads.lock().unwrap();
+        if let Some((_, connection)) = uploads.remove(&previous_upload) {
+            uploads.insert(*upload, (remote, connection));
+        }
+    }
+
     let resume = request.offset > 0 && request.offset <= size && request.if_hash.as_deref() == Some(blake3.as_str());
     let offset = if resume { request.offset } else { 0 };
     write_json(&mut send, &FileHeader { size, blake3, offset }).await?;
-    transfers.upload_update(upload, |u| {
+    transfers.upload_update(*upload, |u| {
         u.state = "sending";
         u.size = size;
         u.bytes_sent = offset;
@@ -489,25 +619,49 @@ async fn send_file(transfers: &Transfers, conn: &Connection, remote: EndpointId,
         }
 
         if !paths.is_direct() && !paths.wait_direct(transfers.direct_timeout).await {
-            let (code, name): (u32, &[u8]) = if sent == 0 { (CODE_NO_DIRECT_ROUTE, b"NoDirectRoute") } else { (CODE_DIRECT_PATH_LOST, b"DirectPathLost") };
-            transfers.upload_failed(upload, if sent == 0 { "NoDirectRoute" } else { "DirectPathLost" }, format!("no direct path within {}s", transfers.direct_timeout.as_secs()));
+            let no_bytes_sent = offset + sent == 0;
+            let (code, name): (u32, &[u8]) = if no_bytes_sent { (CODE_NO_DIRECT_ROUTE, b"NoDirectRoute") } else { (CODE_DIRECT_PATH_LOST, b"DirectPathLost") };
+            transfers.upload_failed(*upload, if no_bytes_sent { "NoDirectRoute" } else { "DirectPathLost" }, format!("selected path is {}; no direct path within {}s", paths.selected().description(), transfers.direct_timeout.as_secs()));
             let _ = send.reset(VarInt::from_u32(code));
             conn.close(VarInt::from_u32(code), name);
             bail!("no direct path within {}s", transfers.direct_timeout.as_secs());
         }
 
-        tokio::select! {
-            written = send.write_all(&buffer[..read]) => written.map_err(|e| anyhow!("write: {e}"))?,
-            _ = paths.lost_direct() => {
-                transfers.upload_failed(upload, "DirectPathLost", "the direct path to the other node went away");
-                // Drop everything queued for this stream so none of it is sent again over a relay.
-                let _ = send.reset(VarInt::from_u32(CODE_DIRECT_PATH_LOST));
-                conn.close(VarInt::from_u32(CODE_DIRECT_PATH_LOST), b"DirectPathLost");
-                bail!("selected path stopped being direct");
+        let mut path_lost = false;
+        {
+            let write = send.write_all(&buffer[..read]);
+            tokio::pin!(write);
+            loop {
+                tokio::select! {
+                    written = &mut write => {
+                        written.map_err(|e| anyhow!("write: {e}"))?;
+                        break;
+                    }
+                    changed = paths.changed() => {
+                        if !changed { bail!("path monitor stopped"); }
+                        match paths.selected() {
+                            SelectedPath::Direct { .. } => continue,
+                            SelectedPath::None if paths.wait_direct_after_loss(transfers.direct_timeout).await => continue,
+                            SelectedPath::None | SelectedPath::Relay { .. } => {
+                                path_lost = true;
+                                break;
+                            }
+                        }
+                    }
+                }
             }
         }
+        if path_lost {
+            let no_bytes_sent = offset + sent == 0;
+            let (code, name): (u32, &[u8]) = if no_bytes_sent { (CODE_NO_DIRECT_ROUTE, b"NoDirectRoute") } else { (CODE_DIRECT_PATH_LOST, b"DirectPathLost") };
+            let kind = if no_bytes_sent { "NoDirectRoute" } else { "DirectPathLost" };
+            transfers.upload_failed(*upload, kind, format!("selected path is {}; no direct path within {}s", paths.selected().description(), transfers.direct_timeout.as_secs()));
+            let _ = send.reset(VarInt::from_u32(code));
+            conn.close(VarInt::from_u32(code), name);
+            bail!("selected path is not direct: {}", paths.selected().description());
+        }
         sent += read as u64;
-        transfers.upload_update(upload, |u| u.bytes_sent = offset + sent);
+        transfers.upload_update(*upload, |u| u.bytes_sent = offset + sent);
 
         if transfers.upload_limit > 0 {
             tokio::time::sleep(Duration::from_secs_f64(read as f64 / transfers.upload_limit as f64)).await;
@@ -524,9 +678,9 @@ async fn send_file(transfers: &Transfers, conn: &Connection, remote: EndpointId,
             // The hash given was likely out of date: the file changed without its size or modified
             // time changing. It is worked out afresh next time. Nodearr drops its copy too.
             transfers.hashes.lock().unwrap().remove(&path);
-            transfers.upload_failed(upload, "VerificationFailed", "the other node said what arrived did not match the hash");
+            transfers.upload_failed(*upload, "VerificationFailed", "the other node said what arrived did not match the hash");
         }
-        _ => transfers.upload_update(upload, |u| {
+        _ => transfers.upload_update(*upload, |u| {
             u.state = "completed";
             u.bytes_sent = size;
         }),
@@ -565,6 +719,7 @@ pub fn start(transfers: &Arc<Transfers>, endpoint: Endpoint, request: DownloadRe
 
     let task = tokio::spawn(async move {
         if let Err(failure) = receive_file(&endpoint, &request, &task_state, limit).await {
+            tracing::info!(transfer = %request.id, kind = failure.kind, message = %failure.message, "download stream ended");
             let mut state = task_state.lock().unwrap();
             state.state = "failed";
             state.failure = Some(failure);
@@ -596,7 +751,7 @@ async fn receive_file(endpoint: &Endpoint, request: &DownloadRequest, state: &Mu
     };
 
     let (mut send, mut recv) = conn.open_bi().await.map_err(|err| failure(close_name(&conn), format!("open_bi: {err}")))?;
-    write_json(&mut send, &FileRequest { file: request.file.clone(), offset: held, if_hash: request.expected_hash.clone() })
+    write_json(&mut send, &FileRequest { file: request.file.clone(), offset: held, if_hash: request.expected_hash.clone(), transfer: Some(request.id.clone()) })
         .await
         .map_err(|err| failure(close_name(&conn), format!("request: {err:#}")))?;
 
@@ -687,4 +842,96 @@ async fn receive_file(endpoint: &Endpoint, request: &DownloadRequest, state: &Mu
 
     state.lock().unwrap().state = "completed";
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn prior_upload() -> UploadState {
+        UploadState {
+            id: "1".into(),
+            remote_node_id: "peer-a".into(),
+            file: "movie.mkv".into(),
+            path: "/library/movie.mkv".into(),
+            state: "failed",
+            bytes_sent: 512,
+            size: 1024,
+            failure: Some(Failure { kind: "DirectPathLost", message: "route changed".into() }),
+            attempts: 1,
+            last_failure: None,
+            transfer: Some("download-a".into()),
+            blake3: Some("hash-a".into()),
+            finished: Some(Instant::now()),
+        }
+    }
+
+    #[test]
+    fn direct_path_changes_keep_the_direct_state_and_distinguish_addresses() {
+        let first = SelectedPath::Direct { local: "192.168.1.10:1".into(), remote: "192.168.1.20:2".into() };
+        let second = SelectedPath::Direct { local: "10.0.0.10:1".into(), remote: "10.0.0.20:2".into() };
+
+        assert!(first.is_direct());
+        assert!(second.is_direct());
+        assert_ne!(first, second);
+        assert!(!SelectedPath::None.is_direct());
+        assert!(!SelectedPath::Relay { local: "relay".into(), remote: "relay".into() }.is_direct());
+    }
+
+    #[tokio::test]
+    async fn a_missing_route_waits_for_direct_recovery_but_a_selected_relay_is_rejected() {
+        let (tx, rx) = watch::channel(SelectedPath::None);
+        let mut monitor = PathMonitor { selected: rx };
+        let recovery = tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+            tx.send(SelectedPath::Direct { local: "192.168.1.10:1".into(), remote: "192.168.1.20:2".into() }).unwrap();
+        });
+
+        assert!(monitor.wait_direct(Duration::from_secs(1)).await);
+        recovery.await.unwrap();
+
+        let (_tx, rx) = watch::channel(SelectedPath::None);
+        let mut monitor = PathMonitor { selected: rx };
+        assert!(!monitor.wait_direct(Duration::from_millis(10)).await);
+
+        let (tx, rx) = watch::channel(SelectedPath::Relay { local: "relay".into(), remote: "relay".into() });
+        let mut monitor = PathMonitor { selected: rx };
+        let recovery = tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+            tx.send(SelectedPath::Direct { local: "192.168.1.10:1".into(), remote: "192.168.1.20:2".into() }).unwrap();
+        });
+        assert!(monitor.wait_direct(Duration::from_secs(1)).await);
+        recovery.await.unwrap();
+
+        let (_tx, rx) = watch::channel(SelectedPath::Relay { local: "relay".into(), remote: "relay".into() });
+        let mut monitor = PathMonitor { selected: rx };
+        assert!(!monitor.wait_direct_after_loss(Duration::from_secs(1)).await);
+    }
+
+    #[test]
+    fn old_file_requests_without_a_transfer_id_are_readable_and_optional_ids_are_omitted() {
+        let old: FileRequest = serde_json::from_str(r#"{"file":"movie.mkv","offset":512,"if_hash":"hash-a"}"#).unwrap();
+        assert!(old.transfer.is_none());
+
+        let new = FileRequest { file: "movie.mkv".into(), offset: 512, if_hash: Some("hash-a".into()), transfer: None };
+        assert!(serde_json::to_value(new).unwrap().get("transfer").is_none());
+    }
+
+    #[test]
+    fn retries_group_by_transfer_id_and_peer_and_legacy_retries_require_matching_resume_data() {
+        let prior = prior_upload();
+        let same = FileRequest { file: "movie.mkv".into(), offset: 0, if_hash: None, transfer: Some("download-a".into()) };
+        assert!(is_retry_request(&prior, "peer-a", &same));
+        assert!(!is_retry_request(&prior, "peer-b", &same));
+
+        let separate = FileRequest { transfer: Some("download-b".into()), ..same };
+        assert!(!is_retry_request(&prior, "peer-a", &separate));
+
+        let mut legacy = prior;
+        legacy.transfer = None;
+        let resumed = FileRequest { file: "movie.mkv".into(), offset: 512, if_hash: Some("hash-a".into()), transfer: None };
+        assert!(is_retry_request(&legacy, "peer-a", &resumed));
+        let wrong_hash = FileRequest { if_hash: Some("different".into()), ..resumed };
+        assert!(!is_retry_request(&legacy, "peer-a", &wrong_hash));
+    }
 }

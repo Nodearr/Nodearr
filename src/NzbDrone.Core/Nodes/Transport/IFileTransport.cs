@@ -54,6 +54,9 @@ namespace NzbDrone.Core.Nodes.Transport
         public Transfers.UploadState State { get; set; }
         public long BytesSent { get; set; }
         public long Size { get; set; }
+        public int Attempts { get; set; }
+        public string LastFailureKind { get; set; }
+        public string LastFailureMessage { get; set; }
         public string FailureKind { get; set; }
         public string FailureMessage { get; set; }
     }

@@ -43,6 +43,9 @@ public class UploadResource
     public string? FailureMessage { get; set; }
     public long Size { get; set; }
     public long BytesSent { get; set; }
+    public int Attempts { get; set; }
+    public string? LastFailure { get; set; }
+    public string? LastFailureMessage { get; set; }
     public DateTime Started { get; set; }
     public DateTime? Ended { get; set; }
 }
@@ -107,6 +110,9 @@ public class TransferController : Controller, IHandle<TransfersChangedEvent>
             FailureMessage = upload.FailureMessage,
             Size = upload.Size,
             BytesSent = upload.BytesSent,
+            Attempts = upload.Attempts,
+            LastFailure = upload.LastFailure,
+            LastFailureMessage = upload.LastFailureMessage,
             Started = upload.Started,
             Ended = upload.Ended
         }));

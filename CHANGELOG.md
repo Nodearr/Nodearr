@@ -6,6 +6,7 @@ What changed in each release, newest first. Each item links to the decision reco
 
 ### Fixed
 
+- Direct transfers keep an in-flight write while iroh briefly has no selected path, then continue if a direct route returns within **Wait for a Direct Route**. A selected relay still ends the transfer before media can be sent over it. The sidecar records path events and connection close reasons at Info, Nodearr forwards them at Info, and connection checks record their result and round-trip time. Upload retries now replace the same sender row, retain the earlier failure while retrying, and show the attempt count when complete; separate downloads remain separate ([#55](https://github.com/Nodearr/Nodearr/issues/55), [#56](https://github.com/Nodearr/Nodearr/issues/56)).
 - **Get it** on Home updates empty or removed root folders and profiles when the Arr app's choices change, while keeping choices that still work. Invalid choices are refused before adding is queued, and failures are logged. A successful card goes away once the local catalog shows you have what was sent, or 24 hours after success; failed cards stay until retried or put away ([#53](https://github.com/Nodearr/Nodearr/issues/53)).
 - Overlapping catalog syncs could store a friend's offers more than once. Syncs for one friend now run in order and use the latest local version; revoking or deleting that friend waits for its sync before clearing the catalog ([#54](https://github.com/Nodearr/Nodearr/issues/54)).
 

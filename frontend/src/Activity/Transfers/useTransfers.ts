@@ -36,6 +36,9 @@ export interface Upload {
   state: UploadState;
   failure?: string;
   failureMessage?: string;
+  attempts: number;
+  lastFailure?: string;
+  lastFailureMessage?: string;
   size: number;
   bytesSent: number;
   started: string;
