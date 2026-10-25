@@ -35,6 +35,8 @@ import translate from 'Utilities/String/translate';
 import CatalogKindButton from '../CatalogKindButton';
 import { getAvailableCatalogKinds } from '../catalogKinds';
 import Poster, { localPosterSrc } from '../Poster';
+import SendFromCatalogButton from '../Sharing/SendFromCatalogButton';
+import { ShareKey, TitleKey } from '../useSharing';
 import catalogStyles from '../Catalog.css';
 import styles from './LocalCatalog.css';
 
@@ -106,6 +108,7 @@ const COLUMNS: Column[] = [
     isSortable: true,
     isVisible: true,
   },
+  { name: 'send', label: () => translate('Send'), isVisible: true },
 ];
 
 function pad(value: number) {
@@ -133,6 +136,76 @@ function describe(file: LocalCatalogFile) {
   return `${file.title} - ${season}${
     dailyDate ? ` ${dailyDate}` : ''
   }${episodes}`;
+}
+
+function titleKey(title: LocalCatalogTitle): TitleKey {
+  if (title.mediaType === 'series') {
+    return {
+      mediaKind: 'tv',
+      applicationId: title.applicationId,
+      arrId: title.posterArrId,
+    };
+  }
+
+  if (title.mediaType === 'album') {
+    return {
+      mediaKind: 'music',
+      applicationId: title.applicationId,
+      arrId: title.artistArrId,
+    };
+  }
+
+  return {
+    mediaKind: 'movie',
+    applicationId: title.applicationId,
+    arrId: title.posterArrId,
+  };
+}
+
+function titleItems(title: LocalCatalogTitle): ShareKey[] {
+  const key = titleKey(title);
+
+  return title.mediaType === 'album'
+    ? [{ ...key, albumArrId: title.posterArrId }]
+    : [key];
+}
+
+function fileTitleKey(file: LocalCatalogFile): TitleKey {
+  if (file.mediaType === 'episode') {
+    return {
+      mediaKind: 'tv',
+      applicationId: file.applicationId,
+      arrId: file.posterArrId,
+    };
+  }
+
+  if (file.mediaType === 'track') {
+    return {
+      mediaKind: 'music',
+      applicationId: file.applicationId,
+      arrId: file.artistArrId,
+    };
+  }
+
+  return {
+    mediaKind: 'movie',
+    applicationId: file.applicationId,
+    arrId: file.posterArrId,
+  };
+}
+
+function fileItems(file: LocalCatalogFile): ShareKey[] {
+  const key = fileTitleKey(file);
+
+  if (file.mediaType === 'episode') {
+    return file.episodeArrIds.map((episodeArrId) => ({ ...key, episodeArrId }));
+  }
+
+  if (file.mediaType === 'track') {
+    return [{ ...key, albumArrId: file.posterArrId }];
+  }
+
+  return [key];
 }
 
 function TitleTile({ title }: { title: LocalCatalogTitle }) {
@@ -164,6 +237,13 @@ function TitleTile({ title }: { title: LocalCatalogTitle }) {
           : translate('SharingFileCount', { count: title.files })}
       </div>
       <div className={catalogStyles.tileDetails}>{title.applicationName}</div>
+      <div className={catalogStyles.tileDetails}>
+        <SendFromCatalogButton
+          titleKey={titleKey(title)}
+          items={titleItems(title)}
+          label={name}
+        />
+      </div>
     </div>
   );
 }
@@ -289,6 +369,16 @@ function LocalFileRow({ file }: { file: LocalCatalogFile }) {
       </TableRowCell>
 
       <RelativeDateCell date={file.dateAdded} />
+
+      <TableRowCell>
+        {file.readable && !missing && fileItems(file).length ? (
+          <SendFromCatalogButton
+            titleKey={fileTitleKey(file)}
+            items={fileItems(file)}
+            label={describe(file)}
+          />
+        ) : null}
+      </TableRowCell>
     </TableRow>
   );
 }
@@ -698,6 +788,23 @@ function LocalCatalog() {
                           ) : null}
                         </TableRowCell>
                         <TableRowCell />
+                        <TableRowCell>
+                          <SendFromCatalogButton
+                            titleKey={{
+                              mediaKind: 'tv',
+                              applicationId: show.applicationId,
+                              arrId: show.posterArrId,
+                            }}
+                            items={[
+                              {
+                                mediaKind: 'tv',
+                                applicationId: show.applicationId,
+                                arrId: show.posterArrId,
+                              },
+                            ]}
+                            label={show.title ?? ''}
+                          />
+                        </TableRowCell>
                       </TableRow>
 
                       {showExpanded
@@ -748,6 +855,26 @@ function LocalCatalog() {
                                     ) : null}
                                   </TableRowCell>
                                   <TableRowCell />
+                                  <TableRowCell>
+                                    <SendFromCatalogButton
+                                      titleKey={{
+                                        mediaKind: 'tv',
+                                        applicationId: show.applicationId,
+                                        arrId: show.posterArrId,
+                                      }}
+                                      items={[
+                                        {
+                                          mediaKind: 'tv',
+                                          applicationId: show.applicationId,
+                                          arrId: show.posterArrId,
+                                          seasonNumber: season.seasonNumber,
+                                        },
+                                      ]}
+                                      label={`${show.title ?? ''} ${translate(
+                                        'Season'
+                                      )} ${season.seasonNumber}`}
+                                    />
+                                  </TableRowCell>
                                 </TableRow>
                                 {seasonExpanded
                                   ? season.files.map((file) => (

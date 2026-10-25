@@ -124,14 +124,14 @@ Nodearr checks your current sharing choices on every file request. A cached offe
 
 ## Sending something to a friend
 
-Sending a title shares it with one person and places a card on their **Home** page. The recipient chooses whether to download it. In Nodearr, go to **Catalog > Sharing** and find **Send to a friend**:
+Sending a title shares it with one person and places a card on their **Home** page. The recipient chooses whether to download it. You can start in either place:
 
-![Send to a friend, with Frieren chosen for Alex, and an earlier send to Alex marked Told](images/send-to-a-friend.png)
+- In **Catalog > Local**, use **Send** at the end of a table row. A file row selects its movie, episode or episodes in a multi-episode file, or album; a series row selects the whole series, and a season row selects that season. In **Posters**, use the send icon under a tile to select the whole title.
+- In **Catalog > Sharing**, find **Send to a friend**:
 
-1. Find and select a title. For a series, you can select individual seasons or episodes. For an artist, you can select individual albums.
-2. Under **To**, select a friend. To send to someone you have not paired with, select **Someone new, with an invite** and choose an invite lifetime.
-3. For someone new, decide whether to leave **Share everything except Hidden with them too** selected. Clear it to share only this send. If selected, it also includes apps with **Share With New Friends** enabled, excluding **Hidden**.
-4. Select **Send**.
+![Send to a friend, with a Frieren episode selected for Alex](images/send-to-a-friend.png)
+
+The Local action opens the form with the title and parts already selected. In Sharing, select a title and, for a series or artist, the seasons, episodes, or albums you want to send. Choose a friend under **To**. To send to someone you have not paired with, select **Someone new, with an invite** and choose an invite lifetime. For someone new, decide whether to leave **Share everything except Hidden with them too** selected. Clear it to share only this send. If selected, it also includes apps with **Share With New Friends** enabled, excluding **Hidden**. Select **Send**.
 
 Nodearr creates a share list named **Sent to** followed by the friend's name. You can edit it like any other list. Nodearr also notifies the recipient, whose node refreshes your catalog and shows a card such as **Sam sent you Frieren** on **Home**.
 

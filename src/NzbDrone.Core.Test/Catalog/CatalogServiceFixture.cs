@@ -368,7 +368,7 @@ namespace NzbDrone.Core.Test.Catalog
 
             titles.Single(t => t.ArrId == 30).Kind.Should().Be("scenes");
             titles.Single(t => t.ArrId == 31).Kind.Should().Be("movies");
-            titles.Single(t => t.ArrId == 70).Should().Match<CatalogTitle>(t => t.Kind == "music" && t.Artist == "Low" && t.Files == 1);
+            titles.Single(t => t.ArrId == 70).Should().Match<CatalogTitle>(t => t.Kind == "music" && t.Artist == "Low" && t.ArtistArrId == 7 && t.Files == 1);
 
             var scenePaging = new PagingSpec<CatalogMovieFile>
             {

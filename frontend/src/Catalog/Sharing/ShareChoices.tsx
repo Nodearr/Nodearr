@@ -84,13 +84,15 @@ export function SeriesChoice({
   items,
   label,
   onChange,
+  initiallyOpen = false,
 }: {
   title: ShareableTitle;
   items: Set<string>;
   label: string;
   onChange: (next: Set<string>) => void;
+  initiallyOpen?: boolean;
 }) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(initiallyOpen);
   const { data: seasons = [], isFetching } = useShareableSeasons(title, isOpen);
 
   const whole = titleId(title);
@@ -220,6 +222,12 @@ export function SeriesChoice({
               season={season}
               items={items}
               isWhole={isWhole}
+              initiallyOpen={
+                items.has(seasonShareId(title, season.seasonNumber)) ||
+                season.episodes.some((episode) =>
+                  items.has(episodeShareId(title, episode.episodeArrId))
+                )
+              }
               onSeasonToggle={handleSeasonToggle}
               onEpisodeToggle={handleEpisodeToggle}
             />
@@ -235,6 +243,7 @@ function SeasonChoice({
   season,
   items,
   isWhole,
+  initiallyOpen = false,
   onSeasonToggle,
   onEpisodeToggle,
 }: {
@@ -242,10 +251,11 @@ function SeasonChoice({
   season: ShareableSeason;
   items: Set<string>;
   isWhole: boolean;
+  initiallyOpen?: boolean;
   onSeasonToggle: (id: string) => void;
   onEpisodeToggle: (id: string) => void;
 }) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(initiallyOpen);
 
   const seasonId = seasonShareId(title, season.seasonNumber);
   const isTicked = isWhole || items.has(seasonId);
@@ -301,13 +311,15 @@ export function ArtistChoice({
   items,
   label,
   onChange,
+  initiallyOpen = false,
 }: {
   title: ShareableTitle;
   items: Set<string>;
   label: string;
   onChange: (next: Set<string>) => void;
+  initiallyOpen?: boolean;
 }) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(initiallyOpen);
   const { data: albums = [], isFetching } = useShareableAlbums(title, isOpen);
 
   const whole = titleId(title);

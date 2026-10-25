@@ -8,6 +8,10 @@ import Button from 'Components/Link/Button';
 import ClipboardButton from 'Components/Link/ClipboardButton';
 import IconButton from 'Components/Link/IconButton';
 import SpinnerButton from 'Components/Link/SpinnerButton';
+import Modal from 'Components/Modal/Modal';
+import ModalBody from 'Components/Modal/ModalBody';
+import ModalContent from 'Components/Modal/ModalContent';
+import ModalHeader from 'Components/Modal/ModalHeader';
 import { icons, kinds } from 'Helpers/Props';
 import { getErrorMessage, Peer } from 'Nodes/useNodes';
 import { InputChanged } from 'typings/inputs';
@@ -17,6 +21,8 @@ import {
   SendStatus,
   SentTitle,
   ShareableTitle,
+  shareId,
+  ShareKey,
   titleId,
   useForgetSend,
   useSends,
@@ -100,13 +106,25 @@ function SentRow({ sent }: { sent: SentTitle }) {
 function SendToFriend({
   titles,
   peers,
+  initialTitle,
+  initialItems = [],
+  isModal = false,
+  onModalClose,
 }: {
   titles: ShareableTitle[];
   peers: Peer[];
+  initialTitle?: ShareableTitle;
+  initialItems?: ShareKey[];
+  isModal?: boolean;
+  onModalClose?: () => void;
 }) {
   const [filter, setFilter] = useState('');
-  const [chosen, setChosen] = useState<ShareableTitle | null>(null);
-  const [items, setItems] = useState<Set<string>>(new Set());
+  const [chosen, setChosen] = useState<ShareableTitle | null>(
+    initialTitle ?? null
+  );
+  const [items, setItems] = useState<Set<string>>(
+    () => new Set(initialItems.map(shareId))
+  );
   // Until one is picked: the first friend, once the list of friends has loaded.
   const [recipient, setRecipient] = useState<string | null>(null);
   const [validHours, setValidHours] = useState(72);
@@ -196,19 +214,25 @@ function SendToFriend({
       },
       {
         onSuccess: () => {
-          setChosen(null);
-          setItems(new Set());
-          setFilter('');
+          if (!isModal) {
+            setChosen(null);
+            setItems(new Set());
+            setFilter('');
+          }
         },
       }
     );
-  }, [mutate, to, items, validHours, shareAll]);
+  }, [mutate, to, items, validHours, shareAll, isModal]);
 
   const sent = sendTitle.data;
 
-  return (
-    <FieldSet legend={translate('SendToFriend')}>
-      <p className={styles.muted}>{translate('SendToFriendHelpText')}</p>
+  const form = (
+    <>
+      <p className={styles.muted}>
+        {translate(
+          isModal ? 'SendFromCatalogHelpText' : 'SendToFriendHelpText'
+        )}
+      </p>
 
       <div className={styles.columns}>
         <div className={styles.column}>
@@ -222,6 +246,12 @@ function SendToFriend({
                     title={chosen}
                     items={items}
                     label={describeTitle(chosen)}
+                    initiallyOpen={
+                      isModal &&
+                      Array.from(items).some((item) =>
+                        item.startsWith(`${titleId(chosen)}:`)
+                      )
+                    }
                     onChange={setItems}
                   />
                 ) : null}
@@ -231,6 +261,12 @@ function SendToFriend({
                     title={chosen}
                     items={items}
                     label={describeTitle(chosen)}
+                    initiallyOpen={
+                      isModal &&
+                      Array.from(items).some((item) =>
+                        item.startsWith(`${titleId(chosen)}:`)
+                      )
+                    }
                     onChange={setItems}
                   />
                 ) : null}
@@ -247,9 +283,11 @@ function SendToFriend({
                 ) : null}
               </div>
 
-              <Button onPress={handleChooseAgainPress}>
-                {translate('SendChooseSomethingElse')}
-              </Button>
+              {isModal ? null : (
+                <Button onPress={handleChooseAgainPress}>
+                  {translate('SendChooseSomethingElse')}
+                </Button>
+              )}
             </>
           ) : (
             <>
@@ -352,22 +390,37 @@ function SendToFriend({
         <SpinnerButton
           kind={kinds.PRIMARY}
           isSpinning={sendTitle.isPending}
-          isDisabled={items.size === 0}
+          isDisabled={items.size === 0 || (isModal && Boolean(sent))}
           onPress={handleSendPress}
         >
           {translate('Send')}
         </SpinnerButton>
       </div>
 
-      {sends.length ? (
+      {isModal || sends.length === 0 ? null : (
         <>
           <div className={styles.columnLabel}>{translate('SendSent')}</div>
           {sends.map((s) => (
             <SentRow key={s.id} sent={s} />
           ))}
         </>
-      ) : null}
-    </FieldSet>
+      )}
+    </>
+  );
+
+  if (!isModal) {
+    return <FieldSet legend={translate('SendToFriend')}>{form}</FieldSet>;
+  }
+
+  const handleModalClose = onModalClose ?? (() => undefined);
+
+  return (
+    <Modal isOpen={true} onModalClose={handleModalClose}>
+      <ModalContent onModalClose={handleModalClose}>
+        <ModalHeader>{translate('SendToFriend')}</ModalHeader>
+        <ModalBody>{form}</ModalBody>
+      </ModalContent>
+    </Modal>
   );
 }
 

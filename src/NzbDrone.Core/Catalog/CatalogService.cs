@@ -22,6 +22,7 @@ namespace NzbDrone.Core.Catalog
         public int ArrId { get; set; }
         public string Title { get; set; }
         public string Artist { get; set; }
+        public int ArtistArrId { get; set; }
         public string SortTitle { get; set; }
         public int Year { get; set; }
         public int Files { get; set; }
@@ -352,6 +353,7 @@ namespace NzbDrone.Core.Catalog
                         ArrId = count.ArrId,
                         Title = album.Title,
                         Artist = artist?.Name,
+                        ArtistArrId = album.ArrArtistId,
                         SortTitle = album.Title,
                         Year = album.Year,
                         Files = count.Files
