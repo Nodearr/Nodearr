@@ -62,11 +62,13 @@ public class LocalCatalogFileResource
     public int TvdbId { get; set; }
     public int TmdbId { get; set; }
     public string? ImdbId { get; set; }
+    public int ArtistArrId { get; set; }
 
     // A multi-episode file lists every episode it contains.
     public int? SeasonNumber { get; set; }
     public string? SeriesType { get; set; }
     public List<int> EpisodeNumbers { get; set; } = new();
+    public List<int> EpisodeArrIds { get; set; } = new();
     public List<string> EpisodeTitles { get; set; } = new();
     public List<int> AbsoluteEpisodeNumbers { get; set; } = new();
     public int? SceneSeasonNumber { get; set; }
@@ -143,6 +145,7 @@ public class LocalCatalogTitleResource
     public int Year { get; set; }
     public int Files { get; set; }
     public string? Artist { get; set; }
+    public int ArtistArrId { get; set; }
 }
 
 public class LocalCatalogSeriesResource

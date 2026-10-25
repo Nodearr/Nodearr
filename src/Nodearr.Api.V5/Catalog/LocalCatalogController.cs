@@ -85,7 +85,8 @@ public class LocalCatalogController : Controller
                 Title = t.Title,
                 Year = t.Year,
                 Files = t.Files,
-                Artist = t.Artist
+                Artist = t.Artist,
+                ArtistArrId = t.ArtistArrId
             }).ToList()
         });
     }
@@ -214,6 +215,7 @@ public class LocalCatalogController : Controller
                 if (episodes.TryGetValue((file.ApplicationId, file.ArrId), out var contained))
                 {
                     resource.EpisodeNumbers = contained.Select(e => e.EpisodeNumber).ToList();
+                    resource.EpisodeArrIds = contained.Select(e => e.ArrId).ToList();
                     resource.EpisodeTitles = contained.Select(e => e.Title ?? string.Empty).ToList();
                 }
 
@@ -311,6 +313,7 @@ public class LocalCatalogController : Controller
                 var resource = LocalCatalogFileResource.FromFile(file, "track");
                 resource.PosterSubject = PosterSubject.Album;
                 resource.PosterArrId = file.ArrAlbumId;
+                resource.ArtistArrId = file.ArrArtistId;
                 resource.TrackTitle = file.TrackTitle;
                 resource.TrackNumber = file.TrackNumber;
                 resource.DiscNumber = file.DiscNumber;
@@ -355,6 +358,7 @@ public class LocalCatalogController : Controller
         resource.SeasonNumber = row.SeasonNumber;
         resource.SeriesType = series.SeriesType;
         resource.EpisodeNumbers = episodes.Select(e => e.EpisodeNumber).ToList();
+        resource.EpisodeArrIds = episodes.Select(e => e.ArrId).ToList();
         resource.EpisodeTitles = episodes.Select(e => e.Title ?? string.Empty).ToList();
         resource.AbsoluteEpisodeNumbers = episodes.Where(e => e.AbsoluteEpisodeNumber.HasValue).Select(e => e.AbsoluteEpisodeNumber.GetValueOrDefault()).ToList();
         resource.SceneSeasonNumber = episodes.Select(e => e.SceneSeasonNumber).Distinct().Count() == 1 ? episodes.FirstOrDefault()?.SceneSeasonNumber : null;

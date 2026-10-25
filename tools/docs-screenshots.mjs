@@ -13,8 +13,9 @@
 // Bebop, and Sam sends Alex Spirited Away. Each step it finds done already is skipped.
 //
 // With no arguments, the capture command takes every screenshot. Pass screenshot names to capture
-// only those pages. The "send" screenshot changes the test data: Sam sends Alex Frieren and Alex
-// requests it. Recreate the kit before capturing "send" a second time.
+// only those pages. The "send" screenshot changes the test data: Sam sends Alex an episode of
+// Frieren from its table row and Alex sends Sam Back to the Future from its poster. Recreate the
+// kit before capturing "send" a second time.
 //
 // The help texts in the shots come from the server, so run the kit on a package built from the
 // branch being documented (build/Build-Release.ps1, then up -Solo -NodearrZip PATH), not on a
@@ -30,7 +31,8 @@
 // Nodearr's dependencies: run it where they are installed, with NODE_PATH pointing there.
 // NODEARR_SCREENSHOT_BROWSER can select an already installed Chromium executable.
 // Sign-in comes from NODEARR_USERNAME and NODEARR_PASSWORD, the same on both set-ups, and the kit's
-// folder from NODEARR_KIT, ~/nodearr-ui-test unless set.
+// folder from NODEARR_KIT, ~/nodearr-ui-test unless set. For a local kit started with
+// Nodearr__Auth__Method=External, set NODEARR_EXTERNAL_AUTH=true to skip the sign-in page.
 //
 // What a screenshot would give away about the machine it was taken on is replaced first: the
 // folder the kit lives in, the machine's public and local addresses, and its disk's free space. The guide's
@@ -51,8 +53,9 @@ const A = process.env.NODEARR_A ?? 'http://localhost:26633';
 const B = process.env.NODEARR_B ?? 'http://127.0.0.1:26643';
 const user = process.env.NODEARR_USERNAME;
 const password = process.env.NODEARR_PASSWORD;
+const externalAuth = process.env.NODEARR_EXTERNAL_AUTH === 'true';
 
-if (!user || !password) {
+if ((!user || !password) && !externalAuth) {
   console.error('Set NODEARR_USERNAME and NODEARR_PASSWORD to the test set-ups\' sign-in.');
   process.exit(1);
 }
@@ -107,7 +110,7 @@ async function until(what, check, seconds = 180) {
 // Signing in, the node's name, and its Sonarr and Radarr connected, as the first start does.
 async function setUpNode(node) {
   const general = await node.api('GET', '/settings/general');
-  if (general.authenticationMethod !== 'forms' || general.username !== user) {
+  if (!externalAuth && (general.authenticationMethod !== 'forms' || general.username !== user)) {
     await node.api('PUT', `/settings/general/${general.id}`, {
       ...general,
       authenticationMethod: 'forms',
@@ -260,6 +263,12 @@ function mask(kitFolder) {
 
 async function signIn(context, base) {
   const page = await context.newPage();
+
+  if (externalAuth) {
+    await open(page, base, '/');
+    return page;
+  }
+
   await page.goto(`${base}/login`);
   await page.fill('input[name="username"]', user);
   await page.fill('input[name="password"]', password);
@@ -480,22 +489,89 @@ const shots = {
   },
 
   // B sends A Frieren. A's Home shows it, with Get it. B's uploads are slowed for a moment, so the
-  // transfer that Get it starts is still running when Activity is taken.
+  // transfer that Get it starts is still running when Activity is taken. It also checks the show,
+  // season, file and poster actions preselect their intended share scope.
   async send({ a, b }) {
-    await open(b, B, '/catalog/sharing');
-    const send = b.locator('fieldset', { has: b.locator('legend', { hasText: 'Send to a friend' }) }).first();
-    await send.getByLabel(/^Frieren/).check();
-    await send.locator('select').first().selectOption({ label: 'Alex' });
+    await open(b, B, '/catalog/local');
+    await selectCatalogKind(b, 'Series');
+    await b.getByText(/Frieren: Beyond Journey's End/).first().waitFor();
+
+    const showRow = b.getByRole('row').filter({ hasText: /Frieren: Beyond Journey's End/ }).first();
+    let dialog = await openCatalogSend(b, showRow);
+    const wholeSeries = await selectedCheckboxLabels(dialog);
+    if (wholeSeries.length !== 1 || !wholeSeries[0].includes("Frieren: Beyond Journey's End")) {
+      throw new Error(`The show action did not select the whole series: ${wholeSeries.join(', ')}`);
+    }
+    await b.keyboard.press('Escape');
+    await dialog.waitFor({ state: 'detached' });
+
+    await b.getByRole('button', { name: /^Expand .*Frieren: Beyond Journey's End/ }).click();
+    const seasonRow = b.getByRole('row').filter({ hasText: /Season 1/ }).first();
+    dialog = await openCatalogSend(b, seasonRow);
+    const selectedSeason = await dialog.locator('input[type="checkbox"]:checked').first().evaluate((input) => input.closest('label')?.innerText.trim() ?? '');
+    if (!/Season 1/.test(selectedSeason)) {
+      throw new Error(`The season action did not select Season 1: ${selectedSeason}`);
+    }
+    await b.keyboard.press('Escape');
+    await dialog.waitFor({ state: 'detached' });
+
+    await b.getByRole('button', { name: /^Expand Season 1/ }).click();
+    const episodeRow = b.getByRole('row').filter({ hasText: /Frieren: Beyond Journey's End - S01E01/ }).first();
+    dialog = await openCatalogSend(b, episodeRow);
+    const selectedEpisode = await selectedCheckboxLabels(dialog);
+    if (selectedEpisode.length !== 1 || !/^1\./.test(selectedEpisode[0])) {
+      throw new Error(`The file action did not select its episode: ${selectedEpisode.join(', ')}`);
+    }
+    await dialog.locator('select[name="recipient"]').selectOption({ label: 'Alex' });
     await b.waitForTimeout(300);
-    await shoot(send, 'send-to-a-friend');
-    await send.getByRole('button', { name: 'Send', exact: true }).click();
+    await shoot(dialog, 'send-to-a-friend');
+    const episodeRequest = waitForSendRequest(b);
+    await dialog.getByRole('button', { name: 'Send', exact: true }).click();
+    const episodeBody = await episodeRequest;
+    if (episodeBody.items.length !== 1 || episodeBody.items[0].mediaKind !== 'tv' || !episodeBody.items[0].episodeArrId) {
+      throw new Error(`The file send did not contain the selected episode: ${JSON.stringify(episodeBody.items)}`);
+    }
 
     await open(a, A, '/');
     await a.getByText(/Sam sent you Frieren/).waitFor({ timeout: 60000 });
     await a.waitForTimeout(800);
     await shoot(a, 'received');
 
-    await slowedTransfer(a, b, () => a.getByRole('button', { name: 'Get it' }).first().click());
+    // A reused kit may already have this title. Keep the Home card in the shot, and only start a
+    // transfer when this node does not already have the title.
+    if (!(await hasLocalShareableTitle(a, "Frieren: Beyond Journey's End"))) {
+      const frierenCard = a
+        .getByText(/Sam sent you Frieren/)
+        .locator('xpath=../../..');
+      await slowedTransfer(a, b, () =>
+        frierenCard.getByRole('button', { name: 'Get it', exact: true }).click()
+      );
+    }
+
+    await open(a, A, '/catalog/local');
+    await selectCatalogKind(a, 'Movies');
+    const posters = a.getByRole('button', { name: 'Posters', exact: true });
+    if (!(await posters.isDisabled())) {
+      await posters.click();
+    }
+    await a.getByText('Back to the Future (1985)', { exact: true }).waitFor();
+    await a.getByTitle('Send Back to the Future (1985) to a friend').click();
+    dialog = a.getByRole('dialog');
+    await dialog.waitFor();
+    const selectedMovie = await selectedCheckboxLabels(dialog);
+    if (selectedMovie.length !== 1 || !selectedMovie[0].includes('Back to the Future')) {
+      throw new Error(`The poster action did not select the whole movie: ${selectedMovie.join(', ')}`);
+    }
+    await dialog.locator('select[name="recipient"]').selectOption({ label: 'Sam' });
+    const movieRequest = waitForSendRequest(a);
+    await dialog.getByRole('button', { name: 'Send', exact: true }).click();
+    const movieBody = await movieRequest;
+    if (movieBody.items.length !== 1 || movieBody.items[0].mediaKind !== 'movie' || 'episodeArrId' in movieBody.items[0] || 'seasonNumber' in movieBody.items[0]) {
+      throw new Error(`The poster send did not contain a whole movie: ${JSON.stringify(movieBody.items)}`);
+    }
+
+    await open(b, B, '/');
+    await b.getByText(/Alex sent you Back to the Future/).waitFor({ timeout: 60000 });
   },
 
   // A node started for the first time, with an empty data folder, at NODEARR_NEW: the
@@ -524,6 +600,48 @@ const shots = {
     await slowedTransfer(a, b, async () => {});
   },
 };
+
+async function selectCatalogKind(page, kind) {
+  const table = page.getByRole('button', { name: 'Table', exact: true });
+  if (!(await table.isDisabled())) {
+    await table.click();
+  }
+
+  const button = page.getByRole('button', { name: kind, exact: true });
+  if (!(await button.isDisabled())) {
+    await button.click();
+  }
+}
+
+async function openCatalogSend(page, row) {
+  await row.locator('button[title^="Send "]').click();
+  const dialog = page.getByRole('dialog');
+  await dialog.waitFor();
+  await dialog.locator('input[type="checkbox"]:checked').first().waitFor();
+  return dialog;
+}
+
+async function selectedCheckboxLabels(dialog) {
+  return dialog.locator('input[type="checkbox"]:checked').evaluateAll((inputs) =>
+    inputs.map((input) => input.closest('label')?.innerText.trim() ?? '')
+  );
+}
+
+async function hasLocalShareableTitle(page, title) {
+  return page.evaluate(async (expectedTitle) => {
+    const response = await fetch('/api/v5/sharing/titles', {
+      headers: { 'X-Api-Key': window.Nodearr.apiKey },
+    });
+    const titles = await response.json();
+    return titles.some((item) => item.title === expectedTitle && item.files > 0);
+  }, title);
+}
+
+function waitForSendRequest(page) {
+  return page.waitForRequest((request) =>
+    request.method() === 'POST' && new URL(request.url()).pathname.endsWith('/sharing/sends')
+  ).then((request) => request.postDataJSON());
+}
 
 // B's uploads are slowed while start() starts a transfer to A, so it is still running when
 // Activity is taken. B's limit is put back however it ends.

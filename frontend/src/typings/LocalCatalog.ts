@@ -34,6 +34,7 @@ export interface LocalCatalogTitle {
   year: number;
   files: number;
   artist?: string;
+  artistArrId: number;
 }
 
 export interface LocalCatalogFile {
@@ -48,8 +49,10 @@ export interface LocalCatalogFile {
   tvdbId: number;
   tmdbId: number;
   imdbId?: string;
+  artistArrId: number;
   seasonNumber?: number;
   episodeNumbers: number[];
+  episodeArrIds: number[];
   episodeTitles: string[];
   absoluteEpisodeNumbers: number[];
   sceneSeasonNumber?: number;

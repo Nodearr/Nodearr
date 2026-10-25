@@ -80,6 +80,7 @@ import {
   faListCheck as fasListCheck,
   faMedkit as fasMedkit,
   faMinus as fasMinus,
+  faPaperPlane as fasPaperPlane,
   faPause as fasPause,
   faPlay as fasPlay,
   faPlus as fasPlus,
@@ -215,6 +216,7 @@ export const REORDER = fasBars;
 export const ROOT_FOLDER = farFolderTree;
 export const RSS = fasRss;
 export const SAVE = fasSave;
+export const SEND = fasPaperPlane;
 export const SCENE_MAPPING = fasSitemap;
 export const SCHEDULED = farClock;
 export const SCORE = fasUserPlus;

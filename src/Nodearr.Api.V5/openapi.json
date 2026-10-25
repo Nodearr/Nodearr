@@ -4481,6 +4481,10 @@
             "type": "string",
             "nullable": true
           },
+          "artistArrId": {
+            "type": "integer",
+            "format": "int32"
+          },
           "seasonNumber": {
             "type": "integer",
             "format": "int32",
@@ -4491,6 +4495,14 @@
             "nullable": true
           },
           "episodeNumbers": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "episodeArrIds": {
             "type": "array",
             "items": {
               "type": "integer",
@@ -4881,6 +4893,10 @@
           "artist": {
             "type": "string",
             "nullable": true
+          },
+          "artistArrId": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "additionalProperties": false
