@@ -16,7 +16,8 @@ export interface LocalCatalogSummary {
   lastSyncError?: string;
 }
 
-export type LocalCatalogMediaType = 'episode' | 'movie';
+export type LocalCatalogMediaType = 'episode' | 'movie' | 'track';
+export type CatalogKind = 'series' | 'movies' | 'music' | 'scenes';
 
 export type PosterSubject = 'series' | 'movie' | 'album';
 
@@ -24,12 +25,15 @@ export type PosterSubject = 'series' | 'movie' | 'album';
 export interface LocalCatalogTitle {
   applicationId: number;
   applicationName?: string;
-  mediaType: 'series' | 'movie';
+  mediaType: 'series' | 'movie' | 'album';
+  kind: CatalogKind;
+  isAdult: boolean;
   posterSubject: PosterSubject;
   posterArrId: number;
   title?: string;
   year: number;
   files: number;
+  artist?: string;
 }
 
 export interface LocalCatalogFile {
@@ -47,6 +51,17 @@ export interface LocalCatalogFile {
   seasonNumber?: number;
   episodeNumbers: number[];
   episodeTitles: string[];
+  absoluteEpisodeNumbers: number[];
+  sceneSeasonNumber?: number;
+  sceneEpisodeNumbers: number[];
+  airDates: string[];
+  artist?: string;
+  albumTitle?: string;
+  trackTitle?: string;
+  trackNumber: number;
+  discNumber: number;
+  isMissing: boolean;
+  seriesType?: string;
   path?: string;
   relativePath?: string;
   localPath?: string;
@@ -64,4 +79,25 @@ export interface LocalCatalogFile {
   audioCodec?: string;
   dateAdded?: string;
   missingSince?: string;
+}
+
+export interface LocalCatalogSeason {
+  seasonNumber: number;
+  episodes: number;
+  missing: number;
+  size: number;
+  files: LocalCatalogFile[];
+}
+
+export interface LocalCatalogSeries {
+  applicationId: number;
+  applicationName?: string;
+  title?: string;
+  year: number;
+  seriesType?: string;
+  posterArrId: number;
+  episodes: number;
+  missing: number;
+  size: number;
+  seasons: LocalCatalogSeason[];
 }

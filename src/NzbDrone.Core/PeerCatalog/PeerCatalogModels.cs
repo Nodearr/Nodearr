@@ -49,6 +49,7 @@ namespace NzbDrone.Core.PeerCatalog
         public string EpisodeNumbers { get; set; }
         public string EpisodeTitles { get; set; }
         public string SeriesType { get; set; }
+        public string AbsoluteEpisodeNumbers { get; set; }
 
         // The day each episode aired, as yyyy-MM-dd, comma separated. Empty when the peer did not say.
         public string AirDates { get; set; }
@@ -112,6 +113,11 @@ namespace NzbDrone.Core.PeerCatalog
         public List<int> GetEpisodeNumbers()
         {
             return (EpisodeNumbers ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToList();
+        }
+
+        public List<int> GetAbsoluteEpisodeNumbers()
+        {
+            return (AbsoluteEpisodeNumbers ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries).Select(int.Parse).ToList();
         }
 
         public List<string> GetAirDates()
@@ -214,6 +220,12 @@ namespace NzbDrone.Core.PeerCatalog
                 EpisodeNumbers = string.Join(",", offer.EpisodeNumbers ?? new List<int>()),
                 EpisodeTitles = string.Join(" + ", offer.EpisodeTitles ?? new List<string>()),
                 SeriesType = offer.Kind == MediaKind.Tv && offer.SeriesType is "standard" or "anime" or "daily" ? offer.SeriesType : null,
+                AbsoluteEpisodeNumbers = offer.SeriesType == "anime" &&
+                                         offer.AbsoluteEpisodeNumbers is { Count: > 0 } absoluteNumbers &&
+                                         absoluteNumbers.Count == (offer.EpisodeNumbers?.Count ?? 0) &&
+                                         absoluteNumbers.All(n => n is > 0 and < 1000000)
+                    ? string.Join(",", absoluteNumbers)
+                    : null,
                 AirDates = string.Join(",", (offer.AirDates ?? new List<string>()).Where(IsAirDate)),
                 SceneSeasonNumber = AreSceneNumbers(offer) ? offer.SceneSeasonNumber : null,
                 SceneEpisodeNumbers = AreSceneNumbers(offer) ? string.Join(",", offer.SceneEpisodeNumbers) : null,

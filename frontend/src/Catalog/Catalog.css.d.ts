@@ -36,6 +36,10 @@ interface CssExports {
   'tiles': string;
   'title': string;
   'titles': string;
+  'treeSeasonRow': string;
+  'treeShowRow': string;
+  'treeTitle': string;
+  'treeToggle': string;
   'withPoster': string;
 }
 export const cssExports: CssExports;

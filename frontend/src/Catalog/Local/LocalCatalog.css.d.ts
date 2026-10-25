@@ -11,6 +11,10 @@ interface CssExports {
   'summary': string;
   'syncError': string;
   'title': string;
+  'treeSeasonRow': string;
+  'treeShowRow': string;
+  'treeTitle': string;
+  'treeToggle': string;
 }
 export const cssExports: CssExports;
 export default cssExports;

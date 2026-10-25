@@ -6,6 +6,7 @@ using Moq;
 using NUnit.Framework;
 using NzbDrone.Core.Applications;
 using NzbDrone.Core.Catalog;
+using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Test.Framework;
 using NzbDrone.Core.ThingiProvider.Events;
@@ -348,6 +349,49 @@ namespace NzbDrone.Core.Test.Catalog
                 ("The Wire", PosterSubject.Series, 10, 2));
 
             Subject.GetTitles(2).Select(t => t.Title).Should().Equal("Akira");
+        }
+
+        [Test]
+        public void titles_should_separate_scenes_and_include_music_albums()
+        {
+            _catalog.Movies.Add(new CatalogMovie { ArrId = 30, ItemType = "scene", Title = "Scene title", SortTitle = "scene title", Year = 2024 });
+            _catalog.Movies.Add(new CatalogMovie { ArrId = 31, ItemType = "movie", Title = "Adult film", SortTitle = "adult film", Year = 2023 });
+            _catalog.MovieFiles.Add(new CatalogMovieFile { ArrId = 300, ArrMovieId = 30, Path = "/adult/scene.mkv" });
+            _catalog.MovieFiles.Add(new CatalogMovieFile { ArrId = 310, ArrMovieId = 31, Path = "/adult/film.mkv" });
+            _catalog.Artists.Add(new CatalogArtist { ArrId = 7, Name = "Low", SortName = "low" });
+            _catalog.Albums.Add(new CatalogAlbum { ArrId = 70, ArrArtistId = 7, Title = "Things We Lost in the Fire", Year = 2001 });
+            _catalog.TrackFiles.Add(new CatalogTrackFile { ArrId = 701, ArrArtistId = 7, ArrAlbumId = 70, Path = "/music/Low/01.mp3" });
+
+            Subject.Refresh(null, false);
+
+            var titles = Subject.GetTitles(null);
+
+            titles.Single(t => t.ArrId == 30).Kind.Should().Be("scenes");
+            titles.Single(t => t.ArrId == 31).Kind.Should().Be("movies");
+            titles.Single(t => t.ArrId == 70).Should().Match<CatalogTitle>(t => t.Kind == "music" && t.Artist == "Low" && t.Files == 1);
+
+            var scenePaging = new PagingSpec<CatalogMovieFile>
+            {
+                Page = 1,
+                PageSize = 1,
+                SortKey = "path",
+                SortDirection = SortDirection.Ascending
+            };
+            var moviePaging = new PagingSpec<CatalogMovieFile>
+            {
+                Page = 1,
+                PageSize = 1,
+                SortKey = "path",
+                SortDirection = SortDirection.Ascending
+            };
+            var movieFilesRepository = Mocker.Resolve<ICatalogMovieFileRepository>();
+            var sceneFiles = movieFilesRepository.GetPagedByKind(scenePaging, "scenes");
+            var movieFiles = movieFilesRepository.GetPagedByKind(moviePaging, "movies");
+
+            sceneFiles.TotalRecords.Should().Be(1);
+            sceneFiles.Records.Should().ContainSingle(f => f.ArrMovieId == 30);
+            movieFiles.TotalRecords.Should().Be(1);
+            movieFiles.Records.Should().ContainSingle(f => f.ArrMovieId == 31);
         }
     }
 }

@@ -338,6 +338,11 @@ namespace NzbDrone.Core.Sharing
                     item.SeasonNumber = file.SeasonNumber;
                     item.EpisodeNumbers = contained.Select(e => e.EpisodeNumber).ToList();
                     item.EpisodeTitles = contained.Select(e => e.Title ?? string.Empty).ToList();
+                    if (parent.SeriesType == "anime" && contained.All(e => e.AbsoluteEpisodeNumber.HasValue))
+                    {
+                        item.AbsoluteEpisodeNumbers = contained.Select(e => e.AbsoluteEpisodeNumber.Value).ToList();
+                    }
+
                     item.AirDates = contained.Select(e => e.AirDate).Where(d => d.IsNotNullOrWhiteSpace()).ToList();
                     (item.SceneSeasonNumber, item.SceneEpisodeNumbers) = SceneNumbers(contained);
                     offered.Add(item);

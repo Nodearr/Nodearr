@@ -18,7 +18,15 @@ public class LocalCatalogController : Controller
         "size",
         "quality",
         "dateAdded",
-        "missingSince"
+        "missingSince",
+        "trackNumber"
+    };
+
+    private static readonly HashSet<string> SeriesSortKeys = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "title",
+        "sortTitle",
+        "year"
     };
 
     private readonly ICatalogService _catalogService;
@@ -44,11 +52,13 @@ public class LocalCatalogController : Controller
     // One entry for each series or movie with a file, by sort title, for the Posters view.
     [HttpGet("titles")]
     [Produces("application/json")]
-    public Ok<PagingResource<LocalCatalogTitleResource>> GetTitles([FromQuery] PagingRequestResource paging, [FromQuery] int? applicationId = null)
+    public Ok<PagingResource<LocalCatalogTitleResource>> GetTitles([FromQuery] PagingRequestResource paging, [FromQuery] int? applicationId = null, [FromQuery] string? kind = null)
     {
         var page = Math.Max(paging.Page ?? 1, 1);
         var pageSize = Math.Clamp(paging.PageSize ?? 50, 1, 250);
-        var titles = _catalogService.GetTitles(applicationId);
+        var titles = _catalogService.GetTitles(applicationId)
+            .Where(t => string.IsNullOrWhiteSpace(kind) || string.Equals(t.Kind, kind, StringComparison.OrdinalIgnoreCase))
+            .ToList();
         var applications = GetApplications();
 
         return TypedResults.Ok(new PagingResource<LocalCatalogTitleResource>
@@ -62,14 +72,90 @@ public class LocalCatalogController : Controller
             {
                 ApplicationId = t.ApplicationId,
                 ApplicationName = applications.TryGetValue(t.ApplicationId, out var application) ? application.Name : null,
-                MediaType = t.Subject == PosterSubject.Series ? "series" : "movie",
+                MediaType = t.Subject switch
+                {
+                    PosterSubject.Series => "series",
+                    PosterSubject.Album => "album",
+                    _ => "movie"
+                },
+                Kind = t.Kind,
+                IsAdult = t.IsAdult,
                 PosterSubject = t.Subject,
                 PosterArrId = t.ArrId,
                 Title = t.Title,
                 Year = t.Year,
-                Files = t.Files
+                Files = t.Files,
+                Artist = t.Artist
             }).ToList()
         });
+    }
+
+    [HttpGet("series")]
+    [Produces("application/json")]
+    public Ok<PagingResource<LocalCatalogSeriesResource>> GetSeries([FromQuery] PagingRequestResource paging, [FromQuery] int? applicationId = null)
+    {
+        var pagingSpec = new PagingResource<LocalCatalogSeriesResource>(paging)
+            .MapToPagingSpec<LocalCatalogSeriesResource, CatalogSeries>(SeriesSortKeys, "sortTitle", SortDirection.Ascending);
+
+        if (applicationId.HasValue)
+        {
+            pagingSpec.FilterExpressions.Add(s => s.ApplicationId == applicationId.Value);
+        }
+
+        var applications = GetApplications();
+        var episodes = new Dictionary<(int ApplicationId, int SeriesId), List<CatalogEpisode>>();
+        var files = new Dictionary<(int ApplicationId, int SeriesId), List<CatalogEpisodeFile>>();
+
+        return TypedResults.Ok(pagingSpec.ApplyToPage(
+            spec =>
+            {
+                var page = _catalogService.PagedSeries(spec);
+
+                foreach (var group in page.Records.GroupBy(s => s.ApplicationId))
+                {
+                    var seriesIds = group.Select(s => s.ArrId).ToList();
+                    foreach (var episodeGroup in _catalogService.GetEpisodesForSeries(group.Key, seriesIds).GroupBy(e => e.ArrSeriesId))
+                    {
+                        episodes[(group.Key, episodeGroup.Key)] = episodeGroup.ToList();
+                    }
+
+                    foreach (var fileGroup in _catalogService.GetEpisodeFilesForSeries(group.Key, seriesIds).GroupBy(f => f.ArrSeriesId))
+                    {
+                        files[(group.Key, fileGroup.Key)] = fileGroup.ToList();
+                    }
+                }
+
+                return page;
+            },
+            series =>
+            {
+                var key = (series.ApplicationId, series.ArrId);
+                var seriesEpisodes = episodes.GetValueOrDefault(key) ?? new List<CatalogEpisode>();
+                var seriesFiles = files.GetValueOrDefault(key) ?? new List<CatalogEpisodeFile>();
+                var seasons = CatalogEpisodeGrouping.Build(series.SeriesType, seriesEpisodes, seriesFiles)
+                    .Select(season => new LocalCatalogSeasonResource
+                    {
+                        SeasonNumber = season.SeasonNumber,
+                        Episodes = season.EpisodeCount,
+                        Missing = season.MissingCount,
+                        Size = season.Size,
+                        Files = season.Files.Select(row => BuildEpisodeFileResource(series, row, applications)).ToList()
+                    }).ToList();
+
+                return new LocalCatalogSeriesResource
+                {
+                    ApplicationId = series.ApplicationId,
+                    ApplicationName = applications.TryGetValue(series.ApplicationId, out var application) ? application.Name : null,
+                    Title = series.Title,
+                    Year = series.Year,
+                    SeriesType = series.SeriesType,
+                    PosterArrId = series.ArrId,
+                    Episodes = seasons.Sum(s => s.Episodes),
+                    Missing = seasons.Sum(s => s.Missing),
+                    Size = seasons.Sum(s => s.Size),
+                    Seasons = seasons
+                };
+            }));
     }
 
     [HttpGet("episodefile")]
@@ -137,7 +223,7 @@ public class LocalCatalogController : Controller
 
     [HttpGet("moviefile")]
     [Produces("application/json")]
-    public Ok<PagingResource<LocalCatalogFileResource>> GetMovieFiles([FromQuery] PagingRequestResource paging, [FromQuery] int? applicationId = null)
+    public Ok<PagingResource<LocalCatalogFileResource>> GetMovieFiles([FromQuery] PagingRequestResource paging, [FromQuery] int? applicationId = null, [FromQuery] string? kind = null)
     {
         var pagingSpec = new PagingResource<LocalCatalogFileResource>(paging)
             .MapToPagingSpec<LocalCatalogFileResource, CatalogMovieFile>(SortKeys, "path", SortDirection.Ascending);
@@ -153,7 +239,7 @@ public class LocalCatalogController : Controller
         return TypedResults.Ok(pagingSpec.ApplyToPage(
             spec =>
             {
-                var page = _catalogService.PagedMovieFiles(spec);
+                var page = _catalogService.PagedMovieFiles(spec, kind);
 
                 foreach (var group in page.Records.GroupBy(f => f.ApplicationId))
                 {
@@ -182,6 +268,107 @@ public class LocalCatalogController : Controller
 
                 return Locate(resource, applications);
             }));
+    }
+
+    [HttpGet("trackfile")]
+    [Produces("application/json")]
+    public Ok<PagingResource<LocalCatalogFileResource>> GetTrackFiles([FromQuery] PagingRequestResource paging, [FromQuery] int? applicationId = null)
+    {
+        var pagingSpec = new PagingResource<LocalCatalogFileResource>(paging)
+            .MapToPagingSpec<LocalCatalogFileResource, CatalogTrackFile>(SortKeys, "path", SortDirection.Ascending);
+
+        if (applicationId.HasValue)
+        {
+            pagingSpec.FilterExpressions.Add(f => f.ApplicationId == applicationId.Value);
+        }
+
+        var applications = GetApplications();
+        var albums = new Dictionary<(int, int), CatalogAlbum>();
+        var artists = new Dictionary<(int, int), CatalogArtist>();
+
+        return TypedResults.Ok(pagingSpec.ApplyToPage(
+            spec =>
+            {
+                var page = _catalogService.PagedTrackFiles(spec);
+
+                foreach (var group in page.Records.GroupBy(f => f.ApplicationId))
+                {
+                    foreach (var album in _catalogService.GetAlbums(group.Key, group.Select(f => f.ArrAlbumId)))
+                    {
+                        albums[(group.Key, album.ArrId)] = album;
+                    }
+
+                    foreach (var artist in _catalogService.GetArtists(group.Key, group.Select(f => f.ArrArtistId)))
+                    {
+                        artists[(group.Key, artist.ArrId)] = artist;
+                    }
+                }
+
+                return page;
+            },
+            file =>
+            {
+                var resource = LocalCatalogFileResource.FromFile(file, "track");
+                resource.PosterSubject = PosterSubject.Album;
+                resource.PosterArrId = file.ArrAlbumId;
+                resource.TrackTitle = file.TrackTitle;
+                resource.TrackNumber = file.TrackNumber;
+                resource.DiscNumber = file.DiscNumber;
+                resource.IsMissing = file.MissingSince.HasValue;
+
+                if (albums.TryGetValue((file.ApplicationId, file.ArrAlbumId), out var album))
+                {
+                    resource.Title = album.Title;
+                    resource.AlbumTitle = album.Title;
+                    resource.Year = album.Year;
+                }
+
+                if (artists.TryGetValue((file.ApplicationId, file.ArrArtistId), out var artist))
+                {
+                    resource.Artist = artist.Name;
+                }
+
+                return Locate(resource, applications);
+            }));
+    }
+
+    private LocalCatalogFileResource BuildEpisodeFileResource(CatalogSeries series, CatalogEpisodeFileGroup row, Dictionary<int, (string Name, string Host)> applications)
+    {
+        var episodes = row.Episodes;
+        var resource = row.File != null
+            ? LocalCatalogFileResource.FromFile(row.File, "episode")
+            : new LocalCatalogFileResource
+            {
+                Id = episodes.FirstOrDefault()?.Id * -1 ?? 0,
+                MediaType = "episode",
+                ApplicationId = series.ApplicationId,
+                MissingSince = episodes.Select(e => e.MissingSince).FirstOrDefault(d => d.HasValue)
+            };
+
+        resource.PosterSubject = PosterSubject.Series;
+        resource.PosterArrId = series.ArrId;
+        resource.Title = series.Title;
+        resource.Year = series.Year;
+        resource.TvdbId = series.TvdbId;
+        resource.TmdbId = series.TmdbId;
+        resource.ImdbId = series.ImdbId;
+        resource.SeasonNumber = row.SeasonNumber;
+        resource.SeriesType = series.SeriesType;
+        resource.EpisodeNumbers = episodes.Select(e => e.EpisodeNumber).ToList();
+        resource.EpisodeTitles = episodes.Select(e => e.Title ?? string.Empty).ToList();
+        resource.AbsoluteEpisodeNumbers = episodes.Where(e => e.AbsoluteEpisodeNumber.HasValue).Select(e => e.AbsoluteEpisodeNumber.GetValueOrDefault()).ToList();
+        resource.SceneSeasonNumber = episodes.Select(e => e.SceneSeasonNumber).Distinct().Count() == 1 ? episodes.FirstOrDefault()?.SceneSeasonNumber : null;
+        resource.SceneEpisodeNumbers = episodes.Select(e => e.SceneEpisodeNumber ?? e.EpisodeNumber).ToList();
+        resource.AirDates = episodes.Select(e => e.AirDate).Where(d => !string.IsNullOrWhiteSpace(d)).ToList();
+        resource.IsMissing = row.IsMissing;
+
+        if (row.File == null)
+        {
+            resource.Access = CatalogFileAccess.Missing;
+            resource.Readable = false;
+        }
+
+        return Locate(resource, applications);
     }
 
     private Dictionary<int, (string Name, string Host)> GetApplications()

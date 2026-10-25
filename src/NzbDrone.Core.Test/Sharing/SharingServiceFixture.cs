@@ -275,6 +275,25 @@ namespace NzbDrone.Core.Test.Sharing
         }
 
         [Test]
+        public void anime_absolute_episode_numbers_are_offered_and_kept_by_the_peer()
+        {
+            Subject.SetShareAll(_bob.Id, true);
+            var series = Mocker.Resolve<ICatalogSeriesRepository>().All().Single(s => s.ArrId == 10);
+            series.SeriesType = "anime";
+            Mocker.Resolve<ICatalogSeriesRepository>().Update(series);
+
+            var episodes = Mocker.Resolve<ICatalogEpisodeRepository>();
+            var episode = episodes.ForFiles(1, new[] { 501 }).Single();
+            episode.AbsoluteEpisodeNumber = 11;
+            episodes.Update(episode);
+
+            var item = Subject.BuildOffer(Mocker.Resolve<IPeerRepository>().Get(_bob.Id), true).Items.Single(i => i.Id == "e-1-501");
+
+            item.AbsoluteEpisodeNumbers.Should().Equal(11);
+            NzbDrone.Core.PeerCatalog.PeerCatalogItem.FromOffer(7, item).GetAbsoluteEpisodeNumbers().Should().Equal(11);
+        }
+
+        [Test]
         public void a_files_revision_should_be_offered_only_when_it_has_one_and_kept_by_the_friend()
         {
             // A first release keeps its previous fingerprint, so it is not sent again.

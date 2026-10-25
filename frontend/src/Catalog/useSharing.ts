@@ -77,6 +77,7 @@ export interface PeerCatalogTitle {
   key: string;
   mediaKind: MediaKind;
   isAdult: boolean;
+  isScene: boolean;
   title?: string;
   artist?: string;
   year: number;
@@ -98,8 +99,13 @@ export interface PeerCatalogItem {
   title?: string;
   year: number;
   seasonNumber: number;
+  seriesType?: string;
   episodeNumbers: number[];
+  absoluteEpisodeNumbers: number[];
   episodeTitles?: string;
+  airDates: string[];
+  sceneSeasonNumber?: number;
+  sceneEpisodeNumbers: number[];
   artist?: string;
   trackCount: number;
   releaseTitle?: string;
@@ -108,6 +114,30 @@ export interface PeerCatalogItem {
   resolution: number;
   size: number;
   dateAdded?: string;
+}
+
+export interface PeerCatalogSeason {
+  seasonNumber: number;
+  status: PeerItemStatus;
+  episodes: number;
+  missing: number;
+  upgrade: number;
+  size: number;
+  items: PeerCatalogItem[];
+}
+
+export interface PeerCatalogSeries {
+  key: string;
+  title?: string;
+  year: number;
+  seriesType?: string;
+  posterItemId: number;
+  status: PeerItemStatus;
+  episodes: number;
+  missing: number;
+  upgrade: number;
+  size: number;
+  seasons: PeerCatalogSeason[];
 }
 
 export interface HashingStatus {
