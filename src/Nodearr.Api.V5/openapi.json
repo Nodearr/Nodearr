@@ -1810,6 +1810,88 @@
         }
       }
     },
+    "/api/v5/catalog/peers/items/{id}/getit": {
+      "get": {
+        "tags": [
+          "PeerCatalogGetIt"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/CatalogGetItScope"
+            }
+          },
+          {
+            "name": "seasonNumber",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogGetItPlanResource"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "PeerCatalogGetIt"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatalogGetItResource"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommandResource"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/ping": {
       "get": {
         "tags": [
@@ -3220,6 +3302,84 @@
           "readable",
           "missing",
           "notAllowed"
+        ],
+        "type": "string"
+      },
+      "CatalogGetItFileResource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "seasonNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "episodeNumbers": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "quality": {
+            "type": "string",
+            "nullable": true
+          },
+          "localStatus": {
+            "$ref": "#/components/schemas/PeerItemStatus"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CatalogGetItPlanResource": {
+        "type": "object",
+        "properties": {
+          "plan": {
+            "$ref": "#/components/schemas/GetItPlanResource"
+          },
+          "seasons": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CatalogGetItFileResource"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CatalogGetItResource": {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "$ref": "#/components/schemas/CatalogGetItScope"
+          },
+          "seasonNumber": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "options": {
+            "$ref": "#/components/schemas/GetItOptionsResource"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CatalogGetItScope": {
+        "enum": [
+          "file",
+          "season",
+          "title"
         ],
         "type": "string"
       },
@@ -6022,6 +6182,9 @@
     },
     {
       "name": "PeerCatalog"
+    },
+    {
+      "name": "PeerCatalogGetIt"
     },
     {
       "name": "Ping"

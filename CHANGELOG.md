@@ -7,9 +7,11 @@ What changed in each release, newest first. Each item links to the decision reco
 ### Fixed
 
 - **Get it** on Home updates empty or removed root folders and profiles when the Arr app's choices change, while keeping choices that still work. Invalid choices are refused before adding is queued, and failures are logged. A successful card goes away once the local catalog shows you have what was sent, or 24 hours after success; failed cards stay until retried or put away ([#53](https://github.com/Nodearr/Nodearr/issues/53)).
+- Overlapping catalog syncs could store a friend's offers more than once. Syncs for one friend now run in order and use the latest local version; revoking or deleting that friend waits for its sync before clearing the catalog ([#54](https://github.com/Nodearr/Nodearr/issues/54)).
 
 ### Added
 
+- **Get it** in **Catalog > Peer Catalog**, beside files and under posters. Choose an episode file, a season, a whole series, a movie, a scene or an album, and use the same app choices and defaults as Home's send card. Nodearr adds, monitors and searches in the right Arr app, with progress in the dialog and downloads in **Activity > Transfers**. Held files have no action; offered upgrades reach the app's own search rules ([#54](https://github.com/Nodearr/Nodearr/issues/54)).
 - A friend's PROPER or REPACK is offered as one. Each file's revision is read from its Arr app and sent with it, the release title Nodearr gives the Arr apps says PROPER, REPACK or REAL the way they read it, and **Catalog > Local** and a friend's catalog show **Proper** or **Repack** beside the quality. A PROPER of the quality you have is an upgrade where your Arr app would take it, unless its Propers and Repacks setting says not to upgrade to them ([#51](https://github.com/Nodearr/Nodearr/issues/51)).
 
 ## 0.3.0 (pre-release)

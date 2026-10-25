@@ -1,0 +1,44 @@
+# The catalog Get it test adds music to the same disposable nodearr-s7 project.
+services:
+  lidarr:
+    image: lscr.io/linuxserver/lidarr@sha256:d8549ff9ea29b4015c32257360652c1000c31ea471a2b3f0835ae77292faf35b
+    restart: "no"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: Etc/UTC
+      LIDARR__AUTH__APIKEY: ${LIDARR_API_KEY}
+      LIDARR__AUTH__METHOD: External
+      LIDARR__LOG__ANALYTICSENABLED: "false"
+    ports:
+      - "127.0.0.1:18686:8686"
+    volumes:
+      - lidarr-config:/config
+      - ${LIBRARY_DIR}/music:/music
+      - ${DOWNLOADS_DIR}:/downloads
+
+  lidarr-b:
+    image: lscr.io/linuxserver/lidarr@sha256:d8549ff9ea29b4015c32257360652c1000c31ea471a2b3f0835ae77292faf35b
+    restart: "no"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: Etc/UTC
+      LIDARR__AUTH__APIKEY: ${LIDARR_B_API_KEY}
+      LIDARR__AUTH__METHOD: External
+      LIDARR__LOG__ANALYTICSENABLED: "false"
+    ports:
+      - "127.0.0.1:28686:8686"
+    volumes:
+      - lidarr-b-config:/config
+      - music-b:/music
+      - ${DOWNLOADS_B_DIR}:/downloads
+
+volumes:
+  lidarr-config:
+  lidarr-b-config:
+  music-b:

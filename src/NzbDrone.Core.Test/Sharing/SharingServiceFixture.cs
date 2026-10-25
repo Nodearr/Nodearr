@@ -243,11 +243,41 @@ namespace NzbDrone.Core.Test.Sharing
             offer.Items.Single(i => i.Id == "e-1-502").SceneName.Should().Be("Pingu.S01E04E05.720p.WEB-DL-GROUP");
         }
 
-        // A first release's description is as it was before revisions were sent, so its
-        // fingerprint is too, and a friend holding it is sent nothing new.
+        [TestCase("standard")]
+        [TestCase(null)]
+        public void a_standard_series_should_keep_its_existing_offer_fingerprint(string seriesType)
+        {
+            Subject.SetShareAll(_bob.Id, true);
+            var before = Subject.BuildOffer(Mocker.Resolve<IPeerRepository>().Get(_bob.Id), true).Items.Single(i => i.Id == "e-1-501");
+            var series = Mocker.Resolve<ICatalogSeriesRepository>().All().Single(s => s.ArrId == 10);
+
+            series.SeriesType = seriesType;
+            Mocker.Resolve<ICatalogSeriesRepository>().Update(series);
+
+            var after = Subject.BuildOffer(Mocker.Resolve<IPeerRepository>().Get(_bob.Id), true).Items.Single(i => i.Id == "e-1-501");
+
+            JsonSerializer.Serialize(after).Should().NotContain("SeriesType");
+            after.Fingerprint.Should().Be(before.Fingerprint);
+        }
+
+        [TestCase("anime")]
+        [TestCase("daily")]
+        public void a_friends_series_type_should_be_offered_when_it_differs_from_standard(string seriesType)
+        {
+            Subject.SetShareAll(_bob.Id, true);
+            var series = Mocker.Resolve<ICatalogSeriesRepository>().All().Single(s => s.ArrId == 10);
+
+            series.SeriesType = seriesType;
+            Mocker.Resolve<ICatalogSeriesRepository>().Update(series);
+
+            Subject.BuildOffer(Mocker.Resolve<IPeerRepository>().Get(_bob.Id), true).Items
+                   .Where(i => i.TvdbId == series.TvdbId).Should().OnlyContain(i => i.SeriesType == seriesType);
+        }
+
         [Test]
         public void a_files_revision_should_be_offered_only_when_it_has_one_and_kept_by_the_friend()
         {
+            // A first release keeps its previous fingerprint, so it is not sent again.
             var files = Mocker.Resolve<ICatalogEpisodeFileRepository>();
             var repack = files.All().Single(f => f.ArrId == 502);
 

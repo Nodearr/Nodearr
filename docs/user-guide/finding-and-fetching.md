@@ -11,7 +11,7 @@
 | **Missing** | The series, movie, scene or album is in one of your Arr apps, and you have no file for it. |
 | **Upgrade** | You have a file, and your friend's is one your Arr app's quality profile would take in its place: better, with your copy still below the profile's cutoff and upgrades allowed. A PROPER or REPACK of the quality you have counts too, unless your Arr app's **Propers and Repacks** setting says not to upgrade to them. The quality then has a **Proper** or **Repack** label beside it. |
 | **Have** | You have a file, and this offer is not an upgrade under your local quality profile. This also applies when upgrades are off or the cutoff is met. |
-| **Not in library** | None of your Arr apps has it. Add it there first if you want it. |
+| **Not in library** | None of your Arr apps has it. **Get it** can add it for you. |
 
 Select **Posters** to switch from the file list to a grid. The grid groups files into one tile per series, movie, scene or album, including copies shared by different friends. Each tile shows how many files you have or are missing. Select **Table** to return to the file list.
 
@@ -23,13 +23,27 @@ Filter by friend or select a status to show only matching files. To refresh all 
 
 **Home** shows how many files your friends have that you are missing or could upgrade.
 
+## Get it from the catalog
+
+Select **Get it** beside a file or under a poster. For TV, choose **Episode file**, **Season** or **Whole series** in the dialog. An episode file can contain several episodes; all of them are selected together. Whole series follows Sonarr's All Episodes choice and leaves specials out; choose season 0 or an episode file for those. For music, the selection is one complete album.
+
+![Get it from a friend's catalog, with the episode file and Sonarr's choices](images/peer-catalog-get-it.png)
+
+Nodearr fills in the root folder and quality profile most of your library uses. A new series starts with your friend's series type; you can change it. Lidarr also needs a metadata profile. If you have several apps of the right kind, choose which app to use. A title already in that app keeps its settings.
+
+Select **Get it** in the dialog to add the title, monitor what you chose and search. Progress appears there; after the app grabs a result, follow it on **Activity > Transfers**. You can close the dialog and reopen it while the app is being asked. No send card is added to Home.
+
+TV goes to Sonarr, movies to Radarr, music to Lidarr, and adult films and scenes to Whisparr v3. A scene known only by Whisparr v2's own ID cannot be added this way; the dialog explains how to add it in Whisparr instead. If an app does not answer or has no root folder, fix that in the app and return to the dialog. Valid choices stay selected when the plan refreshes.
+
+Only trusted friends' current offers can be requested. **Have** has no action. **Upgrade** can be requested, and your Arr app decides whether to replace your file using its own profiles and rules. Searching uses all the app's enabled indexers, so it may choose another acceptable release.
+
 ## Try your first transfer
 
 Both nodes must be running, and your friend must share at least one file you want.
 
 1. In Nodearr, go to **Nodes > Trusted Nodes** and select **Check connection** for your friend. **Direct** means files can move. **Relay only** allows messages but no media transfers; if it stays that way, see [Relay only](troubleshooting.md#relay-only).
 2. Open **Catalog > Peer Catalog** and select **Sync Peer Catalogs**. Find a file your friend shares. If their catalog is empty, ask them to check their app choices and **Hidden** on **Catalog > Sharing**.
-3. In your Arr app, add the series, movie, scene or album if it is not already in your library. Run an interactive search for it. Choose an acceptable result from the **Nodearr** indexer. If the app rejects a result, read its reason; your quality profile or other rules may exclude it.
+3. Select **Get it** beside the file or under its poster, check the choices, then select **Get it** in the dialog. You can also add it in your Arr app and run an interactive search there. If the app rejects a result, read its reason; your quality profile or other rules may exclude it.
 4. In Nodearr, open **Activity > Transfers** and wait for **Completed**. The file has then passed verification. Your Arr app imports it at its next download-client check, usually within a minute, then removes the completed download from Nodearr.
 5. Check the title in your Arr app to confirm that the file was imported. If the transfer completed but import failed, check the app's queue and Nodearr's **System > Status** for a folder-access warning.
 

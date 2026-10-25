@@ -136,6 +136,16 @@ Add `-UploadLimitKbps 300` to make transfers slow enough to watch. To stop every
 pwsh acceptance/Run-S7Transfers.ps1 -Down
 ```
 
+## Get it from the peer catalog
+
+```sh
+pwsh acceptance/Run-CatalogGetIt.ps1
+```
+
+Reuses S7's two nodes, Sonarr and Radarr, and adds two pinned Lidarr 3.1 containers on ports 18686 and 28686. It requests a movie, one episode, a season and an album through the catalog Get it API, starting with no titles in the receiving apps. Each ends imported, with SHA-256 matching the source bytes. It also checks a PROPER upgrade, monitoring only the requested parts, and no received-send cards on Home. The album is six silent FLAC files tagged as the six-track CD release of Slint's *Spiderland*.
+
+The test resets only `acceptance/.run/s7` and volumes belonging to `nodearr-s7`. Ask before deleting existing test data. `-KeepRunning` leaves it up; `-SkipSetup` reuses `Run-S7Transfers.ps1 -SetupOnly` for debugging and still removes B's test series and movie. Pass `-TransportBin` when the sidecar is elsewhere. Results are in `.run/s7/getit-results.json`. Like S7, this checks only a direct route on one machine.
+
 ## Identical copies
 
 ```sh
@@ -217,6 +227,5 @@ These were checked by hand against real apps, each recorded where it was decided
 
 - [Prowlarr](https://prowlarr.com/): adding Nodearr to Prowlarr and switching its copies off ([ADR 0007](../docs/adr/0007-prowlarr-as-downstream-indexer-consumer.md#amendments)).
 - [Whisparr v3 and v2](https://whisparr.com/): films and scenes read, shared, found by text and imported, including a v2 and a v3 finding each other's scenes ([ADR 0015](../docs/adr/0015-the-indexer-id-matching-release-titles-and-candidate-ids.md#amendments)).
-- [Lidarr](https://lidarr.audio/): albums read, shared, found, moved as folders of tracks and imported, between two Lidarr 3.1 instances ([ADR 0020](../docs/adr/0020-lidarr-albums-shared-and-moved-as-folders-of-tracks.md)).
 - **The Windows installer, tray app and service** ([release guide](../docs/guides/releases.md#on-windows-the-installer)).
 - **The pairing limit**: covered by the unit tests only ([ADR 0013](../docs/adr/0013-node-identity-pairing-and-trust.md#amendments)).

@@ -42,6 +42,12 @@ export interface SeasonCommandBody extends BaseCommandBody {
   seasonNumber: number;
 }
 
+export interface CatalogGetItCommandBody extends BaseCommandBody {
+  itemId: number;
+  scope: 'file' | 'season' | 'title';
+  seasonNumber?: number;
+}
+
 export interface EpisodeCommandBody extends BaseCommandBody {
   episodeIds: number[];
 }
@@ -73,6 +79,7 @@ export interface ManualImportCommandBody extends BaseCommandBody {
 }
 
 export type CommandBody =
+  | CatalogGetItCommandBody
   | SeriesCommandBody
   | MultipleSeriesCommandBody
   | SeasonCommandBody
@@ -97,6 +104,7 @@ export interface NewCommandBody {
 }
 
 export interface CommandBodyMap {
+  CatalogGetIt: CatalogGetItCommandBody;
   ApplicationIndexerSync: BaseCommandBody;
   RefreshSeries: SeriesCommandBody | MultipleSeriesCommandBody;
   SeriesSearch: SeriesCommandBody;
