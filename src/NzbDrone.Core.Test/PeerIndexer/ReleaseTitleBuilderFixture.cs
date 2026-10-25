@@ -243,5 +243,99 @@ namespace NzbDrone.Core.Test.PeerIndexer
 
             ReleaseTitleBuilder.For(item, "2024-05-17").Should().StartWith("Pingu.2024.05.17.");
         }
+
+        // As Sonarr reads them back: PROPER is version 2, REPACK a version 2 repack, REPACK2 a
+        // version 3 one, and each REAL counts.
+        [TestCase(2, 0, false, "PROPER")]
+        [TestCase(2, 0, true, "REPACK")]
+        [TestCase(3, 0, true, "REPACK2")]
+        [TestCase(1, 1, false, "REAL")]
+        [TestCase(2, 1, false, "REAL.PROPER")]
+        public void a_built_title_should_say_its_revision_so_that_sonarr_reads_it_back(int version, int real, bool repack, string words)
+        {
+            var item = Episode();
+
+            item.RevisionVersion = version;
+            item.RevisionReal = real;
+            item.RevisionIsRepack = repack;
+
+            var title = ReleaseTitleBuilder.Build(item);
+            var parsed = QualityParser.ParseQuality(title);
+
+            title.Should().Contain($".{words}.");
+            parsed.Quality.Should().Be(Quality.WEBDL720p, title);
+            parsed.Revision.Version.Should().Be(version, title);
+            parsed.Revision.Real.Should().Be(real, title);
+            parsed.Revision.IsRepack.Should().Be(repack, title);
+            Parser.Parser.ParseTitle(title).EpisodeNumbers.Should().Equal(1);
+        }
+
+        [Test]
+        public void a_first_release_should_say_nothing_of_its_revision()
+        {
+            var title = ReleaseTitleBuilder.Build(Episode());
+
+            title.Should().NotContainAny("PROPER", "REPACK", "REAL");
+            QualityParser.ParseQuality(title).Revision.Version.Should().Be(1);
+        }
+
+        // Only PROPER says a later version that is not a repack: REPACK2 would make it a repack,
+        // which an Arr app turns down from another release group. It is read as version 2.
+        [Test]
+        public void a_later_proper_should_still_be_written_proper()
+        {
+            var item = Episode();
+
+            item.RevisionVersion = 3;
+
+            ReleaseTitleBuilder.RevisionTokens(3, 0, false).Should().Equal("PROPER");
+            QualityParser.ParseQuality(ReleaseTitleBuilder.Build(item)).Revision.Version.Should().Be(2);
+        }
+
+        [Test]
+        public void a_built_movie_title_should_say_its_revision_after_the_year()
+        {
+            var item = Movie();
+
+            item.RevisionVersion = 2;
+            item.RevisionIsRepack = true;
+
+            var title = ReleaseTitleBuilder.Build(item);
+
+            title.Should().StartWith("Night.of.the.Living.Dead.1968.REPACK.1080p");
+            QualityParser.ParseQuality(title).Revision.IsRepack.Should().BeTrue();
+        }
+
+        [Test]
+        public void a_release_name_that_says_the_recorded_revision_should_be_used()
+        {
+            var item = Episode();
+
+            item.SceneName = "Pingu.S01E01.PROPER.720p.WEB-DL.AAC2.0.H.264-GROUP";
+            item.RevisionVersion = 2;
+
+            ReleaseTitleBuilder.For(item).Should().Be(item.SceneName);
+        }
+
+        // The Arr app's record wins: a name that says otherwise would have the file taken for
+        // something it is not.
+        [TestCase("Pingu.S01E01.PROPER.720p.WEB-DL.AAC2.0.H.264-GROUP", 1, false)]
+        [TestCase("Pingu.S01E01.720p.WEB-DL.AAC2.0.H.264-GROUP", 2, true)]
+        [TestCase("Pingu.S01E01.PROPER.720p.WEB-DL.AAC2.0.H.264-GROUP", 2, true)]
+        public void a_release_name_that_says_another_revision_should_give_way_to_a_built_title(string sceneName, int version, bool repack)
+        {
+            var item = Episode();
+
+            item.SceneName = sceneName;
+            item.RevisionVersion = version;
+            item.RevisionIsRepack = repack;
+
+            var title = ReleaseTitleBuilder.For(item);
+            var parsed = QualityParser.ParseQuality(title);
+
+            title.Should().NotBe(sceneName);
+            parsed.Revision.Version.Should().Be(version);
+            parsed.Revision.IsRepack.Should().Be(repack);
+        }
     }
 }

@@ -110,6 +110,7 @@ Requires PowerShell 7, a built Nodearr, Docker, ffmpeg and a built transport sid
 - Nothing appears under `complete` while a file is still arriving.
 - The same ticket twice gives one transfer. Deleting it from the queue leaves nothing behind.
 - A download limit on node B, a quarter of A's upload limit, holds a transfer to it.
+- A's Sonarr takes a PROPER of an episode B holds. B is offered it as a PROPER, shown it as an upgrade, and its Sonarr grabs it from A and imports it in place of its copy.
 - Node B is killed in the middle and started again. The transfer carries on from what had arrived.
 - Node A revokes trust in the middle. The transfer stops, and Sonarr records why and blocklists the release.
 - B's Sonarr is switched to call the series daily, while A's still calls it standard. It then asks by the day the episode aired, is answered with a title written by day, and imports the file.

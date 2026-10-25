@@ -54,6 +54,7 @@ export interface LocalCatalogFile {
   readable: boolean;
   size: number;
   quality?: string;
+  revision?: string;
   resolution: number;
   languages?: string;
   customFormats?: string;

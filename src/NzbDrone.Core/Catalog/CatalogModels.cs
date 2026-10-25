@@ -102,6 +102,12 @@ namespace NzbDrone.Core.Catalog
         public string Quality { get; set; }
         public string QualitySource { get; set; }
         public int Resolution { get; set; }
+
+        // The quality's revision, as the Arr app recorded it: 1 for a first release, 2 for a PROPER
+        // or a REPACK, and up.
+        public int RevisionVersion { get; set; } = 1;
+        public int RevisionReal { get; set; }
+        public bool RevisionIsRepack { get; set; }
         public string Languages { get; set; }
         public string CustomFormats { get; set; }
         public int CustomFormatScore { get; set; }

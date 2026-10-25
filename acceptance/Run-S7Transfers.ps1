@@ -544,6 +544,36 @@ try {
     $settingsB.downloadLimitKbps = 0
     Invoke-Node B PUT "/settings/node/$($settingsB.id)" $settingsB | Out-Null
 
+    # --- 3c. A friend's PROPER replaces a copy that is not one -------------------------------------
+
+    # A's Sonarr takes a PROPER of the first episode in place of its copy, as it would from any
+    # indexer, and records its revision. B holds the first copy. It is shown A's PROPER as an
+    # upgrade, and its Sonarr takes it from A as it takes any proper.
+    $properName = 'Pingu.S01E01.PROPER.720p.WEB-DL.AAC2.0.H.264-NODEARR'
+    Import-ArrDownload -ApiUrl "$($arr.sonarr.Url)/api/v3" -ApiKey $arr.sonarr.Key -App Sonarr -SourceFile $tvMedia -Name $properName -DownloadsDir $downloads
+    Wait-Until -What "A's Sonarr to hold the PROPER" -TimeoutSec 60 -Condition {
+        @(Invoke-Arr sonarr GET "/episodefile?seriesId=$($series.sonarr.id)") | Where-Object { $_.quality.revision.version -eq 2 } | Select-Object -First 1
+    } | Out-Null
+    Invoke-NodeCommand A @{ name = 'CatalogRefresh' }
+    Invoke-NodeCommand B @{ name = 'PeerCatalogSync' }
+    $offeredProper = Wait-Until -What "B to be offered A's PROPER" -TimeoutSec 60 -EverySec 2 -Condition {
+        @((Invoke-Node B GET '/catalog/peers/items?pageSize=50').records) | Where-Object { $_.revision -eq 'Proper' } | Select-Object -First 1
+    }
+
+    $heldBefore = (Invoke-Arr sonarrB GET "/episode/$($episodesB[0].id)").episodeFileId
+    Invoke-Arr sonarrB POST '/command' @{ name = 'EpisodeSearch'; episodeIds = @($episodesB[0].id) } | Out-Null
+    $importedProper = Wait-Until -What "B's Sonarr to import the PROPER" -TimeoutSec 240 -EverySec 2 -Condition {
+        Invoke-Arr sonarrB POST '/command' @{ name = 'RefreshMonitoredDownloads' } | Out-Null
+        $episode = Invoke-Arr sonarrB GET "/episode/$($episodesB[0].id)"
+        if ($episode.hasFile -and $episode.episodeFileId -ne $heldBefore) { Invoke-Arr sonarrB GET "/episodefile/$($episode.episodeFileId)" }
+    }
+    $grabbedProper = Get-History sonarrB "/history/series?seriesId=$($series.sonarrB.id)" | Where-Object { $_.eventType -eq 'grabbed' -and $_.sourceTitle -match 'PROPER' } | Select-Object -First 1
+    Assert-That "A friend's PROPER is offered as one and shown as an upgrade, and Sonarr takes it in place of its copy as it takes any proper" (
+        $offeredProper.localStatus -eq 'upgrade' -and $offeredProper.releaseTitle -match 'PROPER' -and $grabbedProper -and
+        $importedProper.quality.revision.version -eq 2 -and $importedProper.quality.quality.name -eq 'WEBDL-720p'
+    ) @{ offered = "$($offeredProper.releaseTitle) $($offeredProper.revision) $($offeredProper.localStatus)"; grabbed = $grabbedProper.sourceTitle; imported = "$($importedProper.quality.quality.name) v$($importedProper.quality.revision.version)" }
+    Wait-Until -What 'the finished download to be cleared' -TimeoutSec 60 -Condition { (Get-Transfers).Count -eq 0 } | Out-Null
+
     # --- 4. Node B restarts in the middle ----------------------------------------------------------
 
     Invoke-Arr sonarrB POST '/command' @{ name = 'EpisodeSearch'; episodeIds = @($episodesB[1].id) } | Out-Null

@@ -91,7 +91,7 @@ Nodearr registers its Sonarr indexer with an anime category and with "anime stan
 
 - ~~**Daily shows are not found.** Sonarr asks for them by air date, and peers are not told air dates.~~ They are now, see the amendments.
 - ~~**Series with scene numbering can be misnumbered** when the file has no release name, because the built title uses TVDB numbering and Sonarr reads indexer titles as scene numbering for such series.~~ Fixed, see the amendments.
-- **A built title cannot say PROPER or REPACK**, and says only what the peer's Arr app recorded. Custom formats that look for other words in a release name will not match it.
+- ~~**A built title cannot say PROPER or REPACK.**~~ It can now, see the amendments. A built title says only what the peer's Arr app recorded. Custom formats that look for other words in a release name will not match it.
 - **Radarr's quality names are not unit tested.** Radarr's parser is not in this code base. The common ones are covered by the acceptance run.
 - **Regenerating the secret changes every GUID.** It lives in the database, so a restored backup keeps them.
 - **The API key is in the `t=get` link**, as for every Newznab indexer.
@@ -114,7 +114,7 @@ Amendment, 2026-10-15: adding Prowlarr to Nodearr in **Settings > Apps** does th
 
 - ~~S7: the download client reads the candidate ID from the ticket and starts a transfer. Until then a grab is refused with a plain reason.~~ Done: ADR 0016.
 - ~~S7: the sending node checks every transfer request against its sharing rule (ADR 0014).~~ Done: ADR 0016.
-- Later: ~~air dates in the offer for daily shows,~~ ~~scene numbers for series that use them,~~ and revision (PROPER, REPACK).
+- Later: ~~air dates in the offer for daily shows,~~ ~~scene numbers for series that use them,~~ ~~and revision (PROPER, REPACK).~~ All done, see the amendments.
 
 ## Amendments
 
@@ -166,3 +166,7 @@ Amendment, 2026-10-15: adding Prowlarr to Nodearr in **Settings > Apps** does th
   - Run against Whisparr 2.2.0.404, two of them: Nodearr read a site's 6,833 scenes on each, and a scene grabbed through it was imported with the same bytes. Then a v2 searched a v3's node: it found the v3's scene with its own text search, approved it, grabbed and imported it, and its comparison marked the scene as had, by studio and date.
 
 - 2026-10-19: **categories select the content family.** The earlier wording that only Whisparr or [Lidarr](https://lidarr.audio/) can find their content describes their normal registration. The Newznab endpoint uses the categories in a request, not the caller's application identity. An API-key holder, including a manual Prowlarr search, can request XXX or Audio categories. A request without them does not find adult content or albums.
+- 2026-10-24: **PROPER and REPACK** ([#51](https://github.com/Nodearr/Nodearr/issues/51)). Each file's revision is read from its Arr app (`quality.revision`: its version, whether it is a repack, and how many times it is REAL), kept in the catalog and sent in the offer. It is sent only for a file that is not a first release, so every other file's description, and its fingerprint, is as it was, and a node that does not send it is taken to mean version 1.
+  - **A built title says it as the Arr apps read it**, after the episode, day or year: version 2 is `PROPER`, a version 2 repack `REPACK`, a later repack `REPACK2` and up, and each REAL `REAL`. A later version that is not a repack is written `PROPER`, and so read as version 2: written `REPACK2`, it would be taken for a repack, which an Arr app turns down from another release group. Sonarr's parser, which this code base carries, reads every one back as the revision it was built from.
+  - **A release name is still used as the title**, unless it says a different revision from the one the Arr app recorded. Then the title is built, so the file is not taken for something it is not.
+  - Run against two real Sonarrs (`acceptance/Run-S7Transfers.ps1`): node A's Sonarr took a PROPER of an episode node B held, B was offered it as a PROPER and shown it as an upgrade, and B's Sonarr grabbed it from A and imported it in place of its copy, as revision 2.

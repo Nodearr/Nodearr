@@ -243,6 +243,38 @@ namespace NzbDrone.Core.Test.Sharing
             offer.Items.Single(i => i.Id == "e-1-502").SceneName.Should().Be("Pingu.S01E04E05.720p.WEB-DL-GROUP");
         }
 
+        // A first release's description is as it was before revisions were sent, so its
+        // fingerprint is too, and a friend holding it is sent nothing new.
+        [Test]
+        public void a_files_revision_should_be_offered_only_when_it_has_one_and_kept_by_the_friend()
+        {
+            var files = Mocker.Resolve<ICatalogEpisodeFileRepository>();
+            var repack = files.All().Single(f => f.ArrId == 502);
+
+            repack.RevisionVersion = 2;
+            repack.RevisionIsRepack = true;
+            files.Update(repack);
+            Subject.SetShareAll(_bob.Id, true);
+
+            var offer = Subject.BuildOffer(Mocker.Resolve<IPeerRepository>().Get(_bob.Id), true);
+            var first = offer.Items.Single(i => i.Id == "e-1-501");
+            var offered = offer.Items.Single(i => i.Id == "e-1-502");
+
+            JsonSerializer.Serialize(first).Should().NotContain("revision", "a first release says nothing of its revision");
+            offered.Should().Match<OfferItem>(i => i.RevisionVersion == 2 && i.RevisionIsRepack == true && i.RevisionReal == null);
+
+            var kept = NzbDrone.Core.PeerCatalog.PeerCatalogItem.FromOffer(7, offered);
+            var keptFirst = NzbDrone.Core.PeerCatalog.PeerCatalogItem.FromOffer(7, first);
+
+            kept.Should().Match<NzbDrone.Core.PeerCatalog.PeerCatalogItem>(i => i.RevisionVersion == 2 && i.RevisionIsRepack && i.RevisionReal == 0);
+            keptFirst.Should().Match<NzbDrone.Core.PeerCatalog.PeerCatalogItem>(i => i.RevisionVersion == 1 && !i.RevisionIsRepack && i.RevisionReal == 0);
+
+            // Kept to what a release name can say, whatever a peer sends.
+            offered.RevisionVersion = 50;
+            offered.RevisionReal = -2;
+            NzbDrone.Core.PeerCatalog.PeerCatalogItem.FromOffer(7, offered).Should().Match<NzbDrone.Core.PeerCatalog.PeerCatalogItem>(i => i.RevisionVersion == 9 && i.RevisionReal == 0);
+        }
+
         [Test]
         public void an_offer_should_say_what_kind_of_file_it_is_and_nothing_else_of_its_name()
         {

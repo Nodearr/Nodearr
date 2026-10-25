@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Catalog;
+using NzbDrone.Core.Qualities;
 using NzbDrone.Core.Sharing;
 
 namespace NzbDrone.Core.PeerCatalog
@@ -247,17 +248,21 @@ namespace NzbDrone.Core.PeerCatalog
         }
 
         // As the Arr app's quality profile judges it, where the profile's ranking is known. Before
-        // the profiles are next read it is not, and a simple rule stands in: a higher resolution, or
-        // the same resolution from a better source.
+        // the profiles are next read it is not, and a simple rule stands in: a higher resolution,
+        // the same resolution from a better source, or the same quality at a later revision.
         private static bool IsBetter(PeerCatalogItem item, CatalogFile local, QualityRanking ranking)
         {
+            var offered = new Revision(item.RevisionVersion, item.RevisionReal, item.RevisionIsRepack);
+            var held = new Revision(local.RevisionVersion, local.RevisionReal, local.RevisionIsRepack);
+
             if (ranking != null && item.Quality.IsNotNullOrWhiteSpace())
             {
-                return ranking.IsUpgrade(local.Quality, item.Quality);
+                return ranking.IsUpgrade(local.Quality, held, item.Quality, offered);
             }
 
             return item.Resolution > local.Resolution ||
-                   (item.Resolution == local.Resolution && Rank(item.QualitySource) > Rank(local.QualitySource));
+                   (item.Resolution == local.Resolution && Rank(item.QualitySource) > Rank(local.QualitySource)) ||
+                   (item.Quality.IsNotNullOrWhiteSpace() && string.Equals(item.Quality, local.Quality, StringComparison.OrdinalIgnoreCase) && offered.CompareTo(held) > 0);
         }
 
         private static int Rank(string source)

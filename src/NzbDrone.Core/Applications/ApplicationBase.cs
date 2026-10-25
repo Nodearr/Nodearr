@@ -53,6 +53,36 @@ namespace NzbDrone.Core.Applications
         public abstract ApplicationCatalog FetchCatalog();
         public abstract ApplicationCatalog FetchTitle(int arrId);
 
+        // The Arr app's quality profiles, each knowing what the app does with a PROPER or a REPACK
+        // of a quality a file already has.
+        protected void AddQualityProfiles(ApplicationCatalog catalog)
+        {
+            var upgradeToPropers = UpgradesToPropers();
+
+            foreach (var profile in _proxy.Get<List<ArrQualityProfileResource>>(Settings, "/qualityprofile"))
+            {
+                catalog.QualityProfiles.Add(profile.ToCatalog(upgradeToPropers));
+            }
+        }
+
+        // Media Management's Propers and Repacks: "Prefer and upgrade", the default, replaces a file
+        // with a later revision of its quality. "Do not upgrade" and "Do not prefer" do not.
+        private bool UpgradesToPropers()
+        {
+            try
+            {
+                var setting = _proxy.Get<JObject>(Settings, "/config/mediamanagement")?.Value<string>("downloadPropersAndRepacks");
+
+                return setting.IsNullOrWhiteSpace() || setting.Equals("preferAndUpgrade", StringComparison.OrdinalIgnoreCase);
+            }
+            catch (Exception ex)
+            {
+                _logger.Debug(ex, "Unable to read the Propers and Repacks setting of {0}, taking its default", Definition.Name);
+
+                return true;
+            }
+        }
+
         // The resource, or null when the Arr app answers that it has no such thing.
         protected T GetOrNull<T>(string resource)
             where T : class, new()

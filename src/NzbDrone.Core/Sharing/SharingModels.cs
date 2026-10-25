@@ -199,6 +199,18 @@ namespace NzbDrone.Core.Sharing
         public string Quality { get; set; }
         public string QualitySource { get; set; }
         public int Resolution { get; set; }
+
+        // The quality's revision, left out for a first release so that what is sent for such a
+        // file, and its fingerprint, are as they were before revisions were sent.
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? RevisionVersion { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? RevisionReal { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public bool? RevisionIsRepack { get; set; }
+
         public long Size { get; set; }
         public string Languages { get; set; }
         public string CustomFormats { get; set; }

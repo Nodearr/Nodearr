@@ -14,8 +14,12 @@ namespace NzbDrone.Core.Applications
         public int Cutoff { get; set; }
         public List<ArrQualityProfileItemResource> Items { get; set; } = new();
 
-        public CatalogQualityProfile ToCatalog()
+        public CatalogQualityProfile ToCatalog(bool upgradeToPropers = true)
         {
+            var ranking = ToRanking();
+
+            ranking.UpgradeToPropers = upgradeToPropers;
+
             return new CatalogQualityProfile
             {
                 ArrId = Id,
@@ -23,7 +27,7 @@ namespace NzbDrone.Core.Applications
                 UpgradeAllowed = UpgradeAllowed,
                 CutoffQualityId = Cutoff,
                 AllowedQualities = string.Join(", ", Items.SelectMany(i => i.AllowedNames())),
-                QualityRanking = ToRanking().ToStored()
+                QualityRanking = ranking.ToStored()
             };
         }
 
@@ -90,6 +94,15 @@ namespace NzbDrone.Core.Applications
     public class ArrQualityModelResource
     {
         public ArrQualityResource Quality { get; set; }
+        public ArrRevisionResource Revision { get; set; }
+    }
+
+    // Version 2 is a PROPER or a REPACK, and so on up. Real counts the REALs in the release's name.
+    public class ArrRevisionResource
+    {
+        public int Version { get; set; } = 1;
+        public int Real { get; set; }
+        public bool IsRepack { get; set; }
     }
 
     public class ArrNamedResource
@@ -134,6 +147,9 @@ namespace NzbDrone.Core.Applications
             file.Quality = Quality?.Quality?.Name;
             file.QualitySource = Quality?.Quality?.Source;
             file.Resolution = Quality?.Quality?.Resolution ?? 0;
+            file.RevisionVersion = Math.Max(1, Quality?.Revision?.Version ?? 1);
+            file.RevisionReal = Math.Max(0, Quality?.Revision?.Real ?? 0);
+            file.RevisionIsRepack = Quality?.Revision?.IsRepack ?? false;
             file.Languages = string.Join(", ", (Languages ?? new()).Select(l => l.Name));
             file.CustomFormats = string.Join(", ", (CustomFormats ?? new()).Select(c => c.Name));
             file.CustomFormatScore = CustomFormatScore;

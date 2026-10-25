@@ -465,6 +465,9 @@ function LocalCatalog() {
 
                     <TableRowCell>
                       {file.quality ? <Label>{file.quality}</Label> : null}
+                      {file.revision ? (
+                        <Label kind={kinds.PRIMARY}>{file.revision}</Label>
+                      ) : null}
                     </TableRowCell>
 
                     <TableRowCell>{formatBytes(file.size)}</TableRowCell>

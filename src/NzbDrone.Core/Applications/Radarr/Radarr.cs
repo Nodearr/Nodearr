@@ -40,10 +40,7 @@ namespace NzbDrone.Core.Applications.Radarr
         {
             var catalog = new ApplicationCatalog();
 
-            foreach (var profile in _proxy.Get<List<ArrQualityProfileResource>>(Settings, "/qualityprofile"))
-            {
-                catalog.QualityProfiles.Add(profile.ToCatalog());
-            }
+            AddQualityProfiles(catalog);
 
             // Radarr returns each movie's file inline.
             foreach (var movie in _proxy.Get<List<RadarrMovieResource>>(Settings, "/movie"))
