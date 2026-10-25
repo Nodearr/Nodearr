@@ -167,7 +167,11 @@ The Arr app searches all its enabled indexers and chooses a result using its own
 
 A series goes to Sonarr, a movie to Radarr, music to Lidarr, and a film or scene to Whisparr v3.
 
-The card reports what happened or explains a failure and lets you retry. **Get it** cannot add titles to Whisparr v2, or add a scene originating in a friend's Whisparr v2 to Whisparr v3. Add those titles in Whisparr yourself, then search there to find your friend's copy.
+The card reports what happened or explains a failure and lets you retry. If you add or remove root folders or profiles in the Arr app, the card updates its choices when it checks the app again. Choices you made are kept while the app still offers them.
+
+After **Get it** succeeds, the card stays until Nodearr's local catalog shows you have the files that were sent, or until 24 hours after that success, whichever comes first. Home checks while it is open and when you reload it. A failed card stays until you retry or select **Put away**, so you can read the reason.
+
+**Get it** cannot add titles to Whisparr v2, or add a scene originating in a friend's Whisparr v2 to Whisparr v3. Add those titles in Whisparr yourself, then search there to find your friend's copy.
 
 Select **See it in their catalog** to open **Catalog > Peer Catalog**, or **Put away** to dismiss the card.
 

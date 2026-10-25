@@ -177,9 +177,20 @@ namespace NzbDrone.Core.Sharing
                     target.Problem = $"{definition.Name} did not answer: {ex.Message}";
                 }
 
-                if (target.Problem == null && !target.InLibrary && (target.Choices.RootFolders.Count == 0 || target.Choices.QualityProfiles.Count == 0))
+                if (target.Problem == null && !target.InLibrary)
                 {
-                    target.Problem = $"{definition.Name} has no root folder yet. Add one in {definition.Name}, then try again";
+                    if (target.Choices.RootFolders.Count == 0)
+                    {
+                        target.Problem = $"{definition.Name} has no root folder yet. Add one in {definition.Name}, then try again";
+                    }
+                    else if (target.Choices.QualityProfiles.Count == 0)
+                    {
+                        target.Problem = $"{definition.Name} has no quality profile yet. Add one in {definition.Name}, then try again";
+                    }
+                    else if (received.MediaKind == MediaKind.Music && target.Choices.MetadataProfiles.Count == 0)
+                    {
+                        target.Problem = $"{definition.Name} has no metadata profile yet. Add one in {definition.Name}, then try again";
+                    }
                 }
 
                 plan.Targets.Add(target);
@@ -210,6 +221,8 @@ namespace NzbDrone.Core.Sharing
             {
                 throw new GetItException("Choose an app this can be added to");
             }
+
+            CheckOptions(received, definition, options);
 
             SetState(received, GetItState.Working, $"Asking {definition.Name} to add it");
 
@@ -253,6 +266,7 @@ namespace NzbDrone.Core.Sharing
             }
             catch (Exception ex) when (ex is LibraryAddException or GetItException)
             {
+                _logger.Warn(ex, "Unable to add {0}", received.Title);
                 SetState(received, GetItState.Failed, ex.Message);
             }
             catch (HttpException ex)
@@ -472,11 +486,50 @@ namespace NzbDrone.Core.Sharing
                    ?? throw new GetItException($"Nodearr cannot add to {definition.Name}");
         }
 
+        private void CheckOptions(ReceivedTitle received, ApplicationDefinition definition, GetItOptions options)
+        {
+            var request = RequestFor(received) ?? throw new GetItException("Nodearr does not know what the app calls this yet. Wait for your friend's catalog, then try again");
+
+            // Existing titles keep their own settings; the card does not ask for add choices.
+            if (ExistingArrId(received, request, definition.Id).HasValue)
+            {
+                return;
+            }
+
+            LibraryAddChoices choices;
+
+            try
+            {
+                choices = Adder(definition).GetAddChoices();
+            }
+            catch (Exception ex) when (ex is HttpException or System.Net.Http.HttpRequestException or Newtonsoft.Json.JsonException)
+            {
+                _logger.Warn(ex, "Unable to check how to add {0} to {1}", received.Title, definition.Name);
+                throw new GetItException($"{definition.Name} did not answer. Check its connection, then try again");
+            }
+
+            if (string.IsNullOrWhiteSpace(options.RootFolderPath) || !choices.RootFolders.Any(f => string.Equals(f.Path, options.RootFolderPath, StringComparison.Ordinal)))
+            {
+                throw new GetItException($"That root folder is not available in {definition.Name}. Pick a root folder again");
+            }
+
+            if (!choices.QualityProfiles.Any(p => p.Id == options.QualityProfileId))
+            {
+                throw new GetItException($"That quality profile is not available in {definition.Name}. Pick a quality profile again");
+            }
+
+            if (received.MediaKind == MediaKind.Music && !choices.MetadataProfiles.Any(p => p.Id == options.MetadataProfileId))
+            {
+                throw new GetItException($"That metadata profile is not available in {definition.Name}. Pick a metadata profile again");
+            }
+        }
+
         private void SetState(ReceivedTitle received, GetItState state, string message)
         {
             received.GetItState = state;
             received.GetItMessage = message;
-            _received.SetFields(received, r => r.GetItState, r => r.GetItMessage);
+            received.GetItCompletedAt = state == GetItState.Done ? DateTime.UtcNow : null;
+            _received.SetFields(received, r => r.GetItState, r => r.GetItMessage, r => r.GetItCompletedAt);
             _eventAggregator.PublishEvent(new ReceivedTitlesChangedEvent());
         }
 

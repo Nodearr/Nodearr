@@ -36,13 +36,17 @@ namespace NzbDrone.Core.Sharing
 
         private readonly IReceivedTitleRepository _received;
         private readonly IPeerRepository _peers;
+        private readonly IPeerCatalogRepository _peerItems;
+        private readonly ILocalHoldingsFactory _holdings;
         private readonly IEventAggregator _eventAggregator;
         private readonly Logger _logger;
 
-        public ReceivedService(IReceivedTitleRepository received, IPeerRepository peers, IEventAggregator eventAggregator, Logger logger)
+        public ReceivedService(IReceivedTitleRepository received, IPeerRepository peers, IPeerCatalogRepository peerItems, ILocalHoldingsFactory holdings, IEventAggregator eventAggregator, Logger logger)
         {
             _received = received;
             _peers = peers;
+            _peerItems = peerItems;
+            _holdings = holdings;
             _eventAggregator = eventAggregator;
             _logger = logger;
         }
@@ -51,10 +55,24 @@ namespace NzbDrone.Core.Sharing
         {
             var trusted = _peers.All().Where(p => p.State == PeerState.Trusted).Select(p => p.Id).ToHashSet();
 
-            return _received.All()
+            var waiting = _received.All()
                 .Where(r => r.Handled == null && trusted.Contains(r.PeerId))
                 .OrderByDescending(r => r.Received)
                 .ToList();
+
+            var now = DateTime.UtcNow;
+            var holdings = new Lazy<LocalHoldings>(() => _holdings.Load());
+
+            foreach (var received in waiting.Where(r => r.GetItState == GetItState.Done))
+            {
+                if (received.GetItCompletedAt <= now.AddHours(-24) || HasSentFiles(received, holdings))
+                {
+                    received.Handled = now;
+                    _received.SetFields(received, r => r.Handled);
+                }
+            }
+
+            return waiting.Where(r => r.Handled == null).ToList();
         }
 
         public void Dismiss(int id)
@@ -62,8 +80,17 @@ namespace NzbDrone.Core.Sharing
             var received = _received.Get(id);
 
             received.Handled = DateTime.UtcNow;
-            _received.Update(received);
+            _received.SetFields(received, r => r.Handled);
             _eventAggregator.PublishEvent(new ReceivedTitlesChangedEvent());
+        }
+
+        private bool HasSentFiles(ReceivedTitle received, Lazy<LocalHoldings> holdings)
+        {
+            var offerIds = (received.OfferIds ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries).Distinct().ToList();
+            var items = _peerItems.ForRemoteIds(received.PeerId, offerIds);
+
+            // A partial or withdrawn offer cannot prove that everything sent has arrived.
+            return offerIds.Count > 0 && items.Count == offerIds.Count && items.All(i => holdings.Value.Classify(i) == PeerItemStatus.Have);
         }
 
         // Handled before the friend is answered, so an answer means it was kept. The same send

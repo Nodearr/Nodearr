@@ -13,6 +13,7 @@ using NzbDrone.Core.Nodes;
 using NzbDrone.Core.PeerCatalog;
 using NzbDrone.Core.Sharing;
 using NzbDrone.Core.Test.Framework;
+using NzbDrone.Test.Common;
 
 namespace NzbDrone.Core.Test.Sharing
 {
@@ -242,6 +243,7 @@ namespace NzbDrone.Core.Test.Sharing
             _asked.Seasons.Should().Equal(1);
 
             Reload(received).Should().Match<ReceivedTitle>(r => r.GetItState == GetItState.Done && r.GetItMessage.StartsWith("Added to Sonarr"));
+            Reload(received).GetItCompletedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
         }
 
         [Test]
@@ -262,10 +264,80 @@ namespace NzbDrone.Core.Test.Sharing
             Subject.Execute(new GetItCommand { ReceivedTitleId = received.Id, ApplicationId = 1 });
 
             Reload(received).Should().Match<ReceivedTitle>(r => r.GetItState == GetItState.Failed && r.GetItMessage == "Sonarr could not find it on TheTVDB");
+            ExceptionVerification.ExpectedWarns(1);
 
             Subject.GetIt(received.Id, new GetItOptions { ApplicationId = 1, RootFolderPath = "/tv", QualityProfileId = 1 });
 
             Reload(received).GetItState.Should().Be(GetItState.Working);
+        }
+
+        [TestCase(null, 1, "root folder")]
+        [TestCase("", 1, "root folder")]
+        [TestCase("/removed", 1, "root folder")]
+        [TestCase("/tv", 0, "quality profile")]
+        [TestCase("/tv", 99, "quality profile")]
+        public void choices_the_app_does_not_offer_should_be_refused_before_queueing(string root, int profile, string choice)
+        {
+            var received = Received();
+
+            var error = Assert.Throws<GetItException>(() => Subject.GetIt(received.Id, new GetItOptions { ApplicationId = 1, RootFolderPath = root, QualityProfileId = profile }));
+
+            error.Message.Should().Contain(choice).And.Contain("Pick a");
+            Reload(received).GetItState.Should().Be(GetItState.None);
+            Mocker.GetMock<IManageCommandQueue>().Verify(q => q.Push(It.IsAny<GetItCommand>(), It.IsAny<CommandPriority>(), It.IsAny<CommandTrigger>()), Times.Never());
+        }
+
+        [Test]
+        public void choices_should_be_checked_again_after_a_plan_was_shown()
+        {
+            var received = Received();
+            var options = Subject.Plan(received.Id).Targets.Single().Defaults;
+
+            _sonarr.Setup(a => a.GetAddChoices()).Returns(new LibraryAddChoices());
+
+            Assert.Throws<GetItException>(() => Subject.GetIt(received.Id, options)).Message.Should().Contain("root folder");
+            Reload(received).GetItState.Should().Be(GetItState.None);
+        }
+
+        [Test]
+        public void existing_titles_should_not_need_add_choices()
+        {
+            var received = Received(r => r.TvdbId = 3);
+            _sonarr.Setup(a => a.GetAddChoices()).Returns(new LibraryAddChoices());
+
+            Subject.GetIt(received.Id, new GetItOptions { ApplicationId = 1 });
+
+            Reload(received).GetItState.Should().Be(GetItState.Working);
+        }
+
+        [TestCase(null)]
+        [TestCase(99)]
+        public void lidarr_should_refuse_a_metadata_profile_it_does_not_offer(int? profile)
+        {
+            var lidarr = GivenApp(new ApplicationDefinition { Id = 8, Name = "Lidarr", Implementation = "Lidarr" });
+            lidarr.Setup(a => a.GetAddChoices()).Returns(new LibraryAddChoices
+            {
+                RootFolders = new List<LibraryRootFolder> { new() { Path = "/music" } },
+                QualityProfiles = new List<LibraryProfile> { new() { Id = 1 } },
+                MetadataProfiles = new List<LibraryProfile> { new() { Id = 2 } }
+            });
+            var received = Received(r => (r.MediaKind, r.ForeignArtistId) = (MediaKind.Music, "2869c510-2679-4a3f-bf15-e5e8b49f2f28"));
+
+            Assert.Throws<GetItException>(() => Subject.GetIt(received.Id, new GetItOptions { ApplicationId = 8, RootFolderPath = "/music", QualityProfileId = 1, MetadataProfileId = profile }))
+                  .Message.Should().Contain("metadata profile").And.Contain("Pick a");
+            Reload(received).GetItState.Should().Be(GetItState.None);
+        }
+
+        [Test]
+        public void an_app_that_does_not_answer_should_not_queue_the_add()
+        {
+            _sonarr.Setup(a => a.GetAddChoices()).Throws(new System.Net.Http.HttpRequestException("refused"));
+            var received = Received();
+
+            Assert.Throws<GetItException>(() => Subject.GetIt(received.Id, new GetItOptions { ApplicationId = 1, RootFolderPath = "/tv", QualityProfileId = 1 }))
+                  .Message.Should().Contain("did not answer");
+            Reload(received).GetItState.Should().Be(GetItState.None);
+            ExceptionVerification.ExpectedWarns(1);
         }
 
         [Test]

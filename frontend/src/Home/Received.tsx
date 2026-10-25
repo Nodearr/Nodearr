@@ -20,6 +20,7 @@ import { InputChanged } from 'typings/inputs';
 import formatBytes from 'Utilities/Number/formatBytes';
 import translate from 'Utilities/String/translate';
 import Poster, { peerPosterSrc } from '../Catalog/Poster';
+import reconcileGetItOptions from './reconcileGetItOptions';
 import styles from './Home.css';
 
 const SERIES_TYPES = [
@@ -62,20 +63,19 @@ function GetItForm({
   received: ReceivedTitle;
   targets: GetItTarget[];
 }) {
-  const [options, setOptions] = useState<GetItOptions | undefined>(
+  const [selection, setSelection] = useState<GetItOptions | undefined>(
     targets.find((t) => t.defaults)?.defaults
   );
+  const options = reconcileGetItOptions(selection, targets);
 
   const target =
     targets.find((t) => t.applicationId === options?.applicationId) ??
     targets[0];
 
-  // The plan arrives after the card is first drawn.
+  // Plans can change after a root folder or profile is added or removed in the Arr app.
   useEffect(() => {
-    if (!options) {
-      setOptions(targets.find((t) => t.defaults)?.defaults);
-    }
-  }, [targets, options]);
+    setSelection((current) => reconcileGetItOptions(current, targets));
+  }, [targets]);
 
   const getIt = useGetIt();
   const { mutate } = getIt;
@@ -121,7 +121,7 @@ function GetItForm({
 
   const handleAppChange = useCallback(
     ({ value }: InputChanged<string>) => {
-      setOptions(
+      setSelection(
         targets.find((t) => t.applicationId === Number(value))?.defaults
       );
     },
@@ -129,7 +129,7 @@ function GetItForm({
   );
 
   const handleChange = useCallback(({ name, value }: InputChanged<string>) => {
-    setOptions((current) =>
+    setSelection((current) =>
       current
         ? {
             ...current,
