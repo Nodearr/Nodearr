@@ -126,6 +126,7 @@ Then a settings page. ADR 0019. Branch `v1/s10-node-settings`.
 - 0.3.0, the clean-up of what came from Sonarr and two of the open items below: the pages no route led to, the dead help links and the series metadata host go (#41); posters on every page that shows a title (#42); Sonarr's v3 API, the v5 endpoints nothing calls and the last calls to `services.nodearr.com` and the renamed `auth.servarr.com` sign-ins go (#43), which is why it is 0.3.0 and not 0.2.8; and a download limit, and a relay of your own asked before it is saved (#48). Each on the branch GitHub made from its issue.
 - Get it cards recover from changed Arr app root folders and profiles without a page reload, refuse stale choices before queueing, and log failures. Successful cards leave Home when the sent files are held locally or 24 hours after success; failed cards stay ([#53](https://github.com/Nodearr/Nodearr/issues/53), ADR 0021). Branch `fix/53-get-it-choices-and-card-lifecycle`.
 - Get it is also available beside peer catalog files and under posters, using Home's shared form and library operation. TV can be selected by episode file, season or whole series; music by album. The command checks current trusted offers and holdings before adding, monitoring and searching in the chosen app ([#54](https://github.com/Nodearr/Nodearr/issues/54), ADR 0021). Branch `54-get-it-from-a-friends-catalog-fetch-any-title-a-friend-offers-from-the-peer-catalog`.
+- The local and peer catalogs filter by media kind in both views. TV tables open into shows, seasons and episode files, with missing and upgradable episode summaries and Get it actions. The hierarchy uses TVDB numbers as Sonarr's library numbers; anime absolute numbers and differing scene numbers are shown alongside, daily shows include air dates, multi-episode files appear once and season 0 is last. The guide and screenshots describe the views ([#58](https://github.com/Nodearr/Nodearr/issues/58), ADR 0015 and amendments).
 
 ## Where V1 stands
 
@@ -139,7 +140,7 @@ On 2026-10-14 two home networks connected directly and moved a file: two Windows
 
 V1 is done. What follows is open, most useful first. Each item in the first list is a slice that needs nothing but this machine.
 
-The catalog's Get it action is implemented in #54. Next are connection-loss diagnosis and upload history (#55 and #56), LAN throughput measurement (#57), catalog views (#58), Send it (#59), and the Activity badge (#60). Throughput measurement needs the owner's second machine.
+The catalog's Get it action is implemented in #54, and its views in #58. The remaining slices are connection-loss diagnosis and upload history (#55 and #56), LAN throughput measurement (#57), Send it (#59), and the Activity badge (#60). Throughput measurement needs the owner's second machine.
 
 ### Next, in order
 

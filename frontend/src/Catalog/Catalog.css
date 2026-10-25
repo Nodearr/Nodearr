@@ -53,6 +53,31 @@
   font-size: 12px;
 }
 
+.treeShowRow {
+  font-weight: bold;
+}
+
+.treeSeasonRow {
+  background-color: var(--inputBackgroundColor);
+}
+
+.treeTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.treeToggle {
+  flex: none;
+  padding: 0;
+  width: 20px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 16px;
+  cursor: pointer;
+}
+
 .peerRow {
   display: flex;
   align-items: center;

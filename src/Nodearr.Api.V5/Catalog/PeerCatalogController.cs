@@ -36,9 +36,13 @@ public class PeerCatalogItemResource
     public int TmdbId { get; set; }
     public string? ImdbId { get; set; }
     public int SeasonNumber { get; set; }
+    public string? SeriesType { get; set; }
     public List<int> EpisodeNumbers { get; set; } = new();
+    public List<int> AbsoluteEpisodeNumbers { get; set; } = new();
     public string? EpisodeTitles { get; set; }
     public List<string> AirDates { get; set; } = new();
+    public int? SceneSeasonNumber { get; set; }
+    public List<int> SceneEpisodeNumbers { get; set; } = new();
 
     // An album's artist and how many tracks it has.
     public string? Artist { get; set; }
@@ -63,6 +67,7 @@ public class PeerCatalogTitleResource
     public string? Key { get; set; }
     public MediaKind MediaKind { get; set; }
     public bool IsAdult { get; set; }
+    public bool IsScene { get; set; }
     public string? Title { get; set; }
     public string? Artist { get; set; }
     public int Year { get; set; }
@@ -73,6 +78,32 @@ public class PeerCatalogTitleResource
     public int Upgrade { get; set; }
     public int NotInLibrary { get; set; }
     public int Have { get; set; }
+}
+
+public class PeerCatalogSeriesResource
+{
+    public string? Key { get; set; }
+    public string? Title { get; set; }
+    public int Year { get; set; }
+    public string? SeriesType { get; set; }
+    public int PosterItemId { get; set; }
+    public PeerItemStatus Status { get; set; }
+    public int Episodes { get; set; }
+    public int Missing { get; set; }
+    public int Upgrade { get; set; }
+    public long Size { get; set; }
+    public List<PeerCatalogSeasonResource> Seasons { get; set; } = new();
+}
+
+public class PeerCatalogSeasonResource
+{
+    public int SeasonNumber { get; set; }
+    public PeerItemStatus Status { get; set; }
+    public int Episodes { get; set; }
+    public int Missing { get; set; }
+    public int Upgrade { get; set; }
+    public long Size { get; set; }
+    public List<PeerCatalogItemResource> Items { get; set; } = new();
 }
 
 [V5ApiController("catalog/peers")]
@@ -115,10 +146,10 @@ public class PeerCatalogController : Controller
     // What friends offer by title, a page at a time, for browsing by poster.
     [HttpGet("titles")]
     [Produces("application/json")]
-    public Ok<PagingResource<PeerCatalogTitleResource>> GetTitles([FromQuery] PagingRequestResource paging, [FromQuery] PeerItemStatus? status = null)
+    public Ok<PagingResource<PeerCatalogTitleResource>> GetTitles([FromQuery] PagingRequestResource paging, [FromQuery] PeerItemStatus? status = null, [FromQuery] string? kind = null)
     {
         var names = _peerCatalogService.GetSummaries().ToDictionary(s => s.PeerId, s => s.PeerName);
-        var titles = _peerCatalogService.GetTitles(status);
+        var titles = _peerCatalogService.GetTitles(status, kind);
         var pageSize = Math.Clamp(paging.PageSize ?? 50, 1, 250);
         var page = Math.Max(1, paging.Page ?? 1);
 
@@ -134,6 +165,7 @@ public class PeerCatalogController : Controller
                 Key = t.Key,
                 MediaKind = t.MediaKind,
                 IsAdult = t.IsAdult,
+                IsScene = t.IsScene,
                 Title = t.Title,
                 Artist = t.Artist,
                 Year = t.Year,
@@ -148,9 +180,67 @@ public class PeerCatalogController : Controller
         });
     }
 
+    [HttpGet("series")]
+    [Produces("application/json")]
+    public Ok<PagingResource<PeerCatalogSeriesResource>> GetSeries([FromQuery] PagingRequestResource paging, [FromQuery] PeerItemStatus? status = null)
+    {
+        var series = _peerCatalogService.GetSeries(status);
+        var pageSize = Math.Clamp(paging.PageSize ?? 50, 1, 250);
+        var page = Math.Max(1, paging.Page ?? 1);
+        var names = _peerCatalogService.GetSummaries().ToDictionary(s => s.PeerId, s => s.PeerName);
+
+        return TypedResults.Ok(new PagingResource<PeerCatalogSeriesResource>
+        {
+            Page = page,
+            PageSize = pageSize,
+            SortKey = "title",
+            SortDirection = SortDirection.Ascending,
+            TotalRecords = series.Count,
+            Records = series.Skip((page - 1) * pageSize).Take(pageSize).Select(show =>
+            {
+                var seasons = show.Items.GroupBy(i => i.SeasonNumber)
+                    .OrderBy(g => g.Key == 0 ? int.MaxValue : g.Key)
+                    .Select(group =>
+                    {
+                        var items = group.OrderBy(i => show.SeriesType == "daily" ? i.GetAirDates().FirstOrDefault() : null, StringComparer.Ordinal)
+                            .ThenBy(i => show.SeriesType == "anime" ? i.GetAbsoluteEpisodeNumbers().DefaultIfEmpty(i.GetEpisodeNumbers().DefaultIfEmpty(int.MaxValue).Min()).Min() : i.GetEpisodeNumbers().DefaultIfEmpty(int.MaxValue).Min())
+                            .ThenBy(i => i.PeerId)
+                            .ToList();
+                        var episodeStatuses = PeerCatalogGrouping.EpisodeStatuses(items).Values.ToList();
+
+                        return new PeerCatalogSeasonResource
+                        {
+                            SeasonNumber = group.Key,
+                            Status = PeerCatalogGrouping.BestStatus(items),
+                            Episodes = episodeStatuses.Count,
+                            Missing = episodeStatuses.Count(s => s == PeerItemStatus.Missing),
+                            Upgrade = episodeStatuses.Count(s => s == PeerItemStatus.Upgrade),
+                            Size = items.Sum(i => i.Size),
+                            Items = items.Select(item => ToResource(item, names)).ToList()
+                        };
+                    }).ToList();
+
+                return new PeerCatalogSeriesResource
+                {
+                    Key = show.Key,
+                    Title = show.Title,
+                    Year = show.Year,
+                    SeriesType = show.SeriesType,
+                    PosterItemId = show.PosterItemId,
+                    Status = PeerCatalogGrouping.BestStatus(show.Items),
+                    Episodes = seasons.Sum(s => s.Episodes),
+                    Missing = seasons.Sum(s => s.Missing),
+                    Upgrade = seasons.Sum(s => s.Upgrade),
+                    Size = seasons.Sum(s => s.Size),
+                    Seasons = seasons
+                };
+            }).ToList()
+        });
+    }
+
     [HttpGet("items")]
     [Produces("application/json")]
-    public Ok<PagingResource<PeerCatalogItemResource>> GetItems([FromQuery] PagingRequestResource paging, [FromQuery] int? peerId = null, [FromQuery] PeerItemStatus? status = null, [FromQuery] MediaKind? mediaKind = null)
+    public Ok<PagingResource<PeerCatalogItemResource>> GetItems([FromQuery] PagingRequestResource paging, [FromQuery] int? peerId = null, [FromQuery] PeerItemStatus? status = null, [FromQuery] MediaKind? mediaKind = null, [FromQuery] string? kind = null)
     {
         var pagingSpec = new PagingResource<PeerCatalogItemResource>(paging)
             .MapToPagingSpec<PeerCatalogItemResource, PeerCatalogItem>(SortKeys, "title", SortDirection.Ascending);
@@ -170,9 +260,27 @@ public class PeerCatalogController : Controller
             pagingSpec.FilterExpressions.Add(i => i.MediaKind == mediaKind.Value);
         }
 
+        if (kind == "movies")
+        {
+            pagingSpec.FilterExpressions.Add(i => i.MediaKind == MediaKind.Movie && (i.ItemType == null || i.ItemType != "scene"));
+        }
+        else if (kind == "scenes")
+        {
+            pagingSpec.FilterExpressions.Add(i => i.IsAdult && i.ItemType == "scene");
+        }
+        else if (kind == "music")
+        {
+            pagingSpec.FilterExpressions.Add(i => i.MediaKind == MediaKind.Music);
+        }
+
         var names = _peerCatalogService.GetSummaries().ToDictionary(s => s.PeerId, s => s.PeerName);
 
-        return TypedResults.Ok(pagingSpec.ApplyToPage(_peerCatalogService.Paged, item => new PeerCatalogItemResource
+        return TypedResults.Ok(pagingSpec.ApplyToPage(_peerCatalogService.Paged, item => ToResource(item, names)));
+    }
+
+    private static PeerCatalogItemResource ToResource(PeerCatalogItem item, Dictionary<int, string> names)
+    {
+        return new PeerCatalogItemResource
         {
             Id = item.Id,
             PeerId = item.PeerId,
@@ -185,9 +293,13 @@ public class PeerCatalogController : Controller
             TmdbId = item.TmdbId,
             ImdbId = item.ImdbId,
             SeasonNumber = item.SeasonNumber,
+            SeriesType = item.SeriesType,
             EpisodeNumbers = item.GetEpisodeNumbers(),
+            AbsoluteEpisodeNumbers = item.GetAbsoluteEpisodeNumbers(),
             EpisodeTitles = item.EpisodeTitles,
             AirDates = item.GetAirDates(),
+            SceneSeasonNumber = item.SceneSeasonNumber,
+            SceneEpisodeNumbers = item.GetSceneEpisodeNumbers(),
             Artist = item.Artist,
             TrackCount = item.IsAlbum ? item.GetTracks().Count : 0,
             ReleaseTitle = item.ReleaseTitle,
@@ -199,6 +311,6 @@ public class PeerCatalogController : Controller
             ReleaseGroup = item.ReleaseGroup,
             DateAdded = item.DateAdded,
             Blake3 = item.Blake3
-        }));
+        };
     }
 }

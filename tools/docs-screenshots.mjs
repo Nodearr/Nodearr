@@ -274,6 +274,35 @@ async function open(page, base, route) {
   await page.waitForTimeout(600);
 }
 
+// Show one branch in the guide shot; the live catalog starts with every show and season closed.
+async function expandFirstSeries(page) {
+  const show = page.getByRole('button', { name: /^Expand / }).first();
+
+  if ((await show.count()) === 0) {
+    throw new Error('The series table has no show to expand');
+  }
+
+  await show.click();
+  const season = page.getByRole('button', { name: /^Expand Season / }).first();
+
+  if ((await season.count()) === 0) {
+    throw new Error('The expanded show has no season to expand');
+  }
+
+  await season.click();
+  await page.getByText(/ - S01E01/).first().waitFor();
+}
+
+async function expectTitle(page, title, expected) {
+  const count = await page.getByText(title, { exact: true }).count();
+
+  if ((count > 0) !== expected) {
+    throw new Error(
+      `Expected ${expected ? 'to see' : 'not to see'} "${title}" in the selected catalog kind`
+    );
+  }
+}
+
 // The guide's column is narrower than a window, so a page is shown without the sidebar and the
 // bar along the top, which are the same on every page, unless chrome asks for the whole window.
 const SIDEBAR = 210;
@@ -395,23 +424,51 @@ const shots = {
 
   async catalog({ a }) {
     await open(a, A, '/catalog/peers');
+    await a.getByRole('button', { name: 'Series', exact: true }).click();
+    await a.getByText('Cowboy Bebop (1998)', { exact: true }).waitFor();
+    await a.getByRole('button', { name: 'Movies', exact: true }).click();
+    await a.getByText('Spirited Away (2001)', { exact: true }).waitFor();
+    await expectTitle(a, 'Cowboy Bebop (1998)', false);
+    await a.getByRole('button', { name: 'Series', exact: true }).click();
+    await a.getByText('Cowboy Bebop (1998)', { exact: true }).waitFor();
+    await expandFirstSeries(a);
     await shoot(a, 'peer-catalog');
-    await a.getByRole('button', { name: 'Get it', exact: true }).first().click();
+    await a.getByRole('button', { name: 'Get it', exact: true }).last().click();
     await a.locator('select[name="qualityProfileId"]').waitFor({ state: 'visible' });
     await a.waitForLoadState('networkidle');
     await shoot(a, 'peer-catalog-get-it', { chrome: true });
     await a.keyboard.press('Escape');
     await a.getByText('Posters', { exact: true }).click();
-    await a.waitForLoadState('networkidle');
+    await a.getByText('Cowboy Bebop (1998)', { exact: true }).waitFor();
     await a.waitForTimeout(1200);
     await shoot(a, 'peer-catalog-posters');
-    await a.getByText('Table', { exact: true }).click();
-    await open(a, A, '/catalog/local');
-    await shoot(a, 'local-catalog');
-    await a.getByText('Posters', { exact: true }).click();
+    await a.getByRole('button', { name: 'Movies', exact: true }).click();
     await a.waitForLoadState('networkidle');
     await a.waitForTimeout(1200);
+    await expectTitle(a, 'Spirited Away (2001)', true);
+    await expectTitle(a, 'Cowboy Bebop (1998)', false);
+    await shoot(a, 'peer-catalog-movies-posters');
+    await a.getByText('Table', { exact: true }).click();
+    await open(a, A, '/catalog/local');
+    await a.getByRole('button', { name: 'Series', exact: true }).click();
+    await a.getByText('Cowboy Bebop (1998)', { exact: true }).waitFor();
+    await a.getByRole('button', { name: 'Movies', exact: true }).click();
+    await a.getByText('Back to the Future (1985)', { exact: true }).waitFor();
+    await expectTitle(a, 'Cowboy Bebop (1998)', false);
+    await a.getByRole('button', { name: 'Series', exact: true }).click();
+    await a.getByText('Cowboy Bebop (1998)', { exact: true }).waitFor();
+    await expandFirstSeries(a);
+    await shoot(a, 'local-catalog');
+    await a.getByText('Posters', { exact: true }).click();
+    await a.getByText('Cowboy Bebop (1998)', { exact: true }).waitFor();
+    await a.waitForTimeout(1200);
     await shoot(a, 'local-catalog-posters');
+    await a.getByRole('button', { name: 'Movies', exact: true }).click();
+    await a.waitForLoadState('networkidle');
+    await a.waitForTimeout(1200);
+    await expectTitle(a, 'Back to the Future (1985)', true);
+    await expectTitle(a, 'Cowboy Bebop (1998)', false);
+    await shoot(a, 'local-catalog-movies-posters');
     await a.getByText('Table', { exact: true }).click();
   },
 

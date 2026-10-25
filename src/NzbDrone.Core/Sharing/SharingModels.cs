@@ -131,6 +131,10 @@ namespace NzbDrone.Core.Sharing
         public List<int> EpisodeNumbers { get; set; } = new();
         public List<string> EpisodeTitles { get; set; } = new();
 
+        // Anime absolute numbers are optional so standard offers keep their existing fingerprints.
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<int> AbsoluteEpisodeNumbers { get; set; }
+
         // Standard is implicit, so existing offers keep the same fingerprints.
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string SeriesType { get; set; }

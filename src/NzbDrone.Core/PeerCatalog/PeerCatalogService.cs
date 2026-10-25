@@ -23,7 +23,8 @@ namespace NzbDrone.Core.PeerCatalog
 
         // What friends offer by title: a series, a movie, a scene or an album, however many files
         // of it and from however many friends. Titles with a file of that status only, if given.
-        List<PeerCatalogTitle> GetTitles(PeerItemStatus? status);
+        List<PeerCatalogTitle> GetTitles(PeerItemStatus? status, string kind = null);
+        List<PeerCatalogSeries> GetSeries(PeerItemStatus? status);
 
         // An item of this node's copy of a friend's catalog that is one of these offered files,
         // for its poster. Null until the catalog holds one of them.
@@ -36,6 +37,7 @@ namespace NzbDrone.Core.PeerCatalog
         public string Key { get; set; }
         public MediaKind MediaKind { get; set; }
         public bool IsAdult { get; set; }
+        public bool IsScene { get; set; }
         public string Title { get; set; }
         public string Artist { get; set; }
         public int Year { get; set; }
@@ -45,6 +47,16 @@ namespace NzbDrone.Core.PeerCatalog
         public int PosterItemId { get; set; }
         public int Files { get; set; }
         public Dictionary<PeerItemStatus, int> Statuses { get; set; } = new();
+    }
+
+    public class PeerCatalogSeries
+    {
+        public string Key { get; set; }
+        public string Title { get; set; }
+        public int Year { get; set; }
+        public string SeriesType { get; set; }
+        public int PosterItemId { get; set; }
+        public List<PeerCatalogItem> Items { get; set; } = new();
     }
 
     // Keeps a copy of what each trusted peer offers, and how it compares with the local catalog.
@@ -122,9 +134,10 @@ namespace NzbDrone.Core.PeerCatalog
             return _items.ForRemoteIds(peerId, offerIds).OrderBy(i => i.Id).FirstOrDefault()?.Id;
         }
 
-        public List<PeerCatalogTitle> GetTitles(PeerItemStatus? status)
+        public List<PeerCatalogTitle> GetTitles(PeerItemStatus? status, string kind = null)
         {
             return _items.All()
+                .Where(i => MatchesKind(i, kind))
                 .GroupBy(Posters.PeerPosters.KeyOf)
                 .Select(g =>
                 {
@@ -135,6 +148,7 @@ namespace NzbDrone.Core.PeerCatalog
                         Key = g.Key,
                         MediaKind = first.MediaKind,
                         IsAdult = first.IsAdult,
+                        IsScene = first.IsScene,
                         Title = first.Title,
                         Artist = first.Artist,
                         Year = first.Year,
@@ -148,6 +162,44 @@ namespace NzbDrone.Core.PeerCatalog
                 .OrderBy(t => t.Artist ?? t.Title, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(t => t.Title, StringComparer.OrdinalIgnoreCase)
                 .ToList();
+        }
+
+        public List<PeerCatalogSeries> GetSeries(PeerItemStatus? status)
+        {
+            return _items.All()
+                .Where(i => i.MediaKind == MediaKind.Tv && (status == null || i.LocalStatus == status.Value))
+                .GroupBy(Posters.PeerPosters.KeyOf)
+                .Select(group =>
+                {
+                    var first = group.OrderBy(i => i.Id).First();
+                    return new PeerCatalogSeries
+                    {
+                        Key = group.Key,
+                        Title = first.Title,
+                        Year = first.Year,
+                        SeriesType = first.SeriesType,
+                        PosterItemId = first.Id,
+                        Items = group.OrderBy(i => i.SeasonNumber == 0 ? int.MaxValue : i.SeasonNumber)
+                                      .ThenBy(i => i.SeriesType == "anime" ? i.GetAbsoluteEpisodeNumbers().DefaultIfEmpty(i.GetEpisodeNumbers().DefaultIfEmpty(int.MaxValue).Min()).Min() : i.GetEpisodeNumbers().DefaultIfEmpty(int.MaxValue).Min())
+                                      .ThenBy(i => i.PeerId)
+                                      .ToList()
+                    };
+                })
+                .OrderBy(s => s.Title, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(s => s.Year)
+                .ToList();
+        }
+
+        private static bool MatchesKind(PeerCatalogItem item, string kind)
+        {
+            return kind?.ToLowerInvariant() switch
+            {
+                "series" => item.MediaKind == MediaKind.Tv,
+                "movies" => item.MediaKind == MediaKind.Movie && !item.IsScene,
+                "scenes" => item.IsScene,
+                "music" => item.MediaKind == MediaKind.Music,
+                _ => true
+            };
         }
 
         public PagingSpec<PeerCatalogItem> Paged(PagingSpec<PeerCatalogItem> pagingSpec)

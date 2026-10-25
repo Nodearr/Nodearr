@@ -16,9 +16,12 @@ namespace NzbDrone.Core.Catalog
     public class CatalogTitle
     {
         public int ApplicationId { get; set; }
+        public string Kind { get; set; }
+        public bool IsAdult { get; set; }
         public PosterSubject Subject { get; set; }
         public int ArrId { get; set; }
         public string Title { get; set; }
+        public string Artist { get; set; }
         public string SortTitle { get; set; }
         public int Year { get; set; }
         public int Files { get; set; }
@@ -50,11 +53,17 @@ namespace NzbDrone.Core.Catalog
         // Reads one series, movie or artist again, and nothing else of the Arr app's library.
         void RefreshTitle(int applicationId, int arrId);
         List<CatalogApplicationSummary> GetSummaries();
+        PagingSpec<CatalogSeries> PagedSeries(PagingSpec<CatalogSeries> pagingSpec);
         PagingSpec<CatalogEpisodeFile> PagedEpisodeFiles(PagingSpec<CatalogEpisodeFile> pagingSpec);
-        PagingSpec<CatalogMovieFile> PagedMovieFiles(PagingSpec<CatalogMovieFile> pagingSpec);
+        PagingSpec<CatalogMovieFile> PagedMovieFiles(PagingSpec<CatalogMovieFile> pagingSpec, string kind = null);
+        PagingSpec<CatalogTrackFile> PagedTrackFiles(PagingSpec<CatalogTrackFile> pagingSpec);
         List<CatalogSeries> GetSeries(int applicationId, IEnumerable<int> arrSeriesIds);
         List<CatalogEpisode> GetEpisodesForFiles(int applicationId, IEnumerable<int> arrEpisodeFileIds);
+        List<CatalogEpisode> GetEpisodesForSeries(int applicationId, IEnumerable<int> arrSeriesIds);
+        List<CatalogEpisodeFile> GetEpisodeFilesForSeries(int applicationId, IEnumerable<int> arrSeriesIds);
         List<CatalogMovie> GetMovies(int applicationId, IEnumerable<int> arrMovieIds);
+        List<CatalogAlbum> GetAlbums(int applicationId, IEnumerable<int> arrAlbumIds);
+        List<CatalogArtist> GetArtists(int applicationId, IEnumerable<int> arrArtistIds);
 
         // Every series and movie with a file, by sort title.
         List<CatalogTitle> GetTitles(int? applicationId);
@@ -244,9 +253,19 @@ namespace NzbDrone.Core.Catalog
             return _episodeFiles.GetPaged(pagingSpec);
         }
 
-        public PagingSpec<CatalogMovieFile> PagedMovieFiles(PagingSpec<CatalogMovieFile> pagingSpec)
+        public PagingSpec<CatalogSeries> PagedSeries(PagingSpec<CatalogSeries> pagingSpec)
         {
-            return _movieFiles.GetPaged(pagingSpec);
+            return _series.GetPaged(pagingSpec);
+        }
+
+        public PagingSpec<CatalogMovieFile> PagedMovieFiles(PagingSpec<CatalogMovieFile> pagingSpec, string kind = null)
+        {
+            return kind == null ? _movieFiles.GetPaged(pagingSpec) : _movieFiles.GetPagedByKind(pagingSpec, kind);
+        }
+
+        public PagingSpec<CatalogTrackFile> PagedTrackFiles(PagingSpec<CatalogTrackFile> pagingSpec)
+        {
+            return _trackFiles.GetPaged(pagingSpec);
         }
 
         public List<CatalogSeries> GetSeries(int applicationId, IEnumerable<int> arrSeriesIds)
@@ -259,24 +278,45 @@ namespace NzbDrone.Core.Catalog
             return _episodes.ForFiles(applicationId, arrEpisodeFileIds);
         }
 
+        public List<CatalogEpisode> GetEpisodesForSeries(int applicationId, IEnumerable<int> arrSeriesIds)
+        {
+            return _episodes.ForSeries(applicationId, arrSeriesIds);
+        }
+
+        public List<CatalogEpisodeFile> GetEpisodeFilesForSeries(int applicationId, IEnumerable<int> arrSeriesIds)
+        {
+            return _episodeFiles.ForSeries(applicationId, arrSeriesIds);
+        }
+
         public List<CatalogMovie> GetMovies(int applicationId, IEnumerable<int> arrMovieIds)
         {
             return _movies.ForArrIds(applicationId, arrMovieIds);
         }
 
-        // The files are counted by the database. The titles come from the series and movies, which
-        // are few beside the files.
+        public List<CatalogAlbum> GetAlbums(int applicationId, IEnumerable<int> arrAlbumIds)
+        {
+            return _albums.ForArrIds(applicationId, arrAlbumIds);
+        }
+
+        public List<CatalogArtist> GetArtists(int applicationId, IEnumerable<int> arrArtistIds)
+        {
+            return _artists.ForArrIds(applicationId, arrArtistIds);
+        }
+
+        // The files are counted by the database. Titles are few beside the files.
         public List<CatalogTitle> GetTitles(int? applicationId)
         {
             var series = _series.All().Where(s => s.MissingSince == null).ToDictionary(s => (s.ApplicationId, s.ArrId));
             var movies = _movies.All().Where(m => m.MissingSince == null).ToDictionary(m => (m.ApplicationId, m.ArrId));
+            var albums = _albums.All().Where(a => a.MissingSince == null).ToDictionary(a => (a.ApplicationId, a.ArrId));
+            var artists = _artists.All().Where(a => a.MissingSince == null).ToDictionary(a => (a.ApplicationId, a.ArrId));
             var titles = new List<CatalogTitle>();
 
             foreach (var count in _episodeFiles.FilesPerSeries())
             {
                 if (series.TryGetValue((count.ApplicationId, count.ArrId), out var s))
                 {
-                    titles.Add(new CatalogTitle { ApplicationId = count.ApplicationId, Subject = PosterSubject.Series, ArrId = count.ArrId, Title = s.Title, SortTitle = s.SortTitle, Year = s.Year, Files = count.Files });
+                    titles.Add(new CatalogTitle { ApplicationId = count.ApplicationId, Kind = "series", Subject = PosterSubject.Series, ArrId = count.ArrId, Title = s.Title, SortTitle = s.SortTitle, Year = s.Year, Files = count.Files });
                 }
             }
 
@@ -284,7 +324,38 @@ namespace NzbDrone.Core.Catalog
             {
                 if (movies.TryGetValue((count.ApplicationId, count.ArrId), out var m))
                 {
-                    titles.Add(new CatalogTitle { ApplicationId = count.ApplicationId, Subject = PosterSubject.Movie, ArrId = count.ArrId, Title = m.Title, SortTitle = m.SortTitle, Year = m.Year, Files = count.Files });
+                    titles.Add(new CatalogTitle
+                    {
+                        ApplicationId = count.ApplicationId,
+                        Kind = m.IsAdult && m.ItemType == "scene" ? "scenes" : "movies",
+                        IsAdult = m.IsAdult,
+                        Subject = PosterSubject.Movie,
+                        ArrId = count.ArrId,
+                        Title = m.Title,
+                        SortTitle = m.SortTitle,
+                        Year = m.Year,
+                        Files = count.Files
+                    });
+                }
+            }
+
+            foreach (var count in _trackFiles.FilesPerAlbum())
+            {
+                if (albums.TryGetValue((count.ApplicationId, count.ArrId), out var album))
+                {
+                    artists.TryGetValue((album.ApplicationId, album.ArrArtistId), out var artist);
+                    titles.Add(new CatalogTitle
+                    {
+                        ApplicationId = count.ApplicationId,
+                        Kind = "music",
+                        Subject = PosterSubject.Album,
+                        ArrId = count.ArrId,
+                        Title = album.Title,
+                        Artist = artist?.Name,
+                        SortTitle = album.Title,
+                        Year = album.Year,
+                        Files = count.Files
+                    });
                 }
             }
 

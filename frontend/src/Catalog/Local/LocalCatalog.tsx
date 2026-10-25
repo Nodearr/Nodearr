@@ -4,7 +4,6 @@ import { useCommandExecuting, useExecuteCommand } from 'Commands/useCommands';
 import Alert from 'Components/Alert';
 import Icon from 'Components/Icon';
 import Label from 'Components/Label';
-import Button from 'Components/Link/Button';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
@@ -23,8 +22,9 @@ import usePagedApiQuery from 'Helpers/Hooks/usePagedApiQuery';
 import { icons, kinds } from 'Helpers/Props';
 import { SortDirection } from 'Helpers/Props/sortDirections';
 import {
+  CatalogKind,
   LocalCatalogFile,
-  LocalCatalogMediaType,
+  LocalCatalogSeries,
   LocalCatalogSummary,
   LocalCatalogTitle,
 } from 'typings/LocalCatalog';
@@ -32,6 +32,8 @@ import formatDateTime from 'Utilities/Date/formatDateTime';
 import formatBytes from 'Utilities/Number/formatBytes';
 import titleWithYear from 'Utilities/String/titleWithYear';
 import translate from 'Utilities/String/translate';
+import CatalogKindButton from '../CatalogKindButton';
+import { getAvailableCatalogKinds } from '../catalogKinds';
 import Poster, { localPosterSrc } from '../Poster';
 import catalogStyles from '../Catalog.css';
 import styles from './LocalCatalog.css';
@@ -44,6 +46,18 @@ const POSTER_PAGE_SIZE = 48;
 type View = 'table' | 'posters';
 
 const VIEW_KEY = 'nodearr.localCatalog.view';
+const KIND_KEY = 'nodearr.localCatalog.kind';
+
+function readKind(): CatalogKind {
+  try {
+    const value = window.localStorage.getItem(KIND_KEY);
+    return value === 'movies' || value === 'music' || value === 'scenes'
+      ? value
+      : 'series';
+  } catch {
+    return 'series';
+  }
+}
 
 function readView(): View {
   try {
@@ -99,17 +113,33 @@ function pad(value: number) {
 }
 
 function describe(file: LocalCatalogFile) {
+  if (file.mediaType === 'track') {
+    return `${file.artist ?? ''} - ${file.albumTitle ?? file.title ?? ''} - ${
+      file.trackTitle ?? ''
+    }`;
+  }
+
   if (file.mediaType === 'movie') {
     return titleWithYear(file.title, file.year);
   }
 
-  const episodes = file.episodeNumbers.map((n) => `E${pad(n)}`).join('');
+  const episodes =
+    file.seriesType === 'anime' && file.absoluteEpisodeNumbers.length > 0
+      ? file.absoluteEpisodeNumbers.map((n) => `#${pad(n)}`).join(' + ')
+      : file.episodeNumbers.map((n) => `E${pad(n)}`).join('');
+  const dailyDate = file.seriesType === 'daily' ? file.airDates[0] : undefined;
+  const season = `S${pad(file.seasonNumber ?? 0)}`;
 
-  return `${file.title} - S${pad(file.seasonNumber ?? 0)}${episodes}`;
+  return `${file.title} - ${season}${
+    dailyDate ? ` ${dailyDate}` : ''
+  }${episodes}`;
 }
 
 function TitleTile({ title }: { title: LocalCatalogTitle }) {
-  const name = titleWithYear(title.title, title.year);
+  const name = titleWithYear(
+    title.artist ? `${title.artist} - ${title.title}` : title.title,
+    title.year
+  );
 
   return (
     <div className={catalogStyles.tile}>
@@ -121,6 +151,7 @@ function TitleTile({ title }: { title: LocalCatalogTitle }) {
         )}
         title={name}
         size="tile"
+        isSquare={title.kind === 'music'}
       />
 
       <div className={catalogStyles.tileTitle} title={name}>
@@ -134,6 +165,131 @@ function TitleTile({ title }: { title: LocalCatalogTitle }) {
       </div>
       <div className={catalogStyles.tileDetails}>{title.applicationName}</div>
     </div>
+  );
+}
+
+function ToggleButton({
+  expanded,
+  label,
+  id,
+  onPress,
+}: {
+  expanded: boolean;
+  label: string;
+  id: string;
+  onPress: (id: string) => void;
+}) {
+  const handlePress = useCallback(() => {
+    onPress(id);
+  }, [id, onPress]);
+
+  return (
+    <button
+      type="button"
+      className={styles.treeToggle}
+      aria-label={label}
+      aria-expanded={expanded}
+      onClick={handlePress}
+    >
+      {expanded ? '▾' : '▸'}
+    </button>
+  );
+}
+
+function sceneLabel(file: LocalCatalogFile) {
+  if (
+    file.sceneSeasonNumber === undefined ||
+    file.sceneEpisodeNumbers.length === 0
+  ) {
+    return undefined;
+  }
+
+  const differs =
+    file.sceneSeasonNumber !== file.seasonNumber ||
+    file.sceneEpisodeNumbers.some(
+      (number, index) => number !== file.episodeNumbers[index]
+    );
+
+  return differs
+    ? `Scene S${pad(file.sceneSeasonNumber)}${file.sceneEpisodeNumbers
+        .map((number) => `E${pad(number)}`)
+        .join('')}`
+    : undefined;
+}
+
+function LocalFileRow({ file }: { file: LocalCatalogFile }) {
+  const alternateNumbers = sceneLabel(file);
+  const missing = file.isMissing || Boolean(file.missingSince);
+
+  return (
+    <TableRow className={missing ? styles.missing : undefined}>
+      <TableRowCell className={catalogStyles.posterCell}>
+        <Poster
+          src={localPosterSrc(
+            file.applicationId,
+            file.posterSubject,
+            file.posterArrId
+          )}
+          title={file.title ?? ''}
+          size="thumb"
+          isSquare={file.mediaType === 'track'}
+        />
+      </TableRowCell>
+
+      <TableRowCell>{file.applicationName}</TableRowCell>
+
+      <TableRowCell className={styles.title}>
+        {describe(file)}
+        {file.episodeTitles.length > 0 ? (
+          <div className={styles.episodeTitles}>
+            {file.episodeTitles.join(' + ')}
+          </div>
+        ) : null}
+        {file.seriesType === 'daily' && file.airDates.length > 0 ? (
+          <div className={styles.episodeTitles}>
+            {translate('AirDate')}: {file.airDates.join(' + ')}
+          </div>
+        ) : null}
+        {alternateNumbers ? (
+          <div className={styles.episodeTitles}>{alternateNumbers}</div>
+        ) : null}
+      </TableRowCell>
+
+      <TableRowCell>
+        {file.quality ? <Label>{file.quality}</Label> : null}
+        {file.revision ? (
+          <Label kind={kinds.PRIMARY}>{file.revision}</Label>
+        ) : null}
+      </TableRowCell>
+
+      <TableRowCell>{formatBytes(file.size)}</TableRowCell>
+
+      <TableRowCell className={styles.path} title={file.localPath ?? file.path}>
+        {file.path}
+      </TableRowCell>
+
+      <TableRowCell>
+        {missing ? (
+          <Label kind={kinds.WARNING}>{translate('Missing')}</Label>
+        ) : (
+          <Icon
+            name={file.readable ? icons.CHECK : icons.WARNING}
+            kind={file.readable ? kinds.SUCCESS : kinds.WARNING}
+            title={
+              file.readable
+                ? file.localPath
+                : `${translate(
+                    file.access === 'notAllowed'
+                      ? 'CatalogFileNotAllowed'
+                      : 'CatalogFileMissing'
+                  )}: ${file.localPath}`
+            }
+          />
+        )}
+      </TableRowCell>
+
+      <RelativeDateCell date={file.dateAdded} />
+    </TableRow>
   );
 }
 
@@ -161,10 +317,24 @@ function countsText(application: LocalCatalogSummary) {
   }
 }
 
+function catalogFilePath(kind: CatalogKind) {
+  if (kind === 'movies' || kind === 'scenes') {
+    return '/catalog/local/moviefile';
+  }
+
+  return kind === 'music'
+    ? '/catalog/local/trackfile'
+    : '/catalog/local/episodefile';
+}
+
 function LocalCatalog() {
-  const [mediaType, setMediaType] = useState<LocalCatalogMediaType>('episode');
+  const [savedKind, setSavedKind] = useState<CatalogKind>(readKind);
   const [page, setPage] = useState(1);
   const [view, setView] = useState<View>(readView);
+  const [expandedShows, setExpandedShows] = useState<Set<string>>(new Set());
+  const [expandedSeasons, setExpandedSeasons] = useState<Set<string>>(
+    new Set()
+  );
   const [sortKey, setSortKey] = useState('path');
   const [sortDirection, setSortDirection] = useState<SortDirection>(
     'ascending' as SortDirection
@@ -180,34 +350,46 @@ function LocalCatalog() {
     refetch: refetchSummary,
   } = useApiQuery<LocalCatalogSummary[]>({ path: '/catalog/local' });
 
-  const {
-    records,
-    totalPages,
-    totalRecords,
-    isFetching,
-    isLoading,
-    error,
-    refetch,
-  } = usePagedApiQuery<LocalCatalogFile>({
-    path:
-      mediaType === 'movie'
-        ? '/catalog/local/moviefile'
-        : '/catalog/local/episodefile',
+  const availableKinds = getAvailableCatalogKinds(summary);
+
+  const kind = availableKinds.includes(savedKind)
+    ? savedKind
+    : availableKinds[0] ?? 'series';
+
+  const files = usePagedApiQuery<LocalCatalogFile>({
+    path: catalogFilePath(kind),
     page,
     pageSize: PAGE_SIZE,
     sortKey,
     sortDirection,
-    queryOptions: { enabled: view === 'table' },
+    queryParams: kind === 'movies' || kind === 'scenes' ? { kind } : undefined,
+    queryOptions: { enabled: view === 'table' && kind !== 'series' },
+  });
+
+  const series = usePagedApiQuery<LocalCatalogSeries>({
+    path: '/catalog/local/series',
+    page,
+    pageSize: PAGE_SIZE,
+    sortKey: 'title',
+    sortDirection: 'ascending',
+    queryOptions: { enabled: view === 'table' && kind === 'series' },
   });
 
   const titles = usePagedApiQuery<LocalCatalogTitle>({
     path: '/catalog/local/titles',
     page,
     pageSize: POSTER_PAGE_SIZE,
+    queryParams: { kind },
     queryOptions: { enabled: view === 'posters' },
   });
 
-  const pages = view === 'posters' ? titles.totalPages : totalPages;
+  let pages = files.totalPages;
+
+  if (view === 'posters') {
+    pages = titles.totalPages;
+  } else if (kind === 'series') {
+    pages = series.totalPages;
+  }
 
   const handleViewPress = useCallback((next: View) => {
     setView(next);
@@ -229,12 +411,15 @@ function LocalCatalog() {
   }, [handleViewPress]);
 
   const refetchTitles = titles.refetch;
+  const refetchFiles = files.refetch;
+  const refetchSeries = series.refetch;
 
   const reload = useCallback(() => {
     refetchSummary();
-    refetch();
+    refetchFiles();
+    refetchSeries();
     refetchTitles();
-  }, [refetchSummary, refetch, refetchTitles]);
+  }, [refetchSummary, refetchFiles, refetchSeries, refetchTitles]);
 
   const handleRefreshPress = useCallback(() => {
     executeCommand({ name: CommandNames.CatalogRefresh }, reload);
@@ -247,15 +432,47 @@ function LocalCatalog() {
     );
   }, [executeCommand, reload]);
 
-  const handleEpisodeFilesPress = useCallback(() => {
-    setMediaType('episode');
+  const handleKindPress = useCallback((next: CatalogKind) => {
+    setSavedKind(next);
     setPage(1);
+
+    try {
+      window.localStorage.setItem(KIND_KEY, next);
+    } catch {
+      // Remembered for this visit only.
+    }
   }, []);
 
-  const handleMovieFilesPress = useCallback(() => {
-    setMediaType('movie');
-    setPage(1);
+  const handleShowToggle = useCallback((showKey: string) => {
+    setExpandedShows((current) => {
+      const next = new Set(current);
+
+      if (next.has(showKey)) {
+        next.delete(showKey);
+      } else {
+        next.add(showKey);
+      }
+
+      return next;
+    });
   }, []);
+
+  const handleSeasonToggle = useCallback((seasonKey: string) => {
+    setExpandedSeasons((current) => {
+      const next = new Set(current);
+
+      if (next.has(seasonKey)) {
+        next.delete(seasonKey);
+      } else {
+        next.add(seasonKey);
+      }
+
+      return next;
+    });
+  }, []);
+
+  const activeLoading = kind === 'series' ? series.isLoading : files.isLoading;
+  const activeError = kind === 'series' ? series.error : files.error;
 
   const handleFirstPagePress = useCallback(() => {
     setPage(1);
@@ -288,8 +505,6 @@ function LocalCatalog() {
     [sortKey, sortDirection]
   );
 
-  const episodeFileCount = summary.reduce((sum, a) => sum + a.episodeFiles, 0);
-  const movieFileCount = summary.reduce((sum, a) => sum + a.movieFiles, 0);
   const missingCount = summary.reduce((sum, a) => sum + a.missingFiles, 0);
 
   return (
@@ -331,7 +546,7 @@ function LocalCatalog() {
       <PageContentBody>
         {isSummaryLoading ? <LoadingIndicator /> : null}
 
-        {summaryError || error ? (
+        {summaryError || activeError ? (
           <Alert kind={kinds.DANGER}>{translate('CatalogLoadError')}</Alert>
         ) : null}
 
@@ -376,6 +591,19 @@ function LocalCatalog() {
           ))}
         </div>
 
+        {availableKinds.length > 0 ? (
+          <div className={styles.mediaTypes}>
+            {availableKinds.map((availableKind) => (
+              <CatalogKindButton
+                key={availableKind}
+                kind={availableKind}
+                isSelected={kind === availableKind}
+                onPress={handleKindPress}
+              />
+            ))}
+          </div>
+        ) : null}
+
         {view === 'posters' && titles.isLoading ? <LoadingIndicator /> : null}
 
         {view === 'posters' &&
@@ -405,27 +633,155 @@ function LocalCatalog() {
           </div>
         ) : null}
 
-        {view === 'table' && summary.length > 0 ? (
-          <div className={styles.mediaTypes}>
-            <Button
-              kind={mediaType === 'episode' ? kinds.PRIMARY : kinds.DEFAULT}
-              onPress={handleEpisodeFilesPress}
-            >
-              {translate('EpisodeFiles')} ({episodeFileCount})
-            </Button>
+        {view === 'table' && activeLoading ? <LoadingIndicator /> : null}
 
-            <Button
-              kind={mediaType === 'movie' ? kinds.PRIMARY : kinds.DEFAULT}
-              onPress={handleMovieFilesPress}
+        {view === 'table' &&
+        kind === 'series' &&
+        !series.isLoading &&
+        series.records.length > 0 ? (
+          <div>
+            <Table
+              columns={COLUMNS}
+              canModifyColumns={false}
+              sortKey="title"
+              sortDirection="ascending"
             >
-              {translate('MovieFiles')} ({movieFileCount})
-            </Button>
+              <TableBody>
+                {series.records.map((show) => {
+                  const showKey = `${show.applicationId}-${show.posterArrId}`;
+                  const showExpanded = expandedShows.has(showKey);
+
+                  return (
+                    <React.Fragment key={showKey}>
+                      <TableRow className={styles.treeShowRow}>
+                        <TableRowCell className={catalogStyles.posterCell}>
+                          <Poster
+                            src={localPosterSrc(
+                              show.applicationId,
+                              'series',
+                              show.posterArrId
+                            )}
+                            title={show.title ?? ''}
+                            size="thumb"
+                          />
+                        </TableRowCell>
+                        <TableRowCell>{show.applicationName}</TableRowCell>
+                        <TableRowCell className={styles.title}>
+                          <div className={styles.treeTitle}>
+                            <ToggleButton
+                              expanded={showExpanded}
+                              label={`${showExpanded ? 'Collapse' : 'Expand'} ${
+                                show.title
+                              }`}
+                              id={showKey}
+                              onPress={handleShowToggle}
+                            />
+                            <strong>
+                              {titleWithYear(show.title, show.year)}
+                            </strong>
+                          </div>
+                          <div className={styles.episodeTitles}>
+                            {translate('CatalogLocalSeriesSummary', {
+                              count: show.episodes,
+                              missing: show.missing,
+                            })}
+                          </div>
+                        </TableRowCell>
+                        <TableRowCell />
+                        <TableRowCell>{formatBytes(show.size)}</TableRowCell>
+                        <TableRowCell />
+                        <TableRowCell>
+                          {show.missing > 0 ? (
+                            <Label kind={kinds.WARNING}>
+                              {show.missing} {translate('Missing')}
+                            </Label>
+                          ) : null}
+                        </TableRowCell>
+                        <TableRowCell />
+                      </TableRow>
+
+                      {showExpanded
+                        ? show.seasons.map((season) => {
+                            const seasonKey = `${showKey}-${season.seasonNumber}`;
+                            const seasonExpanded =
+                              expandedSeasons.has(seasonKey);
+
+                            return (
+                              <React.Fragment key={seasonKey}>
+                                <TableRow className={styles.treeSeasonRow}>
+                                  <TableRowCell />
+                                  <TableRowCell />
+                                  <TableRowCell className={styles.title}>
+                                    <div className={styles.treeTitle}>
+                                      <ToggleButton
+                                        expanded={seasonExpanded}
+                                        label={`${
+                                          seasonExpanded ? 'Collapse' : 'Expand'
+                                        } ${translate('Season')} ${
+                                          season.seasonNumber
+                                        }`}
+                                        id={seasonKey}
+                                        onPress={handleSeasonToggle}
+                                      />
+                                      <strong>
+                                        {translate('Season')}{' '}
+                                        {season.seasonNumber}
+                                      </strong>
+                                    </div>
+                                    <div className={styles.episodeTitles}>
+                                      {translate('CatalogLocalSeriesSummary', {
+                                        count: season.episodes,
+                                        missing: season.missing,
+                                      })}
+                                    </div>
+                                  </TableRowCell>
+                                  <TableRowCell />
+                                  <TableRowCell>
+                                    {formatBytes(season.size)}
+                                  </TableRowCell>
+                                  <TableRowCell />
+                                  <TableRowCell>
+                                    {season.missing > 0 ? (
+                                      <Label kind={kinds.WARNING}>
+                                        {season.missing} {translate('Missing')}
+                                      </Label>
+                                    ) : null}
+                                  </TableRowCell>
+                                  <TableRowCell />
+                                </TableRow>
+                                {seasonExpanded
+                                  ? season.files.map((file) => (
+                                      <LocalFileRow key={file.id} file={file} />
+                                    ))
+                                  : null}
+                              </React.Fragment>
+                            );
+                          })
+                        : null}
+                    </React.Fragment>
+                  );
+                })}
+              </TableBody>
+            </Table>
+
+            <TablePager
+              page={page}
+              totalPages={series.totalPages}
+              totalRecords={series.totalRecords}
+              isFetching={series.isFetching}
+              onFirstPagePress={handleFirstPagePress}
+              onPreviousPagePress={handlePreviousPagePress}
+              onNextPagePress={handleNextPagePress}
+              onLastPagePress={handleLastPagePress}
+              onPageSelect={setPage}
+            />
           </div>
         ) : null}
 
-        {view === 'table' && isLoading ? <LoadingIndicator /> : null}
-
-        {view === 'table' && !isLoading && records.length > 0 ? (
+        {view === 'table' &&
+        kind !== 'series' &&
+        !files.isLoading &&
+        files.records.length > 0 ? (
           <div>
             <Table
               columns={COLUMNS}
@@ -435,83 +791,17 @@ function LocalCatalog() {
               onSortPress={handleSortPress}
             >
               <TableBody>
-                {records.map((file) => (
-                  <TableRow
-                    key={file.id}
-                    className={file.missingSince ? styles.missing : undefined}
-                  >
-                    <TableRowCell className={catalogStyles.posterCell}>
-                      <Poster
-                        src={localPosterSrc(
-                          file.applicationId,
-                          file.posterSubject,
-                          file.posterArrId
-                        )}
-                        title={file.title ?? ''}
-                        size="thumb"
-                      />
-                    </TableRowCell>
-
-                    <TableRowCell>{file.applicationName}</TableRowCell>
-
-                    <TableRowCell className={styles.title}>
-                      {describe(file)}
-                      {file.episodeTitles.length > 0 ? (
-                        <div className={styles.episodeTitles}>
-                          {file.episodeTitles.join(' + ')}
-                        </div>
-                      ) : null}
-                    </TableRowCell>
-
-                    <TableRowCell>
-                      {file.quality ? <Label>{file.quality}</Label> : null}
-                      {file.revision ? (
-                        <Label kind={kinds.PRIMARY}>{file.revision}</Label>
-                      ) : null}
-                    </TableRowCell>
-
-                    <TableRowCell>{formatBytes(file.size)}</TableRowCell>
-
-                    <TableRowCell
-                      className={styles.path}
-                      title={file.localPath ?? file.path}
-                    >
-                      {file.path}
-                    </TableRowCell>
-
-                    <TableRowCell>
-                      {file.missingSince ? (
-                        <Label kind={kinds.WARNING}>
-                          {translate('Missing')}
-                        </Label>
-                      ) : (
-                        <Icon
-                          name={file.readable ? icons.CHECK : icons.WARNING}
-                          kind={file.readable ? kinds.SUCCESS : kinds.WARNING}
-                          title={
-                            file.readable
-                              ? file.localPath
-                              : `${translate(
-                                  file.access === 'notAllowed'
-                                    ? 'CatalogFileNotAllowed'
-                                    : 'CatalogFileMissing'
-                                )}: ${file.localPath}`
-                          }
-                        />
-                      )}
-                    </TableRowCell>
-
-                    <RelativeDateCell date={file.dateAdded} />
-                  </TableRow>
+                {files.records.map((file) => (
+                  <LocalFileRow key={file.id} file={file} />
                 ))}
               </TableBody>
             </Table>
 
             <TablePager
               page={page}
-              totalPages={totalPages}
-              totalRecords={totalRecords}
-              isFetching={isFetching}
+              totalPages={files.totalPages}
+              totalRecords={files.totalRecords}
+              isFetching={files.isFetching}
               onFirstPagePress={handleFirstPagePress}
               onPreviousPagePress={handlePreviousPagePress}
               onNextPagePress={handleNextPagePress}

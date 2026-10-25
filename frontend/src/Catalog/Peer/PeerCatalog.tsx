@@ -16,17 +16,22 @@ import Table from 'Components/Table/Table';
 import TableBody from 'Components/Table/TableBody';
 import TablePager from 'Components/Table/TablePager';
 import TableRow from 'Components/Table/TableRow';
+import useApiQuery from 'Helpers/Hooks/useApiQuery';
 import usePagedApiQuery from 'Helpers/Hooks/usePagedApiQuery';
 import { icons, kinds } from 'Helpers/Props';
 import { SortDirection } from 'Helpers/Props/sortDirections';
+import { CatalogKind, LocalCatalogSummary } from 'typings/LocalCatalog';
 import formatDateTime from 'Utilities/Date/formatDateTime';
 import formatBytes from 'Utilities/Number/formatBytes';
 import titleWithYear from 'Utilities/String/titleWithYear';
 import translate from 'Utilities/String/translate';
+import CatalogKindButton from '../CatalogKindButton';
+import { getAvailableCatalogKinds } from '../catalogKinds';
 import CatalogGetItButton from '../GetIt/CatalogGetItButton';
 import Poster, { peerPosterSrc } from '../Poster';
 import {
   PeerCatalogItem,
+  PeerCatalogSeries,
   PeerCatalogTitle,
   PeerItemStatus,
   usePeerCatalogSummaries,
@@ -41,6 +46,18 @@ const POSTER_PAGE_SIZE = 48;
 type View = 'table' | 'posters';
 
 const VIEW_KEY = 'nodearr.peerCatalog.view';
+const KIND_KEY = 'nodearr.peerCatalog.kind';
+
+function readKind(): CatalogKind {
+  try {
+    const value = window.localStorage.getItem(KIND_KEY);
+    return value === 'movies' || value === 'music' || value === 'scenes'
+      ? value
+      : 'series';
+  } catch {
+    return 'series';
+  }
+}
 
 function readView(): View {
   try {
@@ -130,9 +147,25 @@ function describe(item: PeerCatalogItem) {
     return titleWithYear(item.title, item.year);
   }
 
-  const episodes = item.episodeNumbers.map((n) => `E${pad(n)}`).join('');
+  const episodes =
+    item.seriesType === 'anime' && item.absoluteEpisodeNumbers.length > 0
+      ? item.absoluteEpisodeNumbers.map((n) => `#${pad(n)}`).join(' + ')
+      : item.episodeNumbers.map((n) => `E${pad(n)}`).join('');
+  const airDate = item.seriesType === 'daily' ? item.airDates[0] : undefined;
+  const sceneNumbers =
+    item.sceneSeasonNumber !== undefined &&
+    (item.sceneSeasonNumber !== item.seasonNumber ||
+      item.sceneEpisodeNumbers.some(
+        (number, index) => number !== item.episodeNumbers[index]
+      ))
+      ? ` · Scene S${pad(item.sceneSeasonNumber)}${item.sceneEpisodeNumbers
+          .map((number) => `E${pad(number)}`)
+          .join('')}`
+      : '';
 
-  return `${item.title} - S${pad(item.seasonNumber)}${episodes}`;
+  return `${item.title} - S${pad(item.seasonNumber)}${
+    airDate ? ` ${airDate}` : ''
+  }${episodes}${sceneNumbers}`;
 }
 
 function StatusButton({
@@ -199,10 +232,110 @@ function TitleTile({ title }: { title: PeerCatalogTitle }) {
   );
 }
 
+function ToggleButton({
+  expanded,
+  label,
+  id,
+  onPress,
+}: {
+  expanded: boolean;
+  label: string;
+  id: string;
+  onPress: (id: string) => void;
+}) {
+  const handlePress = useCallback(() => {
+    onPress(id);
+  }, [id, onPress]);
+
+  return (
+    <button
+      type="button"
+      className={styles.treeToggle}
+      aria-label={label}
+      aria-expanded={expanded}
+      onClick={handlePress}
+    >
+      {expanded ? '▾' : '▸'}
+    </button>
+  );
+}
+
+function PeerItemRow({ item }: { item: PeerCatalogItem }) {
+  const name = describe(item);
+
+  return (
+    <TableRow>
+      <TableRowCell className={styles.posterCell}>
+        <Poster
+          src={peerPosterSrc(item.id)}
+          title={item.title ?? ''}
+          size="thumb"
+          isSquare={item.mediaKind === 'music'}
+        />
+      </TableRowCell>
+
+      <TableRowCell>{item.peerName}</TableRowCell>
+
+      <TableRowCell className={styles.title}>
+        {name}
+        {item.episodeTitles ? (
+          <div className={styles.muted}>{item.episodeTitles}</div>
+        ) : null}
+        {item.seriesType === 'daily' && item.airDates.length > 0 ? (
+          <div className={styles.muted}>
+            {translate('AirDate')}: {item.airDates.join(' + ')}
+          </div>
+        ) : null}
+      </TableRowCell>
+
+      <TableRowCell>
+        <Label
+          kind={STATUS_KINDS[item.localStatus]}
+          title={
+            item.localStatus === 'upgrade'
+              ? translate('PeerItemUpgradeHelpText')
+              : undefined
+          }
+        >
+          {translate(STATUS_LABELS[item.localStatus])}
+        </Label>
+      </TableRowCell>
+
+      <TableRowCell>
+        {item.quality ? <Label>{item.quality}</Label> : null}
+        {item.revision ? (
+          <Label kind={kinds.PRIMARY}>{item.revision}</Label>
+        ) : null}
+      </TableRowCell>
+
+      <TableRowCell>{formatBytes(item.size)}</TableRowCell>
+
+      <TableRowCell className={styles.release}>
+        {item.releaseTitle}
+      </TableRowCell>
+      <TableRowCell>
+        {item.localStatus === 'have' ? null : (
+          <CatalogGetItButton
+            itemId={item.id}
+            scope="file"
+            mediaKind={item.mediaKind}
+            title={name}
+          />
+        )}
+      </TableRowCell>
+    </TableRow>
+  );
+}
+
 function PeerCatalog() {
   const [status, setStatus] = useState<PeerItemStatus | undefined>(undefined);
+  const [savedKind, setSavedKind] = useState<CatalogKind>(readKind);
   const [page, setPage] = useState(1);
   const [view, setView] = useState<View>(readView);
+  const [expandedShows, setExpandedShows] = useState<Set<string>>(new Set());
+  const [expandedSeasons, setExpandedSeasons] = useState<Set<string>>(
+    new Set()
+  );
   const [sortKey, setSortKey] = useState('title');
   const [sortDirection, setSortDirection] =
     useState<SortDirection>('ascending');
@@ -217,29 +350,45 @@ function PeerCatalog() {
     refetch: refetchSummaries,
   } = usePeerCatalogSummaries(5000);
 
-  const {
-    records,
-    totalPages,
-    totalRecords,
-    isFetching,
-    isLoading,
-    error,
-    refetch,
-  } = usePagedApiQuery<PeerCatalogItem>({
+  const { data: localApplications = [] } = useApiQuery<LocalCatalogSummary[]>({
+    path: '/catalog/local',
+  });
+
+  const availableKinds = getAvailableCatalogKinds(localApplications);
+
+  const kind = availableKinds.includes(savedKind)
+    ? savedKind
+    : availableKinds[0] ?? 'series';
+
+  const items = usePagedApiQuery<PeerCatalogItem>({
     path: '/catalog/peers/items',
     page,
     pageSize: PAGE_SIZE,
     sortKey,
     sortDirection,
+    queryParams: { ...(status ? { status } : {}), kind },
+    queryOptions: {
+      enabled: view === 'table' && kind !== 'series',
+      refetchInterval: 5000,
+    },
+  });
+
+  const series = usePagedApiQuery<PeerCatalogSeries>({
+    path: '/catalog/peers/series',
+    page,
+    pageSize: PAGE_SIZE,
     queryParams: status ? { status } : undefined,
-    queryOptions: { enabled: view === 'table', refetchInterval: 5000 },
+    queryOptions: {
+      enabled: view === 'table' && kind === 'series',
+      refetchInterval: 5000,
+    },
   });
 
   const titles = usePagedApiQuery<PeerCatalogTitle>({
     path: '/catalog/peers/titles',
     page,
     pageSize: POSTER_PAGE_SIZE,
-    queryParams: status ? { status } : undefined,
+    queryParams: { ...(status ? { status } : {}), kind },
     queryOptions: { enabled: view === 'posters', refetchInterval: 5000 },
   });
 
@@ -262,14 +411,73 @@ function PeerCatalog() {
     handleViewPress('posters');
   }, [handleViewPress]);
 
-  const pages = view === 'posters' ? titles.totalPages : totalPages;
+  let pages = items.totalPages;
+
+  if (view === 'posters') {
+    pages = titles.totalPages;
+  } else if (kind === 'series') {
+    pages = series.totalPages;
+  }
+
+  const handleKindPress = useCallback((next: CatalogKind) => {
+    setSavedKind(next);
+    setPage(1);
+
+    try {
+      window.localStorage.setItem(KIND_KEY, next);
+    } catch {
+      // Remembered for this visit only.
+    }
+  }, []);
+
+  const handleShowToggle = useCallback((showKey: string) => {
+    setExpandedShows((current) => {
+      const next = new Set(current);
+
+      if (next.has(showKey)) {
+        next.delete(showKey);
+      } else {
+        next.add(showKey);
+      }
+
+      return next;
+    });
+  }, []);
+
+  const handleSeasonToggle = useCallback((seasonKey: string) => {
+    setExpandedSeasons((current) => {
+      const next = new Set(current);
+
+      if (next.has(seasonKey)) {
+        next.delete(seasonKey);
+      } else {
+        next.add(seasonKey);
+      }
+
+      return next;
+    });
+  }, []);
+
+  const activeLoading = kind === 'series' ? series.isLoading : items.isLoading;
+  const activeError = kind === 'series' ? series.error : items.error;
+  const refetchItems = items.refetch;
+  const refetchSeries = series.refetch;
+  const refetchTitles = titles.refetch;
 
   const handleSyncPress = useCallback(() => {
     executeCommand({ name: CommandNames.PeerCatalogSync }, () => {
       refetchSummaries();
-      refetch();
+      refetchItems();
+      refetchSeries();
+      refetchTitles();
     });
-  }, [executeCommand, refetchSummaries, refetch]);
+  }, [
+    executeCommand,
+    refetchSummaries,
+    refetchItems,
+    refetchSeries,
+    refetchTitles,
+  ]);
 
   const handleStatusPress = useCallback((next?: PeerItemStatus) => {
     setStatus(next);
@@ -346,7 +554,7 @@ function PeerCatalog() {
       <PageContentBody>
         {isSummaryLoading ? <LoadingIndicator /> : null}
 
-        {summaryError || error ? (
+        {summaryError || activeError ? (
           <Alert kind={kinds.DANGER}>{translate('CatalogLoadError')}</Alert>
         ) : null}
 
@@ -409,6 +617,19 @@ function PeerCatalog() {
           </Alert>
         ) : null}
 
+        {availableKinds.length > 0 ? (
+          <div className={styles.buttons}>
+            {availableKinds.map((availableKind) => (
+              <CatalogKindButton
+                key={availableKind}
+                kind={availableKind}
+                isSelected={kind === availableKind}
+                onPress={handleKindPress}
+              />
+            ))}
+          </div>
+        ) : null}
+
         {view === 'posters' && titles.isLoading ? <LoadingIndicator /> : null}
 
         {view === 'posters' &&
@@ -435,9 +656,165 @@ function PeerCatalog() {
           </div>
         ) : null}
 
-        {view === 'table' && isLoading ? <LoadingIndicator /> : null}
+        {view === 'table' && activeLoading ? <LoadingIndicator /> : null}
 
-        {view === 'table' && !isLoading && records.length > 0 ? (
+        {view === 'table' &&
+        kind === 'series' &&
+        !series.isLoading &&
+        series.records.length > 0 ? (
+          <div>
+            <Table
+              columns={COLUMNS}
+              canModifyColumns={false}
+              sortKey="title"
+              sortDirection="ascending"
+            >
+              <TableBody>
+                {series.records.map((show) => {
+                  const showExpanded = expandedShows.has(show.key);
+                  const peers = Array.from(
+                    new Set(
+                      show.seasons
+                        .flatMap((season) => season.items)
+                        .map((item) => item.peerName)
+                        .filter(Boolean)
+                    )
+                  );
+
+                  return (
+                    <React.Fragment key={show.key}>
+                      <TableRow className={styles.treeShowRow}>
+                        <TableRowCell className={styles.posterCell}>
+                          <Poster
+                            src={peerPosterSrc(show.posterItemId)}
+                            title={show.title ?? ''}
+                            size="thumb"
+                          />
+                        </TableRowCell>
+                        <TableRowCell>{peers.join(', ')}</TableRowCell>
+                        <TableRowCell className={styles.title}>
+                          <div className={styles.treeTitle}>
+                            <ToggleButton
+                              expanded={showExpanded}
+                              label={`${showExpanded ? 'Collapse' : 'Expand'} ${
+                                show.title
+                              }`}
+                              id={show.key}
+                              onPress={handleShowToggle}
+                            />
+                            <strong>
+                              {titleWithYear(show.title, show.year)}
+                            </strong>
+                          </div>
+                          <div className={styles.muted}>
+                            {translate('CatalogSeriesSummary', {
+                              count: show.episodes,
+                              missing: show.missing,
+                              upgrade: show.upgrade,
+                            })}
+                          </div>
+                        </TableRowCell>
+                        <TableRowCell>
+                          <Label kind={STATUS_KINDS[show.status]}>
+                            {translate(STATUS_LABELS[show.status])}
+                          </Label>
+                        </TableRowCell>
+                        <TableRowCell />
+                        <TableRowCell>{formatBytes(show.size)}</TableRowCell>
+                        <TableRowCell />
+                        <TableRowCell>
+                          {show.status === 'have' ? null : (
+                            <CatalogGetItButton
+                              itemId={show.posterItemId}
+                              scope="title"
+                              mediaKind="tv"
+                              title={titleWithYear(show.title, show.year)}
+                            />
+                          )}
+                        </TableRowCell>
+                      </TableRow>
+
+                      {showExpanded
+                        ? show.seasons.map((season) => {
+                            const seasonKey = `${show.key}-${season.seasonNumber}`;
+                            const seasonExpanded =
+                              expandedSeasons.has(seasonKey);
+
+                            return (
+                              <React.Fragment key={seasonKey}>
+                                <TableRow className={styles.treeSeasonRow}>
+                                  <TableRowCell />
+                                  <TableRowCell />
+                                  <TableRowCell className={styles.title}>
+                                    <div className={styles.treeTitle}>
+                                      <ToggleButton
+                                        expanded={seasonExpanded}
+                                        label={`${
+                                          seasonExpanded ? 'Collapse' : 'Expand'
+                                        } ${translate('Season')} ${
+                                          season.seasonNumber
+                                        }`}
+                                        id={seasonKey}
+                                        onPress={handleSeasonToggle}
+                                      />
+                                      <strong>
+                                        {translate('Season')}{' '}
+                                        {season.seasonNumber}
+                                      </strong>
+                                    </div>
+                                    <div className={styles.muted}>
+                                      {translate('CatalogSeriesSummary', {
+                                        count: season.episodes,
+                                        missing: season.missing,
+                                        upgrade: season.upgrade,
+                                      })}
+                                    </div>
+                                  </TableRowCell>
+                                  <TableRowCell>
+                                    <Label kind={STATUS_KINDS[season.status]}>
+                                      {translate(STATUS_LABELS[season.status])}
+                                    </Label>
+                                  </TableRowCell>
+                                  <TableRowCell />
+                                  <TableRowCell>
+                                    {formatBytes(season.size)}
+                                  </TableRowCell>
+                                  <TableRowCell />
+                                  <TableRowCell />
+                                </TableRow>
+                                {seasonExpanded
+                                  ? season.items.map((item) => (
+                                      <PeerItemRow key={item.id} item={item} />
+                                    ))
+                                  : null}
+                              </React.Fragment>
+                            );
+                          })
+                        : null}
+                    </React.Fragment>
+                  );
+                })}
+              </TableBody>
+            </Table>
+
+            <TablePager
+              page={page}
+              totalPages={series.totalPages}
+              totalRecords={series.totalRecords}
+              isFetching={series.isFetching}
+              onFirstPagePress={handleFirstPagePress}
+              onPreviousPagePress={handlePreviousPagePress}
+              onNextPagePress={handleNextPagePress}
+              onLastPagePress={handleLastPagePress}
+              onPageSelect={setPage}
+            />
+          </div>
+        ) : null}
+
+        {view === 'table' &&
+        kind !== 'series' &&
+        !items.isLoading &&
+        items.records.length > 0 ? (
           <div>
             <Table
               columns={COLUMNS}
@@ -447,71 +824,17 @@ function PeerCatalog() {
               onSortPress={handleSortPress}
             >
               <TableBody>
-                {records.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableRowCell className={styles.posterCell}>
-                      <Poster
-                        src={peerPosterSrc(item.id)}
-                        title={item.title ?? ''}
-                        size="thumb"
-                        isSquare={item.mediaKind === 'music'}
-                      />
-                    </TableRowCell>
-
-                    <TableRowCell>{item.peerName}</TableRowCell>
-
-                    <TableRowCell className={styles.title}>
-                      {describe(item)}
-                      {item.episodeTitles ? (
-                        <div className={styles.muted}>{item.episodeTitles}</div>
-                      ) : null}
-                    </TableRowCell>
-
-                    <TableRowCell>
-                      <Label
-                        kind={STATUS_KINDS[item.localStatus]}
-                        title={
-                          item.localStatus === 'upgrade'
-                            ? translate('PeerItemUpgradeHelpText')
-                            : undefined
-                        }
-                      >
-                        {translate(STATUS_LABELS[item.localStatus])}
-                      </Label>
-                    </TableRowCell>
-
-                    <TableRowCell>
-                      {item.quality ? <Label>{item.quality}</Label> : null}
-                      {item.revision ? (
-                        <Label kind={kinds.PRIMARY}>{item.revision}</Label>
-                      ) : null}
-                    </TableRowCell>
-
-                    <TableRowCell>{formatBytes(item.size)}</TableRowCell>
-
-                    <TableRowCell className={styles.release}>
-                      {item.releaseTitle}
-                    </TableRowCell>
-                    <TableRowCell>
-                      {item.localStatus === 'have' ? null : (
-                        <CatalogGetItButton
-                          itemId={item.id}
-                          scope="file"
-                          mediaKind={item.mediaKind}
-                          title={describe(item)}
-                        />
-                      )}
-                    </TableRowCell>
-                  </TableRow>
+                {items.records.map((item) => (
+                  <PeerItemRow key={item.id} item={item} />
                 ))}
               </TableBody>
             </Table>
 
             <TablePager
               page={page}
-              totalPages={totalPages}
-              totalRecords={totalRecords}
-              isFetching={isFetching}
+              totalPages={items.totalPages}
+              totalRecords={items.totalRecords}
+              isFetching={items.isFetching}
               onFirstPagePress={handleFirstPagePress}
               onPreviousPagePress={handlePreviousPagePress}
               onNextPagePress={handleNextPagePress}

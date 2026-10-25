@@ -78,6 +78,7 @@ namespace NzbDrone.Core.Catalog
     {
         List<CatalogEpisode> ForFiles(int applicationId, IEnumerable<int> arrEpisodeFileIds);
         List<CatalogEpisode> ForSeries(int applicationId, int arrSeriesId);
+        List<CatalogEpisode> ForSeries(int applicationId, IEnumerable<int> arrSeriesIds);
     }
 
     public class CatalogEpisodeRepository : CatalogRepository<CatalogEpisode>, ICatalogEpisodeRepository
@@ -98,6 +99,13 @@ namespace NzbDrone.Core.Catalog
         {
             return Query(x => x.ApplicationId == applicationId && x.ArrSeriesId == arrSeriesId);
         }
+
+        public List<CatalogEpisode> ForSeries(int applicationId, IEnumerable<int> arrSeriesIds)
+        {
+            var ids = arrSeriesIds.Distinct().ToList();
+
+            return ids.Count == 0 ? new List<CatalogEpisode>() : Query(x => x.ApplicationId == applicationId && ids.Contains(x.ArrSeriesId));
+        }
     }
 
     // How many files a title has, counted by the database: a page of titles must not load every file.
@@ -112,6 +120,7 @@ namespace NzbDrone.Core.Catalog
     {
         // Files the Arr app still reports, per series.
         List<TitleFileCount> FilesPerSeries();
+        List<CatalogEpisodeFile> ForSeries(int applicationId, IEnumerable<int> arrSeriesIds);
     }
 
     public class CatalogEpisodeFileRepository : CatalogRepository<CatalogEpisodeFile>, ICatalogEpisodeFileRepository
@@ -126,6 +135,13 @@ namespace NzbDrone.Core.Catalog
             using var connection = _database.OpenConnection();
 
             return connection.Query<TitleFileCount>($"SELECT \"ApplicationId\", \"ArrSeriesId\" AS \"ArrId\", COUNT(*) AS \"Files\" FROM \"{_table}\" WHERE \"MissingSince\" IS NULL GROUP BY \"ApplicationId\", \"ArrSeriesId\"").ToList();
+        }
+
+        public List<CatalogEpisodeFile> ForSeries(int applicationId, IEnumerable<int> arrSeriesIds)
+        {
+            var ids = arrSeriesIds.Distinct().ToList();
+
+            return ids.Count == 0 ? new List<CatalogEpisodeFile>() : Query(x => x.ApplicationId == applicationId && ids.Contains(x.ArrSeriesId));
         }
     }
 
@@ -145,6 +161,7 @@ namespace NzbDrone.Core.Catalog
     {
         // Files the Arr app still reports, per movie.
         List<TitleFileCount> FilesPerMovie();
+        PagingSpec<CatalogMovieFile> GetPagedByKind(PagingSpec<CatalogMovieFile> pagingSpec, string kind);
     }
 
     public class CatalogMovieFileRepository : CatalogRepository<CatalogMovieFile>, ICatalogMovieFileRepository
@@ -159,6 +176,35 @@ namespace NzbDrone.Core.Catalog
             using var connection = _database.OpenConnection();
 
             return connection.Query<TitleFileCount>($"SELECT \"ApplicationId\", \"ArrMovieId\" AS \"ArrId\", COUNT(*) AS \"Files\" FROM \"{_table}\" WHERE \"MissingSince\" IS NULL GROUP BY \"ApplicationId\", \"ArrMovieId\"").ToList();
+        }
+
+        public PagingSpec<CatalogMovieFile> GetPagedByKind(PagingSpec<CatalogMovieFile> pagingSpec, string kind)
+        {
+            if (kind is not ("movies" or "scenes"))
+            {
+                return GetPaged(pagingSpec);
+            }
+
+            SqlBuilder BuildQuery()
+            {
+                var builder = Builder().InnerJoin<CatalogMovieFile, CatalogMovie>((file, movie) => file.ApplicationId == movie.ApplicationId && file.ArrMovieId == movie.ArrId);
+
+                if (kind == "scenes")
+                {
+                    builder.Where("\"CatalogMovies\".\"ItemType\" = @itemType", new { itemType = "scene" });
+                }
+                else
+                {
+                    builder.Where("(\"CatalogMovies\".\"ItemType\" IS NULL OR \"CatalogMovies\".\"ItemType\" <> @itemType)", new { itemType = "scene" });
+                }
+
+                return builder;
+            }
+
+            pagingSpec.Records = GetPagedRecords(BuildQuery(), pagingSpec, Query);
+            pagingSpec.TotalRecords = GetPagedRecordCount(BuildQuery().SelectCount(), pagingSpec);
+
+            return pagingSpec;
         }
     }
 
@@ -188,6 +234,7 @@ namespace NzbDrone.Core.Catalog
 
     public interface ICatalogTrackFileRepository : ICatalogRepository<CatalogTrackFile>
     {
+        List<TitleFileCount> FilesPerAlbum();
     }
 
     public class CatalogTrackFileRepository : CatalogRepository<CatalogTrackFile>, ICatalogTrackFileRepository
@@ -195,6 +242,13 @@ namespace NzbDrone.Core.Catalog
         public CatalogTrackFileRepository(IMainDatabase database, IEventAggregator eventAggregator)
             : base(database, eventAggregator)
         {
+        }
+
+        public List<TitleFileCount> FilesPerAlbum()
+        {
+            using var connection = _database.OpenConnection();
+
+            return connection.Query<TitleFileCount>($"SELECT \"ApplicationId\", \"ArrAlbumId\" AS \"ArrId\", COUNT(*) AS \"Files\" FROM \"{_table}\" WHERE \"MissingSince\" IS NULL GROUP BY \"ApplicationId\", \"ArrAlbumId\"").ToList();
         }
     }
 

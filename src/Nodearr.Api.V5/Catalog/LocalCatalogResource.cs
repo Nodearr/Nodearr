@@ -65,8 +65,19 @@ public class LocalCatalogFileResource
 
     // A multi-episode file lists every episode it contains.
     public int? SeasonNumber { get; set; }
+    public string? SeriesType { get; set; }
     public List<int> EpisodeNumbers { get; set; } = new();
     public List<string> EpisodeTitles { get; set; } = new();
+    public List<int> AbsoluteEpisodeNumbers { get; set; } = new();
+    public int? SceneSeasonNumber { get; set; }
+    public List<int> SceneEpisodeNumbers { get; set; } = new();
+    public List<string> AirDates { get; set; } = new();
+    public string? Artist { get; set; }
+    public string? AlbumTitle { get; set; }
+    public string? TrackTitle { get; set; }
+    public int TrackNumber { get; set; }
+    public int DiscNumber { get; set; }
+    public bool IsMissing { get; set; }
 
     public string? Path { get; set; }
     public string? RelativePath { get; set; }
@@ -112,7 +123,8 @@ public class LocalCatalogFileResource
             VideoCodec = file.VideoCodec,
             AudioCodec = file.AudioCodec,
             DateAdded = file.DateAdded,
-            MissingSince = file.MissingSince
+            MissingSince = file.MissingSince,
+            IsMissing = file.MissingSince.HasValue
         };
     }
 }
@@ -123,9 +135,35 @@ public class LocalCatalogTitleResource
     public int ApplicationId { get; set; }
     public string? ApplicationName { get; set; }
     public string MediaType { get; set; } = string.Empty;
+    public string Kind { get; set; } = string.Empty;
+    public bool IsAdult { get; set; }
     public PosterSubject PosterSubject { get; set; }
     public int PosterArrId { get; set; }
     public string? Title { get; set; }
     public int Year { get; set; }
     public int Files { get; set; }
+    public string? Artist { get; set; }
+}
+
+public class LocalCatalogSeriesResource
+{
+    public int ApplicationId { get; set; }
+    public string? ApplicationName { get; set; }
+    public string? Title { get; set; }
+    public int Year { get; set; }
+    public string? SeriesType { get; set; }
+    public int PosterArrId { get; set; }
+    public int Episodes { get; set; }
+    public int Missing { get; set; }
+    public long Size { get; set; }
+    public List<LocalCatalogSeasonResource> Seasons { get; set; } = new();
+}
+
+public class LocalCatalogSeasonResource
+{
+    public int SeasonNumber { get; set; }
+    public int Episodes { get; set; }
+    public int Missing { get; set; }
+    public long Size { get; set; }
+    public List<LocalCatalogFileResource> Files { get; set; } = new();
 }

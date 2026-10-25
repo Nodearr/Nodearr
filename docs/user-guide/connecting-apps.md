@@ -205,9 +205,15 @@ Connect each library app directly to Nodearr using [the connection steps](#addin
 
 Nodearr refreshes each app's library every 12 hours. Webhooks trigger a refresh of the affected title within seconds; Whisparr v2 triggers a full-library refresh instead.
 
-**Catalog > Local** shows each file with its title's poster, from your own Arr app. Select **Posters** to see one tile per series or movie instead, with how many files each has.
+**Catalog > Local** has the same kind filters in **Table** and **Posters**: **Series**, **Movies**, **Music** when Lidarr is connected, and **Scenes** when Whisparr is connected. The selection is remembered on this page. In **Table**, a show opens into seasons, then episode files. A multi-episode file appears once with every episode it holds. Anime rows show absolute episode numbers; scene numbers appear alongside the TVDB numbers when they differ. Daily shows group by Sonarr's season and show the air date. Specials (season 0) appear last. Show and season rows summarize episode count, missing episodes and total size.
 
-![The Posters view of Alex's own catalog: one tile each for Back to the Future, Cowboy Bebop and Spirited Away, with how many files each has](images/local-catalog-posters.png)
+In **Posters**, the selected kind shows one tile per title with how many files it has. Music tiles use the album's artist and square artwork.
+
+![The Series Posters view of Alex's own catalog: Cowboy Bebop and its file count](images/local-catalog-posters.png)
+
+Choose **Movies** to see movie posters on their own:
+
+![The Movies Posters view of Alex's own catalog: Back to the Future and Spirited Away](images/local-catalog-movies-posters.png)
 
 To refresh all libraries now, go to **Catalog > Local** and select **Refresh Catalog**. Files an app no longer reports are marked missing, then removed from Nodearr's catalog after 7 days. Select **Purge Missing** to remove those catalog entries immediately.
 

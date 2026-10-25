@@ -13,9 +13,15 @@
 | **Have** | You have a file, and this offer is not an upgrade under your local quality profile. This also applies when upgrades are off or the cutoff is met. |
 | **Not in library** | None of your Arr apps has it. **Get it** can add it for you. |
 
-Select **Posters** to switch from the file list to a grid. The grid groups files into one tile per series, movie, scene or album, including copies shared by different friends. Each tile shows how many files you have or are missing. Select **Table** to return to the file list.
+Both **Table** and **Posters** have the same kind filters: **Series**, **Movies**, **Music** when Lidarr is connected, and **Scenes** when Whisparr is connected. The selection is remembered on this page. In **Table**, a show opens into seasons, then episode files. A file with several episodes appears once under its season. Show and season rows count distinct episodes across friends, missing or upgradable episodes and total offered size; their status is **Missing** if any episode is missing, otherwise **Upgrade** if any is upgradable. The tree uses Sonarr's TVDB season and episode numbers. Anime rows show absolute numbers, scene numbers appear alongside TVDB numbers when they differ, daily shows show air dates, and specials (season 0) appear last.
 
-![The Posters view of Sam's catalog: one tile each for Cowboy Bebop, Frieren and Spirited Away, with what Alex has of each](images/peer-catalog-posters.png)
+Select **Posters** to switch from the file list to a grid for the selected kind. The grid groups files into one tile per title, including copies shared by different friends. Each tile shows how many files you have or are missing. Select **Table** to return to the file list.
+
+![The Series Posters view of Sam's catalog: tiles for Cowboy Bebop and Frieren](images/peer-catalog-posters.png)
+
+Choose **Movies** to see movie posters on their own:
+
+![The Movies Posters view of Sam's catalog: Spirited Away](images/peer-catalog-movies-posters.png)
 
 Posters come from your friends' Arr apps. Nodearr caches each image for 30 days before requesting it again; it does not contact an external image service ([ADR 0022](../adr/0022-posters-from-friends-arr-apps.md)).
 

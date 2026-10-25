@@ -12,6 +12,7 @@ What changed in each release, newest first. Each item links to the decision reco
 
 ### Added
 
+- The local and peer catalogs now filter **Series**, **Movies**, **Music** when Lidarr is connected, and **Scenes** when Whisparr is connected, in both **Table** and **Posters**. TV tables open into show, season and episode rows with file details, episode summaries and **Get it** actions. They group by TVDB numbers, show anime absolute numbers and differing scene numbers, use air dates for daily shows, and put specials last ([#58](https://github.com/Nodearr/Nodearr/issues/58)).
 - **Get it** in **Catalog > Peer Catalog**, beside files and under posters. Choose an episode file, a season, a whole series, a movie, a scene or an album, and use the same app choices and defaults as Home's send card. Nodearr adds, monitors and searches in the right Arr app, with progress in the dialog and downloads in **Activity > Transfers**. Held files have no action; offered upgrades reach the app's own search rules ([#54](https://github.com/Nodearr/Nodearr/issues/54)).
 - A friend's PROPER or REPACK is offered as one. Each file's revision is read from its Arr app and sent with it, the release title Nodearr gives the Arr apps says PROPER, REPACK or REAL the way they read it, and **Catalog > Local** and a friend's catalog show **Proper** or **Repack** beside the quality. A PROPER of the quality you have is an upgrade where your Arr app would take it, unless its Propers and Repacks setting says not to upgrade to them ([#51](https://github.com/Nodearr/Nodearr/issues/51)).
 
