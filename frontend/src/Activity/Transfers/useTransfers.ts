@@ -48,12 +48,12 @@ export interface Upload {
 export const TRANSFERS_PATH = '/transfers';
 export const UPLOADS_PATH = '/transfers/uploads';
 
-// The list is fetched again whenever the server says a transfer moved on (see SignalRListener).
-// The slow poll is only there in case that message is missed.
-export const useTransfers = () =>
+// SignalR invalidates this query when a transfer changes. The Transfers page retains a slow
+// fallback poll; the always-mounted sidebar observes the same query without adding a timer.
+export const useTransfers = (refetchInterval?: number) =>
   useApiQuery<Transfer[]>({
     path: TRANSFERS_PATH,
-    queryOptions: { refetchInterval: 15000 },
+    queryOptions: { refetchInterval },
   });
 
 export const useUploads = () =>

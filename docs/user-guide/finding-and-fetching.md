@@ -89,7 +89,9 @@ The categories in the request decide what can be found, not which app sent it. S
 
 When an Arr app grabs a Nodearr result, it sends the request to Nodearr's download client using the [SABnzbd](https://sabnzbd.org/) interface. In Nodearr, **Activity > Transfers** shows the download and any files you are uploading to friends.
 
-![Activity > Transfers: three episodes of Frieren coming from Sam, part way, and Cowboy Bebop sent to Sam earlier](images/transfers.png)
+The number beside **Activity** counts downloads that are queued, downloading, waiting to retry, or failed and still need attention. Completed downloads and uploads do not count. The badge disappears at zero and turns red while any failed download remains. It updates as transfers change.
+
+![Activity sidebar badge showing one unfinished download while a Frieren episode comes from Sam, with completed Cowboy Bebop uploads below](images/transfers.png)
 
 - **Queued**: waiting for a slot. Three transfers run at once.
 - **Downloading**: arriving from your friend, with its progress. Your Arr app's queue shows the same.

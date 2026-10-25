@@ -140,7 +140,7 @@ On 2026-10-14 two home networks connected directly and moved a file: two Windows
 
 V1 is done. What follows is open, most useful first. Each item in the first list is a slice that needs nothing but this machine.
 
-The catalog's Get it action is implemented in #54, connection-loss diagnosis and upload history in #55 and #56, its views in #58, and Send it from the local table and posters in #59. The remaining slices are LAN throughput measurement (#57) and the Activity badge (#60). Throughput measurement needs the owner's second machine.
+The catalog's Get it action is implemented in #54, connection-loss diagnosis and upload history in #55 and #56, its views in #58, Send it from the local table and posters in #59, and the Activity badge in #60. The remaining slice is LAN throughput measurement (#57), which needs the owner's second machine.
 
 ### Next, in order
 

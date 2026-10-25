@@ -546,6 +546,11 @@ const shots = {
       await slowedTransfer(a, b, () =>
         frierenCard.getByRole('button', { name: 'Get it', exact: true }).click()
       );
+      await open(a, A, '/');
+      await a.getByLabel(/\d+ unfinished downloads?/).first().waitFor({
+        state: 'detached',
+        timeout: 300000,
+      });
     }
 
     await open(a, A, '/catalog/local');
@@ -650,11 +655,15 @@ async function slowedTransfer(a, b, start) {
   console.log("B's uploads slowed; waiting for a transfer to A");
   try {
     await start();
+    await a.getByLabel(/\d+ unfinished downloads?/).first().waitFor({
+      timeout: 120000,
+    });
     await open(a, A, '/activity/transfers');
     await a.getByText('Downloading').first().waitFor({ timeout: 120000 });
+    await a.getByLabel(/\d+ unfinished downloads?/).first().waitFor();
     await a.waitForTimeout(4000);
     await open(a, A, '/activity/transfers');
-    await shoot(a, 'transfers');
+    await shoot(a, 'transfers', { chrome: true });
   } finally {
     await nodeSettings(b, { uploadLimitKbps: before.uploadLimitKbps });
   }

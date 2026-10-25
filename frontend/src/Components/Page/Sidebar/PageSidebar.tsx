@@ -7,6 +7,7 @@ import React, {
 } from 'react';
 import ReactDOM from 'react-dom';
 import { useLocation } from 'react-router';
+import TransferStatus from 'Activity/Transfers/TransferStatus';
 import {
   setIsSidebarVisible,
   useAppDimension,
@@ -92,6 +93,7 @@ const LINKS: SidebarItem[] = [
     iconName: icons.ACTIVITY,
     title: () => translate('Activity'),
     to: '/activity/transfers',
+    statusComponent: TransferStatus,
     children: [
       {
         title: () => translate('Transfers'),
