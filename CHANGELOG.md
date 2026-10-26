@@ -4,6 +4,10 @@ What changed in each release, newest first. Each item links to the decision reco
 
 ## Unreleased
 
+### Fixed
+
+- An Arr app's RSS setting for the Nodearr indexer stays as you set it when Nodearr syncs its registration. New indexers still start with RSS off ([#72](https://github.com/Nodearr/Nodearr/issues/72)).
+
 ### Documentation
 
 - Contributors can run the CI test suites with `npm test`, or run frontend checks, builds and those tests with `npm run verify`. The local and CI runs share the same test selection ([contributing guide](CONTRIBUTING.md#testing)).
