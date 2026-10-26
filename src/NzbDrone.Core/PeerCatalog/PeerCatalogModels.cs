@@ -28,6 +28,12 @@ namespace NzbDrone.Core.PeerCatalog
         Have = 3
     }
 
+    public class PeerEpisodeDetails
+    {
+        public string Title { get; set; }
+        public string Overview { get; set; }
+    }
+
     // One file a trusted peer has offered. The rows for a peer are replaced as a whole whenever
     // its catalog changes, so anything the peer stops offering disappears.
     public class PeerCatalogItem : ModelBase
@@ -45,9 +51,14 @@ namespace NzbDrone.Core.PeerCatalog
         public string ImdbId { get; set; }
         public string Title { get; set; }
         public int Year { get; set; }
+        public string Overview { get; set; }
+        public string Genres { get; set; }
+        public string Network { get; set; }
+        public int Runtime { get; set; }
         public int SeasonNumber { get; set; }
         public string EpisodeNumbers { get; set; }
         public string EpisodeTitles { get; set; }
+        public string EpisodeDetails { get; set; }
         public string SeriesType { get; set; }
         public string AbsoluteEpisodeNumbers { get; set; }
 
@@ -130,6 +141,13 @@ namespace NzbDrone.Core.PeerCatalog
             return Tracks.IsNullOrWhiteSpace() ? new List<OfferTrack>() : JsonSerializer.Deserialize<List<OfferTrack>>(Tracks);
         }
 
+        public List<PeerEpisodeDetails> GetEpisodeDetails()
+        {
+            return EpisodeDetails.IsNullOrWhiteSpace()
+                ? new List<PeerEpisodeDetails>()
+                : JsonSerializer.Deserialize<List<PeerEpisodeDetails>>(EpisodeDetails);
+        }
+
         public bool HasSceneNumbers => SceneSeasonNumber.HasValue && SceneEpisodeNumbers.IsNotNullOrWhiteSpace();
 
         public List<int> GetSceneEpisodeNumbers()
@@ -202,6 +220,14 @@ namespace NzbDrone.Core.PeerCatalog
         private const int MaxTracks = 1000;
         private static readonly Regex ExtensionPattern = new(@"^\.[a-z0-9]{1,5}$", RegexOptions.Compiled);
 
+        private static string SafeText(string value, int maxLength)
+        {
+            return value is { Length: > 0 } && value.Length <= maxLength &&
+                   value.All(c => !char.IsControl(c) || c is '\n' or '\r' or '\t')
+                ? value
+                : null;
+        }
+
         public static PeerCatalogItem FromOffer(int peerId, OfferItem offer)
         {
             var isMusic = offer.Kind == MediaKind.Music && AreTracks(offer.Tracks);
@@ -216,9 +242,20 @@ namespace NzbDrone.Core.PeerCatalog
                 ImdbId = offer.ImdbId,
                 Title = offer.Title,
                 Year = offer.Year,
+                Overview = SafeText(offer.Overview, 4000),
+                Genres = SafeText(offer.Genres, 500),
+                Network = SafeText(offer.Network, 200),
+                Runtime = offer.Runtime is > 0 and < 10000 ? offer.Runtime.Value : 0,
                 SeasonNumber = offer.SeasonNumber,
                 EpisodeNumbers = string.Join(",", offer.EpisodeNumbers ?? new List<int>()),
                 EpisodeTitles = string.Join(" + ", offer.EpisodeTitles ?? new List<string>()),
+                EpisodeDetails = offer.Kind == MediaKind.Tv && offer.EpisodeNumbers is { Count: > 0 }
+                    ? JsonSerializer.Serialize(offer.EpisodeNumbers.Select((_, index) => new PeerEpisodeDetails
+                    {
+                        Title = SafeText(offer.EpisodeTitles?.ElementAtOrDefault(index), 300),
+                        Overview = SafeText(offer.EpisodeOverviews?.ElementAtOrDefault(index), 4000)
+                    }).ToList())
+                    : null,
                 SeriesType = offer.Kind == MediaKind.Tv && offer.SeriesType is "standard" or "anime" or "daily" ? offer.SeriesType : null,
                 AbsoluteEpisodeNumbers = offer.SeriesType == "anime" &&
                                          offer.AbsoluteEpisodeNumbers is { Count: > 0 } absoluteNumbers &&

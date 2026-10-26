@@ -54,20 +54,20 @@ namespace NzbDrone.Core.Test.Sharing
             var movies = Mocker.Resolve<ICatalogMovieRepository>();
             var movieFiles = Mocker.Resolve<ICatalogMovieFileRepository>();
 
-            series.Insert(new CatalogSeries { ApplicationId = 1, ArrId = 10, TvdbId = 75669, Title = "Pingu", Year = 1989, Path = "/tv/Pingu" });
+            series.Insert(new CatalogSeries { ApplicationId = 1, ArrId = 10, TvdbId = 75669, Title = "Pingu", Year = 1989, Overview = "A penguin's adventures", Genres = "Family", Network = "SRF", Runtime = 5, Path = "/tv/Pingu" });
             series.Insert(new CatalogSeries { ApplicationId = 1, ArrId = 11, TvdbId = 353546, Title = "Bluey", Year = 2018, Path = "/tv/Bluey" });
 
             // Pingu: one single-episode file and one file that holds episodes 4 and 5.
             episodes.Insert(new CatalogEpisode { ApplicationId = 1, ArrId = 101, ArrSeriesId = 10, SeasonNumber = 1, EpisodeNumber = 1, Title = "Hello, Pingu", ArrEpisodeFileId = 501 });
-            episodes.Insert(new CatalogEpisode { ApplicationId = 1, ArrId = 104, ArrSeriesId = 10, SeasonNumber = 1, EpisodeNumber = 4, Title = "The New Arrival", AirDate = "1986-06-18", ArrEpisodeFileId = 502 });
-            episodes.Insert(new CatalogEpisode { ApplicationId = 1, ArrId = 105, ArrSeriesId = 10, SeasonNumber = 1, EpisodeNumber = 5, Title = "Pingu Goes Fishing", ArrEpisodeFileId = 502 });
+            episodes.Insert(new CatalogEpisode { ApplicationId = 1, ArrId = 104, ArrSeriesId = 10, SeasonNumber = 1, EpisodeNumber = 4, Title = "The New Arrival", Overview = "A new arrival", AirDate = "1986-06-18", ArrEpisodeFileId = 502 });
+            episodes.Insert(new CatalogEpisode { ApplicationId = 1, ArrId = 105, ArrSeriesId = 10, SeasonNumber = 1, EpisodeNumber = 5, Title = "Pingu Goes Fishing", Overview = "A fishing trip", ArrEpisodeFileId = 502 });
             episodes.Insert(new CatalogEpisode { ApplicationId = 1, ArrId = 201, ArrSeriesId = 11, SeasonNumber = 1, EpisodeNumber = 1, Title = "Magic Xylophone", ArrEpisodeFileId = 601 });
 
             episodeFiles.Insert(new CatalogEpisodeFile { ApplicationId = 1, ArrId = 501, ArrSeriesId = 10, SeasonNumber = 1, Path = "/tv/Pingu/Season 1/Pingu - S01E01.mkv", RelativePath = "Season 1/Pingu - S01E01.mkv", Size = 100, Quality = "WEBDL-720p", Resolution = 720 });
             episodeFiles.Insert(new CatalogEpisodeFile { ApplicationId = 1, ArrId = 502, ArrSeriesId = 10, SeasonNumber = 1, Path = "/tv/Pingu/Season 1/Pingu - S01E04-E05.mkv", RelativePath = "Season 1/Pingu - S01E04-E05.mkv", SceneName = "Pingu.S01E04E05.720p.WEB-DL-GROUP", Size = 200, Quality = "WEBDL-720p", Resolution = 720 });
             episodeFiles.Insert(new CatalogEpisodeFile { ApplicationId = 1, ArrId = 601, ArrSeriesId = 11, SeasonNumber = 1, Path = "/tv/Bluey/Season 1/Bluey - S01E01.mkv", RelativePath = "Season 1\\Bluey - S01E01.mkv", Size = 300, Quality = "Bluray-1080p", Resolution = 1080 });
 
-            movies.Insert(new CatalogMovie { ApplicationId = 2, ArrId = 20, TmdbId = 10331, ImdbId = "tt0063350", Title = "Night of the Living Dead", Year = 1968, ArrMovieFileId = 701 });
+            movies.Insert(new CatalogMovie { ApplicationId = 2, ArrId = 20, TmdbId = 10331, ImdbId = "tt0063350", Title = "Night of the Living Dead", Year = 1968, Overview = "The dead rise", Genres = "Horror", Runtime = 96, ArrMovieFileId = 701 });
             movies.Insert(new CatalogMovie { ApplicationId = 2, ArrId = 21, TmdbId = 10513, Title = "Plan 9 from Outer Space", Year = 1957, ArrMovieFileId = 702 });
 
             movieFiles.Insert(new CatalogMovieFile { ApplicationId = 2, ArrId = 701, ArrMovieId = 20, Path = "/movies/Night of the Living Dead (1968)/movie.mkv", RelativePath = "movie.mkv", Size = 400, Quality = "WEBDL-720p", Resolution = 720 });
@@ -580,9 +580,28 @@ namespace NzbDrone.Core.Test.Sharing
 
             item.EpisodeNumbers.Should().Equal(4, 5);
             item.EpisodeTitles.Should().Equal("The New Arrival", "Pingu Goes Fishing");
+            item.EpisodeOverviews.Should().Equal("A new arrival", "A fishing trip");
+            item.Overview.Should().Be("A penguin's adventures");
+            item.Genres.Should().Be("Family");
+            item.Network.Should().Be("SRF");
+            item.Runtime.Should().Be(5);
+            item.Resolution.Should().Be(720);
 
             // The day each episode aired, where the Arr app knows it. One of the two has none here.
             item.AirDates.Should().Equal("1986-06-18");
+        }
+
+        [Test]
+        public void a_movie_offer_should_carry_only_its_shared_arr_details()
+        {
+            Subject.SetShareAll(_bob.Id, true);
+
+            var item = Subject.BuildOffer(Mocker.Resolve<IPeerRepository>().Get(_bob.Id), true).Items.Single(i => i.Id == "m-2-701");
+
+            item.Overview.Should().Be("The dead rise");
+            item.Genres.Should().Be("Horror");
+            item.Runtime.Should().Be(96);
+            item.Resolution.Should().Be(720);
         }
 
         [Test]

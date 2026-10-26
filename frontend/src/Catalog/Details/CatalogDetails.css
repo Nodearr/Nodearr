@@ -1,0 +1,100 @@
+.poster,
+.title,
+.episode {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.poster {
+  display: block;
+}
+
+.title:hover,
+.episode:hover {
+  text-decoration: underline;
+}
+
+.episode {
+  display: block;
+}
+
+.card {
+  display: flex;
+  padding: 8px 0;
+  gap: 20px;
+}
+
+.cardPoster {
+  flex: none;
+  max-width: 100%;
+  width: 180px;
+}
+
+.cardContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.kind {
+  margin-bottom: 12px;
+  color: var(--helpTextColor);
+  font-size: 12px;
+}
+
+.parent {
+  margin-bottom: 12px;
+  color: var(--helpTextColor);
+}
+
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  gap: 8px;
+}
+
+.choices button {
+  padding: 5px 8px;
+  border: 1px solid var(--borderColor);
+  border-radius: 4px;
+  background: var(--cardBackgroundColor);
+  color: inherit;
+  cursor: pointer;
+}
+
+.choices .selected {
+  border-color: var(--primaryColor);
+}
+
+.overview {
+  margin: 0 0 20px;
+  white-space: pre-line;
+}
+
+.details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+
+  margin: 0;
+  gap: 14px 20px;
+}
+
+.detail dt {
+  color: var(--helpTextColor);
+  font-size: 12px;
+}
+
+.detail dd {
+  margin: 3px 0 0;
+}
+
+@media (max-width: 600px) {
+  .card {
+    flex-direction: column;
+  }
+}

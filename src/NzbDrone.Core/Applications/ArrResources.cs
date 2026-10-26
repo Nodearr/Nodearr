@@ -172,6 +172,10 @@ namespace NzbDrone.Core.Applications
         public string SortTitle { get; set; }
         public int Year { get; set; }
         public string SeriesType { get; set; }
+        public string Overview { get; set; }
+        public List<string> Genres { get; set; } = new();
+        public string Network { get; set; }
+        public int Runtime { get; set; }
         public string Path { get; set; }
         public int QualityProfileId { get; set; }
         public bool Monitored { get; set; }
@@ -190,6 +194,10 @@ namespace NzbDrone.Core.Applications
                 SortTitle = SortTitle,
                 Year = Year,
                 SeriesType = SeriesType,
+                Overview = Overview,
+                Genres = string.Join(", ", Genres ?? new()),
+                Network = Network,
+                Runtime = Runtime,
                 Path = Path,
                 QualityProfileId = QualityProfileId,
                 Monitored = Monitored
@@ -214,6 +222,7 @@ namespace NzbDrone.Core.Applications
         public int? SceneSeasonNumber { get; set; }
         public int? SceneEpisodeNumber { get; set; }
         public string Title { get; set; }
+        public string Overview { get; set; }
 
         // The day it aired where it aired, as yyyy-MM-dd. Sonarr searches for daily shows by this,
         // and it is not always the day in AirDateUtc.
@@ -234,6 +243,7 @@ namespace NzbDrone.Core.Applications
                 SceneSeasonNumber = SceneSeasonNumber,
                 SceneEpisodeNumber = SceneEpisodeNumber,
                 Title = Title,
+                Overview = Overview,
                 AirDate = AirDate,
                 AirDateUtc = AirDateUtc?.ToUniversalTime(),
                 Monitored = Monitored,
@@ -263,6 +273,9 @@ namespace NzbDrone.Core.Applications
         public string ImdbId { get; set; }
         public string Title { get; set; }
         public string SortTitle { get; set; }
+        public string Overview { get; set; }
+        public List<string> Genres { get; set; } = new();
+        public int Runtime { get; set; }
         public int Year { get; set; }
         public string Path { get; set; }
         public int QualityProfileId { get; set; }
@@ -278,6 +291,9 @@ namespace NzbDrone.Core.Applications
                 ImdbId = ImdbId,
                 Title = Title,
                 SortTitle = SortTitle,
+                Overview = Overview,
+                Genres = string.Join(", ", Genres ?? new()),
+                Runtime = Runtime,
                 Year = Year,
                 Path = Path,
                 QualityProfileId = QualityProfileId,
@@ -338,6 +354,7 @@ namespace NzbDrone.Core.Applications
         public int TvdbId { get; set; }
         public int EpisodeFileId { get; set; }
         public string Title { get; set; }
+        public string Overview { get; set; }
 
         // As yyyy-MM-dd.
         public string ReleaseDate { get; set; }
@@ -354,6 +371,7 @@ namespace NzbDrone.Core.Applications
             {
                 ArrId = Id,
                 Title = Title,
+                Overview = Overview,
                 SortTitle = Title?.ToLowerInvariant(),
                 Year = released?.Year ?? 0,
                 Path = site.Path,

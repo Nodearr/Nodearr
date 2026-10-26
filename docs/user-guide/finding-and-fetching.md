@@ -17,6 +17,8 @@ Both **Table** and **Posters** have the same kind filters: **Series**, **Movies*
 
 Select **Posters** to switch from the file list to a grid for the selected kind. The grid groups files into one tile per title, including copies shared by different friends. Each tile shows how many files you have or are missing. Select **Table** to return to the file list.
 
+Select a series, episode, movie, Whisparr film or scene poster or title to open its details card. For a file with several episodes, choose the episode in the card. The details are what that friend shared from their Arr app, including the resolution they reported; your Nodearr does not connect to the friend's Arr app. The arrow beside a series or season expands its rows, and **Get it** remains a separate action. Lidarr details cards are planned separately.
+
 ![The Series Posters view of Sam's catalog: tiles for Cowboy Bebop and Frieren](images/peer-catalog-posters.png)
 
 Choose **Movies** to see movie posters on their own:

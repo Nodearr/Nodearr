@@ -59,9 +59,11 @@ namespace NzbDrone.Core.Catalog
         PagingSpec<CatalogMovieFile> PagedMovieFiles(PagingSpec<CatalogMovieFile> pagingSpec, string kind = null);
         PagingSpec<CatalogTrackFile> PagedTrackFiles(PagingSpec<CatalogTrackFile> pagingSpec);
         List<CatalogSeries> GetSeries(int applicationId, IEnumerable<int> arrSeriesIds);
+        List<CatalogEpisode> GetEpisodes(int applicationId, IEnumerable<int> arrEpisodeIds);
         List<CatalogEpisode> GetEpisodesForFiles(int applicationId, IEnumerable<int> arrEpisodeFileIds);
         List<CatalogEpisode> GetEpisodesForSeries(int applicationId, IEnumerable<int> arrSeriesIds);
         List<CatalogEpisodeFile> GetEpisodeFilesForSeries(int applicationId, IEnumerable<int> arrSeriesIds);
+        List<CatalogMovieFile> GetMovieFiles(int applicationId, IEnumerable<int> arrMovieFileIds);
         List<CatalogMovie> GetMovies(int applicationId, IEnumerable<int> arrMovieIds);
         List<CatalogAlbum> GetAlbums(int applicationId, IEnumerable<int> arrAlbumIds);
         List<CatalogArtist> GetArtists(int applicationId, IEnumerable<int> arrArtistIds);
@@ -274,6 +276,11 @@ namespace NzbDrone.Core.Catalog
             return _series.ForArrIds(applicationId, arrSeriesIds);
         }
 
+        public List<CatalogEpisode> GetEpisodes(int applicationId, IEnumerable<int> arrEpisodeIds)
+        {
+            return _episodes.ForArrIds(applicationId, arrEpisodeIds);
+        }
+
         public List<CatalogEpisode> GetEpisodesForFiles(int applicationId, IEnumerable<int> arrEpisodeFileIds)
         {
             return _episodes.ForFiles(applicationId, arrEpisodeFileIds);
@@ -287,6 +294,11 @@ namespace NzbDrone.Core.Catalog
         public List<CatalogEpisodeFile> GetEpisodeFilesForSeries(int applicationId, IEnumerable<int> arrSeriesIds)
         {
             return _episodeFiles.ForSeries(applicationId, arrSeriesIds);
+        }
+
+        public List<CatalogMovieFile> GetMovieFiles(int applicationId, IEnumerable<int> arrMovieFileIds)
+        {
+            return _movieFiles.ForArrIds(applicationId, arrMovieFileIds);
         }
 
         public List<CatalogMovie> GetMovies(int applicationId, IEnumerable<int> arrMovieIds)

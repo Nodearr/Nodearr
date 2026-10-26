@@ -27,6 +27,7 @@ import titleWithYear from 'Utilities/String/titleWithYear';
 import translate from 'Utilities/String/translate';
 import CatalogKindButton from '../CatalogKindButton';
 import { getAvailableCatalogKinds } from '../catalogKinds';
+import CatalogDetailsButton from '../Details/CatalogDetailsButton';
 import CatalogGetItButton from '../GetIt/CatalogGetItButton';
 import Poster, { peerPosterSrc } from '../Poster';
 import {
@@ -200,22 +201,91 @@ function describeTitle(title: PeerCatalogTitle) {
   return titleWithYear(name, title.year);
 }
 
+function peerTitleDetailsPath(title: PeerCatalogTitle) {
+  if (title.mediaKind === 'music') {
+    return undefined;
+  }
+
+  let kind = 'movie';
+  if (title.mediaKind === 'tv') {
+    kind = 'series';
+  } else if (title.isScene) {
+    kind = 'scene';
+  } else if (title.isAdult) {
+    kind = 'film';
+  }
+  return `/catalog/peers/details/${kind}/${title.posterItemId}`;
+}
+
+function peerItemDetailsPath(item: PeerCatalogItem) {
+  if (item.mediaKind === 'music') {
+    return undefined;
+  }
+
+  if (item.mediaKind === 'tv') {
+    return item.episodeNumbers.length
+      ? `/catalog/peers/details/episode/${item.id}?episodeIndex=0`
+      : undefined;
+  }
+
+  let kind = 'movie';
+  if (item.isScene) {
+    kind = 'scene';
+  } else if (item.isAdult) {
+    kind = 'film';
+  }
+  return `/catalog/peers/details/${kind}/${item.id}`;
+}
+
+function peerEpisodeOptions(item: PeerCatalogItem) {
+  return item.episodeNumbers.map((number, index) => ({
+    path: `/catalog/peers/details/episode/${item.id}?episodeIndex=${index}`,
+    label: `E${pad(number)} ${item.episodeNames[index] ?? ''}`.trim(),
+  }));
+}
+
 function TitleTile({ title }: { title: PeerCatalogTitle }) {
   const counts = STATUSES.filter((s) => title[s] > 0).map(
     (s) => `${title[s]} ${translate(STATUS_LABELS[s])}`
   );
+  const detailsPath = peerTitleDetailsPath(title);
 
   return (
     <div className={styles.tile}>
-      <Poster
-        src={peerPosterSrc(title.posterItemId)}
-        title={describeTitle(title)}
-        size="tile"
-        isSquare={title.mediaKind === 'music'}
-      />
+      {detailsPath ? (
+        <CatalogDetailsButton
+          path={detailsPath}
+          label={describeTitle(title)}
+          variant="poster"
+        >
+          <Poster
+            src={peerPosterSrc(title.posterItemId)}
+            title={describeTitle(title)}
+            size="tile"
+            isSquare={title.mediaKind === 'music'}
+          />
+        </CatalogDetailsButton>
+      ) : (
+        <Poster
+          src={peerPosterSrc(title.posterItemId)}
+          title={describeTitle(title)}
+          size="tile"
+          isSquare={title.mediaKind === 'music'}
+        />
+      )}
 
       <div className={styles.tileTitle} title={describeTitle(title)}>
-        {describeTitle(title)}
+        {detailsPath ? (
+          <CatalogDetailsButton
+            path={detailsPath}
+            label={describeTitle(title)}
+            variant="title"
+          >
+            {describeTitle(title)}
+          </CatalogDetailsButton>
+        ) : (
+          describeTitle(title)
+        )}
       </div>
 
       <div className={styles.tileDetails}>{counts.join(', ')}</div>
@@ -262,24 +332,67 @@ function ToggleButton({
 
 function PeerItemRow({ item }: { item: PeerCatalogItem }) {
   const name = describe(item);
+  const detailsPath = peerItemDetailsPath(item);
+  const options =
+    item.mediaKind === 'tv' ? peerEpisodeOptions(item) : undefined;
 
   return (
     <TableRow>
       <TableRowCell className={styles.posterCell}>
-        <Poster
-          src={peerPosterSrc(item.id)}
-          title={item.title ?? ''}
-          size="thumb"
-          isSquare={item.mediaKind === 'music'}
-        />
+        {detailsPath ? (
+          <CatalogDetailsButton
+            path={detailsPath}
+            label={name}
+            variant="poster"
+            options={options}
+          >
+            <Poster
+              src={peerPosterSrc(item.id)}
+              title={item.title ?? ''}
+              size="thumb"
+              isSquare={item.mediaKind === 'music'}
+            />
+          </CatalogDetailsButton>
+        ) : (
+          <Poster
+            src={peerPosterSrc(item.id)}
+            title={item.title ?? ''}
+            size="thumb"
+            isSquare={item.mediaKind === 'music'}
+          />
+        )}
       </TableRowCell>
 
       <TableRowCell>{item.peerName}</TableRowCell>
 
       <TableRowCell className={styles.title}>
-        {name}
+        {detailsPath ? (
+          <CatalogDetailsButton
+            path={detailsPath}
+            label={name}
+            variant="title"
+            options={options}
+          >
+            {name}
+          </CatalogDetailsButton>
+        ) : (
+          name
+        )}
         {item.episodeTitles ? (
-          <div className={styles.muted}>{item.episodeTitles}</div>
+          <div className={styles.muted}>
+            {options?.length && item.episodeNames.length
+              ? options.map((option, index) => (
+                  <CatalogDetailsButton
+                    key={option.path}
+                    path={option.path}
+                    label={option.label}
+                    variant="episode"
+                  >
+                    {item.episodeNames[index] || option.label}
+                  </CatalogDetailsButton>
+                ))
+              : item.episodeTitles}
+          </div>
         ) : null}
         {item.seriesType === 'daily' && item.airDates.length > 0 ? (
           <div className={styles.muted}>
@@ -685,11 +798,17 @@ function PeerCatalog() {
                     <React.Fragment key={show.key}>
                       <TableRow className={styles.treeShowRow}>
                         <TableRowCell className={styles.posterCell}>
-                          <Poster
-                            src={peerPosterSrc(show.posterItemId)}
-                            title={show.title ?? ''}
-                            size="thumb"
-                          />
+                          <CatalogDetailsButton
+                            path={`/catalog/peers/details/series/${show.posterItemId}`}
+                            label={show.title ?? ''}
+                            variant="poster"
+                          >
+                            <Poster
+                              src={peerPosterSrc(show.posterItemId)}
+                              title={show.title ?? ''}
+                              size="thumb"
+                            />
+                          </CatalogDetailsButton>
                         </TableRowCell>
                         <TableRowCell>{peers.join(', ')}</TableRowCell>
                         <TableRowCell className={styles.title}>
@@ -702,9 +821,15 @@ function PeerCatalog() {
                               id={show.key}
                               onPress={handleShowToggle}
                             />
-                            <strong>
-                              {titleWithYear(show.title, show.year)}
-                            </strong>
+                            <CatalogDetailsButton
+                              path={`/catalog/peers/details/series/${show.posterItemId}`}
+                              label={show.title ?? ''}
+                              variant="title"
+                            >
+                              <strong>
+                                {titleWithYear(show.title, show.year)}
+                              </strong>
+                            </CatalogDetailsButton>
                           </div>
                           <div className={styles.muted}>
                             {translate('CatalogSeriesSummary', {

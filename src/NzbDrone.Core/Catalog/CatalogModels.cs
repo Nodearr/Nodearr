@@ -38,6 +38,10 @@ namespace NzbDrone.Core.Catalog
         public string SortTitle { get; set; }
         public int Year { get; set; }
         public string SeriesType { get; set; }
+        public string Overview { get; set; }
+        public string Genres { get; set; }
+        public string Network { get; set; }
+        public int Runtime { get; set; }
         public string Path { get; set; }
         public int QualityProfileId { get; set; }
         public bool Monitored { get; set; }
@@ -54,6 +58,7 @@ namespace NzbDrone.Core.Catalog
         public int? SceneSeasonNumber { get; set; }
         public int? SceneEpisodeNumber { get; set; }
         public string Title { get; set; }
+        public string Overview { get; set; }
 
         // The day it aired where it aired, as yyyy-MM-dd.
         public string AirDate { get; set; }
@@ -70,6 +75,9 @@ namespace NzbDrone.Core.Catalog
         public string ImdbId { get; set; }
         public string Title { get; set; }
         public string SortTitle { get; set; }
+        public string Overview { get; set; }
+        public string Genres { get; set; }
+        public int Runtime { get; set; }
         public int Year { get; set; }
         public string Path { get; set; }
         public int QualityProfileId { get; set; }

@@ -12,6 +12,7 @@ What changed in each release, newest first. Each item links to the decision reco
 
 ### Added
 
+- Select a series, episode, Radarr movie, Whisparr film or scene in either catalog to open its details card. The cards show the description and other information reported by the Arr app, including the resolution of an available file; a friend's card uses only the details they shared through Nodearr ([#64](https://github.com/Nodearr/Nodearr/issues/64)).
 - **Activity** shows the number of unfinished downloads in its sidebar badge. Queued and downloading transfers, including those waiting to retry, count; unresolved failures count and turn the badge red. Completed transfers and uploads do not count ([#60](https://github.com/Nodearr/Nodearr/issues/60)).
 - **Send** from **Catalog > Local**: table rows preselect their movie, episode or episodes, album, series or season, and poster tiles preselect the whole title. Both open the existing send form; the friend gets the same Home card as a send from **Catalog > Sharing** ([#59](https://github.com/Nodearr/Nodearr/issues/59)).
 - The local and peer catalogs now filter **Series**, **Movies**, **Music** when Lidarr is connected, and **Scenes** when Whisparr is connected, in both **Table** and **Posters**. TV tables open into show, season and episode rows with file details, episode summaries and **Get it** actions. They group by TVDB numbers, show anime absolute numbers and differing scene numbers, use air dates for daily shows, and put specials last ([#58](https://github.com/Nodearr/Nodearr/issues/58)).
