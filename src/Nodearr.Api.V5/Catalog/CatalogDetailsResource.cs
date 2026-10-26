@@ -25,5 +25,14 @@ public class CatalogDetailsResource
     public string? Quality { get; set; }
     public int Resolution { get; set; }
     public List<int> Resolutions { get; set; } = new();
+    public List<CatalogDetailsEpisodeResource> Episodes { get; set; } = new();
     public long Size { get; set; }
+}
+
+public class CatalogDetailsEpisodeResource
+{
+    public int SeasonNumber { get; set; }
+    public int EpisodeNumber { get; set; }
+    public string? Title { get; set; }
+    public string Path { get; set; } = string.Empty;
 }

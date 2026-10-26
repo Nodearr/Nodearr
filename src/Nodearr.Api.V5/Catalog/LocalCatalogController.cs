@@ -75,6 +75,16 @@ public class LocalCatalogController : Controller
                 Resolutions = _catalogService.GetEpisodeFilesForSeries(applicationId, new[] { arrId })
                     .Where(f => !f.MissingSince.HasValue && f.Resolution > 0)
                     .Select(f => f.Resolution).Distinct().OrderByDescending(r => r).ToList(),
+                Episodes = _catalogService.GetEpisodesForSeries(applicationId, new[] { arrId })
+                    .OrderBy(e => e.SeasonNumber == 0 ? int.MaxValue : e.SeasonNumber)
+                    .ThenBy(e => e.EpisodeNumber)
+                    .Select(e => new CatalogDetailsEpisodeResource
+                    {
+                        SeasonNumber = e.SeasonNumber,
+                        EpisodeNumber = e.EpisodeNumber,
+                        Title = e.Title,
+                        Path = $"/catalog/local/details/episode/{applicationId}/{e.ArrId}"
+                    }).ToList(),
                 TvdbId = series.TvdbId,
                 TmdbId = series.TmdbId,
                 ImdbId = series.ImdbId

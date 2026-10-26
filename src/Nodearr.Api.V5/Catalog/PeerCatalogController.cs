@@ -221,6 +221,18 @@ public class PeerCatalogController : Controller
             Quality = kind == "series" ? null : item.Quality,
             Resolution = kind == "series" ? 0 : item.Resolution,
             Resolutions = seriesItems.Where(i => i.Resolution > 0).Select(i => i.Resolution).Distinct().OrderByDescending(r => r).ToList(),
+            Episodes = seriesItems.Where(i => i.PeerId == item.PeerId)
+                .SelectMany(i => i.GetEpisodeNumbers().Select((number, index) => new CatalogDetailsEpisodeResource
+                {
+                    SeasonNumber = i.SeasonNumber,
+                    EpisodeNumber = number,
+                    Title = i.GetEpisodeDetails().ElementAtOrDefault(index)?.Title ?? (i.GetEpisodeNumbers().Count == 1 ? i.EpisodeTitles : null),
+                    Path = $"/catalog/peers/details/episode/{i.Id}?episodeIndex={index}"
+                }))
+                .GroupBy(e => (e.SeasonNumber, e.EpisodeNumber))
+                .Select(g => g.First())
+                .OrderBy(e => e.SeasonNumber == 0 ? int.MaxValue : e.SeasonNumber)
+                .ThenBy(e => e.EpisodeNumber).ToList(),
             Size = kind == "series" ? 0 : item.Size
         });
     }
