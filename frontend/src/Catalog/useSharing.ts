@@ -96,6 +96,8 @@ export interface PeerCatalogItem {
   peerName?: string;
   mediaKind: MediaKind;
   localStatus: PeerItemStatus;
+  isAdult: boolean;
+  isScene: boolean;
   title?: string;
   year: number;
   seasonNumber: number;
@@ -103,6 +105,7 @@ export interface PeerCatalogItem {
   episodeNumbers: number[];
   absoluteEpisodeNumbers: number[];
   episodeTitles?: string;
+  episodeNames: string[];
   airDates: string[];
   sceneSeasonNumber?: number;
   sceneEpisodeNumbers: number[];

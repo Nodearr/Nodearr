@@ -18,7 +18,7 @@ namespace NzbDrone.Core.Test.Applications
         {
             var site = new WhisparrV2SiteResource { Id = 3, Title = "ATK Girlfriends", Path = "/sites/atk", QualityProfileId = 2, TvdbId = 77 };
             var scene = JsonConvert.DeserializeObject<WhisparrV2SceneResource>(
-                "{\"id\":40,\"seriesId\":3,\"tvdbId\":9001,\"episodeFileId\":12,\"title\":\"Scene Title\",\"releaseDate\":\"2022-11-28\",\"monitored\":true," +
+                "{\"id\":40,\"seriesId\":3,\"tvdbId\":9001,\"episodeFileId\":12,\"title\":\"Scene Title\",\"overview\":\"A scene description\",\"releaseDate\":\"2022-11-28\",\"monitored\":true," +
                 "\"episodeFile\":{\"id\":12,\"relativePath\":\"a.mkv\",\"size\":5,\"quality\":{\"quality\":{\"name\":\"WEBDL-1080p\"}}}}");
 
             var movie = scene.ToCatalog(site);
@@ -27,6 +27,7 @@ namespace NzbDrone.Core.Test.Applications
             movie.IsAdult.Should().BeTrue();
             movie.ItemType.Should().Be("scene");
             movie.Studio.Should().Be("ATK Girlfriends");
+            movie.Overview.Should().Be("A scene description");
             movie.ReleaseDate.Should().Be("2022-11-28");
             movie.Year.Should().Be(2022);
             movie.QualityProfileId.Should().Be(2);

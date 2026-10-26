@@ -127,9 +127,19 @@ namespace NzbDrone.Core.Sharing
         public string ImdbId { get; set; }
         public string Title { get; set; }
         public int Year { get; set; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string Overview { get; set; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string Genres { get; set; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string Network { get; set; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? Runtime { get; set; }
         public int SeasonNumber { get; set; }
         public List<int> EpisodeNumbers { get; set; } = new();
         public List<string> EpisodeTitles { get; set; } = new();
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<string> EpisodeOverviews { get; set; }
 
         // Anime absolute numbers are optional so standard offers keep their existing fingerprints.
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

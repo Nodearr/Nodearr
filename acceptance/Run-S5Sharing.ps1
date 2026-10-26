@@ -220,7 +220,7 @@ try {
 
     # A registers itself in both apps. B only reads Sonarr and leaves A's registration alone.
     $sonarrOnA = Add-Application A Sonarr 'http://127.0.0.1:18989' $arr.sonarr.Key 'fullSync'
-    Add-Application A Radarr 'http://127.0.0.1:17878' $arr.radarr.Key 'fullSync' | Out-Null
+    $radarrOnA = Add-Application A Radarr 'http://127.0.0.1:17878' $arr.radarr.Key 'fullSync'
     foreach ($app in 'sonarr', 'radarr') {
         Wait-Until -What "A's indexer in $app" -Condition { Invoke-Arr $app GET '/indexer' | Where-Object name -eq 'Nodearr' } | Out-Null
     }
@@ -256,6 +256,16 @@ try {
 
     # A's catalog: two Pingu episodes and one movie.
     Invoke-NodeCommand A @{ name = 'CatalogRefresh' }
+
+    $localSeriesCard = Invoke-Node A GET "/catalog/local/details/series/$sonarrOnA/$($series.id)"
+    $localEpisodeCard = Invoke-Node A GET "/catalog/local/details/episode/$sonarrOnA/$($episodes[0].id)"
+    $localMovieCard = Invoke-Node A GET "/catalog/local/details/movie/$radarrOnA/$($movie.id)"
+    Assert-That 'Local cards read each selected Arr item and its file resolution' (
+        $localSeriesCard.title -eq $series.title -and $localSeriesCard.overview -eq $series.overview -and
+        $localEpisodeCard.episodeNumber -eq $episodes[0].episodeNumber -and $localEpisodeCard.overview -eq $episodes[0].overview -and
+        $localMovieCard.title -eq $movie.title -and $localMovieCard.overview -eq $movie.overview -and
+        $localEpisodeCard.resolution -eq 720 -and $localMovieCard.resolution -eq 720
+    ) @{ series = $localSeriesCard; episode = $localEpisodeCard; movie = $localMovieCard }
 
     # Then episode 2 is deleted in Sonarr, and only B refreshes. A still offers it. B no longer has it.
     # A misses the deletion, as it would if it were down when Sonarr called: its webhook is taken
@@ -310,6 +320,15 @@ try {
     $episodeOne = $seen | Where-Object { $_.mediaKind -eq 'tv' -and (@($_.episodeNumbers) -join ',') -eq '1' }
     $episodeTwo = $seen | Where-Object { $_.mediaKind -eq 'tv' -and (@($_.episodeNumbers) -join ',') -eq '2' }
     $theMovie = $seen | Where-Object mediaKind -eq 'movie'
+    $peerSeriesCard = Invoke-Node B GET "/catalog/peers/details/series/$($episodeOne.id)"
+    $peerEpisodeCard = Invoke-Node B GET "/catalog/peers/details/episode/$($episodeOne.id)?episodeIndex=0"
+    $peerMovieCard = Invoke-Node B GET "/catalog/peers/details/movie/$($theMovie.id)"
+    Assert-That 'Peer cards use the exchanged details without the peer Arr API' (
+        $peerSeriesCard.overview -eq $localSeriesCard.overview -and
+        $peerEpisodeCard.episodeNumber -eq 1 -and $peerEpisodeCard.overview -eq $localEpisodeCard.overview -and
+        $peerMovieCard.overview -eq $localMovieCard.overview -and
+        $peerEpisodeCard.resolution -eq 720 -and $peerMovieCard.resolution -eq 720
+    ) @{ series = $peerSeriesCard; episode = $peerEpisodeCard; movie = $peerMovieCard }
     Assert-That 'The peer compares what it is offered with its own catalog' (
         $episodeOne.localStatus -eq 'have' -and $episodeTwo.localStatus -eq 'missing' -and $theMovie.localStatus -eq 'notInLibrary' -and
         $episodeOne.title -eq 'Pingu' -and $episodeOne.tvdbId -eq 75669 -and $theMovie.tmdbId -eq 10331 -and $theMovie.quality -eq 'WEBDL-720p'

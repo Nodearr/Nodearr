@@ -29,6 +29,8 @@ public class PeerCatalogItemResource
     public int PeerId { get; set; }
     public string? PeerName { get; set; }
     public MediaKind MediaKind { get; set; }
+    public bool IsAdult { get; set; }
+    public bool IsScene { get; set; }
     public PeerItemStatus LocalStatus { get; set; }
     public string? Title { get; set; }
     public int Year { get; set; }
@@ -40,6 +42,7 @@ public class PeerCatalogItemResource
     public List<int> EpisodeNumbers { get; set; } = new();
     public List<int> AbsoluteEpisodeNumbers { get; set; } = new();
     public string? EpisodeTitles { get; set; }
+    public List<string> EpisodeNames { get; set; } = new();
     public List<string> AirDates { get; set; } = new();
     public int? SceneSeasonNumber { get; set; }
     public List<int> SceneEpisodeNumbers { get; set; } = new();
@@ -141,6 +144,85 @@ public class PeerCatalogController : Controller
             Upgrade = s.Upgrade,
             Have = s.Have
         }));
+    }
+
+    [HttpGet("details/{kind}/{itemId:int}")]
+    [Produces("application/json")]
+    public Results<Ok<CatalogDetailsResource>, NotFound> GetDetails(string kind, int itemId, [FromQuery] int? episodeIndex = null)
+    {
+        var item = _peerCatalogService.GetItem(itemId);
+        if (item == null || item.MediaKind == MediaKind.Music)
+        {
+            return TypedResults.NotFound();
+        }
+
+        if (kind == "episode")
+        {
+            var numbers = item.GetEpisodeNumbers();
+            if (item.MediaKind != MediaKind.Tv || episodeIndex is not >= 0 || episodeIndex >= numbers.Count)
+            {
+                return TypedResults.NotFound();
+            }
+
+            var details = item.GetEpisodeDetails();
+            var selected = episodeIndex.Value < details.Count ? details[episodeIndex.Value] : null;
+            var absoluteNumbers = item.GetAbsoluteEpisodeNumbers();
+            var airDates = item.GetAirDates();
+            return TypedResults.Ok(new CatalogDetailsResource
+            {
+                Kind = kind,
+                Title = selected?.Title ?? (numbers.Count == 1 ? item.EpisodeTitles : null),
+                ParentTitle = item.Title,
+                SourceName = _peerCatalogService.GetSummaries().FirstOrDefault(s => s.PeerId == item.PeerId)?.PeerName,
+                PosterPath = $"/catalog/posters/peer/{item.Id}",
+                Year = item.Year,
+                Overview = selected?.Overview,
+                SeasonNumber = item.SeasonNumber,
+                EpisodeNumber = numbers[episodeIndex.Value],
+                AbsoluteEpisodeNumber = absoluteNumbers.Count == numbers.Count ? absoluteNumbers[episodeIndex.Value] : null,
+                AirDate = airDates.Count == numbers.Count ? airDates[episodeIndex.Value] : null,
+                TvdbId = item.TvdbId,
+                TmdbId = item.TmdbId,
+                ImdbId = item.ImdbId,
+                Quality = item.Quality,
+                Resolution = item.Resolution,
+                Size = item.Size
+            });
+        }
+
+        var actualKind = item.MediaKind == MediaKind.Tv ? "series" :
+            item.IsScene ? "scene" : item.IsAdult ? "film" : "movie";
+        if (kind != actualKind)
+        {
+            return TypedResults.NotFound();
+        }
+
+        var seriesItems = kind == "series"
+            ? _peerCatalogService.GetSeries(null)?.FirstOrDefault(s => s.Key == NzbDrone.Core.Posters.PeerPosters.KeyOf(item))?.Items ?? new List<PeerCatalogItem> { item }
+            : new List<PeerCatalogItem>();
+
+        return TypedResults.Ok(new CatalogDetailsResource
+        {
+            Kind = kind,
+            Title = item.Title,
+            SourceName = _peerCatalogService.GetSummaries().FirstOrDefault(s => s.PeerId == item.PeerId)?.PeerName,
+            PosterPath = $"/catalog/posters/peer/{item.Id}",
+            Year = item.Year,
+            Overview = item.Overview,
+            Genres = item.Genres,
+            Network = item.Network,
+            Runtime = item.Runtime,
+            Studio = item.Studio,
+            ReleaseDate = item.ReleaseDate,
+            Code = item.Code,
+            TvdbId = item.TvdbId,
+            TmdbId = item.TmdbId,
+            ImdbId = item.ImdbId,
+            Quality = kind == "series" ? null : item.Quality,
+            Resolution = kind == "series" ? 0 : item.Resolution,
+            Resolutions = seriesItems.Where(i => i.Resolution > 0).Select(i => i.Resolution).Distinct().OrderByDescending(r => r).ToList(),
+            Size = kind == "series" ? 0 : item.Size
+        });
     }
 
     // What friends offer by title, a page at a time, for browsing by poster.
@@ -286,6 +368,8 @@ public class PeerCatalogController : Controller
             PeerId = item.PeerId,
             PeerName = names.GetValueOrDefault(item.PeerId),
             MediaKind = item.MediaKind,
+            IsAdult = item.IsAdult,
+            IsScene = item.IsScene,
             LocalStatus = item.LocalStatus,
             Title = item.Title,
             Year = item.Year,
@@ -297,6 +381,7 @@ public class PeerCatalogController : Controller
             EpisodeNumbers = item.GetEpisodeNumbers(),
             AbsoluteEpisodeNumbers = item.GetAbsoluteEpisodeNumbers(),
             EpisodeTitles = item.EpisodeTitles,
+            EpisodeNames = item.GetEpisodeDetails().Select(e => e.Title ?? string.Empty).ToList(),
             AirDates = item.GetAirDates(),
             SceneSeasonNumber = item.SceneSeasonNumber,
             SceneEpisodeNumbers = item.GetSceneEpisodeNumbers(),

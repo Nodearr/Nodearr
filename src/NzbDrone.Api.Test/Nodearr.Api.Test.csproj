@@ -9,5 +9,6 @@
     <ProjectReference Include="..\NzbDrone.Core\Nodearr.Core.csproj" />
     <ProjectReference Include="..\NzbDrone.Test.Common\Nodearr.Test.Common.csproj" />
     <ProjectReference Include="..\Nodearr.Http\Nodearr.Http.csproj" />
+    <ProjectReference Include="..\Nodearr.Api.V5\Nodearr.Api.V5.csproj" />
   </ItemGroup>
 </Project>

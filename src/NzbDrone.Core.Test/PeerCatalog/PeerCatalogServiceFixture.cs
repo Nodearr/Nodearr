@@ -149,6 +149,41 @@ namespace NzbDrone.Core.Test.PeerCatalog
         }
 
         [Test]
+        public void should_keep_shared_details_for_the_selected_episode_after_sync()
+        {
+            _offered[0].Overview = "Series description";
+            _offered[0].Genres = "Family";
+            _offered[0].EpisodeTitles = new List<string> { "The New Arrival" };
+            _offered[0].EpisodeOverviews = new List<string> { "An episode description" };
+
+            Subject.Sync(_alice.Id);
+
+            var item = Stored.Single(i => i.RemoteId == "e-1-1");
+            item.Overview.Should().Be("Series description");
+            item.Genres.Should().Be("Family");
+            item.GetEpisodeDetails().Single().Should().Match<PeerEpisodeDetails>(e =>
+                e.Title == "The New Arrival" && e.Overview == "An episode description");
+            item.Resolution.Should().Be(720);
+        }
+
+        [Test]
+        public void should_drop_oversized_or_invalid_peer_descriptions_without_losing_the_offer()
+        {
+            _offered[0].Overview = new string('x', 4001);
+            _offered[0].Genres = "Family\0hidden";
+            _offered[0].EpisodeTitles = new List<string> { "A + B" };
+            _offered[0].EpisodeOverviews = new List<string> { "A paragraph\nAnother paragraph" };
+
+            Subject.Sync(_alice.Id);
+
+            var item = Stored.Single(i => i.RemoteId == "e-1-1");
+            item.Overview.Should().BeNull();
+            item.Genres.Should().BeNull();
+            item.GetEpisodeDetails().Single().Title.Should().Be("A + B");
+            item.GetEpisodeDetails().Single().Overview.Should().Be("A paragraph\nAnother paragraph");
+        }
+
+        [Test]
         public void should_keep_the_days_a_peer_gives_and_drop_anything_that_is_not_a_day()
         {
             _offered[0].AirDates = new List<string> { "2024-05-17", "2024-5-18", "2024-13-45", "../../etc", string.Empty, null, "2024-05-19" };

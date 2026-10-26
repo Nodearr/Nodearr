@@ -49,6 +49,8 @@ public class LocalCatalogFileResource
 {
     public int Id { get; set; }
     public string MediaType { get; set; } = string.Empty;
+    public bool IsAdult { get; set; }
+    public bool IsScene { get; set; }
     public int ApplicationId { get; set; }
     public string? ApplicationName { get; set; }
 

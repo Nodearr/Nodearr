@@ -209,6 +209,8 @@ Nodearr refreshes each app's library every 12 hours. Webhooks trigger a refresh 
 
 In **Posters**, the selected kind shows one tile per title with how many files it has. Music tiles use the album's artist and square artwork.
 
+Select a series, episode, movie, Whisparr film or scene poster or title to open its details card. The card shows what the connected Arr app last reported, including its description and the resolution of a file when available. If one file contains several episodes, choose the episode in the card. Use the arrow beside a series or season to expand its rows; **Send** stays a separate action. Lidarr details cards are planned separately.
+
 ![The Series Posters view of Alex's own catalog: Cowboy Bebop and its file count](images/local-catalog-posters.png)
 
 Choose **Movies** to see movie posters on their own:

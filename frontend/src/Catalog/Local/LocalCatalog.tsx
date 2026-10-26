@@ -34,6 +34,7 @@ import titleWithYear from 'Utilities/String/titleWithYear';
 import translate from 'Utilities/String/translate';
 import CatalogKindButton from '../CatalogKindButton';
 import { getAvailableCatalogKinds } from '../catalogKinds';
+import CatalogDetailsButton from '../Details/CatalogDetailsButton';
 import Poster, { localPosterSrc } from '../Poster';
 import SendFromCatalogButton from '../Sharing/SendFromCatalogButton';
 import { ShareKey, TitleKey } from '../useSharing';
@@ -170,6 +171,53 @@ function titleItems(title: LocalCatalogTitle): ShareKey[] {
     : [key];
 }
 
+function titleDetailsPath(title: LocalCatalogTitle) {
+  if (title.mediaType === 'album') {
+    return undefined;
+  }
+
+  let kind = 'movie';
+  if (title.mediaType === 'series') {
+    kind = 'series';
+  } else if (title.kind === 'scenes') {
+    kind = 'scene';
+  } else if (title.isAdult) {
+    kind = 'film';
+  }
+
+  return `/catalog/local/details/${kind}/${title.applicationId}/${title.posterArrId}`;
+}
+
+function fileDetailsPath(file: LocalCatalogFile) {
+  if (file.mediaType === 'episode') {
+    const episodeId = file.episodeArrIds[0];
+    return episodeId
+      ? `/catalog/local/details/episode/${file.applicationId}/${episodeId}`
+      : undefined;
+  }
+
+  if (file.mediaType === 'movie') {
+    let kind = 'movie';
+    if (file.isScene) {
+      kind = 'scene';
+    } else if (file.isAdult) {
+      kind = 'film';
+    }
+    return `/catalog/local/details/${kind}/${file.applicationId}/${file.posterArrId}`;
+  }
+
+  return undefined;
+}
+
+function episodeDetailsOptions(file: LocalCatalogFile) {
+  return file.episodeArrIds.map((id, index) => ({
+    path: `/catalog/local/details/episode/${file.applicationId}/${id}`,
+    label: `E${pad(file.episodeNumbers[index] ?? index + 1)} ${
+      file.episodeTitles[index] ?? ''
+    }`.trim(),
+  }));
+}
+
 function fileTitleKey(file: LocalCatalogFile): TitleKey {
   if (file.mediaType === 'episode') {
     return {
@@ -213,22 +261,44 @@ function TitleTile({ title }: { title: LocalCatalogTitle }) {
     title.artist ? `${title.artist} - ${title.title}` : title.title,
     title.year
   );
+  const detailsPath = titleDetailsPath(title);
 
   return (
     <div className={catalogStyles.tile}>
-      <Poster
-        src={localPosterSrc(
-          title.applicationId,
-          title.posterSubject,
-          title.posterArrId
-        )}
-        title={name}
-        size="tile"
-        isSquare={title.kind === 'music'}
-      />
+      {detailsPath ? (
+        <CatalogDetailsButton path={detailsPath} label={name} variant="poster">
+          <Poster
+            src={localPosterSrc(
+              title.applicationId,
+              title.posterSubject,
+              title.posterArrId
+            )}
+            title={name}
+            size="tile"
+            isSquare={title.kind === 'music'}
+          />
+        </CatalogDetailsButton>
+      ) : (
+        <Poster
+          src={localPosterSrc(
+            title.applicationId,
+            title.posterSubject,
+            title.posterArrId
+          )}
+          title={name}
+          size="tile"
+          isSquare={title.kind === 'music'}
+        />
+      )}
 
       <div className={catalogStyles.tileTitle} title={name}>
-        {name}
+        {detailsPath ? (
+          <CatalogDetailsButton path={detailsPath} label={name} variant="title">
+            {name}
+          </CatalogDetailsButton>
+        ) : (
+          name
+        )}
       </div>
 
       <div className={catalogStyles.tileDetails}>
@@ -300,29 +370,74 @@ function sceneLabel(file: LocalCatalogFile) {
 function LocalFileRow({ file }: { file: LocalCatalogFile }) {
   const alternateNumbers = sceneLabel(file);
   const missing = file.isMissing || Boolean(file.missingSince);
+  const detailsPath = fileDetailsPath(file);
+  const options =
+    file.mediaType === 'episode' ? episodeDetailsOptions(file) : undefined;
 
   return (
     <TableRow className={missing ? styles.missing : undefined}>
       <TableRowCell className={catalogStyles.posterCell}>
-        <Poster
-          src={localPosterSrc(
-            file.applicationId,
-            file.posterSubject,
-            file.posterArrId
-          )}
-          title={file.title ?? ''}
-          size="thumb"
-          isSquare={file.mediaType === 'track'}
-        />
+        {detailsPath ? (
+          <CatalogDetailsButton
+            path={detailsPath}
+            label={describe(file)}
+            variant="poster"
+            options={options}
+          >
+            <Poster
+              src={localPosterSrc(
+                file.applicationId,
+                file.posterSubject,
+                file.posterArrId
+              )}
+              title={file.title ?? ''}
+              size="thumb"
+              isSquare={file.mediaType === 'track'}
+            />
+          </CatalogDetailsButton>
+        ) : (
+          <Poster
+            src={localPosterSrc(
+              file.applicationId,
+              file.posterSubject,
+              file.posterArrId
+            )}
+            title={file.title ?? ''}
+            size="thumb"
+            isSquare={file.mediaType === 'track'}
+          />
+        )}
       </TableRowCell>
 
       <TableRowCell>{file.applicationName}</TableRowCell>
 
       <TableRowCell className={styles.title}>
-        {describe(file)}
+        {detailsPath ? (
+          <CatalogDetailsButton
+            path={detailsPath}
+            label={describe(file)}
+            variant="title"
+            options={options}
+          >
+            {describe(file)}
+          </CatalogDetailsButton>
+        ) : (
+          describe(file)
+        )}
         {file.episodeTitles.length > 0 ? (
           <div className={styles.episodeTitles}>
-            {file.episodeTitles.join(' + ')}
+            {options?.length
+              ? options.map((option, index) => (
+                  <CatalogDetailsButton
+                    key={option.path}
+                    path={option.path}
+                    label={option.label}
+                    variant="episode"
+                  >
+                    {file.episodeTitles[index] || option.label}
+                  </CatalogDetailsButton>
+                ))
+              : file.episodeTitles.join(' + ')}
           </div>
         ) : null}
         {file.seriesType === 'daily' && file.airDates.length > 0 ? (
@@ -745,15 +860,21 @@ function LocalCatalog() {
                     <React.Fragment key={showKey}>
                       <TableRow className={styles.treeShowRow}>
                         <TableRowCell className={catalogStyles.posterCell}>
-                          <Poster
-                            src={localPosterSrc(
-                              show.applicationId,
-                              'series',
-                              show.posterArrId
-                            )}
-                            title={show.title ?? ''}
-                            size="thumb"
-                          />
+                          <CatalogDetailsButton
+                            path={`/catalog/local/details/series/${show.applicationId}/${show.posterArrId}`}
+                            label={show.title ?? ''}
+                            variant="poster"
+                          >
+                            <Poster
+                              src={localPosterSrc(
+                                show.applicationId,
+                                'series',
+                                show.posterArrId
+                              )}
+                              title={show.title ?? ''}
+                              size="thumb"
+                            />
+                          </CatalogDetailsButton>
                         </TableRowCell>
                         <TableRowCell>{show.applicationName}</TableRowCell>
                         <TableRowCell className={styles.title}>
@@ -766,9 +887,15 @@ function LocalCatalog() {
                               id={showKey}
                               onPress={handleShowToggle}
                             />
-                            <strong>
-                              {titleWithYear(show.title, show.year)}
-                            </strong>
+                            <CatalogDetailsButton
+                              path={`/catalog/local/details/series/${show.applicationId}/${show.posterArrId}`}
+                              label={show.title ?? ''}
+                              variant="title"
+                            >
+                              <strong>
+                                {titleWithYear(show.title, show.year)}
+                              </strong>
+                            </CatalogDetailsButton>
                           </div>
                           <div className={styles.episodeTitles}>
                             {translate('CatalogLocalSeriesSummary', {

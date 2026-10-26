@@ -334,10 +334,16 @@ namespace NzbDrone.Core.Sharing
                     item.ImdbId = parent.ImdbId;
                     item.Title = parent.Title;
                     item.Year = parent.Year;
+                    item.Overview = SharedDetail(parent.Overview, 4000);
+                    item.Genres = SharedDetail(parent.Genres, 500);
+                    item.Network = SharedDetail(parent.Network, 200);
+                    item.Runtime = parent.Runtime > 0 ? parent.Runtime : null;
                     item.SeriesType = parent.SeriesType is "anime" or "daily" ? parent.SeriesType : null;
                     item.SeasonNumber = file.SeasonNumber;
                     item.EpisodeNumbers = contained.Select(e => e.EpisodeNumber).ToList();
                     item.EpisodeTitles = contained.Select(e => e.Title ?? string.Empty).ToList();
+                    var overviews = contained.Select(e => SharedDetail(e.Overview, 4000) ?? string.Empty).ToList();
+                    item.EpisodeOverviews = overviews.Any(o => o.Length > 0) ? overviews : null;
                     if (parent.SeriesType == "anime" && contained.All(e => e.AbsoluteEpisodeNumber.HasValue))
                     {
                         item.AbsoluteEpisodeNumbers = contained.Select(e => e.AbsoluteEpisodeNumber.Value).ToList();
@@ -368,6 +374,9 @@ namespace NzbDrone.Core.Sharing
                     item.ImdbId = parent.ImdbId;
                     item.Title = parent.Title;
                     item.Year = parent.Year;
+                    item.Overview = SharedDetail(parent.Overview, 4000);
+                    item.Genres = SharedDetail(parent.Genres, 500);
+                    item.Runtime = parent.Runtime > 0 ? parent.Runtime : null;
 
                     if (parent.IsAdult)
                     {
@@ -674,6 +683,17 @@ namespace NzbDrone.Core.Sharing
         public void Handle(PeerDeletedEvent message)
         {
             _listPeers.DeleteForPeer(message.PeerId);
+        }
+
+        private static string SharedDetail(string value, int maxLength)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return null;
+            }
+
+            var trimmed = value.Trim();
+            return trimmed.Length <= maxLength ? trimmed : trimmed[..maxLength];
         }
 
         private static OfferItem Describe(CatalogFile file, MediaKind kind, string id)

@@ -25,6 +25,7 @@ namespace NzbDrone.Core.PeerCatalog
         // of it and from however many friends. Titles with a file of that status only, if given.
         List<PeerCatalogTitle> GetTitles(PeerItemStatus? status, string kind = null);
         List<PeerCatalogSeries> GetSeries(PeerItemStatus? status);
+        PeerCatalogItem GetItem(int itemId);
 
         // An item of this node's copy of a friend's catalog that is one of these offered files,
         // for its poster. Null until the catalog holds one of them.
@@ -132,6 +133,11 @@ namespace NzbDrone.Core.PeerCatalog
         public int? FindItemId(int peerId, IEnumerable<string> offerIds)
         {
             return _items.ForRemoteIds(peerId, offerIds).OrderBy(i => i.Id).FirstOrDefault()?.Id;
+        }
+
+        public PeerCatalogItem GetItem(int itemId)
+        {
+            return _items.Find(itemId);
         }
 
         public List<PeerCatalogTitle> GetTitles(PeerItemStatus? status, string kind = null)

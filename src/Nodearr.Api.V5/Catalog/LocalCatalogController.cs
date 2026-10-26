@@ -49,6 +49,113 @@ public class LocalCatalogController : Controller
         return TypedResults.Ok(_catalogService.GetSummaries().ConvertAll(LocalCatalogSummaryResource.FromModel));
     }
 
+    [HttpGet("details/{kind}/{applicationId:int}/{arrId:int}")]
+    [Produces("application/json")]
+    public Results<Ok<CatalogDetailsResource>, NotFound> GetDetails(string kind, int applicationId, int arrId)
+    {
+        if (kind == "series")
+        {
+            var series = _catalogService.GetSeries(applicationId, new[] { arrId }).FirstOrDefault();
+            if (series == null)
+            {
+                return TypedResults.NotFound();
+            }
+
+            return TypedResults.Ok(new CatalogDetailsResource
+            {
+                Kind = kind,
+                Title = series.Title,
+                SourceName = GetApplications().GetValueOrDefault(applicationId).Name,
+                PosterPath = $"/catalog/posters/local/{applicationId}/series/{series.ArrId}",
+                Year = series.Year,
+                Overview = series.Overview,
+                Genres = series.Genres,
+                Network = series.Network,
+                Runtime = series.Runtime,
+                Resolutions = _catalogService.GetEpisodeFilesForSeries(applicationId, new[] { arrId })
+                    .Where(f => !f.MissingSince.HasValue && f.Resolution > 0)
+                    .Select(f => f.Resolution).Distinct().OrderByDescending(r => r).ToList(),
+                TvdbId = series.TvdbId,
+                TmdbId = series.TmdbId,
+                ImdbId = series.ImdbId
+            });
+        }
+
+        if (kind == "episode")
+        {
+            var episode = _catalogService.GetEpisodes(applicationId, new[] { arrId }).FirstOrDefault();
+            if (episode == null)
+            {
+                return TypedResults.NotFound();
+            }
+
+            var series = _catalogService.GetSeries(applicationId, new[] { episode.ArrSeriesId }).FirstOrDefault();
+            if (series == null)
+            {
+                return TypedResults.NotFound();
+            }
+
+            var episodeFile = _catalogService.GetEpisodeFilesForSeries(applicationId, new[] { episode.ArrSeriesId })
+                .FirstOrDefault(f => f.ArrId == episode.ArrEpisodeFileId && !f.MissingSince.HasValue);
+
+            return TypedResults.Ok(new CatalogDetailsResource
+            {
+                Kind = kind,
+                Title = episode.Title,
+                ParentTitle = series.Title,
+                SourceName = GetApplications().GetValueOrDefault(applicationId).Name,
+                PosterPath = $"/catalog/posters/local/{applicationId}/series/{series.ArrId}",
+                Year = series.Year,
+                Overview = episode.Overview,
+                SeasonNumber = episode.SeasonNumber,
+                EpisodeNumber = episode.EpisodeNumber,
+                AbsoluteEpisodeNumber = episode.AbsoluteEpisodeNumber,
+                AirDate = episode.AirDate,
+                Quality = episodeFile?.Quality,
+                Resolution = episodeFile?.Resolution ?? 0,
+                Size = episodeFile?.Size ?? 0,
+                TvdbId = series.TvdbId,
+                TmdbId = series.TmdbId,
+                ImdbId = series.ImdbId
+            });
+        }
+
+        if (kind is "movie" or "film" or "scene")
+        {
+            var movie = _catalogService.GetMovies(applicationId, new[] { arrId }).FirstOrDefault();
+            if (movie == null ||
+                kind != (movie.ItemType == "scene" ? "scene" : movie.IsAdult ? "film" : "movie"))
+            {
+                return TypedResults.NotFound();
+            }
+
+            var movieFile = _catalogService.GetMovieFiles(applicationId, new[] { movie.ArrMovieFileId })
+                .FirstOrDefault(f => !f.MissingSince.HasValue);
+
+            return TypedResults.Ok(new CatalogDetailsResource
+            {
+                Kind = kind,
+                Title = movie.Title,
+                SourceName = GetApplications().GetValueOrDefault(applicationId).Name,
+                PosterPath = $"/catalog/posters/local/{applicationId}/movie/{movie.ArrId}",
+                Year = movie.Year,
+                Overview = movie.Overview,
+                Genres = movie.Genres,
+                Runtime = movie.Runtime,
+                Studio = movie.Studio,
+                ReleaseDate = movie.ReleaseDate,
+                Code = movie.Code,
+                TmdbId = movie.TmdbId,
+                ImdbId = movie.ImdbId,
+                Quality = movieFile?.Quality,
+                Resolution = movieFile?.Resolution ?? 0,
+                Size = movieFile?.Size ?? 0
+            });
+        }
+
+        return TypedResults.NotFound();
+    }
+
     // One entry for each series or movie with a file, by sort title, for the Posters view.
     [HttpGet("titles")]
     [Produces("application/json")]
@@ -266,6 +373,8 @@ public class LocalCatalogController : Controller
                     resource.Year = parent.Year;
                     resource.TmdbId = parent.TmdbId;
                     resource.ImdbId = parent.ImdbId;
+                    resource.IsAdult = parent.IsAdult;
+                    resource.IsScene = parent.ItemType == "scene";
                 }
 
                 return Locate(resource, applications);

@@ -40,6 +40,8 @@ export interface LocalCatalogTitle {
 export interface LocalCatalogFile {
   id: number;
   mediaType: LocalCatalogMediaType;
+  isAdult: boolean;
+  isScene: boolean;
   applicationId: number;
   applicationName?: string;
   title?: string;

@@ -168,6 +168,10 @@ The marks are worked out again whenever the local catalog is refreshed.
 
 - 2026-10-23: **a peer's catalog has a limit.** A node fetching a peer's catalog believed the number of pages the peer said, up to 10,000, and kept every item of every page, however many ([#33](https://github.com/Nodearr/Nodearr/issues/33)). Past 10,000 pages it stopped quietly and took what it had for the whole catalog. A node takes at most 200,000 files from a peer now, three times the library measured above, in at most 400 pages of at most 500. A peer that says more, or sends more on a page, is refused at once: nothing of that fetch is kept, the catalog held before stays, and the peer's catalog error says why. A genuine node never sends more than a page holds.
 
+- 2026-10-25: **shared catalog details.** For [#64](https://github.com/Nodearr/Nodearr/issues/64), the owner includes bounded series, episode, movie, film and scene descriptions, plus title genres, network and runtime where its Arr app reported them, in the same per-peer offer already filtered by sharing rules. The receiving node stores these details with the offer and serves cards from that copy, without accessing the owner's Arr API. A multi-episode offer keeps each episode's description by position, and the existing file resolution is displayed on the card. No file path is sent. Lidarr card design remains separate in #68.
+
+  Checked with catalog, sharing, peer-catalog and controller fixtures, including Whisparr v2 scenes and v3 films/scenes. The existing S5 run passed all 19 checks against real Sonarr and Radarr, including details and resolution after peer exchange. A browser pass opened local and received series, episode and movie cards from table entries and posters. Series cards list every available resolution rather than taking one file as representative.
+
 ## Follow-up work
 
 - ~~S6: turn peer catalog rows into indexer results, with the opaque file identifier inside a signed GUID.~~ Done: ADR 0015.

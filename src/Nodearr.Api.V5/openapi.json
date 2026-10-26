@@ -974,6 +974,56 @@
         }
       }
     },
+    "/api/v5/catalog/local/details/{kind}/{applicationId}/{arrId}": {
+      "get": {
+        "tags": [
+          "LocalCatalog"
+        ],
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "arrId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogDetailsResource"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
     "/api/v5/catalog/local/titles": {
       "get": {
         "tags": [
@@ -1807,6 +1857,55 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/v5/catalog/peers/details/{kind}/{itemId}": {
+      "get": {
+        "tags": [
+          "PeerCatalog"
+        ],
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "episodeIndex",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogDetailsResource"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
           }
         }
       }
@@ -3507,6 +3606,113 @@
         ],
         "type": "string"
       },
+      "CatalogDetailsResource": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "parentTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "sourceName": {
+            "type": "string",
+            "nullable": true
+          },
+          "posterPath": {
+            "type": "string",
+            "nullable": true
+          },
+          "year": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "overview": {
+            "type": "string",
+            "nullable": true
+          },
+          "genres": {
+            "type": "string",
+            "nullable": true
+          },
+          "network": {
+            "type": "string",
+            "nullable": true
+          },
+          "runtime": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "seasonNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "episodeNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "absoluteEpisodeNumber": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "airDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "studio": {
+            "type": "string",
+            "nullable": true
+          },
+          "releaseDate": {
+            "type": "string",
+            "nullable": true
+          },
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "tvdbId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "tmdbId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "imdbId": {
+            "type": "string",
+            "nullable": true
+          },
+          "quality": {
+            "type": "string",
+            "nullable": true
+          },
+          "resolution": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "resolutions": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "size": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "additionalProperties": false
+      },
       "CatalogFileAccess": {
         "enum": [
           "readable",
@@ -4446,6 +4652,12 @@
             "type": "string",
             "nullable": true
           },
+          "isAdult": {
+            "type": "boolean"
+          },
+          "isScene": {
+            "type": "boolean"
+          },
           "applicationId": {
             "type": "integer",
             "format": "int32"
@@ -5197,6 +5409,12 @@
           "mediaKind": {
             "$ref": "#/components/schemas/MediaKind"
           },
+          "isAdult": {
+            "type": "boolean"
+          },
+          "isScene": {
+            "type": "boolean"
+          },
           "localStatus": {
             "$ref": "#/components/schemas/PeerItemStatus"
           },
@@ -5246,6 +5464,13 @@
           },
           "episodeTitles": {
             "type": "string",
+            "nullable": true
+          },
+          "episodeNames": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
             "nullable": true
           },
           "airDates": {
