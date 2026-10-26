@@ -28,7 +28,7 @@ Checks, against pinned [Sonarr](https://sonarr.tv/) and [Radarr](https://radarr.
 - Files the Arr apps import show up in the local catalog with their series or movie identity, quality and size, including one file that holds two episodes.
 - Path mappings make the Arr apps' paths readable by Nodearr.
 - A file deleted in Sonarr is marked missing on the next refresh and removed by a purge.
-- Syncing again creates no duplicates, the scheduled jobs are the right ones, and deleting an application removes its catalog.
+- Syncing again preserves a user's RSS choice in Sonarr and creates no duplicates, the scheduled jobs are the right ones, and deleting an application removes its catalog.
 - Deleting an application also takes Nodearr out of that Arr app, as indexer and download client, and leaves the other app as it was. An application whose Arr app has been stopped can still be deleted, without a long wait.
 
 Nodearr runs on the host on port 6633. The containers come from `docker-compose.arr.yml` with `docker-compose.library.yml` layered on top, which puts the Arr libraries on the host so Nodearr can read them. They publish on 127.0.0.1 only, on ports 18989 and 17878.

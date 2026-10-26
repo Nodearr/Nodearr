@@ -329,7 +329,15 @@ Assert-That 'Purging removes the missing file from the catalog' (@($afterPurge).
 
 # --- 6. Repeatable sync, scheduling, and removal -----------------------------------------------
 
+$sonarrIndexer = Invoke-Api sonarr GET '/indexer' | Where-Object name -eq 'Nodearr' | Select-Object -First 1
+$sonarrIndexer.enableRss = $true
+Invoke-Api sonarr PUT "/indexer/$($sonarrIndexer.id)" $sonarrIndexer | Out-Null
+$rssBefore = (Invoke-Api sonarr GET '/indexer' | Where-Object name -eq 'Nodearr').enableRss
+Assert-That 'RSS can be enabled on the Sonarr indexer' $rssBefore @{ enableRss = $rssBefore }
+
 Invoke-Command-Api nodearr @{ name = 'ApplicationIndexerSync'; forceSync = $true }
+$rssAfter = (Invoke-Api sonarr GET '/indexer' | Where-Object name -eq 'Nodearr').enableRss
+Assert-That 'Resync preserves the RSS setting chosen in Sonarr' $rssAfter @{ before = $rssBefore; after = $rssAfter }
 $counts = @{}
 foreach ($app in 'sonarr', 'radarr') {
     $counts[$app] = @{

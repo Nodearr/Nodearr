@@ -63,6 +63,8 @@ It lists what is on offer, newest first. This is what the Arr apps' connection t
 
 RSS is off on the indexer Nodearr registers. A user can turn it on in the Arr app, and the Arr app will then grab what peers add without being asked.
 
+**Amendment, 2026-10-26 ([#72](https://github.com/Nodearr/Nodearr/issues/72)).** RSS is set to off only when Nodearr creates its indexer. Later registration syncs preserve the Arr app's RSS setting, including when a sync is forced. Search settings and the download-client pin remain managed by Nodearr. Prowlarr's separate sync profile remains unchanged. Unit tests cover both RSS states and forced syncs; `acceptance/Run-S3CatalogImport.ps1` enables RSS in a real Sonarr and checks it after a forced application sync.
+
 ### Anime
 
 Nodearr registers its Sonarr indexer with an anime category and with "anime standard format search" on. Sonarr then also searches anime by ID, season and episode, which is the one way Nodearr matches.

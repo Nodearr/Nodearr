@@ -193,12 +193,12 @@ namespace NzbDrone.Core.Applications
                 },
                 new Dictionary<string, JToken>
                 {
-                    { "enableRss", false },
                     { "enableAutomaticSearch", true },
                     { "enableInteractiveSearch", true },
                     { "downloadClientId", downloadClient.Value<int>("id") }
                 },
-                force);
+                force,
+                new Dictionary<string, JToken> { { "enableRss", false } });
 
             // The Arr app tells Nodearr when a file is imported, upgraded, renamed or deleted, so
             // the catalog follows the library within seconds and not at the next full read. It is
@@ -281,7 +281,7 @@ namespace NzbDrone.Core.Applications
             return path.Replace('\\', '/').TrimEnd('/') + "/";
         }
 
-        private JObject EnsureProvider(string what, string resource, string implementation, Dictionary<string, JToken> fields, Dictionary<string, JToken> properties, bool force)
+        private JObject EnsureProvider(string what, string resource, string implementation, Dictionary<string, JToken> fields, Dictionary<string, JToken> properties, bool force, Dictionary<string, JToken> createProperties = null)
         {
             try
             {
@@ -292,6 +292,14 @@ namespace NzbDrone.Core.Applications
                     var schema = _proxy.GetArray(Settings, resource + "/schema").OfType<JObject>().First(p => p.Value<string>("implementation") == implementation);
 
                     schema["name"] = RemoteName;
+                    if (createProperties != null)
+                    {
+                        foreach (var property in createProperties)
+                        {
+                            schema[property.Key] = property.Value;
+                        }
+                    }
+
                     Apply(schema, fields, properties);
                     _logger.Info("Adding Nodearr as {0} to {1}", what, Definition.Name);
 
