@@ -86,25 +86,19 @@ The native V5 API is described in [`src/Nodearr.Api.V5/openapi.json`](src/Nodear
 
 ## Testing
 
-Build first, then run the unit-test assemblies one at a time, as CI does. They share files and can interfere when run together. This PowerShell 7 command leaves out manual, integration, automation and other-platform tests:
+From the repository root, run:
 
-```powershell
-$excludedPlatform = if ($IsWindows) { 'LINUX' } else { 'WINDOWS' }
-$skip = @('Nodearr.Automation.Test')
-$skip += if ($IsWindows) { 'Nodearr.Mono.Test' } else { 'Nodearr.Windows.Test' }
-$filter = "TestCategory!=ManualTest&TestCategory!=IntegrationTest&TestCategory!=AutomationTest&TestCategory!=$excludedPlatform"
-$failed = @()
-foreach ($assembly in Get-ChildItem _tests/net10.0 -Filter 'Nodearr.*.Test.dll') {
-    if ($skip -contains $assembly.BaseName) { continue }
-    dotnet test $assembly.FullName --filter $filter
-    if ($LASTEXITCODE -ne 0) { $failed += $assembly.BaseName }
-}
-if ($failed) { throw "Tests failed: $($failed -join ', ')" }
+```sh
+npm test
 ```
+
+This builds the application and runs the .NET test assemblies one at a time, followed by the transport tests. It uses the same exclusions as CI: manual, integration, automation and other-platform tests. Test results go to `TestResults`.
+
+To also lint, type-check and build the web UI before the tests, first install the frontend dependencies with `yarn install --immutable`, then run `npm run verify`. This checks the application on your current operating system; CI also checks the other platform and builds the Docker image.
 
 - CI runs the unit tests on Linux and Windows for every push and pull request, lints and builds the web UI, builds the sidecar, and builds the image ([release guide](docs/guides/releases.md#continuous-integration)).
 - The web UI is linted with `yarn lint` and `yarn stylelint`, and type-checked with `yarn typecheck`, as CI does. It checks our own code, not the type files that come with packages.
-- The sidecar is built with `cargo test --manifest-path transport/Cargo.toml`. It currently has no Rust unit tests; its behaviour is exercised by the acceptance scripts.
+- The sidecar's Rust tests run with `cargo test --locked --manifest-path transport/Cargo.toml`. The acceptance scripts also exercise the sidecar against running applications.
 - The acceptance scripts in [`acceptance/`](acceptance/README.md) run a built Nodearr from the outside against real Sonarr and [Radarr](https://radarr.video/) containers: registration and catalog import, pairing and trust, sharing, searching, transfers, and the [Docker](https://docs.docker.com/) image deployed twice. Run the one for the part you changed.
 - Something the scripts do not cover, such as a new Arr app, is checked by hand against the real app, and what was run and what it showed goes in the decision record. [Testing by hand](docs/guides/ui-test.md) sets up Nodearr, Sonarr and Radarr with a small library to try things in the pages.
 
