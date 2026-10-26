@@ -1,5 +1,5 @@
-const nodearrTeal = '#35c5f4';
-const nodearrAlternateBlue = '#2193b5';
+const nodearrTeal = '#0f766e';
+const nodearrAlternateBlue = '#115e59';
 const darkGray = '#888';
 const mediumGray = '#999';
 const gray = '#adadad';
@@ -19,7 +19,7 @@ module.exports = {
   black,
   white,
   offWhite,
-  primaryColor: '#5d9cec',
+  primaryColor: nodearrTeal,
   selectedColor: '#f9be03',
   successColor: '#27c24c',
   dangerColor: '#f05050',
@@ -39,8 +39,8 @@ module.exports = {
   themeBlue: nodearrTeal,
   themeAlternateBlue: nodearrAlternateBlue,
   themeRed: '#c4273c',
-  themeDarkColor: '#3a3f51',
-  themeLightColor: '#4f566f',
+  themeDarkColor: '#2a2a2a',
+  themeLightColor: '#414141',
   pageBackground: '#f5f7fa',
   pageFooterBackground: '#f1f1f1',
 
@@ -55,8 +55,8 @@ module.exports = {
 
   // Links
   defaultLinkHoverColor: '#fff',
-  linkColor: '#5d9cec',
-  linkHoverColor: '#1b72e2',
+  linkColor: nodearrTeal,
+  linkHoverColor: nodearrAlternateBlue,
 
   // Header
   pageHeaderBackgroundColor: nodearrAlternateBlue,
@@ -64,22 +64,22 @@ module.exports = {
   // Sidebar
 
   sidebarColor: '#e1e2e3',
-  sidebarBackgroundColor: '#3a3f51',
-  sidebarActiveBackgroundColor: '#252833',
+  sidebarBackgroundColor: '#2a2a2a',
+  sidebarActiveBackgroundColor: '#414141',
 
   // Toolbar
   toolbarColor: '#e1e2e3',
-  toolbarBackgroundColor: '#4f566f',
-  toolbarMenuItemBackgroundColor: '#454b60',
-  toolbarMenuItemHoverBackgroundColor: '#3a3f51',
-  toolbarLabelColor: '#8895aa',
+  toolbarBackgroundColor: '#414141',
+  toolbarMenuItemBackgroundColor: '#333',
+  toolbarMenuItemHoverBackgroundColor: '#2a2a2a',
+  toolbarLabelColor: '#e1e2e3',
 
   // Accents
   borderColor: '#e5e5e5',
   inputBorderColor: '#dde6e9',
   inputBoxShadowColor: 'rgba(0, 0, 0, 0.075)',
-  inputFocusBorderColor: '#66afe9',
-  inputFocusBoxShadowColor: 'rgba(102, 175, 233, 0.6)',
+  inputFocusBorderColor: nodearrTeal,
+  inputFocusBoxShadowColor: 'rgba(15, 118, 110, 0.6)',
   inputErrorBorderColor: '#f05050',
   inputErrorBoxShadowColor: 'rgba(240, 80, 80, 0.6)',
   inputWarningBorderColor: '#ffa500',
@@ -88,7 +88,7 @@ module.exports = {
   colorImpairedGradientDark: '#f4f5f6',
   colorImpairedDangerGradient: '#d84848',
   colorImpairedWarningGradient: '#e59400',
-  colorImpairedPrimaryGradient: '#538cd4',
+  colorImpairedPrimaryGradient: nodearrAlternateBlue,
   colorImpairedGrayGradient: '#9b9b9b  ',
 
   //
@@ -100,10 +100,10 @@ module.exports = {
   defaultHoverBackgroundColor: '#f5f5f5',
   defaultHoverBorderColor: '#d6d6d6',
 
-  primaryBackgroundColor: '#5d9cec',
-  primaryBorderColor: '#5899eb',
-  primaryHoverBackgroundColor: '#4b91ea',
-  primaryHoverBorderColor: '#3483e7',
+  primaryBackgroundColor: nodearrTeal,
+  primaryBorderColor: nodearrAlternateBlue,
+  primaryHoverBackgroundColor: nodearrAlternateBlue,
+  primaryHoverBorderColor: nodearrAlternateBlue,
 
   successBackgroundColor: '#27c24c',
   successBorderColor: '#26be4a',
@@ -140,8 +140,8 @@ module.exports = {
   //
   // Toolbar
 
-  toobarButtonHoverColor: '#35c5f4',
-  toobarButtonSelectedColor: '#35c5f4',
+  toobarButtonHoverColor: '#5eead4',
+  toobarButtonSelectedColor: '#5eead4',
 
   //
   // Scroller
@@ -179,7 +179,7 @@ module.exports = {
   //
   // Slider
 
-  sliderAccentColor: '#5d9cec',
+  sliderAccentColor: nodearrTeal,
 
   //
   // Form
@@ -201,8 +201,8 @@ module.exports = {
   popoverShadowColor: 'rgba(0, 0, 0, 0.2)',
   popoverArrowBorderColor: '#fff',
 
-  popoverTitleBackgroundInverseColor: '#3a3f51',
-  popoverTitleBorderInverseColor: '#4f566f',
+  popoverTitleBackgroundInverseColor: '#2a2a2a',
+  popoverTitleBorderInverseColor: '#414141',
   popoverShadowInverseColor: 'rgba(0, 0, 0, 0.2)',
   popoverArrowBorderInverseColor: 'rgba(58, 63, 81, 0.75)',
 
@@ -242,5 +242,5 @@ module.exports = {
   progressBarFrontTextColor: white,
   progressBarBackTextColor: darkGray,
   progressBarBackgroundColor: white,
-  logEventsBackgroundColor: white
+  logEventsBackgroundColor: white,
 };

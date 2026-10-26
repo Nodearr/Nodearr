@@ -10,7 +10,6 @@ import React, {
 import ReactDOM from 'react-dom';
 import FocusLock from 'react-focus-lock';
 import ErrorBoundary from 'Components/Error/ErrorBoundary';
-import usePrevious from 'Helpers/Hooks/usePrevious';
 import { Size } from 'Helpers/Props/sizes';
 import { isIOS } from 'Utilities/browser';
 import * as keyCodes from 'Utilities/Constants/keyCodes';
@@ -20,6 +19,7 @@ import ModalError from './ModalError';
 import styles from './Modal.css';
 
 const openModals: string[] = [];
+let bodyScrollTop = 0;
 const node = document.getElementById('portal-root');
 
 function removeFromOpenModals(id: string) {
@@ -71,8 +71,6 @@ function Modal({
 }: ModalProps) {
   const backgroundRef = useRef<HTMLDivElement>(null);
   const isBackdropPressed = useRef(false);
-  const bodyScrollTop = useRef(0);
-  const wasOpen = usePrevious(isOpen);
   const modalId = useId();
 
   const isTargetBackdrop = useCallback((event: TouchEvent | MouseEvent) => {
@@ -122,33 +120,36 @@ function Modal({
   );
 
   useEffect(() => {
-    if (isOpen && !wasOpen) {
+    if (isOpen) {
       openModals.push(modalId);
 
       if (openModals.length === 1) {
         if (isIOS()) {
           setScrollLock(true);
-          bodyScrollTop.current = document.body.scrollTop;
+          bodyScrollTop = document.body.scrollTop;
           elementClass(document.body).add(styles.modalOpenIOS);
         } else {
           elementClass(document.body).add(styles.modalOpen);
         }
       }
-    } else if (!isOpen && wasOpen) {
-      removeFromOpenModals(modalId);
+      return () => {
+        removeFromOpenModals(modalId);
 
-      if (openModals.length === 0) {
-        setScrollLock(false);
+        if (openModals.length === 0) {
+          setScrollLock(false);
 
-        if (isIOS()) {
-          elementClass(document.body).remove(styles.modalOpenIOS);
-          document.body.scrollTop = bodyScrollTop.current;
-        } else {
-          elementClass(document.body).remove(styles.modalOpen);
+          if (isIOS()) {
+            elementClass(document.body).remove(styles.modalOpenIOS);
+            document.body.scrollTop = bodyScrollTop;
+          } else {
+            elementClass(document.body).remove(styles.modalOpen);
+          }
         }
-      }
+      };
     }
-  }, [isOpen, wasOpen, modalId, handleKeyDown]);
+
+    return undefined;
+  }, [isOpen, modalId]);
 
   useEffect(() => {
     if (isOpen) {

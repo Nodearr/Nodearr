@@ -83,10 +83,12 @@ function SendFromCatalogButton({
   titleKey,
   items,
   label,
+  className,
 }: {
   titleKey: TitleKey;
   items: ShareKey[];
   label: string;
+  className?: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -101,8 +103,10 @@ function SendFromCatalogButton({
   return (
     <>
       <IconButton
+        className={className}
         name={icons.SEND}
         title={translate('SendTitleToFriend', { title: label })}
+        aria-label={translate('SendTitleToFriend', { title: label })}
         onPress={handleOpenPress}
       />
       {isOpen ? (

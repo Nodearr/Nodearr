@@ -265,8 +265,25 @@ function TitleTile({ title }: { title: LocalCatalogTitle }) {
 
   return (
     <div className={catalogStyles.tile}>
-      {detailsPath ? (
-        <CatalogDetailsButton path={detailsPath} label={name} variant="poster">
+      <div className={catalogStyles.tilePoster}>
+        {detailsPath ? (
+          <CatalogDetailsButton
+            path={detailsPath}
+            label={name}
+            variant="poster"
+          >
+            <Poster
+              src={localPosterSrc(
+                title.applicationId,
+                title.posterSubject,
+                title.posterArrId
+              )}
+              title={name}
+              size="tile"
+              isSquare={title.kind === 'music'}
+            />
+          </CatalogDetailsButton>
+        ) : (
           <Poster
             src={localPosterSrc(
               title.applicationId,
@@ -277,19 +294,14 @@ function TitleTile({ title }: { title: LocalCatalogTitle }) {
             size="tile"
             isSquare={title.kind === 'music'}
           />
-        </CatalogDetailsButton>
-      ) : (
-        <Poster
-          src={localPosterSrc(
-            title.applicationId,
-            title.posterSubject,
-            title.posterArrId
-          )}
-          title={name}
-          size="tile"
-          isSquare={title.kind === 'music'}
+        )}
+        <SendFromCatalogButton
+          className={catalogStyles.tileSend}
+          titleKey={titleKey(title)}
+          items={titleItems(title)}
+          label={name}
         />
-      )}
+      </div>
 
       <div className={catalogStyles.tileTitle} title={name}>
         {detailsPath ? (
@@ -307,13 +319,6 @@ function TitleTile({ title }: { title: LocalCatalogTitle }) {
           : translate('SharingFileCount', { count: title.files })}
       </div>
       <div className={catalogStyles.tileDetails}>{title.applicationName}</div>
-      <div className={catalogStyles.tileDetails}>
-        <SendFromCatalogButton
-          titleKey={titleKey(title)}
-          items={titleItems(title)}
-          label={name}
-        />
-      </div>
     </div>
   );
 }
