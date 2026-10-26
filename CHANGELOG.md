@@ -2,6 +2,12 @@
 
 What changed in each release, newest first. Each item links to the decision record that explains it, and the [V1 plan](docs/plans/v1-implementation-plan.md) has the whole story, slice by slice.
 
+## Unreleased
+
+### Documentation
+
+- Contributors can run the CI test suites with `npm test`, or run frontend checks, builds and those tests with `npm run verify`. The local and CI runs share the same test selection ([contributing guide](CONTRIBUTING.md#testing)).
+
 ## 0.4.0 (pre-release)
 
 ### Added

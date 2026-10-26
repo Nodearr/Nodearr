@@ -53,15 +53,15 @@ jobs:
           - name: Linux
             os: ubuntu-latest
             platform: Posix
-            exclude-category: WINDOWS
-            skip-assembly: Nodearr.Windows.Test
           - name: Windows
             os: windows-latest
             platform: Windows
-            exclude-category: LINUX
-            skip-assembly: Nodearr.Mono.Test
     steps:
       - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '20.11.1'
 
       - uses: actions/setup-dotnet@v5
         with:
@@ -78,22 +78,7 @@ jobs:
 
       # One assembly at a time. Run together, the test hosts fight over the files they share.
       - name: Test
-        shell: pwsh
-        run: |
-          $filter = 'TestCategory!=ManualTest&TestCategory!=${{ matrix.exclude-category }}&TestCategory!=IntegrationTest&TestCategory!=AutomationTest'
-          $skip = '${{ matrix.skip-assembly }}', 'Nodearr.Automation.Test'
-          $failed = @()
-
-          foreach ($assembly in Get-ChildItem _tests/net10.0 -Filter 'Nodearr.*.Test.dll') {
-              if ($skip -contains $assembly.BaseName) { continue }
-
-              Write-Host "::group::$($assembly.BaseName)"
-              dotnet test $assembly.FullName --filter $filter --logger 'trx;LogFilePrefix=${{ matrix.name }}' --results-directory TestResults
-              if ($LASTEXITCODE -ne 0) { $failed += $assembly.BaseName }
-              Write-Host '::endgroup::'
-          }
-
-          if ($failed) { throw "Tests failed: $($failed -join ', ')" }
+        run: node build/test-ci.mjs --skip-build --skip-transport
 
       - uses: actions/upload-artifact@v5
         if: ${{ !cancelled() }}
