@@ -37,6 +37,8 @@ namespace NzbDrone.Api.Test.Catalog
                 .Returns<int, IEnumerable<int>>((app, ids) => _series.Where(s => s.ApplicationId == app && ids.Contains(s.ArrId)).ToList());
             Mocker.GetMock<ICatalogService>().Setup(s => s.GetEpisodes(It.IsAny<int>(), It.IsAny<IEnumerable<int>>()))
                 .Returns<int, IEnumerable<int>>((app, ids) => _episodes.Where(e => e.ApplicationId == app && ids.Contains(e.ArrId)).ToList());
+            Mocker.GetMock<ICatalogService>().Setup(s => s.GetEpisodesForSeries(It.IsAny<int>(), It.IsAny<IEnumerable<int>>()))
+                .Returns<int, IEnumerable<int>>((app, ids) => _episodes.Where(e => e.ApplicationId == app && ids.Contains(e.ArrSeriesId)).ToList());
             Mocker.GetMock<ICatalogService>().Setup(s => s.GetEpisodeFilesForSeries(It.IsAny<int>(), It.IsAny<IEnumerable<int>>()))
                 .Returns<int, IEnumerable<int>>((app, ids) => _episodeFiles.Where(f => f.ApplicationId == app && ids.Contains(f.ArrSeriesId)).ToList());
             Mocker.GetMock<ICatalogService>().Setup(s => s.GetMovies(It.IsAny<int>(), It.IsAny<IEnumerable<int>>()))
@@ -63,6 +65,8 @@ namespace NzbDrone.Api.Test.Catalog
             var series = Local.GetDetails("series", 1, 10).Result.Should().BeOfType<Ok<CatalogDetailsResource>>().Subject.Value;
             series.Overview.Should().Be("Series story");
             series.Resolutions.Should().Equal(1080, 720);
+            series.Episodes.Select(e => e.Title).Should().Equal("First", "Second");
+            series.Episodes.Select(e => e.Path).Should().Equal("/catalog/local/details/episode/1/11", "/catalog/local/details/episode/1/12");
 
             var first = Local.GetDetails("episode", 1, 11).Result.Should().BeOfType<Ok<CatalogDetailsResource>>().Subject.Value;
             var second = Local.GetDetails("episode", 1, 12).Result.Should().BeOfType<Ok<CatalogDetailsResource>>().Subject.Value;
@@ -113,6 +117,11 @@ namespace NzbDrone.Api.Test.Catalog
             };
             var item = PeerCatalogItem.FromOffer(3, offered);
             item.Id = 42;
+            var otherPeer = PeerCatalogItem.FromOffer(4, new OfferItem
+            {
+                Id = "e-2-30", Kind = MediaKind.Tv, Title = "Pingu", SeasonNumber = 2,
+                EpisodeNumbers = new List<int> { 1 }, EpisodeTitles = new List<string> { "Other friend" }, Resolution = 1080
+            });
             Mocker.GetMock<IPeerCatalogService>().Setup(s => s.GetItem(42)).Returns(item);
             Mocker.GetMock<IPeerCatalogService>().Setup(s => s.GetSummaries()).Returns(new List<PeerCatalogSummary> { new() { PeerId = 3, PeerName = "Alice" } });
             Mocker.GetMock<IPeerCatalogService>().Setup(s => s.GetSeries(null)).Returns(new List<PeerCatalogSeries>
@@ -120,7 +129,7 @@ namespace NzbDrone.Api.Test.Catalog
                 new()
                 {
                     Key = NzbDrone.Core.Posters.PeerPosters.KeyOf(item),
-                    Items = new List<PeerCatalogItem> { item, new() { Resolution = 1080 } }
+                    Items = new List<PeerCatalogItem> { item, otherPeer }
                 }
             });
             var controller = new PeerCatalogController(Mocker.GetMock<IPeerCatalogService>().Object);
@@ -130,6 +139,8 @@ namespace NzbDrone.Api.Test.Catalog
             series.Overview.Should().Be("Series story");
             series.Resolutions.Should().Equal(1080, 720);
             series.Quality.Should().BeNull();
+            series.Episodes.Select(e => e.Title).Should().Equal("First", "Second");
+            series.Episodes.Select(e => e.Path).Should().Equal("/catalog/peers/details/episode/42?episodeIndex=0", "/catalog/peers/details/episode/42?episodeIndex=1");
             episode.Title.Should().Be("Second");
             episode.Overview.Should().Be("Second story");
             episode.SourceName.Should().Be("Alice");

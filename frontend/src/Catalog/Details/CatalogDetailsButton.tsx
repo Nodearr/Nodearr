@@ -36,6 +36,12 @@ interface CatalogDetails {
   quality?: string;
   resolution: number;
   resolutions: number[];
+  episodes: {
+    seasonNumber: number;
+    episodeNumber: number;
+    title?: string;
+    path: string;
+  }[];
   size: number;
 }
 
@@ -82,6 +88,29 @@ function EpisodeOption({
   );
 }
 
+function SeriesEpisode({
+  episode,
+  onSelect,
+}: {
+  episode: CatalogDetails['episodes'][number];
+  onSelect: (path: string) => void;
+}) {
+  const select = useCallback(
+    () => onSelect(episode.path),
+    [onSelect, episode.path]
+  );
+  return (
+    <li>
+      <button type="button" onClick={select}>
+        {`S${String(episode.seasonNumber).padStart(2, '0')}E${String(
+          episode.episodeNumber
+        ).padStart(2, '0')}`}
+        {episode.title ? ` · ${episode.title}` : ''}
+      </button>
+    </li>
+  );
+}
+
 function kindLabel(kind: CatalogDetails['kind']) {
   switch (kind) {
     case 'series':
@@ -107,6 +136,7 @@ function CatalogDetailsModal({
   onClose: () => void;
 }) {
   const [selectedPath, setSelectedPath] = useState(path);
+  const backToSeries = useCallback(() => setSelectedPath(path), [path]);
   const { data, isLoading, error } = useApiQuery<CatalogDetails>({
     path: selectedPath,
   });
@@ -117,6 +147,9 @@ function CatalogDetailsModal({
           '0'
         )}E${String(data.episodeNumber).padStart(2, '0')}`
       : undefined;
+  const seasons = Array.from(
+    new Set((data?.episodes ?? []).map((episode) => episode.seasonNumber))
+  );
 
   return (
     <Modal isOpen={true} onModalClose={onClose}>
@@ -125,6 +158,15 @@ function CatalogDetailsModal({
           {data?.title || episodeLabel || translate('Details')}
         </ModalHeader>
         <ModalBody>
+          {selectedPath !== path && !options ? (
+            <button
+              type="button"
+              className={styles.back}
+              onClick={backToSeries}
+            >
+              {translate('CatalogDetailsBackToSeries')}
+            </button>
+          ) : null}
           {options && options.length > 1 ? (
             <div className={styles.choices}>
               {options.map((option) => (
@@ -209,6 +251,36 @@ function CatalogDetailsModal({
                   <Detail label="TMDb" value={data.tmdbId || undefined} />
                   <Detail label="IMDb" value={data.imdbId} />
                 </dl>
+                {data.kind === 'series' && seasons.length > 0 ? (
+                  <section className={styles.episodes}>
+                    <h3>{translate('Episodes')}</h3>
+                    {seasons.map((season, index) => (
+                      <details
+                        key={season}
+                        open={index === 0 ? true : undefined}
+                      >
+                        <summary>
+                          {season === 0
+                            ? translate('Specials')
+                            : `${translate('Season')} ${season}`}
+                        </summary>
+                        <ul>
+                          {data.episodes
+                            .filter(
+                              (episode) => episode.seasonNumber === season
+                            )
+                            .map((episode) => (
+                              <SeriesEpisode
+                                key={episode.path}
+                                episode={episode}
+                                onSelect={setSelectedPath}
+                              />
+                            ))}
+                        </ul>
+                      </details>
+                    ))}
+                  </section>
+                ) : null}
               </div>
             </div>
           ) : null}

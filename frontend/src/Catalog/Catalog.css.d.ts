@@ -32,6 +32,8 @@ interface CssExports {
   'summary': string;
   'tile': string;
   'tileDetails': string;
+  'tilePoster': string;
+  'tileSend': string;
   'tileTitle': string;
   'tiles': string;
   'title': string;
