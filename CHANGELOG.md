@@ -2,12 +2,20 @@
 
 What changed in each release, newest first. Each item links to the decision record that explains it, and the [V1 plan](docs/plans/v1-implementation-plan.md) has the whole story, slice by slice.
 
-## Unreleased
+## 0.4.2 (pre-release)
+
+### Added
+
+- Local series cards mark episodes in the library and missing episodes. Turn off **Show missing episodes** in a series card or the local series table to see only downloaded files. Local series, movie and readable episode cards offer **Send to a friend**, with the title or episode selected in the send form.
+- Friend series and episode cards show whether you have each offered episode, and movie cards show your library status. The series card can hide episodes you have not downloaded.
+
+### Changed
+
+- The light theme uses light teal navigation and toolbar surfaces, with text and controls suited to the brighter palette.
 
 ### Fixed
 
-- Opening a card keeps the page in place. Local series cards mark episodes in the library and missing episodes, and local series, movie and readable episode cards offer **Send to a friend**.
-- The light theme uses light teal navigation and toolbar surfaces, with text and controls suited to the brighter palette.
+- Opening a card keeps the page in place, so you can return to where you were browsing.
 
 ## 0.4.1 (pre-release)
 
