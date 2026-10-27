@@ -62,6 +62,7 @@ module.exports = {
 
   // Header
   pageHeaderBackgroundColor: '#2a2a2a',
+  pageHeaderColor: white,
 
   // Sidebar
 

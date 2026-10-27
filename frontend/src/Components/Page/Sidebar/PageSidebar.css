@@ -33,7 +33,7 @@
   composes: button from '~Components/Link/IconButton.css';
 
   margin-right: 15px;
-  color: #e1e2e3;
+  color: var(--sidebarColor);
   text-align: center;
 
   &:hover {
@@ -46,7 +46,7 @@
   flex-direction: column;
   overflow: hidden;
   background-color: var(--sidebarBackgroundColor);
-  color: var(--white);
+  color: var(--sidebarColor);
 }
 
 @media only screen and (max-width: $breakpointSmall) {

@@ -7,6 +7,7 @@ What changed in each release, newest first. Each item links to the decision reco
 ### Fixed
 
 - Opening a card keeps the page in place. Local series cards mark episodes in the library and missing episodes, and local series, movie and readable episode cards offer **Send to a friend**.
+- The light theme uses light teal navigation and toolbar surfaces, with text and controls suited to the brighter palette.
 
 ## 0.4.1 (pre-release)
 

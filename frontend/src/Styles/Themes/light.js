@@ -41,7 +41,7 @@ module.exports = {
   themeRed: '#c4273c',
   themeDarkColor: '#2a2a2a',
   themeLightColor: '#414141',
-  pageBackground: '#f5f7fa',
+  pageBackground: '#f5f9f7',
   pageFooterBackground: '#f1f1f1',
 
   torrentColor: '#00853d',
@@ -59,20 +59,21 @@ module.exports = {
   linkHoverColor: nodearrAlternateBlue,
 
   // Header
-  pageHeaderBackgroundColor: nodearrAlternateBlue,
+  pageHeaderBackgroundColor: '#e0f2ed',
+  pageHeaderColor: '#173f39',
 
   // Sidebar
 
-  sidebarColor: '#e1e2e3',
-  sidebarBackgroundColor: '#2a2a2a',
-  sidebarActiveBackgroundColor: '#414141',
+  sidebarColor: '#244941',
+  sidebarBackgroundColor: '#edf7f4',
+  sidebarActiveBackgroundColor: '#d0eae3',
 
   // Toolbar
-  toolbarColor: '#e1e2e3',
-  toolbarBackgroundColor: '#414141',
-  toolbarMenuItemBackgroundColor: '#333',
-  toolbarMenuItemHoverBackgroundColor: '#2a2a2a',
-  toolbarLabelColor: '#e1e2e3',
+  toolbarColor: '#244941',
+  toolbarBackgroundColor: '#e6f2ee',
+  toolbarMenuItemBackgroundColor: '#e6f2ee',
+  toolbarMenuItemHoverBackgroundColor: '#cfe9e2',
+  toolbarLabelColor: '#42635b',
 
   // Accents
   borderColor: '#e5e5e5',
@@ -133,15 +134,15 @@ module.exports = {
 
   //
   // Menu
-  menuItemColor: '#e1e2e3',
-  menuItemHoverColor: '#fbfcfc',
-  menuItemHoverBackgroundColor: '#f5f7fa',
+  menuItemColor: '#244941',
+  menuItemHoverColor: '#0f766e',
+  menuItemHoverBackgroundColor: '#d0eae3',
 
   //
   // Toolbar
 
-  toobarButtonHoverColor: '#5eead4',
-  toobarButtonSelectedColor: '#5eead4',
+  toobarButtonHoverColor: nodearrTeal,
+  toobarButtonSelectedColor: nodearrTeal,
 
   //
   // Scroller
