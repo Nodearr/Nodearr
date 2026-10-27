@@ -28,6 +28,17 @@ namespace Nodearr.Http.Newznab
         [HttpGet("/newznab/api")]
         public IActionResult Api([FromQuery] string t, [FromQuery] string apikey)
         {
+            return Handle(t, apikey, null);
+        }
+
+        [HttpGet("/newznab/{applicationId:int}/api")]
+        public IActionResult ApplicationApi([FromRoute] int applicationId, [FromQuery] string t, [FromQuery] string apikey)
+        {
+            return Handle(t, apikey, applicationId);
+        }
+
+        private IActionResult Handle(string t, string apikey, int? applicationId)
+        {
             var function = (t ?? string.Empty).ToLowerInvariant();
 
             if (function == "caps")
@@ -46,7 +57,7 @@ namespace Nodearr.Http.Newznab
                 case "tvsearch":
                 case "movie":
                 case "music":
-                    return Search(function);
+                    return Search(function, applicationId);
                 case "get":
                     return Get();
                 default:
@@ -54,7 +65,7 @@ namespace Nodearr.Http.Newznab
             }
         }
 
-        private IActionResult Search(string function)
+        private IActionResult Search(string function, int? applicationId)
         {
             var categories = Request.Query["cat"].ToString()
                 .Split(',', StringSplitOptions.RemoveEmptyEntries)
@@ -87,6 +98,11 @@ namespace Nodearr.Http.Newznab
                 Offset = Number("offset"),
                 Limit = Request.Query.ContainsKey("limit") ? Number("limit") : CandidateService.MaxLimit
             };
+
+            if (query.IsBrowse && !query.Season.HasValue && string.IsNullOrWhiteSpace(query.Episode))
+            {
+                query.RssApplicationId = applicationId;
+            }
 
             var result = _candidates.Search(query);
             var items = result.Items.Select(i =>

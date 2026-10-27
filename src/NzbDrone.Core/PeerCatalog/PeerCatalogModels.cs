@@ -114,6 +114,9 @@ namespace NzbDrone.Core.PeerCatalog
         public string AudioCodec { get; set; }
         public double AudioChannels { get; set; }
         public DateTime? DateAdded { get; set; }
+
+        // Recorded by this node, independent of the sender's import date and fingerprint.
+        public DateTime? FirstSeen { get; set; }
         public PeerItemStatus LocalStatus { get; set; }
 
         // As the peer sent them: a hash of what it said about the file, which the catalog's

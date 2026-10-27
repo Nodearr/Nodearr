@@ -2,6 +2,12 @@
 
 What changed in each release, newest first. Each item links to the decision record that explains it, and the [V1 plan](docs/plans/v1-implementation-plan.md) has the whole story, slice by slice.
 
+## Unreleased
+
+### Changed
+
+- Each connected library app has its own RSS feed, listing later arrivals it is missing or could upgrade from friends whose last connection check found a direct route, or who have not yet been checked. Pairing no longer exposes the initial shared library through that feed. Searches and the legacy feed used by Prowlarr remain unchanged. RSS stays off by default until the automatic-fetching settings land ([#73](https://github.com/Nodearr/Nodearr/issues/73), part of [#71](https://github.com/Nodearr/Nodearr/issues/71)).
+
 ## 0.4.2 (pre-release)
 
 ### Added

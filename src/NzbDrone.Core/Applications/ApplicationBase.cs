@@ -181,7 +181,7 @@ namespace NzbDrone.Core.Applications
                 "Newznab",
                 new Dictionary<string, JToken>
                 {
-                    { "baseUrl", Settings.NodearrUrl.TrimEnd('/') + "/newznab" },
+                    { "baseUrl", Settings.NodearrUrl.TrimEnd('/') + $"/newznab/{Definition.Id}" },
                     { "apiPath", "/api" },
                     { "apiKey", apiKey },
                     { "categories", new JArray(Settings.SyncCategories) },
@@ -308,6 +308,15 @@ namespace NzbDrone.Core.Applications
 
                 if (((ApplicationDefinition)Definition).SyncLevel != ApplicationSyncLevel.FullSync)
                 {
+                    // Older guidance recommended Add Only to preserve RSS. Those registrations
+                    // still need the safe feed address, without changing any of their switches.
+                    var baseUrl = existing["fields"]?.OfType<JObject>().FirstOrDefault(f => f.Value<string>("name") == "baseUrl");
+                    if (resource == "/indexer" && baseUrl?.Value<string>("value") == Settings.NodearrUrl.TrimEnd('/') + "/newznab")
+                    {
+                        Apply(existing, fields.Where(f => f.Key is "baseUrl" or "apiPath" or "apiKey").ToDictionary(f => f.Key, f => f.Value), new Dictionary<string, JToken>());
+                        return _proxy.Put(Settings, $"{resource}/{existing.Value<int>("id")}", existing);
+                    }
+
                     return existing;
                 }
 

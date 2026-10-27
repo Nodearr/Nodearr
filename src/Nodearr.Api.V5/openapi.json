@@ -1536,6 +1536,43 @@
         }
       }
     },
+    "/newznab/{applicationId}/api": {
+      "get": {
+        "tags": [
+          "Newznab"
+        ],
+        "parameters": [
+          {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "t",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "apikey",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v5/nodes/identity": {
       "get": {
         "tags": [
@@ -3637,8 +3674,7 @@
             "type": "boolean"
           },
           "localStatus": {
-            "$ref": "#/components/schemas/PeerItemStatus",
-            "nullable": true
+            "$ref": "#/components/schemas/PeerItemStatus"
           }
         },
         "additionalProperties": false
@@ -3754,8 +3790,7 @@
             "$ref": "#/components/schemas/CatalogDetailsSendResource"
           },
           "localStatus": {
-            "$ref": "#/components/schemas/PeerItemStatus",
-            "nullable": true
+            "$ref": "#/components/schemas/PeerItemStatus"
           },
           "size": {
             "type": "integer",

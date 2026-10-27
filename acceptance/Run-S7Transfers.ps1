@@ -7,7 +7,8 @@
 .DESCRIPTION
     Node A has a library: its own Sonarr and Radarr hold three Pingu episodes and one movie.
     Node B has its own Sonarr and Radarr, which know the same series and movie and have no files.
-    The nodes pair and A shares. The script then presses "search" in B's Sonarr and Radarr and
+    The nodes pair and A shares. RSS first skips that initial library, then fetches a fourth
+    episode added afterwards. The script then presses "search" in B's Sonarr and Radarr and
     follows each grab to the file landing in B's library. It checks that A hashed what it shares
     before anything was asked for. It also cancels a transfer, restarts
     node B in the middle of one, has A unshare the series in the middle of one, and has A end
@@ -45,6 +46,12 @@
 
 .PARAMETER FirstPort
     Node A's port. Node B takes the next one.
+
+.PARAMETER SonarrConsumerPort
+    B's Sonarr port. Defaults to 28989.
+
+.PARAMETER RadarrConsumerPort
+    B's Radarr port. Defaults to 27878.
 #>
 [CmdletBinding()]
 param(
@@ -54,7 +61,9 @@ param(
     [switch] $Down,
     [int] $UploadLimitKbps = 1024,
     [string] $NodearrDll,
-    [int] $FirstPort = 6633
+    [int] $FirstPort = 6633,
+    [int] $SonarrConsumerPort = 28989,
+    [int] $RadarrConsumerPort = 27878
 )
 
 $ErrorActionPreference = 'Stop'
@@ -98,8 +107,8 @@ $nodes = @{
 $arr = @{
     sonarr  = @{ Url = 'http://127.0.0.1:18989'; Key = New-Key }
     radarr  = @{ Url = 'http://127.0.0.1:17878'; Key = New-Key }
-    sonarrB = @{ Url = 'http://127.0.0.1:28989'; Key = New-Key }
-    radarrB = @{ Url = 'http://127.0.0.1:27878'; Key = New-Key }
+    sonarrB = @{ Url = "http://127.0.0.1:$SonarrConsumerPort"; Key = New-Key }
+    radarrB = @{ Url = "http://127.0.0.1:$RadarrConsumerPort"; Key = New-Key }
 }
 
 function Invoke-Compose {
@@ -244,6 +253,7 @@ if ($Down) {
 
 @("SONARR_API_KEY=$($arr.sonarr.Key)", "RADARR_API_KEY=$($arr.radarr.Key)", "PROWLARR_API_KEY=$(New-Key)",
   "SONARR_B_API_KEY=$($arr.sonarrB.Key)", "RADARR_B_API_KEY=$($arr.radarrB.Key)",
+  "SONARR_B_PORT=$SonarrConsumerPort", "RADARR_B_PORT=$RadarrConsumerPort",
   "LIBRARY_DIR=$($library -replace '\\', '/')", "DOWNLOADS_DIR=$($downloads -replace '\\', '/')", "DOWNLOADS_B_DIR=$($downloadsB -replace '\\', '/')") | Set-Content $envFile
 
 $tvMedia = Join-Path $media 'episode-720p.mkv'
@@ -341,8 +351,8 @@ try {
             "Ready $((Get-Date).ToString('u'))"
             "Node A (has the library):  http://localhost:$($nodes.A.Port)"
             "Node B (wants the files):  http://localhost:$($nodes.B.Port)"
-            "B's Sonarr:                http://localhost:28989"
-            "B's Radarr:                http://localhost:27878"
+            "B's Sonarr:                http://localhost:$SonarrConsumerPort"
+            "B's Radarr:                http://localhost:$RadarrConsumerPort"
             "A's Sonarr:                http://localhost:18989"
             "A's Radarr:                http://localhost:17878"
         ) | Set-Content $readyFile
@@ -357,6 +367,63 @@ try {
         if ($status.shared -eq 4 -and $status.hashed -eq 4 -and $status.lastPass) { $status }
     }
     Assert-That 'Before anything is asked for, the sending node has hashed every file it shares' ($null -ne $hashing) $hashing
+
+    # --- RSS: pairing is quiet, only a later arrival is fetched ----------------------------------
+
+    $rssIndexer = @(Invoke-Arr sonarrB GET '/indexer' | Where-Object name -eq 'Nodearr')
+    if ($rssIndexer.Count -ne 1) { throw 'Expected exactly one Nodearr indexer in B''s Sonarr' }
+    $rssIndexer = $rssIndexer[0]
+    $bSonarrApp = @(Invoke-Node B GET '/applications' | Where-Object implementation -eq 'Sonarr')
+    $feedUrl = ($rssIndexer.fields | Where-Object name -eq 'baseUrl').value
+    Assert-That 'Sonarr is registered on its own application feed' (
+        $bSonarrApp.Count -eq 1 -and $feedUrl -eq "http://host.docker.internal:$($nodes.B.Port)/newznab/$($bSonarrApp[0].id)"
+    ) @{ feed = $feedUrl; applicationId = $bSonarrApp[0].id }
+    $rssIndexer.enableRss = $true
+    Invoke-Arr sonarrB PUT "/indexer/$($rssIndexer.id)" $rssIndexer | Out-Null
+    $rss = Invoke-Arr sonarrB POST '/command' @{ name = 'RssSync' }
+    Wait-Until -What 'Sonarr RSS sync after pairing' -Condition {
+        $command = Invoke-Arr sonarrB GET "/command/$($rss.id)"
+        if ($command.status -eq 'failed') { throw 'Sonarr RSS sync failed' }
+        $command.status -eq 'completed'
+    } | Out-Null
+    Assert-That 'RSS does not grab the library received at pairing' (
+        (Get-Transfers).Count -eq 0 -and
+        @(Invoke-Arr sonarrB GET "/episode?seriesId=$($series.sonarrB.id)" | Where-Object hasFile).Count -eq 0 -and
+        @(Get-History sonarrB "/history/series?seriesId=$($series.sonarrB.id)" | Where-Object eventType -eq 'grabbed').Count -eq 0
+    ) @{ transfers = (Get-Transfers).Count }
+
+    $rssName = 'Pingu.S01E04.720p.WEB-DL.AAC2.0.H.264-NODEARR'
+    Import-ArrDownload -ApiUrl "$($arr.sonarr.Url)/api/v3" -ApiKey $arr.sonarr.Key -App Sonarr -SourceFile $tvMedia -Name $rssName -DownloadsDir $downloads
+    Invoke-NodeCommand A @{ name = 'CatalogRefresh' }
+    Invoke-NodeCommand B @{ name = 'PeerCatalogSync' }
+    Wait-Until -What 'B to receive the new episode' -Condition { (Invoke-Node B GET '/catalog/peers/items?pageSize=50').totalRecords -eq 5 } | Out-Null
+    $rssEpisode = @(Invoke-Arr sonarrB GET "/episode?seriesId=$($series.sonarrB.id)" | Where-Object { $_.seasonNumber -eq 1 -and $_.episodeNumber -eq 4 })[0]
+    $rss = Invoke-Arr sonarrB POST '/command' @{ name = 'RssSync' }
+    $rssImported = Wait-Until -What 'Sonarr to import the RSS arrival' -TimeoutSec 180 -EverySec 2 -Condition {
+        Invoke-Arr sonarrB POST '/command' @{ name = 'RefreshMonitoredDownloads' } | Out-Null
+        $episode = Invoke-Arr sonarrB GET "/episode/$($rssEpisode.id)"
+        if ($episode.hasFile) { $episode }
+    }
+    $rssFile = Invoke-Arr sonarrB GET "/episodefile/$($rssImported.episodeFileId)"
+    $rssLanded = docker exec nodearr-s7-sonarr-b-1 sha256sum $rssFile.path
+    $rssGrabs = @(Get-History sonarrB "/history/series?seriesId=$($series.sonarrB.id)" | Where-Object eventType -eq 'grabbed')
+    Assert-That 'RSS alone fetches and imports the later arrival, byte for byte, leaving the initial episodes missing' (
+        "$rssLanded" -match $tvHash -and $rssGrabs.Count -eq 1 -and $rssGrabs[0].sourceTitle -eq $rssName -and
+        @(Invoke-Arr sonarrB GET "/episode?seriesId=$($series.sonarrB.id)" | Where-Object hasFile).Count -eq 1
+    ) @{ title = $rssGrabs[0].sourceTitle; imported = $rssFile.path; hashMatches = ("$rssLanded" -match $tvHash) }
+
+    # Restore the original library for the remaining transfer scenarios.
+    $rssIndexer.enableRss = $false
+    Invoke-Arr sonarrB PUT "/indexer/$($rssIndexer.id)" $rssIndexer | Out-Null
+    Wait-Until -What 'the RSS download to be cleared' -TimeoutSec 60 -Condition { (Get-Transfers).Count -eq 0 } | Out-Null
+    $senderEpisode = @(Invoke-Arr sonarr GET "/episode?seriesId=$($series.sonarr.id)" | Where-Object { $_.seasonNumber -eq 1 -and $_.episodeNumber -eq 4 })
+    if ($senderEpisode.Count -ne 1 -or -not $senderEpisode[0].episodeFileId) { throw 'Expected exactly one source episode for the RSS arrival' }
+    Invoke-Arr sonarr DELETE "/episodefile/$($senderEpisode[0].episodeFileId)" | Out-Null
+    Invoke-Arr sonarrB DELETE "/episodefile/$($rssFile.id)" | Out-Null
+    Invoke-NodeCommand A @{ name = 'CatalogRefresh' }
+    Invoke-NodeCommand B @{ name = 'CatalogRefresh' }
+    Invoke-NodeCommand B @{ name = 'PeerCatalogSync' }
+    Wait-Until -What 'B to hold the original four offered files' -Condition { (Invoke-Node B GET '/catalog/peers/items?pageSize=50').totalRecords -eq 4 } | Out-Null
 
     # --- 1. Sonarr: search, grab, transfer, import -----------------------------------------------
 

@@ -38,6 +38,8 @@ namespace NzbDrone.Core.PeerIndexer
         public string Text { get; set; }
         public int Offset { get; set; }
         public int Limit { get; set; } = CandidateService.MaxLimit;
+        public int? RssApplicationId { get; set; }
+        public bool IncludeUpgrades { get; set; } = true;
 
         // Sonarr asks for an episode of a daily show by the day it aired: the year as the season
         // and "MM/dd" as the episode. This is that day as yyyy-MM-dd, or null for any other query.
@@ -88,11 +90,13 @@ namespace NzbDrone.Core.PeerIndexer
 
         private readonly IPeerCatalogRepository _items;
         private readonly IPeerRepository _peers;
+        private readonly ILocalHoldingsFactory _holdings;
 
-        public CandidateService(IPeerCatalogRepository items, IPeerRepository peers)
+        public CandidateService(IPeerCatalogRepository items, IPeerRepository peers, ILocalHoldingsFactory holdings)
         {
             _items = items;
             _peers = peers;
+            _holdings = holdings;
         }
 
         public CandidateResult Search(CandidateQuery query)
@@ -109,7 +113,9 @@ namespace NzbDrone.Core.PeerIndexer
 
             if (query.IsBrowse)
             {
-                return Newest(query, kinds, trusted, offset, limit);
+                return query.RssApplicationId.HasValue
+                    ? Arrivals(query, kinds, offset, limit)
+                    : Newest(query, kinds, trusted, offset, limit);
             }
 
             var found = query.HasIds ? ByIds(query, FetchKinds(query, kinds)) : ByText(query, kinds);
@@ -286,6 +292,21 @@ namespace NzbDrone.Core.PeerIndexer
 
                     return words.All(w => haystack.Any(h => h.Contains(w)));
                 });
+        }
+
+        private CandidateResult Arrivals(CandidateQuery query, List<MediaKind> kinds, int offset, int limit)
+        {
+            var holdings = _holdings.LoadForApplication(query.RssApplicationId.Value);
+            var wanted = _items.RssArrivals()
+                .Where(i => i.CandidateId != null && IsAsked(i, query, kinds))
+                .Where(i =>
+                {
+                    var status = holdings.Classify(i);
+                    return status == PeerItemStatus.Missing || (query.IncludeUpgrades && status == PeerItemStatus.Upgrade);
+                });
+            var matches = OnePerFile(wanted).OrderByDescending(i => i.FirstSeen).ThenBy(i => i.CandidateId, StringComparer.Ordinal).ToList();
+
+            return new CandidateResult { Total = matches.Count, Items = matches.Skip(offset).Take(limit).ToList() };
         }
 
         private CandidateResult Newest(CandidateQuery query, List<MediaKind> kinds, HashSet<int> trusted, int offset, int limit)

@@ -11,6 +11,7 @@ namespace NzbDrone.Core.PeerCatalog
     public interface ILocalHoldingsFactory
     {
         LocalHoldings Load();
+        LocalHoldings LoadForApplication(int applicationId);
     }
 
     public class LocalHoldingsFactory : ILocalHoldingsFactory
@@ -49,6 +50,20 @@ namespace NzbDrone.Core.PeerCatalog
         public LocalHoldings Load()
         {
             return new LocalHoldings(_series.All(), _episodes.All(), _episodeFiles.All(), _movies.All(), _movieFiles.All(), _profiles.All(), _artists.All(), _albums.All(), _trackFiles.All());
+        }
+
+        public LocalHoldings LoadForApplication(int applicationId)
+        {
+            return new LocalHoldings(
+                _series.All().Where(i => i.ApplicationId == applicationId),
+                _episodes.All().Where(i => i.ApplicationId == applicationId),
+                _episodeFiles.All().Where(i => i.ApplicationId == applicationId),
+                _movies.All().Where(i => i.ApplicationId == applicationId),
+                _movieFiles.All().Where(i => i.ApplicationId == applicationId),
+                _profiles.All().Where(i => i.ApplicationId == applicationId),
+                _artists.All().Where(i => i.ApplicationId == applicationId),
+                _albums.All().Where(i => i.ApplicationId == applicationId),
+                _trackFiles.All().Where(i => i.ApplicationId == applicationId));
         }
     }
 

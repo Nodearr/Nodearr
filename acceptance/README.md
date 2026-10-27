@@ -107,6 +107,7 @@ pwsh acceptance/Run-S7Transfers.ps1
 Requires PowerShell 7, a built Nodearr, Docker, ffmpeg and a built transport sidecar. Takes about five minutes. Node A's uploads are slowed so that the script can act in the middle of a transfer. It presses "search" in node B's Sonarr and Radarr and follows each grab:
 
 - The file comes from node A, is verified, and is imported. The imported file is the same, byte for byte.
+- With RSS enabled in Sonarr, pairing grabs nothing from the initial library. An episode added afterwards is fetched by **RSS Sync** and imported without a search.
 - Nothing appears under `complete` while a file is still arriving.
 - The same ticket twice gives one transfer. Deleting it from the queue leaves nothing behind.
 - A download limit on node B, a quarter of A's upload limit, holds a transfer to it.
@@ -117,6 +118,8 @@ Requires PowerShell 7, a built Nodearr, Docker, ffmpeg and a built transport sid
 - Node A, the one sending, shows each upload while it leaves and lists how each ended: sent, stopped by the other side, or cut when trust ended.
 
 ### Trying it by hand
+
+If the consumer ports are in use, pass `-SonarrConsumerPort` and `-RadarrConsumerPort` to S7 to use different ports. Their defaults are 28989 and 27878.
 
 ```sh
 pwsh acceptance/Run-S7Transfers.ps1 -SetupOnly
