@@ -122,10 +122,12 @@ public class PeerCatalogController : Controller
     };
 
     private readonly IPeerCatalogService _peerCatalogService;
+    private readonly ILocalHoldingsFactory _localHoldingsFactory;
 
-    public PeerCatalogController(IPeerCatalogService peerCatalogService)
+    public PeerCatalogController(IPeerCatalogService peerCatalogService, ILocalHoldingsFactory localHoldingsFactory)
     {
         _peerCatalogService = peerCatalogService;
+        _localHoldingsFactory = localHoldingsFactory;
     }
 
     [HttpGet]
@@ -168,6 +170,7 @@ public class PeerCatalogController : Controller
             var selected = episodeIndex.Value < details.Count ? details[episodeIndex.Value] : null;
             var absoluteNumbers = item.GetAbsoluteEpisodeNumbers();
             var airDates = item.GetAirDates();
+            var localStatus = _localHoldingsFactory.Load().ClassifyEpisode(item, numbers[episodeIndex.Value]);
             return TypedResults.Ok(new CatalogDetailsResource
             {
                 Kind = kind,
@@ -186,7 +189,8 @@ public class PeerCatalogController : Controller
                 ImdbId = item.ImdbId,
                 Quality = item.Quality,
                 Resolution = item.Resolution,
-                Size = item.Size
+                Size = item.Size,
+                LocalStatus = localStatus
             });
         }
 
@@ -200,6 +204,7 @@ public class PeerCatalogController : Controller
         var seriesItems = kind == "series"
             ? _peerCatalogService.GetSeries(null)?.FirstOrDefault(s => s.Key == NzbDrone.Core.Posters.PeerPosters.KeyOf(item))?.Items ?? new List<PeerCatalogItem> { item }
             : new List<PeerCatalogItem>();
+        var holdings = _localHoldingsFactory.Load();
 
         return TypedResults.Ok(new CatalogDetailsResource
         {
@@ -219,6 +224,7 @@ public class PeerCatalogController : Controller
             TmdbId = item.TmdbId,
             ImdbId = item.ImdbId,
             Quality = kind == "series" ? null : item.Quality,
+            LocalStatus = kind == "series" ? null : holdings.Classify(item),
             Resolution = kind == "series" ? 0 : item.Resolution,
             Resolutions = seriesItems.Where(i => i.Resolution > 0).Select(i => i.Resolution).Distinct().OrderByDescending(r => r).ToList(),
             Episodes = seriesItems.Where(i => i.PeerId == item.PeerId)
@@ -226,6 +232,8 @@ public class PeerCatalogController : Controller
                 {
                     SeasonNumber = i.SeasonNumber,
                     EpisodeNumber = number,
+                    HasFile = true,
+                    LocalStatus = holdings.ClassifyEpisode(i, number),
                     Title = i.GetEpisodeDetails().ElementAtOrDefault(index)?.Title ?? (i.GetEpisodeNumbers().Count == 1 ? i.EpisodeTitles : null),
                     Path = $"/catalog/peers/details/episode/{i.Id}?episodeIndex={index}"
                 }))

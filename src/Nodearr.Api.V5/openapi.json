@@ -1137,6 +1137,14 @@
               "type": "integer",
               "format": "int32"
             }
+          },
+          {
+            "name": "onlyWithFiles",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
           }
         ],
         "responses": {
@@ -3606,6 +3614,35 @@
         ],
         "type": "string"
       },
+      "CatalogDetailsEpisodeResource": {
+        "type": "object",
+        "properties": {
+          "seasonNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "episodeNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "path": {
+            "type": "string",
+            "nullable": true
+          },
+          "hasFile": {
+            "type": "boolean"
+          },
+          "localStatus": {
+            "$ref": "#/components/schemas/PeerItemStatus",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "CatalogDetailsResource": {
         "type": "object",
         "properties": {
@@ -3706,9 +3743,46 @@
             },
             "nullable": true
           },
+          "episodes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CatalogDetailsEpisodeResource"
+            },
+            "nullable": true
+          },
+          "send": {
+            "$ref": "#/components/schemas/CatalogDetailsSendResource"
+          },
+          "localStatus": {
+            "$ref": "#/components/schemas/PeerItemStatus",
+            "nullable": true
+          },
           "size": {
             "type": "integer",
             "format": "int64"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CatalogDetailsSendResource": {
+        "type": "object",
+        "properties": {
+          "mediaKind": {
+            "type": "string",
+            "nullable": true
+          },
+          "applicationId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "arrId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "episodeArrId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
           }
         },
         "additionalProperties": false

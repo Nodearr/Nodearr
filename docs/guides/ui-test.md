@@ -110,6 +110,11 @@ Do the same with **Connect Radarr**, with Radarr's address and key.
 
 - [ ] Both save without an error, and the first step on **Home** is ticked.
 - [ ] **Catalog > Local** lists your library's film and series, three episode files and one film file.
+- [ ] Scroll down and open a series or movie card; closing it returns you to the same place. Repeat on a phone.
+- [ ] The series card marks episodes in the library and those missing. Open an episode with a file and use **Send to a friend**; the send form selects that episode. A missing or unreadable episode offers no send action.
+- [ ] In a local series card, turn off **Show missing episodes** and check that only episodes with files remain; turn it on to restore them. Do the same in the local series table, including a series with no downloaded episodes and a catalog with more than one page.
+- [ ] A local series or movie card also offers **Send to a friend**. The form selects the title shown on the card.
+- [ ] Switch to the light theme and check that the header, sidebar, toolbar, menus and mobile sidebar controls are readable; switch back to dark and check them again.
 - [ ] In your Sonarr, **Settings > Indexers** and **Settings > Download Clients** each list one called **Nodearr**. So does your Radarr. Nodearr added them.
 
 ## 4. Choose your name

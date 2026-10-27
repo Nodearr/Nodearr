@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import Alert from 'Components/Alert';
+import Button from 'Components/Link/Button';
 import IconButton from 'Components/Link/IconButton';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import Modal from 'Components/Modal/Modal';
@@ -84,11 +85,13 @@ function SendFromCatalogButton({
   items,
   label,
   className,
+  showLabel = false,
 }: {
   titleKey: TitleKey;
   items: ShareKey[];
   label: string;
   className?: string;
+  showLabel?: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -102,13 +105,19 @@ function SendFromCatalogButton({
 
   return (
     <>
-      <IconButton
-        className={className}
-        name={icons.SEND}
-        title={translate('SendTitleToFriend', { title: label })}
-        aria-label={translate('SendTitleToFriend', { title: label })}
-        onPress={handleOpenPress}
-      />
+      {showLabel ? (
+        <Button kind={kinds.PRIMARY} onPress={handleOpenPress}>
+          {translate('SendToFriend')}
+        </Button>
+      ) : (
+        <IconButton
+          className={className}
+          name={icons.SEND}
+          title={translate('SendTitleToFriend', { title: label })}
+          aria-label={translate('SendTitleToFriend', { title: label })}
+          onPress={handleOpenPress}
+        />
+      )}
       {isOpen ? (
         <SendFromCatalogDialog
           titleKey={titleKey}

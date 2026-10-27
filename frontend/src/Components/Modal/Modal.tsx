@@ -20,6 +20,7 @@ import styles from './Modal.css';
 
 const openModals: string[] = [];
 let bodyScrollTop = 0;
+let bodyTop = '';
 const node = document.getElementById('portal-root');
 
 function removeFromOpenModals(id: string) {
@@ -126,7 +127,9 @@ function Modal({
       if (openModals.length === 1) {
         if (isIOS()) {
           setScrollLock(true);
-          bodyScrollTop = document.body.scrollTop;
+          bodyScrollTop = window.scrollY;
+          bodyTop = document.body.style.top;
+          document.body.style.top = `-${bodyScrollTop}px`;
           elementClass(document.body).add(styles.modalOpenIOS);
         } else {
           elementClass(document.body).add(styles.modalOpen);
@@ -140,7 +143,8 @@ function Modal({
 
           if (isIOS()) {
             elementClass(document.body).remove(styles.modalOpenIOS);
-            document.body.scrollTop = bodyScrollTop;
+            document.body.style.top = bodyTop;
+            window.scrollTo(0, bodyScrollTop);
           } else {
             elementClass(document.body).remove(styles.modalOpen);
           }
