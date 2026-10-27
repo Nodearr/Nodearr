@@ -2,10 +2,19 @@
 
 What changed in each release, newest first. Each item links to the decision record that explains it, and the [V1 plan](docs/plans/v1-implementation-plan.md) has the whole story, slice by slice.
 
-## Unreleased
+## 0.4.1 (pre-release)
+
+### Added
+
+- Series details cards in both catalogs list the episodes by season, each linking to its own details card ([#77](https://github.com/Nodearr/Nodearr/pull/77)).
+
+### Changed
+
+- The light theme uses Nodearr's colors, and on poster tiles the **Send** button sits over the poster ([#77](https://github.com/Nodearr/Nodearr/pull/77)).
 
 ### Fixed
 
+- On phones, a page could stop scrolling after a dialog was closed. Closing a dialog now always releases the scroll lock ([#77](https://github.com/Nodearr/Nodearr/pull/77)).
 - An Arr app's RSS setting for the Nodearr indexer stays as you set it when Nodearr syncs its registration. New indexers still start with RSS off ([#72](https://github.com/Nodearr/Nodearr/issues/72)).
 
 ### Documentation
