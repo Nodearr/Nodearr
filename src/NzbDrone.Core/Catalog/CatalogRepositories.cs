@@ -64,6 +64,7 @@ namespace NzbDrone.Core.Catalog
 
     public interface ICatalogSeriesRepository : ICatalogRepository<CatalogSeries>
     {
+        PagingSpec<CatalogSeries> GetPagedWithFiles(PagingSpec<CatalogSeries> pagingSpec);
     }
 
     public class CatalogSeriesRepository : CatalogRepository<CatalogSeries>, ICatalogSeriesRepository
@@ -71,6 +72,17 @@ namespace NzbDrone.Core.Catalog
         public CatalogSeriesRepository(IMainDatabase database, IEventAggregator eventAggregator)
             : base(database, eventAggregator)
         {
+        }
+
+        public PagingSpec<CatalogSeries> GetPagedWithFiles(PagingSpec<CatalogSeries> pagingSpec)
+        {
+            var fileTable = TableMapping.Mapper.TableNameMapping(typeof(CatalogEpisodeFile));
+            var clause = $"EXISTS (SELECT 1 FROM \"{fileTable}\" f WHERE f.\"ApplicationId\" = \"{_table}\".\"ApplicationId\" AND f.\"ArrSeriesId\" = \"{_table}\".\"ArrId\" AND f.\"MissingSince\" IS NULL)";
+            var records = PagedBuilder().Where(clause);
+            var count = PagedBuilder().SelectCount().Where(clause);
+            pagingSpec.Records = GetPagedRecords(records, pagingSpec, PagedQuery);
+            pagingSpec.TotalRecords = GetPagedRecordCount(count, pagingSpec);
+            return pagingSpec;
         }
     }
 

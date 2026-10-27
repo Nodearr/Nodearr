@@ -541,6 +541,7 @@ function LocalCatalog() {
   const [savedKind, setSavedKind] = useState<CatalogKind>(readKind);
   const [page, setPage] = useState(1);
   const [view, setView] = useState<View>(readView);
+  const [showMissing, setShowMissing] = useState(true);
   const [expandedShows, setExpandedShows] = useState<Set<string>>(new Set());
   const [expandedSeasons, setExpandedSeasons] = useState<Set<string>>(
     new Set()
@@ -582,6 +583,7 @@ function LocalCatalog() {
     pageSize: PAGE_SIZE,
     sortKey: 'title',
     sortDirection: 'ascending',
+    queryParams: { onlyWithFiles: !showMissing },
     queryOptions: { enabled: view === 'table' && kind === 'series' },
   });
 
@@ -652,6 +654,14 @@ function LocalCatalog() {
       // Remembered for this visit only.
     }
   }, []);
+
+  const handleShowMissingChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setShowMissing(event.target.checked);
+      setPage(1);
+    },
+    []
+  );
 
   const handleShowToggle = useCallback((showKey: string) => {
     setExpandedShows((current) => {
@@ -814,6 +824,17 @@ function LocalCatalog() {
           </div>
         ) : null}
 
+        {view === 'table' && kind === 'series' ? (
+          <label className={styles.missingFilter}>
+            <input
+              type="checkbox"
+              checked={showMissing}
+              onChange={handleShowMissingChange}
+            />
+            {translate('CatalogShowMissingEpisodes')}
+          </label>
+        ) : null}
+
         {view === 'posters' && titles.isLoading ? <LoadingIndicator /> : null}
 
         {view === 'posters' &&
@@ -844,6 +865,17 @@ function LocalCatalog() {
         ) : null}
 
         {view === 'table' && activeLoading ? <LoadingIndicator /> : null}
+
+        {view === 'table' &&
+        kind === 'series' &&
+        !showMissing &&
+        !series.isLoading &&
+        !series.error &&
+        series.records.length === 0 ? (
+          <Alert kind={kinds.INFO}>
+            {translate('CatalogNoDownloadedEpisodes')}
+          </Alert>
+        ) : null}
 
         {view === 'table' &&
         kind === 'series' &&

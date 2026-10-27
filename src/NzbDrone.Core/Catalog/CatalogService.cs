@@ -54,7 +54,7 @@ namespace NzbDrone.Core.Catalog
         // Reads one series, movie or artist again, and nothing else of the Arr app's library.
         void RefreshTitle(int applicationId, int arrId);
         List<CatalogApplicationSummary> GetSummaries();
-        PagingSpec<CatalogSeries> PagedSeries(PagingSpec<CatalogSeries> pagingSpec);
+        PagingSpec<CatalogSeries> PagedSeries(PagingSpec<CatalogSeries> pagingSpec, bool onlyWithFiles);
         PagingSpec<CatalogEpisodeFile> PagedEpisodeFiles(PagingSpec<CatalogEpisodeFile> pagingSpec);
         PagingSpec<CatalogMovieFile> PagedMovieFiles(PagingSpec<CatalogMovieFile> pagingSpec, string kind = null);
         PagingSpec<CatalogTrackFile> PagedTrackFiles(PagingSpec<CatalogTrackFile> pagingSpec);
@@ -256,9 +256,9 @@ namespace NzbDrone.Core.Catalog
             return _episodeFiles.GetPaged(pagingSpec);
         }
 
-        public PagingSpec<CatalogSeries> PagedSeries(PagingSpec<CatalogSeries> pagingSpec)
+        public PagingSpec<CatalogSeries> PagedSeries(PagingSpec<CatalogSeries> pagingSpec, bool onlyWithFiles)
         {
-            return _series.GetPaged(pagingSpec);
+            return onlyWithFiles ? _series.GetPagedWithFiles(pagingSpec) : _series.GetPaged(pagingSpec);
         }
 
         public PagingSpec<CatalogMovieFile> PagedMovieFiles(PagingSpec<CatalogMovieFile> pagingSpec, string kind = null)

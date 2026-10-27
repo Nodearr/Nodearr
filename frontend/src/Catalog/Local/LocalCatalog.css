@@ -37,6 +37,13 @@
   margin-bottom: 12px;
 }
 
+.missingFilter {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  gap: 8px;
+}
+
 .title {
   composes: cell from '~Components/Table/Cells/TableRowCell.css';
 

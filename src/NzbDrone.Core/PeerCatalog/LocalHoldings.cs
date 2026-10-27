@@ -200,7 +200,12 @@ namespace NzbDrone.Core.PeerCatalog
             return Compare(item, files);
         }
 
-        private PeerItemStatus ClassifyEpisodes(PeerCatalogItem item)
+        public PeerItemStatus ClassifyEpisode(PeerCatalogItem item, int episodeNumber)
+        {
+            return ClassifyEpisodes(item, new[] { episodeNumber });
+        }
+
+        private PeerItemStatus ClassifyEpisodes(PeerCatalogItem item, IEnumerable<int> episodeNumbers = null)
         {
             var series = Find(_seriesByExternalId, ExternalIds(item.TvdbId, item.TmdbId, item.ImdbId));
 
@@ -212,7 +217,7 @@ namespace NzbDrone.Core.PeerCatalog
             var result = PeerItemStatus.Have;
 
             // A file that holds several episodes is only "had" when every one of them is.
-            foreach (var number in item.GetEpisodeNumbers())
+            foreach (var number in episodeNumbers ?? item.GetEpisodeNumbers())
             {
                 var files = series
                     .SelectMany(s => _episodes[(s.ApplicationId, s.ArrId, item.SeasonNumber, number)]

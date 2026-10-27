@@ -65,6 +65,40 @@ namespace NzbDrone.Core.Test.Catalog
         private List<CatalogEpisodeFile> EpisodeFiles => Mocker.Resolve<ICatalogEpisodeFileRepository>().ForApplication(ApplicationId);
 
         [Test]
+        public void series_with_files_filter_should_page_only_series_with_nonmissing_files_from_the_same_application()
+        {
+            var series = Mocker.Resolve<ICatalogSeriesRepository>();
+            var files = Mocker.Resolve<ICatalogEpisodeFileRepository>();
+            series.InsertMany(new List<CatalogSeries>
+            {
+                new() { ApplicationId = 1, ArrId = 1, Title = "Alpha", SortTitle = "alpha" },
+                new() { ApplicationId = 1, ArrId = 2, Title = "Missing", SortTitle = "missing" },
+                new() { ApplicationId = 1, ArrId = 3, Title = "Zulu", SortTitle = "zulu" },
+                new() { ApplicationId = 2, ArrId = 2, Title = "Other app", SortTitle = "other" }
+            });
+            files.InsertMany(new List<CatalogEpisodeFile>
+            {
+                new() { ApplicationId = 1, ArrId = 10, ArrSeriesId = 1, Path = "/alpha" },
+                new() { ApplicationId = 1, ArrId = 11, ArrSeriesId = 2, Path = "/missing", MissingSince = DateTime.UtcNow },
+                new() { ApplicationId = 1, ArrId = 12, ArrSeriesId = 3, Path = "/zulu" },
+                new() { ApplicationId = 2, ArrId = 13, ArrSeriesId = 2, Path = "/other" }
+            });
+
+            var paging = new PagingSpec<CatalogSeries> { Page = 2, PageSize = 1, SortKey = "sortTitle", SortDirection = SortDirection.Ascending };
+            paging.FilterExpressions.Add(s => s.ApplicationId == 1);
+            var result = Subject.PagedSeries(paging, true);
+
+            result.TotalRecords.Should().Be(2);
+            result.Records.Should().ContainSingle(s => s.Title == "Zulu");
+
+            var empty = new PagingSpec<CatalogSeries> { Page = 1, PageSize = 10, SortKey = "sortTitle", SortDirection = SortDirection.Ascending };
+            empty.FilterExpressions.Add(s => s.ApplicationId == 3);
+            var emptyResult = Subject.PagedSeries(empty, true);
+            emptyResult.TotalRecords.Should().Be(0);
+            emptyResult.Records.Should().BeEmpty();
+        }
+
+        [Test]
         public void should_import_what_the_application_reports()
         {
             Subject.Refresh(null, false);

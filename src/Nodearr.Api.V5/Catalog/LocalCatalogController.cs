@@ -61,6 +61,8 @@ public class LocalCatalogController : Controller
                 return TypedResults.NotFound();
             }
 
+            var episodeFiles = _catalogService.GetEpisodeFilesForSeries(applicationId, new[] { arrId });
+            var availableFiles = episodeFiles.Where(f => !f.MissingSince.HasValue).Select(f => f.ArrId).ToHashSet();
             return TypedResults.Ok(new CatalogDetailsResource
             {
                 Kind = kind,
@@ -72,7 +74,7 @@ public class LocalCatalogController : Controller
                 Genres = series.Genres,
                 Network = series.Network,
                 Runtime = series.Runtime,
-                Resolutions = _catalogService.GetEpisodeFilesForSeries(applicationId, new[] { arrId })
+                Resolutions = episodeFiles
                     .Where(f => !f.MissingSince.HasValue && f.Resolution > 0)
                     .Select(f => f.Resolution).Distinct().OrderByDescending(r => r).ToList(),
                 Episodes = _catalogService.GetEpisodesForSeries(applicationId, new[] { arrId })
@@ -83,8 +85,10 @@ public class LocalCatalogController : Controller
                         SeasonNumber = e.SeasonNumber,
                         EpisodeNumber = e.EpisodeNumber,
                         Title = e.Title,
+                        HasFile = !e.MissingSince.HasValue && e.ArrEpisodeFileId != 0 && availableFiles.Contains(e.ArrEpisodeFileId),
                         Path = $"/catalog/local/details/episode/{applicationId}/{e.ArrId}"
                     }).ToList(),
+                Send = new CatalogDetailsSendResource { MediaKind = "tv", ApplicationId = applicationId, ArrId = series.ArrId },
                 TvdbId = series.TvdbId,
                 TmdbId = series.TmdbId,
                 ImdbId = series.ImdbId
@@ -124,6 +128,9 @@ public class LocalCatalogController : Controller
                 Quality = episodeFile?.Quality,
                 Resolution = episodeFile?.Resolution ?? 0,
                 Size = episodeFile?.Size ?? 0,
+                Send = episodeFile != null && !episode.MissingSince.HasValue && _locator.Open(_locator.Locate(applicationId, episodeFile.Path)) == CatalogFileAccess.Readable
+                    ? new CatalogDetailsSendResource { MediaKind = "tv", ApplicationId = applicationId, ArrId = series.ArrId, EpisodeArrId = episode.ArrId }
+                    : null,
                 TvdbId = series.TvdbId,
                 TmdbId = series.TmdbId,
                 ImdbId = series.ImdbId
@@ -159,7 +166,10 @@ public class LocalCatalogController : Controller
                 ImdbId = movie.ImdbId,
                 Quality = movieFile?.Quality,
                 Resolution = movieFile?.Resolution ?? 0,
-                Size = movieFile?.Size ?? 0
+                Size = movieFile?.Size ?? 0,
+                Send = movieFile != null && _locator.Open(_locator.Locate(applicationId, movieFile.Path)) == CatalogFileAccess.Readable
+                    ? new CatalogDetailsSendResource { MediaKind = "movie", ApplicationId = applicationId, ArrId = movie.ArrId }
+                    : null
             });
         }
 
@@ -210,7 +220,7 @@ public class LocalCatalogController : Controller
 
     [HttpGet("series")]
     [Produces("application/json")]
-    public Ok<PagingResource<LocalCatalogSeriesResource>> GetSeries([FromQuery] PagingRequestResource paging, [FromQuery] int? applicationId = null)
+    public Ok<PagingResource<LocalCatalogSeriesResource>> GetSeries([FromQuery] PagingRequestResource paging, [FromQuery] int? applicationId = null, [FromQuery] bool onlyWithFiles = false)
     {
         var pagingSpec = new PagingResource<LocalCatalogSeriesResource>(paging)
             .MapToPagingSpec<LocalCatalogSeriesResource, CatalogSeries>(SeriesSortKeys, "sortTitle", SortDirection.Ascending);
@@ -227,7 +237,7 @@ public class LocalCatalogController : Controller
         return TypedResults.Ok(pagingSpec.ApplyToPage(
             spec =>
             {
-                var page = _catalogService.PagedSeries(spec);
+                var page = _catalogService.PagedSeries(spec, onlyWithFiles);
 
                 foreach (var group in page.Records.GroupBy(s => s.ApplicationId))
                 {
@@ -251,13 +261,15 @@ public class LocalCatalogController : Controller
                 var seriesEpisodes = episodes.GetValueOrDefault(key) ?? new List<CatalogEpisode>();
                 var seriesFiles = files.GetValueOrDefault(key) ?? new List<CatalogEpisodeFile>();
                 var seasons = CatalogEpisodeGrouping.Build(series.SeriesType, seriesEpisodes, seriesFiles)
+                    .Select(season => new { Season = season, Rows = onlyWithFiles ? season.Files.Where(row => !row.IsMissing).ToList() : season.Files })
+                    .Where(season => season.Rows.Count > 0)
                     .Select(season => new LocalCatalogSeasonResource
                     {
-                        SeasonNumber = season.SeasonNumber,
-                        Episodes = season.EpisodeCount,
-                        Missing = season.MissingCount,
-                        Size = season.Size,
-                        Files = season.Files.Select(row => BuildEpisodeFileResource(series, row, applications)).ToList()
+                        SeasonNumber = season.Season.SeasonNumber,
+                        Episodes = season.Rows.Sum(row => row.Episodes.Count),
+                        Missing = season.Rows.Where(row => row.IsMissing).Sum(row => row.Episodes.Count),
+                        Size = season.Rows.Where(row => row.File != null).Sum(row => row.File.Size),
+                        Files = season.Rows.Select(row => BuildEpisodeFileResource(series, row, applications)).ToList()
                     }).ToList();
 
                 return new LocalCatalogSeriesResource

@@ -10,6 +10,8 @@ import { kinds } from 'Helpers/Props';
 import formatBytes from 'Utilities/Number/formatBytes';
 import translate from 'Utilities/String/translate';
 import Poster from '../Poster';
+import SendFromCatalogButton from '../Sharing/SendFromCatalogButton';
+import { PeerItemStatus, ShareKey } from '../useSharing';
 import styles from './CatalogDetails.css';
 
 interface CatalogDetails {
@@ -41,8 +43,28 @@ interface CatalogDetails {
     episodeNumber: number;
     title?: string;
     path: string;
+    hasFile: boolean;
+    localStatus?: PeerItemStatus | null;
   }[];
+  send?: ShareKey;
+  localStatus?: PeerItemStatus | null;
   size: number;
+}
+
+function statusLabel(status: PeerItemStatus) {
+  const labels: Record<PeerItemStatus, string> = {
+    have: 'PeerItemHave',
+    upgrade: 'PeerItemUpgrade',
+    missing: 'PeerItemMissing',
+    notInLibrary: 'PeerItemNotInLibrary',
+  };
+  return translate(labels[status]);
+}
+
+function hasLocalFile(episode: CatalogDetails['episodes'][number]) {
+  return episode.localStatus == null
+    ? episode.hasFile
+    : episode.localStatus === 'have' || episode.localStatus === 'upgrade';
 }
 
 interface CatalogDetailsButtonProps {
@@ -91,9 +113,11 @@ function EpisodeOption({
 function SeriesEpisode({
   episode,
   onSelect,
+  showAvailability,
 }: {
   episode: CatalogDetails['episodes'][number];
   onSelect: (path: string) => void;
+  showAvailability: boolean;
 }) {
   const select = useCallback(
     () => onSelect(episode.path),
@@ -107,6 +131,15 @@ function SeriesEpisode({
         ).padStart(2, '0')}`}
         {episode.title ? ` · ${episode.title}` : ''}
       </button>
+      {showAvailability ? (
+        <span
+          className={hasLocalFile(episode) ? styles.available : styles.missing}
+        >
+          {episode.localStatus == null
+            ? translate(episode.hasFile ? 'CatalogDetailsInLibrary' : 'Missing')
+            : statusLabel(episode.localStatus)}
+        </span>
+      ) : null}
     </li>
   );
 }
@@ -136,6 +169,13 @@ function CatalogDetailsModal({
   onClose: () => void;
 }) {
   const [selectedPath, setSelectedPath] = useState(path);
+  const [showMissing, setShowMissing] = useState(true);
+  const handleShowMissingChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setShowMissing(event.target.checked);
+    },
+    []
+  );
   const backToSeries = useCallback(() => setSelectedPath(path), [path]);
   const { data, isLoading, error } = useApiQuery<CatalogDetails>({
     path: selectedPath,
@@ -147,8 +187,11 @@ function CatalogDetailsModal({
           '0'
         )}E${String(data.episodeNumber).padStart(2, '0')}`
       : undefined;
+  const episodes = (data?.episodes ?? []).filter(
+    (episode) => showMissing || hasLocalFile(episode)
+  );
   const seasons = Array.from(
-    new Set((data?.episodes ?? []).map((episode) => episode.seasonNumber))
+    new Set(episodes.map((episode) => episode.seasonNumber))
   );
 
   return (
@@ -198,6 +241,16 @@ function CatalogDetailsModal({
               ) : null}
               <div className={styles.cardContent}>
                 <div className={styles.kind}>{kindLabel(data.kind)}</div>
+                {data.send ? (
+                  <div className={styles.send}>
+                    <SendFromCatalogButton
+                      titleKey={data.send}
+                      items={[data.send]}
+                      label={data.title ?? data.parentTitle ?? ''}
+                      showLabel={true}
+                    />
+                  </div>
+                ) : null}
                 {episodeLabel ? (
                   <div className={styles.parent}>{episodeLabel}</div>
                 ) : null}
@@ -208,6 +261,14 @@ function CatalogDetailsModal({
                   <Detail
                     label={translate('CatalogDetailsSource')}
                     value={data.sourceName}
+                  />
+                  <Detail
+                    label={translate('CatalogDetailsLocalStatus')}
+                    value={
+                      data.localStatus == null
+                        ? undefined
+                        : statusLabel(data.localStatus)
+                    }
                   />
                   <Detail
                     label={translate('Year')}
@@ -251,9 +312,25 @@ function CatalogDetailsModal({
                   <Detail label="TMDb" value={data.tmdbId || undefined} />
                   <Detail label="IMDb" value={data.imdbId} />
                 </dl>
-                {data.kind === 'series' && seasons.length > 0 ? (
+                {data.kind === 'series' && data.episodes.length > 0 ? (
                   <section className={styles.episodes}>
                     <h3>{translate('Episodes')}</h3>
+                    {data.send ||
+                    data.episodes.some(
+                      (episode) => episode.localStatus != null
+                    ) ? (
+                      <label className={styles.missingFilter}>
+                        <input
+                          type="checkbox"
+                          checked={showMissing}
+                          onChange={handleShowMissingChange}
+                        />
+                        {translate('CatalogShowMissingEpisodes')}
+                      </label>
+                    ) : null}
+                    {seasons.length === 0 ? (
+                      <p>{translate('CatalogNoDownloadedEpisodes')}</p>
+                    ) : null}
                     {seasons.map((season, index) => (
                       <details
                         key={season}
@@ -265,7 +342,7 @@ function CatalogDetailsModal({
                             : `${translate('Season')} ${season}`}
                         </summary>
                         <ul>
-                          {data.episodes
+                          {episodes
                             .filter(
                               (episode) => episode.seasonNumber === season
                             )
@@ -273,6 +350,10 @@ function CatalogDetailsModal({
                               <SeriesEpisode
                                 key={episode.path}
                                 episode={episode}
+                                showAvailability={
+                                  Boolean(data.send) ||
+                                  episode.localStatus != null
+                                }
                                 onSelect={setSelectedPath}
                               />
                             ))}

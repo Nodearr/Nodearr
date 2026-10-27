@@ -323,6 +323,15 @@ Assert-That 'A file removed in Sonarr is marked missing, not deleted, on the nex
     @($afterDelete | Where-Object { -not $_.missingSince }).Count -eq 2
 ) @{ missingSince = $missing.missingSince; missingFiles = $summaryAfterDelete.missingFiles; files = @($afterDelete).Count }
 
+$allSeries = Invoke-Api nodearr GET '/catalog/local/series?page=1&pageSize=50&onlyWithFiles=false'
+$downloadedSeries = Invoke-Api nodearr GET '/catalog/local/series?page=1&pageSize=50&onlyWithFiles=true'
+$allRows = @($allSeries.records | ForEach-Object { $_.seasons } | ForEach-Object { $_.files })
+$downloadedRows = @($downloadedSeries.records | ForEach-Object { $_.seasons } | ForEach-Object { $_.files })
+Assert-That 'The series table can hide missing episodes while retaining downloaded files' (
+    @($allRows | Where-Object { $_.isMissing }).Count -gt 0 -and
+    $downloadedRows.Count -gt 0 -and @($downloadedRows | Where-Object { $_.isMissing }).Count -eq 0
+) @{ all = $allRows.Count; downloaded = $downloadedRows.Count; missing = @($allRows | Where-Object { $_.isMissing }).Count }
+
 Invoke-Command-Api nodearr @{ name = 'CatalogRefresh'; applicationId = $applicationIds.sonarr; purgeMissing = $true }
 $afterPurge = (Invoke-Api nodearr GET '/catalog/local/episodefile?pageSize=50').records
 Assert-That 'Purging removes the missing file from the catalog' (@($afterPurge).Count -eq 2 -and -not ($afterPurge | Where-Object { $_.relativePath -like '*S01E02*' })) @{ files = @($afterPurge | ForEach-Object relativePath) }

@@ -2,6 +2,12 @@
 
 What changed in each release, newest first. Each item links to the decision record that explains it, and the [V1 plan](docs/plans/v1-implementation-plan.md) has the whole story, slice by slice.
 
+## Unreleased
+
+### Fixed
+
+- Opening a card keeps the page in place. Local series cards mark episodes in the library and missing episodes, and local series, movie and readable episode cards offer **Send to a friend**.
+
 ## 0.4.1 (pre-release)
 
 ### Added

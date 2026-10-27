@@ -1,5 +1,5 @@
 .modalContainer {
-  position: absolute;
+  position: fixed;
   top: 0;
   z-index: $modalZIndex;
   width: 100%;
