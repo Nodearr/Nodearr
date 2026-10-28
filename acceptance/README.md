@@ -109,6 +109,7 @@ Requires PowerShell 7, a built Nodearr, Docker, ffmpeg and a built transport sid
 - The file comes from node A, is verified, and is imported. The imported file is the same, byte for byte.
 - With RSS enabled in Sonarr, pairing grabs nothing from the initial library. An episode added afterwards is fetched by **RSS Sync** and imported without a search.
 - A new app starts with automatic fetching on and upgrades off; switching automatic fetching off and on in Nodearr changes RSS in a real Sonarr.
+- A new friend allows automatic fetching. Turning it off prevents RSS from grabbing a later episode while a manual Sonarr search still finds it; turning it back on lets RSS import it.
 - Nothing appears under `complete` while a file is still arriving.
 - The same ticket twice gives one transfer. Deleting it from the queue leaves nothing behind.
 - A download limit on node B, a quarter of A's upload limit, holds a transfer to it.

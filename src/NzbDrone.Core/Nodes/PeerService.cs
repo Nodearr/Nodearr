@@ -62,6 +62,7 @@ namespace NzbDrone.Core.Nodes
         // Whether this node offers the new friend everything except Hidden, as their invite
         // may offer it to this node. Trust that already existed keeps what was chosen before.
         Peer RedeemInvite(string code, bool shareAll = true);
+        Peer SetAutomaticFetch(int id, bool enabled);
         Peer Ping(int id);
         Peer Block(int id);
         Peer Unblock(int id);
@@ -157,6 +158,19 @@ namespace NzbDrone.Core.Nodes
         public List<Peer> All()
         {
             return _peers.All().OrderBy(p => p.Name).ToList();
+        }
+
+        public Peer SetAutomaticFetch(int id, bool enabled)
+        {
+            var peer = _peers.Get(id);
+            if (peer.State != PeerState.Trusted)
+            {
+                throw new PeerException("Only a trusted node can be used for automatic fetching");
+            }
+
+            peer.FetchNewFilesAutomatically = enabled;
+            _peers.SetFields(peer, p => p.FetchNewFilesAutomatically);
+            return peer;
         }
 
         public List<PeerInvite> Invites()

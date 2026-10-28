@@ -53,6 +53,7 @@ public class PeerResource : RestResource
     public string? ConnectionAddress { get; set; }
     public DateTime? ConnectionChecked { get; set; }
     public bool ShareAll { get; set; }
+    public bool FetchNewFilesAutomatically { get; set; }
 
     // The Arr apps that everything leaves out for this friend.
     public List<int> ExcludedApplicationIds { get; set; } = new();
@@ -74,6 +75,7 @@ public class PeerResource : RestResource
             ConnectionAddress = peer.ConnectionAddress,
             ConnectionChecked = peer.ConnectionChecked,
             ShareAll = peer.ShareAll,
+            FetchNewFilesAutomatically = peer.FetchNewFilesAutomatically,
             ExcludedApplicationIds = peer.ExcludedApplicationIds ?? new List<int>()
         };
     }
@@ -124,6 +126,11 @@ public class ShareAllResource
 
     // The Arr apps everything leaves out. Left out of the request, they stay as they are.
     public List<int>? ExcludedApplicationIds { get; set; }
+}
+
+public class AutomaticFetchResource
+{
+    public bool FetchNewFilesAutomatically { get; set; }
 }
 
 public class RedeemInviteResource

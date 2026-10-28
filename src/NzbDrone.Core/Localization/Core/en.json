@@ -1859,6 +1859,8 @@
   "PathMappings": "Path Mappings",
   "Paused": "Paused",
   "Peer": "Node",
+  "PeerAutomaticFetch": "Fetch new files from this friend automatically",
+  "PeerAutomaticFetchHelpText": "When off, your apps can still find this friend's files in searches and with Get it.",
   "PeerBlock": "Block",
   "PeerCatalog": "Peer Catalog",
   "PeerCatalogNoPeers": "No trusted nodes yet. Pair with one under Nodes > Invites.",

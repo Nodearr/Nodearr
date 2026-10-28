@@ -46,6 +46,9 @@ namespace NzbDrone.Core.Nodes
         // Offer this node everything in the local catalog except what is on the Hidden list.
         public bool ShareAll { get; set; }
 
+        // Include this friend's later arrivals in the local apps' automatic-fetch feeds.
+        public bool FetchNewFilesAutomatically { get; set; } = true;
+
         // The Arr apps whose libraries "everything" leaves out for this node. Their titles can still
         // be shared with it on a list.
         public List<int> ExcludedApplicationIds { get; set; } = new();

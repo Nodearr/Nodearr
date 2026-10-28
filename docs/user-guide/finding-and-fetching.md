@@ -70,6 +70,8 @@ In Nodearr, go to **Settings > Apps**, edit the app and use **Fetch new files fr
 
 Each connected library app has its own RSS feed. It lists files that arrived in a friend's shared catalog after the initial sync and that this app is missing, plus upgrades only when **Including upgrades** is on. A file you already have at that quality, or a title outside that app's library, is left out. Pairing does not announce the friend's existing library through RSS; you can still find those files by searching.
 
+You can exclude a friend from every app's automatic feed under **Catalog > Sharing**. See [Choosing which friends to fetch from automatically](friends-and-sharing.md#choosing-which-friends-to-fetch-from-automatically).
+
 RSS skips friends whose last connection check found no direct route, because their files cannot be downloaded. Friends not yet checked remain eligible. A later catalog update that only changes an existing file's description does not announce it as a new arrival.
 
 Existing indexers receive their app-specific address at the next registration sync. The legacy address used by Prowlarr and registrations not yet updated keeps its unfiltered feed. Prowlarr's copies remain disabled.

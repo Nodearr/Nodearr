@@ -9,7 +9,12 @@ import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import PageContent from 'Components/Page/PageContent';
 import PageContentBody from 'Components/Page/PageContentBody';
 import { kinds } from 'Helpers/Props';
-import { getErrorMessage, Peer, usePeers } from 'Nodes/useNodes';
+import {
+  getErrorMessage,
+  Peer,
+  usePeers,
+  useSetPeerAutomaticFetch,
+} from 'Nodes/useNodes';
 import Application from 'typings/Application';
 import { InputChanged } from 'typings/inputs';
 import translate from 'Utilities/String/translate';
@@ -47,6 +52,7 @@ function ShareAllRow({
   applications: Application[];
 }) {
   const { mutate, isPending, error } = useSetShareAll();
+  const automaticFetch = useSetPeerAutomaticFetch();
   const excluded = useMemo(
     () => peer.excludedApplicationIds ?? [],
     [peer.excludedApplicationIds]
@@ -68,6 +74,13 @@ function ShareAllRow({
     },
     [mutate, peer.id, excluded]
   );
+
+  const handleAutomaticFetch = useCallback(() => {
+    automaticFetch.mutate({
+      id: peer.id,
+      enabled: !peer.fetchNewFilesAutomatically,
+    });
+  }, [automaticFetch, peer.id, peer.fetchNewFilesAutomatically]);
 
   const sharesAny =
     peer.shareAll && applications.some((app) => !excluded.includes(app.id));
@@ -104,8 +117,27 @@ function ShareAllRow({
         </div>
       ) : null}
 
-      {error ? (
-        <div className={styles.error}>{getErrorMessage(error)}</div>
+      <div className={styles.peerFetch}>
+        <Check
+          id={`automatic-fetch-${peer.id}`}
+          label={translate('PeerAutomaticFetch')}
+          isChecked={
+            automaticFetch.isPending
+              ? automaticFetch.variables.enabled
+              : peer.fetchNewFilesAutomatically
+          }
+          isDisabled={automaticFetch.isPending}
+          onToggle={handleAutomaticFetch}
+        />
+      </div>
+      <div className={styles.muted}>
+        {translate('PeerAutomaticFetchHelpText')}
+      </div>
+
+      {error || automaticFetch.error ? (
+        <div className={styles.error}>
+          {getErrorMessage(error ?? automaticFetch.error)}
+        </div>
       ) : null}
     </div>
   );

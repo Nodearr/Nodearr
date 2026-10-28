@@ -1719,6 +1719,45 @@
         }
       }
     },
+    "/api/v5/nodes/peers/{id}/automaticfetch": {
+      "put": {
+        "tags": [
+          "Peer"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AutomaticFetchResource"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeerResource"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v5/nodes/peers": {
       "get": {
         "tags": [
@@ -3609,6 +3648,15 @@
           "external"
         ],
         "type": "string"
+      },
+      "AutomaticFetchResource": {
+        "type": "object",
+        "properties": {
+          "fetchNewFilesAutomatically": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
       },
       "BackupResource": {
         "required": [
@@ -6000,6 +6048,9 @@
             "nullable": true
           },
           "shareAll": {
+            "type": "boolean"
+          },
+          "fetchNewFilesAutomatically": {
             "type": "boolean"
           },
           "excludedApplicationIds": {

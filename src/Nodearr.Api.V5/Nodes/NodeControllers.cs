@@ -98,6 +98,16 @@ public class PeerController : NodeControllerBase, IHandle<PeerConnectionCheckedE
         return TypedResults.Ok(PeerResource.FromModel(_sharingService.SetShareAll(id, resource.ShareAll, resource.ExcludedApplicationIds)));
     }
 
+    [HttpPut("{id:int}/automaticfetch")]
+    [Consumes("application/json")]
+    [Produces("application/json")]
+    public Ok<PeerResource> SetAutomaticFetch(int id, [FromBody] AutomaticFetchResource resource)
+    {
+        var peer = Run(() => _peerService.SetAutomaticFetch(id, resource.FetchNewFilesAutomatically));
+        TellPages();
+        return TypedResults.Ok(PeerResource.FromModel(peer));
+    }
+
     [HttpGet]
     [Produces("application/json")]
     public Ok<List<PeerResource>> GetPeers()

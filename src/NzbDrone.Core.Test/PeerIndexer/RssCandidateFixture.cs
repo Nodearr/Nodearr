@@ -200,6 +200,73 @@ namespace NzbDrone.Core.Test.PeerIndexer
         }
 
         [Test]
+        public void automatic_fetch_choice_should_be_saved_without_changing_sharing_and_reject_untrusted_peers()
+        {
+            _peer.ShareAll = true;
+            Mocker.Resolve<IPeerRepository>().Update(_peer);
+            var service = Mocker.Resolve<PeerService>();
+            service.SetAutomaticFetch(_peer.Id, false).FetchNewFilesAutomatically.Should().BeFalse();
+            var saved = Mocker.Resolve<IPeerRepository>().Get(_peer.Id);
+            saved.FetchNewFilesAutomatically.Should().BeFalse();
+            saved.ShareAll.Should().BeTrue();
+            saved.State = PeerState.Revoked;
+            Mocker.Resolve<IPeerRepository>().Update(saved);
+            Assert.Throws<PeerException>(() => service.SetAutomaticFetch(saved.Id, true));
+            Mocker.Resolve<IPeerRepository>().Get(saved.Id).FetchNewFilesAutomatically.Should().BeFalse();
+        }
+
+        [Test]
+        public void disabling_one_friend_should_filter_all_app_feeds_but_not_searches()
+        {
+            var aliceOffer = Offer(2);
+            var bob = Mocker.Resolve<IPeerRepository>().Insert(new Peer
+            {
+                NodeId = "bob", Name = "Bob", State = PeerState.Trusted,
+                StateChanged = _baseline.AddDays(-1), CatalogFirstSyncedAt = _baseline
+            });
+            var bobOffer = Db.Insert(new PeerCatalogItem
+            {
+                PeerId = bob.Id, RemoteId = "bob-3", CandidateId = "bob-3", MediaKind = MediaKind.Tv,
+                TvdbId = 75669, SeasonNumber = 1, EpisodeNumbers = "3", FirstSeen = _baseline.AddDays(1)
+            });
+
+            Subject.Search(Browse(1)).Items.Should().HaveCount(2);
+            _peer.FetchNewFilesAutomatically = false;
+            Mocker.Resolve<IPeerRepository>().SetFields(_peer, p => p.FetchNewFilesAutomatically);
+            Mocker.Resolve<IPeerRepository>().Get(_peer.Id).FetchNewFilesAutomatically.Should().BeFalse();
+            Subject.Search(Browse(1)).Items.Should().ContainSingle(i => i.Id == bobOffer.Id);
+            Subject.Search(Browse(2)).Items.Should().ContainSingle(i => i.Id == bobOffer.Id);
+            Subject.Search(new CandidateQuery { RssApplicationId = 1, TvdbId = 75669 }).Items.Should().Contain(i => i.Id == aliceOffer.Id);
+            Subject.Search(new CandidateQuery()).Items.Should().Contain(i => i.Id == aliceOffer.Id);
+
+            _peer.FetchNewFilesAutomatically = true;
+            Mocker.Resolve<IPeerRepository>().SetFields(_peer, p => p.FetchNewFilesAutomatically);
+            Subject.Search(Browse(1)).Items.Should().HaveCount(2);
+        }
+
+        [Test]
+        public void opted_out_duplicate_should_not_hide_a_copy_from_an_enabled_friend()
+        {
+            var aliceOffer = Offer(2);
+            aliceOffer.Blake3 = "same-hash";
+            Mocker.Resolve<IPeerCatalogRepository>().Update(aliceOffer);
+            var bob = Mocker.Resolve<IPeerRepository>().Insert(new Peer
+            {
+                NodeId = "bob", State = PeerState.Trusted, StateChanged = _baseline.AddDays(-1), CatalogFirstSyncedAt = _baseline
+            });
+            var bobOffer = Db.Insert(new PeerCatalogItem
+            {
+                PeerId = bob.Id, RemoteId = "bob-2", CandidateId = "bob-2", MediaKind = MediaKind.Tv,
+                TvdbId = 75669, SeasonNumber = 1, EpisodeNumbers = "2", Blake3 = "same-hash", FirstSeen = _baseline.AddDays(1)
+            });
+            _peer.FetchNewFilesAutomatically = false;
+            Mocker.Resolve<IPeerRepository>().SetFields(_peer, p => p.FetchNewFilesAutomatically);
+
+            Subject.Search(Browse(limit: 1)).Items.Should().ContainSingle(i => i.Id == bobOffer.Id);
+            Subject.Search(Browse(limit: 1)).Total.Should().Be(1);
+        }
+
+        [Test]
         public void pairing_again_should_not_reannounce_previous_arrivals()
         {
             Offer(2);
