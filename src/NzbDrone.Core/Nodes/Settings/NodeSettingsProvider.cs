@@ -78,6 +78,7 @@ namespace NzbDrone.Core.Nodes.Settings
                 TotalUploadLimitKbps = _options.TotalUploadLimitKbps ?? _configService.TransferTotalUploadLimit,
                 DownloadLimitKbps = _options.DownloadLimitKbps ?? _configService.TransferDownloadLimit,
                 MaxDownloads = _options.MaxDownloads ?? _configService.TransferMaxDownloads,
+                MaxUploads = _options.MaxUploads ?? _configService.TransferMaxUploads,
 
                 // Not something a container is built around, so the environment does not set it.
                 CatalogSyncInterval = _configService.CatalogSyncInterval
@@ -107,6 +108,7 @@ namespace NzbDrone.Core.Nodes.Settings
             Add(_options.TotalUploadLimitKbps.HasValue, nameof(NodeSettings.TotalUploadLimitKbps));
             Add(_options.DownloadLimitKbps.HasValue, nameof(NodeSettings.DownloadLimitKbps));
             Add(_options.MaxDownloads.HasValue, nameof(NodeSettings.MaxDownloads));
+            Add(_options.MaxUploads.HasValue, nameof(NodeSettings.MaxUploads));
 
             return names;
         }

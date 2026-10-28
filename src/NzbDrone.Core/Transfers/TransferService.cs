@@ -373,6 +373,7 @@ namespace NzbDrone.Core.Transfers
             job.State = TransferState.Downloading;
             job.Attempts++;
             job.NextAttempt = null;
+            job.WaitingPosition = null;
             job.Started ??= DateTime.UtcNow;
             _jobs.Update(job);
 
@@ -388,12 +389,14 @@ namespace NzbDrone.Core.Transfers
                 // arrived is still on disk, and the hash says whether it can be carried on from.
                 job.State = TransferState.Queued;
                 job.Attempts = Math.Max(0, job.Attempts - 1);
+                job.WaitingPosition = null;
                 _jobs.Update(job);
 
                 return true;
             }
 
-            var before = (job.BytesDone, job.Size, job.Hash);
+            var before = (job.BytesDone, job.Size, job.Hash, job.WaitingPosition);
+            job.WaitingPosition = progress.State == FileTransferState.Waiting ? progress.QueuePosition ?? 1 : null;
 
             // An album's size is all of its parts', as offered.
             if (progress.Size > 0 && !job.HasParts)
@@ -401,9 +404,10 @@ namespace NzbDrone.Core.Transfers
                 job.Size = progress.Size;
             }
 
-            // While it is still connecting the transport has counted nothing yet. What the job
-            // already holds stays on show until the transport says where it carried on from.
-            if (progress.State != FileTransferState.Connecting)
+            // While it is still connecting, or waiting its turn at the other node, the transport has
+            // counted nothing yet. What the job already holds stays on show until the transport
+            // says where it carried on from.
+            if (progress.State is not (FileTransferState.Connecting or FileTransferState.Waiting))
             {
                 job.BytesDone = PartsDone(job) + progress.BytesDone;
             }
@@ -439,12 +443,12 @@ namespace NzbDrone.Core.Transfers
                     return true;
 
                 default:
-                    if (before == (job.BytesDone, job.Size, job.Hash))
+                    if (before == (job.BytesDone, job.Size, job.Hash, job.WaitingPosition))
                     {
                         return false;
                     }
 
-                    _jobs.SetFields(job, j => j.BytesDone, j => j.Size, j => j.Hash);
+                    _jobs.SetFields(job, j => j.BytesDone, j => j.Size, j => j.Hash, j => j.WaitingPosition);
 
                     return true;
             }

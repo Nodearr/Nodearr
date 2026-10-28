@@ -34,6 +34,9 @@ public class TransportOptions
     // The most downloads from other nodes that run at once. Three when not set, 0 for no limit.
     public int? MaxDownloads { get; set; }
 
+    // The most uploads to other nodes that run at once. Three when not set, 0 for no limit.
+    public int? MaxUploads { get; set; }
+
     // Where transfers are written: incomplete/ while they arrive, complete/ once verified.
     // Defaults to a downloads folder in the data folder.
     public string DownloadFolder { get; set; }

@@ -160,6 +160,11 @@ namespace NzbDrone.Core.Nodes.Settings
                     ? $"Use 0 for no limit, or from 1 to {NodeSettingsDefaults.MaxMaxDownloads}"
                     : null);
 
+            Check(nameof(NodeSettings.MaxUploads), () =>
+                settings.MaxUploads is < 0 or > NodeSettingsDefaults.MaxMaxUploads
+                    ? $"Use 0 for no limit, or from 1 to {NodeSettingsDefaults.MaxMaxUploads}"
+                    : null);
+
             Check(nameof(NodeSettings.DownloadFolder), () => CheckDownloadFolder(settings.DownloadFolder, current.DownloadFolder));
 
             // Sonarr's own words for its RSS Sync Interval.
@@ -206,6 +211,7 @@ namespace NzbDrone.Core.Nodes.Settings
             Write(nameof(NodeSettings.TotalUploadLimitKbps), before.TotalUploadLimitKbps, settings.TotalUploadLimitKbps, v => _configService.TransferTotalUploadLimit = v);
             Write(nameof(NodeSettings.DownloadLimitKbps), before.DownloadLimitKbps, settings.DownloadLimitKbps, v => _configService.TransferDownloadLimit = v);
             Write(nameof(NodeSettings.MaxDownloads), before.MaxDownloads, settings.MaxDownloads, v => _configService.TransferMaxDownloads = v);
+            Write(nameof(NodeSettings.MaxUploads), before.MaxUploads, settings.MaxUploads, v => _configService.TransferMaxUploads = v);
             Write(nameof(NodeSettings.CatalogSyncInterval), before.CatalogSyncInterval, settings.CatalogSyncInterval, v => _configService.CatalogSyncInterval = v);
 
             var after = _provider.Get();
@@ -229,6 +235,7 @@ namespace NzbDrone.Core.Nodes.Settings
                                    before.DirectTimeoutSeconds != after.DirectTimeoutSeconds ||
                                    before.UploadLimitKbps != after.UploadLimitKbps ||
                                    before.TotalUploadLimitKbps != after.TotalUploadLimitKbps ||
+                                   before.MaxUploads != after.MaxUploads ||
                                    before.DownloadLimitKbps != after.DownloadLimitKbps;
 
             if (transportChanged && _transport.IsRunning)

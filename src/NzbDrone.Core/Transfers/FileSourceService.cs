@@ -112,7 +112,7 @@ namespace NzbDrone.Core.Transfers
                 return;
             }
 
-            foreach (var upload in uploads.Where(u => u.State is UploadState.Preparing or UploadState.Sending))
+            foreach (var upload in uploads.Where(u => u.State is UploadState.Waiting or UploadState.Preparing or UploadState.Sending))
             {
                 var peer = _peers.FindByNodeId(upload.RemoteNodeId);
                 string reason = null;

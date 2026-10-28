@@ -24,9 +24,16 @@ export interface Transfer {
   added: string;
   started?: string;
   ended?: string;
+  // Downloading, and waiting its turn at the friend's node: the place in line it gave.
+  waitingPosition?: number | null;
 }
 
-export type UploadState = 'preparing' | 'sending' | 'completed' | 'failed';
+export type UploadState =
+  | 'waiting'
+  | 'preparing'
+  | 'sending'
+  | 'completed'
+  | 'failed';
 
 // One file this node is sending, or has sent, to another node.
 export interface Upload {
@@ -39,6 +46,8 @@ export interface Upload {
   attempts: number;
   lastFailure?: string;
   lastFailureMessage?: string;
+  // Waiting for a free upload slot: its place in line.
+  queuePosition?: number | null;
   size: number;
   bytesSent: number;
   started: string;

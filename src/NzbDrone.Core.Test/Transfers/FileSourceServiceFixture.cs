@@ -145,6 +145,18 @@ namespace NzbDrone.Core.Test.Transfers
         }
 
         [Test]
+        public void a_file_waiting_its_turn_should_be_stopped_too()
+        {
+            GivenPeer(PeerState.Trusted);
+            GivenOffered(false);
+            GivenUploads(Upload("7", UploadState.Waiting));
+
+            Subject.HandleAsync(new SharingChangedEvent());
+
+            Mocker.GetMock<IFileTransport>().Verify(t => t.StopUpload("7", FileSourceService.NotAuthorized), Times.Once());
+        }
+
+        [Test]
         public void a_file_still_shared_should_carry_on()
         {
             GivenPeer(PeerState.Trusted);

@@ -99,8 +99,11 @@ The number beside **Activity** counts downloads that are queued, downloading, wa
 
 - **Queued**: waiting its turn. Three downloads run at once unless **Most Downloads at Once** on **Settings > Node** says otherwise, and the rest start in the order your Arr apps asked for them. Your Arr app's queue shows it as queued too.
 - **Downloading**: arriving from your friend, with its progress. Your Arr app's queue shows the same.
+- **Waiting**: your friend's node is already sending as many files as its **Most Uploads at Once** allows, and has put this one in line. The row says which friend and your place in line. It starts when your turn comes, and your Arr app's queue shows it as queued meanwhile.
 - **Completed**: it arrived, matched the hash your friend's node gave before sending, and was moved into place in one step. Your Arr app imports it at its next check, usually within a minute, and then asks Nodearr to remove it.
 - **Failed**: the transfer stopped without a verified file. **Activity > Transfers** and the Arr app's history show the reason. See [When a transfer fails](#when-a-transfer-fails).
+
+The uploads list below shows what you are sending. When friends ask for more files than your own **Most Uploads at Once** allows, the extra requests wait their turn there as **Waiting**, with their place in line, instead of being refused. A friend running a Nodearr version from before this setting waits its turn too, but cannot be told: its download looks like one still connecting until its turn comes.
 
 Nodearr writes incoming files under `incomplete` in its download folder. After verification, it moves them into `complete` for the Arr app to import. An album becomes available for import only after every track has arrived and passed verification.
 

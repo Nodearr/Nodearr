@@ -51,6 +51,20 @@ namespace NzbDrone.Core.Test.Transfers
         }
 
         [Test]
+        public void an_upload_waiting_its_turn_should_show_its_place_in_line_until_it_starts()
+        {
+            GivenUpload("1", UploadState.Waiting, 0).QueuePosition = 2;
+            Subject.Tick();
+
+            Subject.All().Should().ContainSingle().Which.Should().Match<Upload>(u => u.State == UploadState.Waiting && u.QueuePosition == 2 && u.IsActive && u.Ended == null);
+
+            GivenUpload("1", UploadState.Sending, 100);
+            Subject.Tick();
+
+            Subject.All().Should().ContainSingle().Which.Should().Match<Upload>(u => u.State == UploadState.Sending && u.QueuePosition == null);
+        }
+
+        [Test]
         public void a_file_on_a_windows_path_should_be_named_the_same_way()
         {
             GivenUpload("1", UploadState.Sending, 0, path: @"D:\Media\TV\Pingu\Pingu.S01E01.mkv");

@@ -255,7 +255,8 @@ namespace NzbDrone.Core.Nodes.Transport
                     Size = s.Size,
                     Hash = s.Blake3,
                     FailureKind = s.Failure?.Kind,
-                    FailureMessage = s.Failure?.Message
+                    FailureMessage = s.Failure?.Message,
+                    QueuePosition = s.QueuePosition
                 });
             }
             catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
@@ -285,7 +286,8 @@ namespace NzbDrone.Core.Nodes.Transport
                     LastFailureKind = s.LastFailure?.Kind,
                     LastFailureMessage = s.LastFailure?.Message,
                     FailureKind = s.Failure?.Kind,
-                    FailureMessage = s.Failure?.Message
+                    FailureMessage = s.Failure?.Message,
+                    QueuePosition = s.QueuePosition
                 });
             }
             catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
@@ -485,6 +487,12 @@ namespace NzbDrone.Core.Nodes.Transport
             {
                 startInfo.ArgumentList.Add("--upload-limit-kbps");
                 startInfo.ArgumentList.Add(settings.UploadLimitKbps.ToString());
+            }
+
+            if (settings.MaxUploads > 0)
+            {
+                startInfo.ArgumentList.Add("--max-uploads");
+                startInfo.ArgumentList.Add(settings.MaxUploads.ToString());
             }
 
             if (settings.TotalUploadLimitKbps > 0)
@@ -764,6 +772,7 @@ namespace NzbDrone.Core.Nodes.Transport
             public long Size { get; set; }
             public string Blake3 { get; set; }
             public TransferFailureBody Failure { get; set; }
+            public int? QueuePosition { get; set; }
         }
 
         private class UploadStateBody
@@ -778,6 +787,7 @@ namespace NzbDrone.Core.Nodes.Transport
             public int Attempts { get; set; }
             public TransferFailureBody LastFailure { get; set; }
             public TransferFailureBody Failure { get; set; }
+            public int? QueuePosition { get; set; }
         }
 
         private class TransferFailureBody

@@ -41,6 +41,7 @@ namespace NzbDrone.Core.Test.Nodes
             _config.Object.TransferDirectTimeout = 20;
             _config.Object.CatalogSyncInterval = 15;
             _config.Object.TransferMaxDownloads = 3;
+            _config.Object.TransferMaxUploads = 3;
 
             _transport = new InMemoryNetwork().Join("alice");
             _activeTransfers = new List<TransferJob>();
@@ -97,7 +98,7 @@ namespace NzbDrone.Core.Test.Nodes
         [Test]
         public void a_new_node_should_use_public_relays_any_port_and_a_folder_beside_its_data()
         {
-            Provider.Get().Should().BeEquivalentTo(new NodeSettings { Relay = RelayMode.N0, Port = 0, PortMapping = true, DirectTimeoutSeconds = 20, UploadLimitKbps = 0, DownloadLimitKbps = 0, MaxDownloads = 3, CatalogSyncInterval = 15 });
+            Provider.Get().Should().BeEquivalentTo(new NodeSettings { Relay = RelayMode.N0, Port = 0, PortMapping = true, DirectTimeoutSeconds = 20, UploadLimitKbps = 0, DownloadLimitKbps = 0, MaxDownloads = 3, MaxUploads = 3, CatalogSyncInterval = 15 });
             Provider.FixedByEnvironment().Should().BeEmpty();
             Provider.NodeName.Should().Be(Environment.MachineName);
             Provider.DownloadFolder.Should().Be(Path.Combine(TempFolder, "data", "downloads"));
@@ -143,10 +144,12 @@ namespace NzbDrone.Core.Test.Nodes
                 s.TotalUploadLimitKbps = 1500;
                 s.DownloadLimitKbps = 2000;
                 s.MaxDownloads = 5;
+                s.MaxUploads = 2;
             });
 
             Provider.NodeName.Should().Be("John");
             Provider.Get().MaxDownloads.Should().Be(5);
+            Provider.Get().MaxUploads.Should().Be(2);
             Provider.Get().UploadLimitKbps.Should().Be(500);
             Provider.Get().TotalUploadLimitKbps.Should().Be(1500);
             Provider.Get().DownloadLimitKbps.Should().Be(2000);
@@ -160,11 +163,11 @@ namespace NzbDrone.Core.Test.Nodes
             _config.Object.TransportPortMapping = true;
             _config.Object.TransferDownloadLimit = 100;
             _config.Object.TransferTotalUploadLimit = 100;
-            _environment = new TransportOptions { NodeName = "From the environment", Port = 6633, DisablePortMapping = true, Relay = "disabled", DownloadFolder = Path.Combine(TempFolder, "mounted"), DownloadLimitKbps = 4000, TotalUploadLimitKbps = 3000, MaxDownloads = 0 };
+            _environment = new TransportOptions { NodeName = "From the environment", Port = 6633, DisablePortMapping = true, Relay = "disabled", DownloadFolder = Path.Combine(TempFolder, "mounted"), DownloadLimitKbps = 4000, TotalUploadLimitKbps = 3000, MaxDownloads = 0, MaxUploads = 0 };
 
-            Provider.Get().Should().Match<NodeSettings>(s => s.NodeName == "From the environment" && s.Port == 6633 && !s.PortMapping && s.Relay == RelayMode.Disabled && s.DownloadLimitKbps == 4000 && s.TotalUploadLimitKbps == 3000 && s.MaxDownloads == 0);
+            Provider.Get().Should().Match<NodeSettings>(s => s.NodeName == "From the environment" && s.Port == 6633 && !s.PortMapping && s.Relay == RelayMode.Disabled && s.DownloadLimitKbps == 4000 && s.TotalUploadLimitKbps == 3000 && s.MaxDownloads == 0 && s.MaxUploads == 0);
             Provider.DownloadFolder.Should().Be(Path.Combine(TempFolder, "mounted"));
-            Provider.FixedByEnvironment().Should().BeEquivalentTo("NodeName", "Port", "PortMapping", "Relay", "DownloadFolder", "DownloadLimitKbps", "TotalUploadLimitKbps", "MaxDownloads");
+            Provider.FixedByEnvironment().Should().BeEquivalentTo("NodeName", "Port", "PortMapping", "Relay", "DownloadFolder", "DownloadLimitKbps", "TotalUploadLimitKbps", "MaxDownloads", "MaxUploads");
         }
 
         [Test]
@@ -355,6 +358,21 @@ namespace NzbDrone.Core.Test.Nodes
             Problems(s => s.MaxDownloads = count).Should().BeEmpty();
         }
 
+        [TestCase(-1)]
+        [TestCase(101)]
+        public void a_number_of_uploads_at_once_out_of_range_should_be_refused(int count)
+        {
+            Problems(s => s.MaxUploads = count).Should().Equal("MaxUploads");
+        }
+
+        [TestCase(0)]
+        [TestCase(1)]
+        [TestCase(100)]
+        public void no_limit_on_uploads_at_once_or_one_in_range_should_be_allowed(int count)
+        {
+            Problems(s => s.MaxUploads = count).Should().BeEmpty();
+        }
+
         [TestCase(1)]
         [TestCase(15)]
         [TestCase(-5)]
@@ -417,7 +435,8 @@ namespace NzbDrone.Core.Test.Nodes
             Save(s => s.Relay = RelayMode.Disabled).TransportRestarted.Should().BeTrue();
             Save(s => s.DownloadLimitKbps = 2000).TransportRestarted.Should().BeTrue();
             Save(s => s.TotalUploadLimitKbps = 2000).TransportRestarted.Should().BeTrue();
-            _transport.Restarts.Should().Be(6);
+            Save(s => s.MaxUploads = 1).TransportRestarted.Should().BeTrue();
+            _transport.Restarts.Should().Be(7);
         }
 
         [Test]
@@ -434,9 +453,9 @@ namespace NzbDrone.Core.Test.Nodes
         [Test]
         public void failures_should_name_the_setting_so_the_form_can_point_at_it()
         {
-            var failures = Service.Validate(new NodeSettings { Relay = RelayMode.Custom, Port = 80, DirectTimeoutSeconds = 1, UploadLimitKbps = 3, TotalUploadLimitKbps = 3, DownloadLimitKbps = 3, MaxDownloads = -1, NodeName = "a\tb", DownloadFolder = "relative" });
+            var failures = Service.Validate(new NodeSettings { Relay = RelayMode.Custom, Port = 80, DirectTimeoutSeconds = 1, UploadLimitKbps = 3, TotalUploadLimitKbps = 3, DownloadLimitKbps = 3, MaxDownloads = -1, MaxUploads = 101, NodeName = "a\tb", DownloadFolder = "relative" });
 
-            failures.Select(f => f.PropertyName).Should().BeEquivalentTo("NodeName", "RelayUrl", "Port", "DirectTimeoutSeconds", "UploadLimitKbps", "TotalUploadLimitKbps", "DownloadLimitKbps", "MaxDownloads", "DownloadFolder");
+            failures.Select(f => f.PropertyName).Should().BeEquivalentTo("NodeName", "RelayUrl", "Port", "DirectTimeoutSeconds", "UploadLimitKbps", "TotalUploadLimitKbps", "DownloadLimitKbps", "MaxDownloads", "MaxUploads", "DownloadFolder");
             failures.Should().OnlyContain((ValidationFailure f) => f.ErrorMessage.Length > 10);
         }
     }

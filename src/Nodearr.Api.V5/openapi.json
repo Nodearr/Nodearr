@@ -5529,6 +5529,11 @@
             "format": "int32",
             "nullable": true
           },
+          "maxUploads": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
           "catalogSyncInterval": {
             "type": "integer",
             "format": "int32",
@@ -6846,6 +6851,11 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
+          },
+          "waitingPosition": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -6994,6 +7004,11 @@
             "type": "string",
             "nullable": true
           },
+          "queuePosition": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
           "started": {
             "type": "string",
             "format": "date-time"
@@ -7011,7 +7026,8 @@
           "preparing",
           "sending",
           "completed",
-          "failed"
+          "failed",
+          "waiting"
         ],
         "type": "string"
       },
