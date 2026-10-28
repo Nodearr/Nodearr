@@ -21,10 +21,10 @@ On each set-up it:
 
 | | Library A | Library B |
 | --- | --- | --- |
-| Radarr | Back to the Future (1985) | Spirited Away (2001) |
-| Sonarr | Cowboy Bebop, S01E01 to S01E03 | Frieren: Beyond Journey's End, S01E01 to S01E03 |
+| Radarr | Night of the Living Dead (1968), Nosferatu (1922), Steamboat Willie (1928) | The Little Shop of Horrors (1960), Metropolis (1927), Aladdin and His Wonderful Lamp (1939) |
+| Sonarr | Out of the Inkwell (1919), S01E01 to S01E03 | Felix the Cat (1919), S1919E01 to S1919E03 |
 
-Each library has what the other lacks, so each side has something to share and something to fetch.
+Every title is in the public domain. TheTVDB numbers Felix the Cat's seasons by year, so its first season is 1919. Each library has what the other lacks, so each side has something to share and something to fetch.
 
 The script starts test copies of the applications without installing them. It leaves Nodearr's app connections, friends and sharing unconfigured for you to test. Each web UI is reachable only from this machine. Test files and data live in `nodearr-ui-test` under your user folder; `down` removes that folder.
 
@@ -75,7 +75,7 @@ Set-up A
   Nodearr  http://localhost:26633
   Sonarr   http://localhost:28989   API key 3f9c...
   Radarr   http://localhost:27878   API key 81ab...
-  Library  Back to the Future, and Cowboy Bebop S01E01 to S01E03
+  Library  Night of the Living Dead, Nosferatu, Steamboat Willie, and Out of the Inkwell S01E01 to S01E03
   Nodearr's UDP port, for another machine: 26633
 ```
 
@@ -153,7 +153,7 @@ Each missing file and poster has **Get it**. It opens the same choices as Home's
 
 - [ ] On B, use **Get it** on A's movie row. Root folder and profile are filled in. Submit, follow progress in the dialog and **Activity > Transfers**, and confirm Radarr imports it. The row becomes **Have** with no action after the local catalog updates.
 - [ ] Open a TV row's Get it immediately after loading the page. The scope choice stays disabled until the plan loads; then switching to **Season** selects an offered season and shows the app choices.
-- [ ] On a Cowboy Bebop row, choose **Episode file**. Submit and confirm Sonarr imports only that file's episodes; the others stay unmonitored. Reopen Get it, select **Season**, choose season 1, and confirm the other two files arrive.
+- [ ] On an Out of the Inkwell row, choose **Episode file**. Submit and confirm Sonarr imports only that file's episodes; the others stay unmonitored. Reopen Get it, select **Season**, choose season 1, and confirm the other two files arrive.
 - [ ] On a fresh kit, switch to **Posters** and select the series' **Get it**. It starts at **Whole series**. Switch to **Episode file**, **Season**, then back, and check the choices remain usable. Submit; Sonarr monitors the series and searches only offered episodes.
 - [ ] While the add command is working, close and reopen the dialog. Its progress remains visible and a second add cannot be submitted. After the app grabs it, the dialog's link opens **Activity > Transfers**.
 - [ ] With two Sonarr or Radarr apps connected, choose the second app and confirm its defaults appear. Stop that test app: the dialog says it did not answer. Start it and return to the dialog: it recovers while keeping valid choices.
@@ -163,9 +163,9 @@ Each missing file and poster has **Get it**. It opens the same choices as Home's
 
 ## 7. Choose what to share
 
-On the side that has Cowboy Bebop, A, open **Catalog > Sharing**.
+On the side that has Out of the Inkwell, A, open **Catalog > Sharing**.
 
-1. Under **Hidden**, open **Cowboy Bebop** with its arrow, tick **S01E02**, and select **Save**.
+1. Under **Hidden**, open **Out of the Inkwell** with its arrow, tick **S01E02**, and select **Save**.
 2. On the other side, B, look at **Catalog > Peer Catalog**.
 
 - [ ] Within a few seconds, S01E02 is gone from B's list, without pressing anything. Taking something back is immediate.
@@ -178,20 +178,20 @@ Then, on A, clear its checkbox under **Hidden** and select **Save**. On B, selec
 
 **A sends.** On A, in **Catalog > Sharing**, under **Send to a friend**:
 
-1. Type *Cowboy* in the filter and pick **Cowboy Bebop**. Leave it whole: the whole series.
+1. Type *Inkwell* in the filter and pick **Out of the Inkwell**. Leave it whole: the whole series.
 2. Under **To**, pick B's name.
 3. Select **Send**.
 
-- [ ] It says "Sent Cowboy Bebop to ...", and under **Sent** the send shows **Told** within a few seconds.
+- [ ] It says "Sent Out of the Inkwell to ...", and under **Sent** the send shows **Told** within a few seconds.
 
 **B gets it.** On B's **Home**:
 
-- [ ] A card says "... sent you Cowboy Bebop", with **Root Folder**, **Quality Profile** and **Series Type** filled in.
+- [ ] A card says "... sent you Out of the Inkwell", with **Root Folder**, **Quality Profile** and **Series Type** filled in.
 - [ ] Select **Get it**. The card says it is asking Sonarr, then "Added to Sonarr, monitoring the whole series, and searching for 3 episodes": the three A has. Sonarr monitors the whole series, so it looks for the rest on its own later, as it would for any series.
-- [ ] **Activity > Transfers** shows Cowboy Bebop's three episodes arriving from A, then done. Up to three files arrive at once, the default of **Most Downloads at Once**.
-- [ ] In B's Sonarr, **Series > Cowboy Bebop** shows the three episodes with files. Sonarr imported what Nodearr fetched.
+- [ ] **Activity > Transfers** shows Out of the Inkwell's three episodes arriving from A, then done. Up to three files arrive at once, the default of **Most Downloads at Once**.
+- [ ] In B's Sonarr, **Series > Out of the Inkwell** shows the three episodes with files. Sonarr imported what Nodearr fetched.
 
-**Then the other way round.** B sends **Spirited Away** to A, and A selects **Get it** on its card.
+**Then the other way round.** B sends **The Little Shop of Horrors** to A, and A selects **Get it** on its card.
 
 - [ ] A's Radarr adds the film, grabs it through Nodearr, and imports it. The film is larger than an episode, so give it a minute.
 
@@ -199,7 +199,7 @@ Then, on A, clear its checkbox under **Hidden** and select **Save**. On B, selec
 
 This is how Nodearr works day to day: Sonarr or Radarr search, and find what friends have among their other results.
 
-On B's Radarr, add **Back to the Future**: **Movies > Add New**, search for it, and pick the one from **1985**, the first of the three. Untick **Start search for missing movie**, which Radarr ticks for you, and select **Add Movie**. Then open the film and select **Interactive Search** at the top.
+On B's Radarr, add **Night of the Living Dead**: **Movies > Add New**, search for it, and pick the one from **1968**, not the 1990 remake. Untick **Start search for missing movie**, which Radarr ticks for you, and select **Add Movie**. Then open the film and select **Interactive Search** at the top.
 
 - [ ] A release from the indexer **Nodearr** is listed, with its size and quality.
 - [ ] Press its download button. Nodearr's **Activity > Transfers** shows it arriving from A, and Radarr imports it.
@@ -209,11 +209,11 @@ On B's Radarr, add **Back to the Future**: **Movies > Add New**, search for it, 
 This is how a friendship can start: "I have that, let me send it to you."
 
 1. On A, **Nodes > Trusted Nodes**, select **Revoke trust** on B. The two are no longer friends.
-2. On A, in **Catalog > Sharing**, under **Send to a friend**, pick **Back to the Future**, and under **To** pick **Someone new, with an invite**. Leave **Share everything except Hidden with them too** ticked, select **Send**, and copy the invite code it shows.
+2. On A, in **Catalog > Sharing**, under **Send to a friend**, pick **Night of the Living Dead**, and under **To** pick **Someone new, with an invite**. Leave **Share everything except Hidden with them too** ticked, select **Send**, and copy the invite code it shows.
 3. On B, **Nodes > Invites**, paste the code under **Redeem Invite**, and select **Redeem Invite**.
 
 - [ ] The two are friends again, and A's send shows **Told**.
-- [ ] B's **Home** shows a card for Back to the Future. B has it from step 9, so it says Radarr has it already.
+- [ ] B's **Home** shows a card for Night of the Living Dead. B has it from step 9, so it says Radarr has it already.
 
 ## 11. Look around
 

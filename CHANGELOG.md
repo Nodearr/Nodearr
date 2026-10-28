@@ -20,6 +20,10 @@ Your Arr apps now fetch new files from friends by themselves. When a friend gets
 - **Uploads to friends are now three at a time by default**, where there was no limit before. Requests beyond that wait their turn instead of being refused. Set **Most Uploads at Once** to 0 to go back to no limit ([#85](https://github.com/Nodearr/Nodearr/issues/85)).
 - Nodes on this release can make each other wait for an upload slot. A node on an earlier release still sends and receives as before. It is never told it is waiting, but it waits its turn all the same ([#85](https://github.com/Nodearr/Nodearr/issues/85), ADR 0016).
 
+### Documentation
+
+- The user guide's screenshots were retaken with public-domain titles only: Night of the Living Dead, The Little Shop of Horrors, Nosferatu, Metropolis, Steamboat Willie and Aladdin and His Wonderful Lamp, with the first Out of the Inkwell and Felix the Cat shorts as the series. The UI test kit (`tools/ui-test.ps1`) now uses these titles. The screenshots show public-domain posters from Wikimedia Commons instead of the ones Sonarr and Radarr fetch, which are often modern artwork; `tools/screenshot-posters` lists where each came from ([UI test guide](docs/guides/ui-test.md)).
+
 ## 0.4.2 (pre-release)
 
 ### Added

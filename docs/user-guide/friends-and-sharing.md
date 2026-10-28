@@ -137,11 +137,11 @@ Sending a title shares it with one person and places a card on their **Home** pa
 - In **Catalog > Local**, use **Send** at the end of a table row. A file row selects its movie, episode or episodes in a multi-episode file, or album; a series row selects the whole series, and a season row selects that season. In **Posters**, use the send icon under a tile to select the whole title.
 - In **Catalog > Sharing**, find **Send to a friend**:
 
-![Send to a friend, with a Frieren episode selected for Alex](images/send-to-a-friend.png)
+![Send to a friend, with a Felix the Cat short selected for Alex](images/send-to-a-friend.png)
 
 The Local action opens the form with the title and parts already selected. In Sharing, select a title and, for a series or artist, the seasons, episodes, or albums you want to send. Choose a friend under **To**. To send to someone you have not paired with, select **Someone new, with an invite** and choose an invite lifetime. For someone new, decide whether to leave **Share everything except Hidden with them too** selected. Clear it to share only this send. If selected, it also includes apps with **Share With New Friends** enabled, excluding **Hidden**. Select **Send**.
 
-Nodearr creates a share list named **Sent to** followed by the friend's name. You can edit it like any other list. Nodearr also notifies the recipient, whose node refreshes your catalog and shows a card such as **Sam sent you Frieren** on **Home**.
+Nodearr creates a share list named **Sent to** followed by the friend's name. You can edit it like any other list. Nodearr also notifies the recipient, whose node refreshes your catalog and shows a card such as **Sam sent you Felix The Cat - S1919E01** on **Home**.
 
 If nothing of it can be sent, Nodearr says so: there is no file of it in your library yet, or it is on your **Hidden** list.
 
@@ -157,9 +157,9 @@ Removing a send from **Sent** removes the notification record, but its share lis
 
 ## When a friend sends you something
 
-When a friend sends you a title, a card such as **Sam sent you Frieren** appears on **Home**.
+When a friend sends you a title, a card such as **Sam sent you Felix The Cat - S1919E01** appears on **Home**.
 
-![Home with Sam's send of Frieren at the top, its choices for Sonarr filled in, and Get it](images/received.png)
+![Home with Sam's send of a Felix the Cat short at the top, its choices for Sonarr filled in, and Get it](images/received.png)
 
 To request the title:
 
