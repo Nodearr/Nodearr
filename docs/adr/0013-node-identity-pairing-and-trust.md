@@ -101,6 +101,16 @@ There is no lookup service. Nodes learn each other's relay URL and addresses fro
 
 ## Amendments
 
+### 2026-10-28: preserve transport diagnostic levels (#100)
+
+The sidecar's stderr uses plain tracing text with a level prefix and its target, without terminal colors or its own timestamp. A formatter escapes line breaks and control characters after rendering the complete event, including fields and spans. An upstream Debug implementation that writes several lines therefore remains one event in Nodearr's logs.
+
+Nodearr maps ERROR, WARN, INFO, DEBUG and TRACE to the corresponding NLog levels and retains the rest of the line, including the target and diagnostic fields. Unknown output, such as a startup error or an older sidecar's format, remains unchanged at Info. The sidecar's existing `RUST_LOG` filter is unchanged; Nodearr's log settings apply to the relayed event at its original level. No upstream network warnings are suppressed.
+
+The Core tests cover all five levels and fallback lines. A Rust subscriber test covers the full formatter with an upstream-style multiline diagnostic, spans, control characters, all levels and no extra timestamp.
+
+Checked on Windows and in a locally built Linux amd64 Docker image, using fresh isolated data and verbose Rust logging. The two instances paired and pinged through their real sidecars. The inspected trace files contained 313 Windows and 339 container transport events, retaining Debug/Trace (and a container Info event), with no ANSI escapes, second timestamp or split event. Info files excluded Debug/Trace, and Debug files excluded Trace. The same files downloaded through **System > Log Files** remained clean. The real Info event was also checked in the log database, **System > Events** and its details dialog. The isolated instances were then stopped. No repeated default-route warning occurred during this run; its severity is preserved, and no filter was added.
+
 ### 2026-10-15: pair attempts are limited
 
 A stranger who knows a node's ID and can reach it could try invite secrets without end. The secret is 256 bits, so nothing can be guessed, but each attempt cost a lookup and a warning in the log, and node IDs cost nothing to make.

@@ -12,6 +12,7 @@
 //!
 //! Files move on a second protocol, in `transfer.rs`. Nodearr still decides who may have what.
 
+mod logging;
 mod transfer;
 
 use std::{
@@ -141,6 +142,8 @@ struct App {
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt()
+        .with_ansi(false)
+        .event_format(logging::SingleLine)
         .with_env_filter(tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "nodearr_transport=info,warn".into()))
         .with_writer(std::io::stderr)
         .init();

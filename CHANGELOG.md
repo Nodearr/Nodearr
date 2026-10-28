@@ -17,6 +17,8 @@ What changed in each release, newest first. Each item links to the decision reco
 
 ### Fixed
 
+- Transport log events retain their original severity and target, without terminal colors or a second timestamp. Multiline diagnostic values stay in a single entry, so files and **System > Events** remain readable ([#100](https://github.com/Nodearr/Nodearr/issues/100)).
+
 - The loading page uses Nodearr's logo and a plain loading message. Error and missing-page screens also use the Nodearr mark, and pinned browser tabs use its teal accent ([#99](https://github.com/Nodearr/Nodearr/issues/99)).
 
 - Friend details cards recover descriptions and genres missing from catalogs cached before shared details were added. Updating requests a full catalog once, preserving file arrival dates. Episode cards also show the series genres, network and runtime when shared ([#95](https://github.com/Nodearr/Nodearr/issues/95)).

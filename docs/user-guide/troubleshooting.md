@@ -92,4 +92,5 @@ While the web UI starts, it shows Nodearr's logo and **Loading Nodearr…**. If 
 - **System > Status** lists everything Nodearr has noticed.
 - **System > Events** lists what happened, newest first.
 - **System > Log Files** has the logs. Set **Log Level** to **Debug** or **Trace** under **Settings > General** for more detail, then restore the previous level.
+- Peer transport messages start with `transport:` and keep the network component's name. They use Nodearr's timestamp and the event's original level. A diagnostic value containing line breaks shows them as `\n` within the same entry.
 - **System > Tasks** shows when scheduled tasks last ran and lets you run one immediately.
