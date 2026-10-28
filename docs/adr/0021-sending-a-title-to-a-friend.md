@@ -53,6 +53,16 @@ When it is used, the inviting node attaches the send to the new friend and share
 
 It runs in the background as a command. The card shows it working, then what was done ("Added to Sonarr, monitoring Season 1, and searching") or why it was not, with a way to try again. A note from an older sender, without IDs, is filled in from the friend's catalog once it has arrived.
 
+## Amendment: already-held notifications (#102, 2026-10-28)
+
+Pending received sends are compared against current local holdings using the same `LocalHoldings` classifier as the peer catalog, including the app's quality profile and PROPER/REPACK preferences. All distinct file IDs in the note must still resolve to offers from that sender of the same media kind. An incomplete or withdrawn offer cannot prove a send is held and supplies no counts. The comparison covers the sent snapshot, not unrelated files or another friend's copy. A multi-episode file is new until all its episodes are held.
+
+When every sent file is **Have**, Home says **You already have it.** without requesting a Get it plan or showing its form. Details and Put away remain. Otherwise Home's Get it section shows the number of new files and upgrades. Working operations keep their progress, and successful operations retain their existing cleanup rules. Sender delivery remains **Told**, without a new protocol acknowledgement.
+
+An already-held notification expires 24 hours after its first visible display in an active Home tab. This gives the person time to read it and avoids removing an unseen send just because Home polled in the background. Home acknowledges visibility explicitly; `AlreadyHeldSeenAt` is stored across restarts by migration 266. Polling and later visits do not reset it. If current holdings no longer prove the send is held, the timestamp is cleared and Get it remains available. Put away dismisses immediately. Missing, dismissed and untrusted notes cannot be acknowledged.
+
+Verification on Windows: the solution built with analyzers and no warnings; 6,635 .NET tests passed (35 existing skips), along with 13 transport tests and all four frontend checks. After the final acknowledgement adjustment, all 172 sharing tests passed again. The two-node UI kit sent a held movie, a held episode, a partly held series and a PROPER movie upgrade through the real transport. Both themes showed the expected actions and counts; offscreen cards remained unseen, a hidden-document visibility check deferred acknowledgement, and revisits preserved the first display time. Put away removed the notification. A separate visible card expired after only its isolated database timestamp was aged past 24 hours and the node restarted; the machine clock was unchanged and the sender stayed Told. Existing received-details checks passed for whole series, seasons, multiple episodes, individual episodes and movies. The guide screenshots and V5 API description were regenerated from this build. This run did not download new files or exercise live Lidarr or Whisparr instances.
+
 ## Evidence
 
 - Unit tests: `SendServiceFixture` (the friend's own list, what each part is called, refusals, the note and its retries, invites, forgetting, deleting a friend), `ReceivedServiceFixture` (keeping, checking and capping what arrives) and `PeerServiceFixture` (the `sent` message, and the invite named when it is used).

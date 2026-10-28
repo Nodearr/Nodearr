@@ -107,6 +107,10 @@ public class ReceivedTitleResource : RestResource
     public int Year { get; set; }
     public GetItState GetItState { get; set; }
     public string? GetItMessage { get; set; }
+    public bool AlreadyHaveIt { get; set; }
+    public int? NewFiles { get; set; }
+    public int? UpgradeFiles { get; set; }
+    public DateTime? AlreadyHeldSeenAt { get; set; }
 
     // An item of this node's copy of the friend's catalog that is one of the files sent, whose
     // poster is the title's: GET catalog/posters/peer/{posterItemId}. Null until the catalog has one.
@@ -128,7 +132,11 @@ public class ReceivedTitleResource : RestResource
             Received = received.Received,
             Year = received.Year,
             GetItState = received.GetItState,
-            GetItMessage = received.GetItMessage
+            GetItMessage = received.GetItMessage,
+            AlreadyHaveIt = received.Availability.AlreadyHaveIt,
+            NewFiles = received.Availability.NewFiles,
+            UpgradeFiles = received.Availability.UpgradeFiles,
+            AlreadyHeldSeenAt = received.AlreadyHeldSeenAt
         };
     }
 }
@@ -383,6 +391,12 @@ public class SendController : Controller, IHandle<SentTitlesChangedEvent>, IHand
         _receivedService.Dismiss(id);
 
         return TypedResults.NoContent();
+    }
+
+    [HttpPost("received/{id:int}/seen")]
+    public Results<NoContent, NotFound> MarkSeen(int id)
+    {
+        return _receivedService.MarkSeen(id) ? TypedResults.NoContent() : TypedResults.NotFound();
     }
 
     // Where what was sent can be added, and the choices for adding it.

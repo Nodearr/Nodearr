@@ -164,6 +164,8 @@ The catalog's Get it action is implemented in #54, connection-loss diagnosis and
 
 - Activity counts unfinished downloads and active uploads with distinct SVG icons, shares waiting/retry/failure colors with transfer rows, and leaves finished uploads in history without holding the badge red ([#101](https://github.com/Nodearr/Nodearr/issues/101); ADR 0016). Branch `v1/s101-activity-status`.
 
+- Received sends compare the exact offered files with current local holdings. Already-held cards keep Details and Put away, expire a day after first visible display, and leave sender delivery unchanged; partial sends and upgrades retain Get it with file counts ([#102](https://github.com/Nodearr/Nodearr/issues/102); ADR 0021). Branch `v1/s102-held-sends`.
+
 ### Next, in order
 
 1. ~~**Posters, part 1: a friend's catalog with pictures** (S57).~~ Done (ADR 0022).

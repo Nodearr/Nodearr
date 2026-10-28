@@ -12,6 +12,8 @@ What changed in each release, newest first. Each item links to the decision reco
 
 ### Changed
 
+- Received sends say **You already have it.** when every sent file is held without an upgrade, and offer **Put away** instead of **Get it**. They leave Home 24 hours after first appearing on screen. Other cards show counts of new files and upgrades using the catalog's quality rules ([#102](https://github.com/Nodearr/Nodearr/issues/102)).
+
 - The **Activity** badge shows unfinished downloads and active uploads beside matching icons, with counts in a hover summary. It turns amber for waiting or retrying and red for failed downloads needing attention. Transfer rows use matching colors; finished uploads do not keep a badge visible ([#101](https://github.com/Nodearr/Nodearr/issues/101)).
 
 - Catalog tables, posters and details cards share status colors in both themes: green for files you have, red for missing, blue for upgrades and neutral for titles outside your library. The words remain alongside the colors ([#96](https://github.com/Nodearr/Nodearr/issues/96)).

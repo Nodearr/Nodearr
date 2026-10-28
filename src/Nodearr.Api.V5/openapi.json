@@ -2777,6 +2777,32 @@
         }
       }
     },
+    "/api/v5/sharing/sends/received/{id}/seen": {
+      "post": {
+        "tags": [
+          "Send"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
     "/api/v5/sharing/sends/received/{id}/getit": {
       "get": {
         "tags": [
@@ -6285,6 +6311,24 @@
           },
           "getItMessage": {
             "type": "string",
+            "nullable": true
+          },
+          "alreadyHaveIt": {
+            "type": "boolean"
+          },
+          "newFiles": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "upgradeFiles": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "alreadyHeldSeenAt": {
+            "type": "string",
+            "format": "date-time",
             "nullable": true
           },
           "posterItemId": {

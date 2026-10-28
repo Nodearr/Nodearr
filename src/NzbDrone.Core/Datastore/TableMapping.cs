@@ -138,7 +138,8 @@ namespace NzbDrone.Core.Datastore
             Mapper.Entity<ShareListItem>("ShareListItems").RegisterModel();
             Mapper.Entity<ShareListPeer>("ShareListPeers").RegisterModel();
             Mapper.Entity<SentTitle>("SentTitles").RegisterModel();
-            Mapper.Entity<ReceivedTitle>("ReceivedTitles").RegisterModel();
+            Mapper.Entity<ReceivedTitle>("ReceivedTitles").RegisterModel()
+                  .Ignore(r => r.Availability);
             Mapper.Entity<PeerCatalogItem>("PeerCatalogItems").RegisterModel();
             Mapper.Entity<OfferRecord>("OfferRecords").RegisterModel();
             Mapper.Entity<TransferJob>("Transfers").RegisterModel();

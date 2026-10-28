@@ -16,6 +16,8 @@
 // With no arguments, the capture command takes every screenshot. Pass screenshot names to capture
 // only those pages. `catalogAvailability` needs the mixed library states described above its
 // implementation and is run explicitly. `receivedDetails` likewise needs the five prepared sends.
+// `receivedAvailability` needs A to hold Little Shop, Felix E01/E02 but not E03, and the original
+// Metropolis while B offers its PROPER. It creates and puts away four sends without downloading.
 // The "send" screenshot changes the test data: Sam sends Alex a Felix the Cat
 // short from its table row and Alex sends Sam Night of the Living Dead from its poster. Recreate
 // the kit before capturing "send" a second time.
@@ -375,7 +377,7 @@ const SIDEBAR = 210;
 const TOPBAR = 60;
 
 // A page, or one part of it with a margin of the page round it.
-async function shoot(target, name, { chrome = false } = {}) {
+async function shoot(target, name, { chrome = false, margin = 16 } = {}) {
   const page = target.page ? target.page() : target;
   const file = path.join(out, `${name}.png`);
   await page.evaluate(mask, kit);
@@ -385,7 +387,6 @@ async function shoot(target, name, { chrome = false } = {}) {
     const clip = chrome ? undefined : { x: SIDEBAR, y: TOPBAR, width: view.width - SIDEBAR, height: view.height - TOPBAR };
     await page.screenshot({ path: file, animations: 'disabled', clip });
   } else {
-    const margin = 16;
     const box = await target.boundingBox();
     const view = page.viewportSize();
     const x = Math.max(0, box.x - margin);
@@ -429,6 +430,112 @@ async function nodeSettings(page, change) {
 }
 
 const shots = {
+  // Requires the reused kit: A holds B's Little Shop, Felix E01/E02 but not E03,
+  // and the original Metropolis; B offers its PROPER. Creates and puts away four sends.
+  async receivedAvailability({ a, browser }) {
+    const receiver = setUp('a', A, 'Alex');
+    const sender = setUp('b', B, 'Sam');
+    await open(a, A, '/system/status');
+    const peer = (await sender.api('GET', '/nodes/peers')).find((peer) => peer.state === 'trusted' && peer.name === 'Alex');
+    const titles = await sender.api('GET', '/sharing/titles');
+    const felix = titles.find((title) => /Felix the Cat/i.test(title.title));
+    const seasons = await sender.api('GET', `/sharing/titles/${felix.applicationId}/${felix.arrId}/seasons`);
+    const episode = seasons.find((season) => season.seasonNumber === 1919).episodes.find((episode) => episode.episodeNumber === 1);
+    const key = (title) => ({ mediaKind: title.mediaKind, applicationId: title.applicationId, arrId: title.arrId });
+    const cases = [
+      { title: 'The Little Shop of Horrors', held: true },
+      { title: felix.title, held: true, episodeArrId: episode.episodeArrId },
+      { title: felix.title, newFiles: 1 },
+      { title: 'Metropolis', newFiles: 0, upgrades: 1 },
+    ];
+    const created = [];
+    try {
+      for (const scenario of cases) {
+        const before = new Set((await receiver.api('GET', '/sharing/sends/received')).map((note) => note.id));
+        const item = key(titles.find((title) => title.title === scenario.title));
+        if (scenario.episodeArrId) item.episodeArrId = scenario.episodeArrId;
+        const sent = await sender.api('POST', '/sharing/sends', { peerId: peer.id, items: [item] });
+        await until('the sender to say Told', async () => (await sender.api('GET', '/sharing/sends')).find((note) => note.id === sent.id)?.status === 'told');
+        scenario.note = await until('the real send to reach Home', async () => {
+          const notes = (await receiver.api('GET', '/sharing/sends/received')).filter((note) => !before.has(note.id));
+          if (notes.length > 1) throw new Error('A send created duplicate received cards');
+          return notes[0];
+        });
+        created.push(scenario.note.id);
+        if (scenario.note.alreadyHaveIt !== !!scenario.held || scenario.note.alreadyHeldSeenAt) throw new Error('Incorrect initial holdings or seen state');
+        if (!scenario.held && (scenario.note.newFiles !== scenario.newFiles || scenario.note.upgradeFiles !== (scenario.upgrades ?? 0))) throw new Error('Incorrect new/upgrade file counts');
+      }
+
+      const offscreen = await browser.newContext(options);
+      await swapPosters(offscreen, receiver);
+      await offscreen.addInitScript(() => document.addEventListener('DOMContentLoaded', () => {
+        const style = document.createElement('style');
+        style.id = 'offscreen-check';
+        style.textContent = '[class*="receivedWithPoster"] { margin-top: 2000px !important; }';
+        document.head.append(style);
+      }));
+      const page = await signIn(offscreen, A);
+      await open(page, A, '/');
+      await page.getByText('You already have it.', { exact: true }).first().waitFor({ state: 'attached' });
+      await page.waitForTimeout(5500); // Includes a background received-card poll.
+      if ((await receiver.api('GET', '/sharing/sends/received')).filter((note) => created.includes(note.id)).some((note) => note.alreadyHeldSeenAt)) throw new Error('Offscreen cards were marked seen');
+      // Exercise the browser visibility event separately from geometric visibility.
+      await page.evaluate(() => Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' }));
+      await page.locator('#offscreen-check').evaluate((style) => style.remove());
+      await page.locator(`[data-received-id="${cases[0].note.id}"]`).scrollIntoViewIfNeeded();
+      await page.waitForTimeout(5500);
+      if ((await receiver.api('GET', '/sharing/sends/received')).filter((note) => created.includes(note.id)).some((note) => note.alreadyHeldSeenAt)) throw new Error('A hidden document marked a card seen');
+      await page.evaluate(() => {
+        delete document.visibilityState;
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+      await until('foreground visibility event to mark the card', async () => (await receiver.api('GET', '/sharing/sends/received')).find((note) => note.id === cases[0].note.id)?.alreadyHeldSeenAt);
+      await offscreen.close();
+
+      for (const theme of ['light', 'dark']) {
+        const context = await browser.newContext({ ...options, colorScheme: theme });
+        await swapPosters(context, receiver);
+        const planRequests = [];
+        context.on('request', (request) => { if (/\/received\/\d+\/getit/.test(request.url())) planRequests.push(request.url()); });
+        const home = await signIn(context, A);
+        await open(home, A, '/');
+        for (const scenario of cases) {
+          const note = scenario.note;
+          const card = home.locator(`[data-received-id="${note.id}"]`);
+          await card.scrollIntoViewIfNeeded();
+          if (scenario.held) {
+            await card.getByText('You already have it.', { exact: true }).waitFor();
+            if (await card.getByRole('button', { name: 'Get it', exact: true }).count()) throw new Error('An already-held card offered Get it');
+            if (planRequests.some((url) => url.includes(`/received/${note.id}/getit`))) throw new Error('An already-held card fetched an unnecessary plan');
+            await until('visible notification to be marked seen', async () => (await receiver.api('GET', '/sharing/sends/received')).find((item) => item.id === note.id)?.alreadyHeldSeenAt);
+            if (theme === 'dark' && note.mediaKind === 'movie') await shoot(card, 'received-already-held', { margin: 0 });
+          } else {
+            await card.getByText(`New files: ${scenario.newFiles}.`, { exact: !scenario.upgrades }).waitFor();
+            if (scenario.upgrades) await card.getByText(/Upgrades: 1\./).waitFor();
+            await card.getByRole('button', { name: 'Get it', exact: true }).waitFor();
+            if (theme === 'dark' && note.mediaKind === 'tv') await shoot(card, 'received-partly-held', { margin: 0 });
+          }
+        }
+        await context.close();
+        console.log(`receivedAvailability: ${theme} held movie/episode, missing episode, PROPER upgrade and visible-only acknowledgement passed`);
+      }
+      const firstSeen = (await receiver.api('GET', '/sharing/sends/received')).filter((note) => created.includes(note.id) && note.alreadyHaveIt);
+      for (const note of firstSeen) {
+        await receiver.api('POST', `/sharing/sends/received/${note.id}/seen`);
+        const again = (await receiver.api('GET', '/sharing/sends/received')).find((item) => item.id === note.id);
+        if (again.alreadyHeldSeenAt !== note.alreadyHeldSeenAt) throw new Error('A repeat visit reset the first-seen time');
+      }
+      await open(a, A, '/');
+      const held = cases[0].note;
+      const heldCard = a.locator(`[data-received-id="${held.id}"]`);
+      await heldCard.getByRole('button', { name: 'Put away', exact: true }).click();
+      await heldCard.waitFor({ state: 'detached' });
+      console.log('receivedAvailability: Put away removed the held card; sender remains Told');
+    } finally {
+      for (const id of created) await receiver.api('POST', `/sharing/sends/received/${id}/dismiss`);
+    }
+  },
+
   // Browser-only responses exercise every activity state without changing the kit's jobs.
   // The real sending/receiving check and guide capture use slowedTransfer below.
   async activityStatus({ browser }) {
@@ -1174,7 +1281,7 @@ const b = await signIn(contextB, B);
 try {
   for (const [name, take] of Object.entries(shots)) {
     // These checks need the fixture states described above, so run them by name.
-    if (wanted.includes(name) || (wanted.length === 0 && !['transfers', 'catalogAvailability', 'receivedDetails'].includes(name))) {
+    if (wanted.includes(name) || (wanted.length === 0 && !['transfers', 'catalogAvailability', 'receivedDetails', 'receivedAvailability'].includes(name))) {
       await take({ a, b, browser });
     }
   }

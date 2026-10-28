@@ -366,6 +366,10 @@ export interface ReceivedTitle {
   year: number;
   getItState: GetItState;
   getItMessage?: string;
+  alreadyHaveIt: boolean;
+  newFiles?: number | null;
+  upgradeFiles?: number | null;
+  alreadyHeldSeenAt?: string | null;
   // An item of this node's copy of the friend's catalog for its poster, once it has one.
   posterItemId?: number | null;
   detailsAvailable: boolean;
@@ -458,6 +462,17 @@ export const useDismissReceived = () => {
   return useMutation<unknown, ApiError, number>({
     mutationFn: (id) => send('POST', `${RECEIVED_PATH}/${id}/dismiss`),
     onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: [RECEIVED_PATH] });
+    },
+  });
+};
+
+export const useMarkReceivedSeen = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<unknown, ApiError, number>({
+    mutationFn: (id) => send('POST', `${RECEIVED_PATH}/${id}/seen`),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [RECEIVED_PATH] });
     },
   });

@@ -79,6 +79,12 @@ namespace NzbDrone.Core.Sharing
         public string GetItMessage { get; set; }
         public DateTime? GetItCompletedAt { get; set; }
 
+        // The first time Home visibly showed an already-held notification. Polling does not count.
+        public DateTime? AlreadyHeldSeenAt { get; set; }
+
+        // Recomputed from the current catalogs, never stored with the sender's note.
+        public ReceivedAvailability Availability { get; set; } = new();
+
         public SentParts GetParts()
         {
             return Parts.IsNullOrWhiteSpace() ? new SentParts() : JsonSerializer.Deserialize<SentParts>(Parts) ?? new SentParts();
@@ -91,6 +97,13 @@ namespace NzbDrone.Core.Sharing
         Working,
         Done,
         Failed
+    }
+
+    public class ReceivedAvailability
+    {
+        public bool AlreadyHaveIt { get; set; }
+        public int? NewFiles { get; set; }
+        public int? UpgradeFiles { get; set; }
     }
 
     // The parts of a title that were sent, by the numbers and IDs every node's Arr apps share:
