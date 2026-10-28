@@ -203,11 +203,7 @@ function ReceivedCard({ received }: { received: ReceivedTitle }) {
               </CatalogDetailsButton>
             ) : (
               <span className={styles.cardLink}>
-                {translate(
-                  received.mediaKind === 'music'
-                    ? 'ReceivedDetailsMusicUnavailable'
-                    : 'ReceivedDetailsUnavailable'
-                )}
+                {translate('ReceivedDetailsUnavailable')}
               </span>
             )}
 

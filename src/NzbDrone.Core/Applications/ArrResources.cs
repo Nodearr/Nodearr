@@ -405,6 +405,8 @@ namespace NzbDrone.Core.Applications
     // Lidarr's v1 API. An artist holds albums, and an album's tracks are files of their own.
     public class LidarrArtistResource
     {
+        public string Overview { get; set; }
+        public List<string> Genres { get; set; }
         public int Id { get; set; }
         public string ForeignArtistId { get; set; }
         public string ArtistName { get; set; }
@@ -420,6 +422,8 @@ namespace NzbDrone.Core.Applications
                 ArrId = Id,
                 ForeignArtistId = ForeignArtistId,
                 Name = ArtistName,
+                Overview = Overview,
+                Genres = Genres?.Count > 0 ? string.Join(", ", Genres) : null,
                 SortName = SortName,
                 Path = Path,
                 QualityProfileId = QualityProfileId,
@@ -430,6 +434,8 @@ namespace NzbDrone.Core.Applications
 
     public class LidarrAlbumResource
     {
+        public string Overview { get; set; }
+        public List<string> Genres { get; set; }
         public int Id { get; set; }
         public int ArtistId { get; set; }
 
@@ -450,6 +456,8 @@ namespace NzbDrone.Core.Applications
                 ArrId = Id,
                 ArrArtistId = ArtistId,
                 ForeignAlbumId = ForeignAlbumId,
+                Overview = Overview,
+                Genres = Genres?.Count > 0 ? string.Join(", ", Genres) : null,
                 Title = Title,
                 AlbumType = AlbumType,
                 ReleaseDate = released?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
@@ -470,6 +478,10 @@ namespace NzbDrone.Core.Applications
     // One track of an album's release, and the file Lidarr holds for it, if any.
     public class LidarrTrackResource
     {
+        public string ForeignRecordingId { get; set; }
+        public int AlbumId { get; set; }
+        public int Duration { get; set; }
+        public string TrackNumber { get; set; }
         public int TrackFileId { get; set; }
         public int AbsoluteTrackNumber { get; set; }
         public int MediumNumber { get; set; }

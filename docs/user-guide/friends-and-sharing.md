@@ -165,7 +165,7 @@ Select **Details** or the small poster to read about the title in a card over Ho
 
 ![A received series card marking the two episodes that were sent](images/received-details.png)
 
-The details card has the same **Get it** choices as the peer catalog. Home keeps its own **Get it** as the quick path for exactly what was sent. Music still uses Home's **Get it**; it has no details card yet.
+The details card has the same **Get it** choices as the peer catalog. Home keeps its own **Get it** as the quick path for exactly what was sent. Music sends open artist or album cards too. A partial artist send marks the albums that were sent; songs are informational. Home's **Get it** keeps the exact sent selection.
 
 If you have every file your friend sent and their copies are not upgrades, Home says **You already have it.** and offers no **Get it**. You can still read the details or select **Put away**. The notification leaves Home 24 hours after it first appears on screen in an active Home tab. An unseen notification stays until you see it; revisiting Home does not restart the day.
 

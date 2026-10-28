@@ -1,10 +1,11 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import Alert from 'Components/Alert';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import Modal from 'Components/Modal/Modal';
 import ModalBody from 'Components/Modal/ModalBody';
 import ModalContent from 'Components/Modal/ModalContent';
 import ModalHeader from 'Components/Modal/ModalHeader';
+import { OnScroll } from 'Components/Scroller/Scroller';
 import useApiQuery from 'Helpers/Hooks/useApiQuery';
 import { kinds } from 'Helpers/Props';
 import formatBytes from 'Utilities/Number/formatBytes';
@@ -12,14 +13,31 @@ import translate from 'Utilities/String/translate';
 import CatalogAvailability from '../CatalogAvailability';
 import CatalogGetItButton from '../GetIt/CatalogGetItButton';
 import { CatalogGetItSelection } from '../GetIt/useCatalogGetIt';
+import { MusicEntry } from '../Music/MusicCatalog';
 import Poster from '../Poster';
 import SendFromCatalogButton from '../Sharing/SendFromCatalogButton';
 import useCatalogMissingEpisodes from '../useCatalogMissingEpisodes';
 import { MediaKind, PeerItemStatus, ShareKey } from '../useSharing';
+import catalogStyles from '../Catalog.css';
 import styles from './CatalogDetails.css';
 
 interface CatalogDetails {
-  kind: 'series' | 'episode' | 'movie' | 'film' | 'scene';
+  kind: 'series' | 'episode' | 'movie' | 'film' | 'scene' | 'artist' | 'album';
+  parentPath?: string;
+  foreignArtistId?: string;
+  foreignAlbumId?: string;
+  albumType?: string;
+  albums: MusicEntry[];
+  tracks: {
+    title?: string;
+    number: number;
+    disc: number;
+    duration: number;
+    hasFile: boolean;
+    quality?: string;
+    size: number;
+    localStatus?: PeerItemStatus | null;
+  }[];
   title?: string;
   parentTitle?: string;
   sourceName?: string;
@@ -141,10 +159,88 @@ function SeriesEpisode({
   );
 }
 
+function AlbumOption({
+  album,
+  onSelect,
+}: {
+  album: MusicEntry;
+  onSelect: (path: string) => void;
+}) {
+  const select = useCallback(
+    () => onSelect(album.path),
+    [album.path, onSelect]
+  );
+  const title = album.title ?? '';
+  const label = `${translate('Details')}: ${title}`;
+
+  // As a poster tile in either catalog: the poster opens it, Send or Get it is an icon over the
+  // poster, and the title and year are underneath.
+  return (
+    <div className={catalogStyles.tile}>
+      <div className={catalogStyles.tilePoster}>
+        <button
+          type="button"
+          className={styles.albumLink}
+          aria-label={label}
+          onClick={select}
+        >
+          <Poster
+            src={
+              album.posterPath
+                ? `${window.Nodearr.urlBase}/api/v5${album.posterPath}`
+                : null
+            }
+            title={title}
+            size="tile"
+            isSquare={true}
+          />
+        </button>
+        {album.send ? (
+          <SendFromCatalogButton
+            className={catalogStyles.tileSend}
+            titleKey={album.send}
+            items={[album.send]}
+            label={title}
+          />
+        ) : null}
+        {album.getIt ? (
+          <CatalogGetItButton
+            {...album.getIt}
+            mediaKind="music"
+            title={title}
+            variant="icon"
+            className={catalogStyles.tileSend}
+          />
+        ) : null}
+      </div>
+      <div className={catalogStyles.tileTitle} title={title}>
+        <button type="button" className={styles.title} onClick={select}>
+          {title}
+        </button>
+      </div>
+      {album.year ? (
+        <div className={catalogStyles.tileDetails}>{album.year}</div>
+      ) : null}
+      {album.localStatus ? (
+        <CatalogAvailability status={album.localStatus} />
+      ) : null}
+      {album.wasSent ? (
+        <div className={catalogStyles.tileDetails}>
+          {translate('ReceivedAlbumSent')}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function kindLabel(kind: CatalogDetails['kind']) {
   switch (kind) {
     case 'series':
       return translate('Series');
+    case 'artist':
+      return translate('Artist');
+    case 'album':
+      return translate('Album');
     case 'episode':
       return translate('Episode');
     case 'scene':
@@ -166,7 +262,18 @@ function CatalogDetailsModal({
   onClose: () => void;
 }) {
   const [selectedPath, setSelectedPath] = useState(path);
-  const peer = !path.startsWith('/catalog/local/');
+  const [history, setHistory] = useState<string[]>([]);
+  const positions = useRef<Record<string, number>>({});
+  const peer =
+    !path.startsWith('/catalog/local/') &&
+    !path.startsWith('/catalog/music/local/');
+  const select = useCallback(
+    (next: string) => {
+      setHistory((current) => [...current, selectedPath]);
+      setSelectedPath(next);
+    },
+    [selectedPath]
+  );
   const [showMissing, setShowMissing] = useCatalogMissingEpisodes(peer, true);
   const handleShowMissingChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -174,13 +281,25 @@ function CatalogDetailsModal({
     },
     [setShowMissing]
   );
-  const backToSeries = useCallback(() => setSelectedPath(path), [path]);
+  const backToSeries = useCallback(() => {
+    setSelectedPath(history[history.length - 1] ?? path);
+    setHistory((current) => current.slice(0, -1));
+  }, [history, path]);
   const { data, isLoading, error } = useApiQuery<CatalogDetails>({
     path: selectedPath,
     queryOptions: {
       refetchInterval: peer ? 5000 : false,
     },
   });
+  const scroll = useCallback(
+    ({ scrollTop }: OnScroll) => {
+      if (!isLoading) positions.current[selectedPath] = scrollTop;
+    },
+    [isLoading, selectedPath]
+  );
+  const parent = useCallback(() => {
+    if (data?.parentPath) select(data.parentPath);
+  }, [data?.parentPath, select]);
   const episodeLabel =
     data?.kind === 'episode'
       ? `${data.parentTitle ?? ''} · S${String(data.seasonNumber).padStart(
@@ -209,14 +328,24 @@ function CatalogDetailsModal({
         <ModalHeader>
           {data?.title || episodeLabel || translate('Details')}
         </ModalHeader>
-        <ModalBody>
-          {selectedPath !== path && !options ? (
+        <ModalBody
+          key={selectedPath}
+          scrollTop={
+            isLoading ? undefined : positions.current[selectedPath] ?? 0
+          }
+          onScroll={scroll}
+        >
+          {history.length > 0 && !options ? (
             <button
               type="button"
               className={styles.back}
               onClick={backToSeries}
             >
-              {translate('CatalogDetailsBackToSeries')}
+              {translate(
+                data?.kind === 'artist' || data?.kind === 'album'
+                  ? 'Back'
+                  : 'CatalogDetailsBackToSeries'
+              )}
             </button>
           ) : null}
           {options && options.length > 1 ? (
@@ -226,7 +355,7 @@ function CatalogDetailsModal({
                   key={option.path}
                   option={option}
                   selectedPath={selectedPath}
-                  onSelect={setSelectedPath}
+                  onSelect={select}
                 />
               ))}
             </div>
@@ -237,7 +366,7 @@ function CatalogDetailsModal({
               {translate('CatalogDetailsUnavailable')}
             </Alert>
           ) : null}
-          {data ? (
+          {data && !error ? (
             <div className={styles.card}>
               {data.posterPath ? (
                 <div className={styles.cardPoster}>
@@ -245,6 +374,7 @@ function CatalogDetailsModal({
                     src={`${window.Nodearr.urlBase}/api/v5${data.posterPath}`}
                     title={data.title ?? data.parentTitle ?? ''}
                     size="tile"
+                    isSquare={data.kind === 'artist' || data.kind === 'album'}
                   />
                 </div>
               ) : null}
@@ -274,6 +404,15 @@ function CatalogDetailsModal({
                 ) : null}
                 {episodeLabel ? (
                   <div className={styles.parent}>{episodeLabel}</div>
+                ) : null}
+                {data.parentPath ? (
+                  <button
+                    type="button"
+                    className={styles.back}
+                    onClick={parent}
+                  >
+                    {data.parentTitle}
+                  </button>
                 ) : null}
                 {data.sentSummary ? (
                   <p>
@@ -342,7 +481,79 @@ function CatalogDetailsModal({
                   <Detail label="TVDB" value={data.tvdbId || undefined} />
                   <Detail label="TMDb" value={data.tmdbId || undefined} />
                   <Detail label="IMDb" value={data.imdbId} />
+                  <Detail
+                    label={translate('MusicAlbumType')}
+                    value={data.albumType}
+                  />
+                  <Detail
+                    label={translate('MusicBrainzArtist')}
+                    value={data.foreignArtistId}
+                  />
+                  <Detail
+                    label={translate('MusicBrainzAlbum')}
+                    value={data.foreignAlbumId}
+                  />
                 </dl>
+                {data.kind === 'artist' ? (
+                  <section aria-label={translate('Albums')}>
+                    <h3>{translate('Albums')}</h3>
+                    <div className={styles.albums}>
+                      {data.albums.map((album) => (
+                        <AlbumOption
+                          key={album.key}
+                          album={album}
+                          onSelect={select}
+                        />
+                      ))}
+                    </div>
+                    {data.albums.length === 0 ? (
+                      <p>{translate('MusicNothingHere')}</p>
+                    ) : null}
+                  </section>
+                ) : null}
+                {data.kind === 'album' ? (
+                  <section
+                    className={styles.episodes}
+                    aria-label={translate('Tracks')}
+                  >
+                    <h3>{translate('Tracks')}</h3>
+                    <p>
+                      {translate(peer ? 'MusicPeerTracks' : 'MusicLocalTracks')}
+                    </p>
+                    <ol className={styles.tracks}>
+                      {data.tracks.map((track, index) => (
+                        <li key={`${track.disc}-${track.number}-${index}`}>
+                          <span>
+                            {track.disc > 1 ? `${track.disc}-` : ''}
+                            {track.number || index + 1}.{' '}
+                            {track.title || translate('MusicUnknownTrack')}
+                          </span>
+                          {track.duration > 0 ? (
+                            <span>{`${Math.floor(
+                              track.duration / 60000
+                            )}:${String(
+                              Math.floor(track.duration / 1000) % 60
+                            ).padStart(2, '0')}`}</span>
+                          ) : null}
+                          {track.quality ? <span>{track.quality}</span> : null}
+                          {peer && track.localStatus == null ? (
+                            <span>{translate('MusicTrackStatusUnknown')}</span>
+                          ) : (
+                            <CatalogAvailability
+                              status={
+                                track.localStatus ??
+                                (track.hasFile ? 'have' : 'missing')
+                              }
+                            />
+                          )}
+                        </li>
+                      ))}
+                    </ol>
+                    {data.tracks.length === 0 ? (
+                      <p>{translate('MusicTrackListUnavailable')}</p>
+                    ) : null}
+                  </section>
+                ) : null}
                 {data.kind === 'series' && data.episodes.length > 0 ? (
                   <section className={styles.episodes}>
                     <h3>{translate('Episodes')}</h3>
@@ -385,7 +596,7 @@ function CatalogDetailsModal({
                                   Boolean(data.send) ||
                                   episode.localStatus != null
                                 }
-                                onSelect={setSelectedPath}
+                                onSelect={select}
                               />
                             ))}
                         </ul>

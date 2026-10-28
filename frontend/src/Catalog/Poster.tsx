@@ -20,14 +20,15 @@ export function localPosterSrc(
   return `${window.Nodearr.urlBase}/api/v5/catalog/posters/local/${applicationId}/${subject}/${arrId}`;
 }
 
-// The poster of a whole title on the Sharing page. An artist has none to ask for: Lidarr's
-// pictures are its albums'.
+// The poster of a whole title on the Sharing page, including a Lidarr artist.
 export function titlePosterSrc(title: TitleKey) {
   switch (title.mediaKind) {
     case 'tv':
       return localPosterSrc(title.applicationId, 'series', title.arrId);
     case 'movie':
       return localPosterSrc(title.applicationId, 'movie', title.arrId);
+    case 'music':
+      return localPosterSrc(title.applicationId, 'artist', title.arrId);
     default:
       return null;
   }

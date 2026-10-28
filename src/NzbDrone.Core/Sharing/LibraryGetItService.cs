@@ -291,6 +291,11 @@ namespace NzbDrone.Core.Sharing
                         .Distinct()
                         .ToList();
 
+                    request.UpgradeAlbums = received.Offers
+                        .Where(i => i.MediaKind == MediaKind.Music && i.LocalStatus == PeerItemStatus.Upgrade &&
+                            string.Equals(i.ForeignArtistId, request.ForeignArtistId, StringComparison.OrdinalIgnoreCase) && i.ForeignAlbumId != null)
+                        .Select(i => i.ForeignAlbumId).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+
                     return request.ForeignArtistId != null ? request : null;
 
                 default:

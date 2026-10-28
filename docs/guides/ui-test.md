@@ -290,3 +290,16 @@ Run `node tools/docs-screenshots.mjs branding` against the isolated kit to check
 The script was run solo on Windows 11, from the PowerShell that comes with Windows, and steps 2 to 9 were done in the pages as written. Doing them changed four things before this guide was published: the overview on **Home** now counts what is new to your apps, a help text about invites was out of date, a whole series sent was searched for episode by episode down to ones the friend did not have, and B's Nodearr is opened at `127.0.0.1`.
 
 It has not yet been run with a friend on another network.
+
+## Optional Lidarr artist/album checks (#68)
+
+With the existing two-node kit running, install Docker, Python 3 and FFmpeg on PATH. The music setup adds two isolated Lidarr containers on ports 38686/38687, using bind folders below the kit's `music` directory. Override that directory with `NODEARR_MUSIC_KIT` if needed. It does not delete data or volumes. MusicBrainz/Lidarr metadata and the CC0 source downloads require internet access.
+
+```sh
+node tools/docs-screenshots.mjs prepareMusic
+node tools/docs-screenshots.mjs music
+```
+
+Use the same authentication, `NODEARR_KIT`, Playwright and screenshot-browser environment described above. Run `music` once on the prepared partial library: its Get it checks change B's library, so a second run requires a fresh isolated kit or an intentional reset of only that kit's uncommitted music test data. Unexpected file counts and duplicate cards fail rather than being tolerated.
+
+The setup pins three albums and release IDs from [the fixture manifest](../../tools/music-fixtures/README.md), imports all 36 songs on A and one MP3-128 song on B, and configures B to allow an MP3-320 upgrade. The check covers both themes, both catalog views and levels, nested cards, song availability, artist/album sends, and real artist/album retrieval followed by hashes of all imported songs. Screenshots use original geometric SVG artwork instead of unverified fetched covers. Stop only the music containers with `docker stop nodearr-ui-music-a nodearr-ui-music-b`; their bind data remains available.

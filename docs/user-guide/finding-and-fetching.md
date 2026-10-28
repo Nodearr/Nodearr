@@ -21,7 +21,7 @@ Select **Posters** to switch from the file list to a grid for the selected kind.
 
 **Show missing episodes** starts on in the peer series table and cards. It shows the episodes your app is missing that the friend shares. Turn it off to hide those **Missing** entries; **Have**, **Upgrade** and neutral **Not in library** entries remain. Episodes the friend cannot provide are never added to this list. The table and cards share this choice, and your browser remembers it separately from the local catalog.
 
-Select a series, episode, movie, Whisparr film or scene poster or title to open its details card. For a file with several episodes, choose the episode in the card. The details are what that friend shared from their Arr app: descriptions, genres, network or studio, runtime, dates and file resolution where available. An episode card includes its series genres, network and runtime. Cards read the copy already stored on your node; opening one does not fetch more details from the friend. After updating, older cached catalogs refresh in full at the next successful sync to fill in missing details. The arrow beside a series or season expands its rows. A peer details card offers **Get it** for the title or episode it shows when something is missing or upgradable. Lidarr details cards are planned separately.
+Select a series, episode, movie, Whisparr film or scene poster or title to open its details card. For a file with several episodes, choose the episode in the card. The details are what that friend shared from their Arr app: descriptions, genres, network or studio, runtime, dates and file resolution where available. An episode card includes its series genres, network and runtime. Cards read the copy already stored on your node; opening one does not fetch more details from the friend. After updating, older cached catalogs refresh in full at the next successful sync to fill in missing details. The arrow beside a series or season expands its rows. A peer details card offers **Get it** for the title or episode it shows when something is missing or upgradable. Music artist and album cards are described below.
 
 ![A friend's series details card, with description, genres, runtime and offered episodes](images/peer-catalog-details.png)
 
@@ -53,9 +53,21 @@ Local posters show the number of files you have in green. A file's **Have** stat
 
 ![The local catalog's series posters with green file counts](images/local-catalog-posters.png)
 
+## Music: artists, albums and songs
+
+Choose **Music**, then **Artists** or **Albums**. Both **Table** and **Posters** offer the same entries and actions. Select an artist to see its albums with cover thumbnails, then select an album to see its songs in release order. **Back** returns to the previous card. Cards retain their scroll position while browsing.
+
+![An artist card with its shared album and cover](images/music-artist.png)
+
+Your local album card includes songs Lidarr knows about, marked **Have** or **Missing**. Friends offer complete albums only. Their song rows describe your library: **Have**, **Missing**, **Upgrade** or **Not in library**, following your Lidarr quality profile. Different releases are compared by MusicBrainz recording ID; older friends without those IDs show **Local status unknown** rather than guessing from a song title.
+
+![An album card showing one upgradable song and eight missing songs](images/music-album.png)
+
+Use **Send** for an artist or a complete album from either catalog view or its card. Only complete, shared albums are included. **Get it** on a friend's artist adds and monitors the artist, including future albums, and initially searches the missing or upgradable albums that friend offers. **Get it** on an album selects that album only. Artists already in Lidarr keep their existing root, profiles and monitoring settings. Lidarr retrieves albums, so songs have no individual Send or Get it action.
+
 ## Get it from the catalog
 
-Select **Get it** beside a file, on its details card, or use the download icon over a poster. The icon appears on hover or keyboard focus, and stays visible on touch screens. A series card or poster starts at **Whole series**; an episode card starts at its **Episode file**, and a movie card selects that movie. For TV, choose **Episode file**, **Season** or **Whole series** in the dialog. An episode file can contain several episodes; all of them are selected together. Whole series follows Sonarr's All Episodes choice and leaves specials out; choose season 0 or an episode file for those. For music, the selection is one complete album.
+Select **Get it** beside a file, on its details card, or use the download icon over a poster. The icon appears on hover or keyboard focus, and stays visible on touch screens. A series card or poster starts at **Whole series**; an episode card starts at its **Episode file**, and a movie card selects that movie. For TV, choose **Episode file**, **Season** or **Whole series** in the dialog. An episode file can contain several episodes; all of them are selected together. Whole series follows Sonarr's All Episodes choice and leaves specials out; choose season 0 or an episode file for those. For music, an artist card selects the artist; an album card selects only that album.
 
 ![Get it from a friend's catalog, with the episode file and Sonarr's choices](images/peer-catalog-get-it.png)
 

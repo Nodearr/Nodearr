@@ -19,13 +19,13 @@ export interface LocalCatalogSummary {
 export type LocalCatalogMediaType = 'episode' | 'movie' | 'track';
 export type CatalogKind = 'series' | 'movies' | 'music' | 'scenes';
 
-export type PosterSubject = 'series' | 'movie' | 'album';
+export type PosterSubject = 'series' | 'movie' | 'album' | 'artist';
 
 // A series or movie in the local catalog, for the Posters view.
 export interface LocalCatalogTitle {
   applicationId: number;
   applicationName?: string;
-  mediaType: 'series' | 'movie' | 'album';
+  mediaType: 'series' | 'movie' | 'album' | 'artist';
   kind: CatalogKind;
   isAdult: boolean;
   posterSubject: PosterSubject;

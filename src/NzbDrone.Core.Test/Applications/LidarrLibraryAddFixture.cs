@@ -120,6 +120,24 @@ namespace NzbDrone.Core.Test.Applications
             done.Should().Contain("metadata profile");
         }
 
+        [TestCase(true)]
+        [TestCase(false)]
+        public void whole_artist_search_should_include_held_albums_only_when_offered_as_upgrades(bool upgrade)
+        {
+            _proxy.Setup(p => p.Get<JObject>(It.IsAny<IArrConnection>(), "/artist/3")).Returns(JObject.Parse("{\"id\":3,\"monitored\":true}"));
+            _proxy.Setup(p => p.GetArray(It.IsAny<IArrConnection>(), "/album?artistId=3"))
+                .Returns(JArray.Parse("[{\"id\":31,\"title\":\"Spiderland\",\"foreignAlbumId\":\"" + Spiderland + "\",\"statistics\":{\"trackCount\":6,\"trackFileCount\":6}}]"));
+
+            Subject.AddAndSearch(new LibraryAddRequest
+            {
+                ForeignArtistId = Slint, Whole = true, ExistingArrId = 3,
+                OfferedAlbums = new List<string> { Spiderland }, UpgradeAlbums = upgrade ? new List<string> { Spiderland } : new()
+            });
+
+            Commands("AlbumSearch").Should().HaveCount(upgrade ? 1 : 0);
+            Commands("ArtistSearch").Should().BeEmpty();
+        }
+
         [Test]
         public void a_metadata_profile_lidarr_does_not_have_should_be_refused()
         {

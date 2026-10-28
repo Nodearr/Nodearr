@@ -16,7 +16,8 @@ namespace NzbDrone.Core.PeerCatalog
     {
         File,
         Season,
-        Title
+        Title,
+        Artist
     }
 
     public class CatalogGetItPlan
@@ -126,7 +127,8 @@ namespace NzbDrone.Core.PeerCatalog
                 throw new GetItException("This friend is no longer trusted. Choose a file from a trusted friend");
             }
 
-            if (!Enum.IsDefined(scope) || (scope == CatalogGetItScope.Season && (item.MediaKind != MediaKind.Tv || !seasonNumber.HasValue)))
+            if (!Enum.IsDefined(scope) || (scope == CatalogGetItScope.Season && (item.MediaKind != MediaKind.Tv || !seasonNumber.HasValue)) ||
+                (scope == CatalogGetItScope.Artist && item.MediaKind != MediaKind.Music))
             {
                 throw new GetItException("Choose a file, a season or a whole title to get");
             }
@@ -137,7 +139,10 @@ namespace NzbDrone.Core.PeerCatalog
             }
 
             var key = PeerPosters.KeyOf(item);
-            var offers = _items.All().Where(i => trusted.Contains(i.PeerId) && PeerPosters.KeyOf(i) == key).ToList();
+            var artist = item.MediaKind == MediaKind.Music && scope == CatalogGetItScope.Artist;
+            var offers = _items.All().Where(i => trusted.Contains(i.PeerId) && (artist
+                ? i.PeerId == item.PeerId && i.IsAlbum && item.ForeignArtistId != null && string.Equals(i.ForeignArtistId, item.ForeignArtistId, StringComparison.OrdinalIgnoreCase)
+                : PeerPosters.KeyOf(i) == key)).ToList();
             var selected = offers.Where(i => scope switch
             {
                 CatalogGetItScope.File => i.Id == item.Id,
@@ -174,17 +179,17 @@ namespace NzbDrone.Core.PeerCatalog
             {
                 parts.Episodes = selected.SelectMany(i => i.GetEpisodeNumbers().Select(e => new SeasonEpisode { SeasonNumber = i.SeasonNumber, EpisodeNumber = e })).ToList();
             }
-            else if (item.MediaKind == MediaKind.Music)
+            else if (item.MediaKind == MediaKind.Music && !artist)
             {
                 parts.Albums = selected.Select(i => i.ForeignAlbumId).Where(id => id != null).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
             }
 
             return (new GetItTitle
             {
-                Title = item.MediaKind == MediaKind.Music ? $"{item.Artist} - {item.Title}" : item.Title,
+                Title = artist ? item.Artist : item.MediaKind == MediaKind.Music ? $"{item.Artist} - {item.Title}" : item.Title,
                 MediaKind = item.MediaKind,
                 IsAdult = item.IsAdult,
-                IsWhole = item.MediaKind == MediaKind.Tv && scope == CatalogGetItScope.Title,
+                IsWhole = (item.MediaKind == MediaKind.Tv && scope == CatalogGetItScope.Title) || artist,
                 TvdbId = item.TvdbId,
                 TmdbId = item.TmdbId,
                 ImdbId = item.ImdbId,

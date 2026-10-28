@@ -36,6 +36,7 @@ import CatalogAvailability from '../CatalogAvailability';
 import CatalogKindButton from '../CatalogKindButton';
 import { getAvailableCatalogKinds } from '../catalogKinds';
 import CatalogDetailsButton from '../Details/CatalogDetailsButton';
+import MusicCatalog from '../Music/MusicCatalog';
 import Poster, { localPosterSrc } from '../Poster';
 import SendFromCatalogButton from '../Sharing/SendFromCatalogButton';
 import useCatalogMissingEpisodes from '../useCatalogMissingEpisodes';
@@ -582,7 +583,9 @@ function LocalCatalog() {
     sortKey,
     sortDirection,
     queryParams: kind === 'movies' || kind === 'scenes' ? { kind } : undefined,
-    queryOptions: { enabled: view === 'table' && kind !== 'series' },
+    queryOptions: {
+      enabled: view === 'table' && kind !== 'series' && kind !== 'music',
+    },
   });
 
   const series = usePagedApiQuery<LocalCatalogSeries>({
@@ -600,7 +603,7 @@ function LocalCatalog() {
     page,
     pageSize: POSTER_PAGE_SIZE,
     queryParams: { kind },
-    queryOptions: { enabled: view === 'posters' },
+    queryOptions: { enabled: view === 'posters' && kind !== 'music' },
   });
 
   let pages = files.totalPages;
@@ -774,7 +777,7 @@ function LocalCatalog() {
       <PageContentBody>
         {isSummaryLoading ? <LoadingIndicator /> : null}
 
-        {summaryError || activeError ? (
+        {summaryError || (kind !== 'music' && activeError) ? (
           <Alert kind={kinds.DANGER}>{translate('CatalogLoadError')}</Alert>
         ) : null}
 
@@ -832,6 +835,8 @@ function LocalCatalog() {
           </div>
         ) : null}
 
+        {kind === 'music' ? <MusicCatalog peer={false} view={view} /> : null}
+
         {view === 'table' && kind === 'series' ? (
           <label className={styles.missingFilter}>
             <input
@@ -843,9 +848,12 @@ function LocalCatalog() {
           </label>
         ) : null}
 
-        {view === 'posters' && titles.isLoading ? <LoadingIndicator /> : null}
+        {view === 'posters' && kind !== 'music' && titles.isLoading ? (
+          <LoadingIndicator />
+        ) : null}
 
         {view === 'posters' &&
+        kind !== 'music' &&
         !titles.isLoading &&
         titles.records.length > 0 ? (
           <div>
@@ -872,7 +880,9 @@ function LocalCatalog() {
           </div>
         ) : null}
 
-        {view === 'table' && activeLoading ? <LoadingIndicator /> : null}
+        {view === 'table' && kind !== 'music' && activeLoading ? (
+          <LoadingIndicator />
+        ) : null}
 
         {view === 'table' &&
         kind === 'series' &&
@@ -1087,6 +1097,7 @@ function LocalCatalog() {
 
         {view === 'table' &&
         kind !== 'series' &&
+        kind !== 'music' &&
         !files.isLoading &&
         files.records.length > 0 ? (
           <div>

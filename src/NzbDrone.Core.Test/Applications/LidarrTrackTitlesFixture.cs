@@ -31,11 +31,11 @@ namespace NzbDrone.Core.Test.Applications
             proxy.Setup(p => p.Get<List<LidarrTrackResource>>(It.IsAny<IArrConnection>(), "/track?artistId=7"))
                  .Returns(new List<LidarrTrackResource>
                  {
-                     new() { TrackFileId = 701, AbsoluteTrackNumber = 1, MediumNumber = 1, Title = "Breadcrumb Trail" },
-                     new() { TrackFileId = 702, AbsoluteTrackNumber = 2, MediumNumber = 1, Title = "Nosferatu Man" },
+                     new() { AlbumId = 70, TrackFileId = 701, AbsoluteTrackNumber = 1, TrackNumber = "1", MediumNumber = 1, Title = "Breadcrumb Trail", Duration = 351000 },
+                     new() { AlbumId = 70, TrackFileId = 702, AbsoluteTrackNumber = 2, TrackNumber = "2", MediumNumber = 1, Title = "Nosferatu Man" },
 
                      // A track Lidarr has no file for.
-                     new() { TrackFileId = 0, AbsoluteTrackNumber = 3, MediumNumber = 1, Title = "Don, Aman" }
+                     new() { AlbumId = 70, TrackFileId = 0, AbsoluteTrackNumber = 3, MediumNumber = 1, Title = "Don, Aman" }
                  });
             proxy.Setup(p => p.Get<List<LidarrTrackFileResource>>(It.IsAny<IArrConnection>(), "/trackfile?artistId=7"))
                  .Returns(new List<LidarrTrackFileResource>
@@ -46,6 +46,17 @@ namespace NzbDrone.Core.Test.Applications
                      // A file Lidarr has not matched to a track.
                      new() { Id = 709, ArtistId = 7, AlbumId = 70, Path = "/music/Slint/Spiderland (1991)/extra.flac", Size = 1 }
                  });
+        }
+
+        [Test]
+        public void the_selected_album_should_keep_missing_tracks_and_durations_without_creating_files()
+        {
+            var catalog = Subject.FetchTitle(7);
+            var tracks = catalog.Albums.Single().GetTracks();
+            tracks.Select(t => t.Title).Should().Equal("Breadcrumb Trail", "Nosferatu Man", "Don, Aman");
+            tracks.First().Duration.Should().Be(351000);
+            tracks.Last().TrackFileId.Should().Be(0);
+            catalog.TrackFiles.Should().HaveCount(3);
         }
 
         [Test]

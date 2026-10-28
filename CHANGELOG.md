@@ -6,6 +6,8 @@ What changed in each release, newest first. Each item links to the decision reco
 
 ### Added
 
+- Lidarr catalogs browse artists and albums in both table and poster views. Artist cards show album covers; album cards show ordered songs, durations and availability. Send and Get it work for an artist or a complete album, including received sends on Home; songs are informational ([#68](https://github.com/Nodearr/Nodearr/issues/68)).
+
 - Received sends on Home open their details card from **Details** or the small poster, without leaving Home. A single episode opens directly; partial series sends mark the selected episodes. Withdrawn offers show an explanation instead ([#105](https://github.com/Nodearr/Nodearr/issues/105)).
 
 - Peer catalog details cards offer **Get it** for series, episode files and movies that are missing or upgradable. Poster tiles use a download icon over the poster, matching local Send icons and remaining visible on touch screens ([#93](https://github.com/Nodearr/Nodearr/issues/93), [#94](https://github.com/Nodearr/Nodearr/issues/94)).

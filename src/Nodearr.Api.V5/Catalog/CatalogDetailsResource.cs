@@ -35,6 +35,12 @@ public class CatalogDetailsResource
     public PeerItemStatus? LocalStatus { get; set; }
     public bool? HasFile { get; set; }
     public long Size { get; set; }
+    public string? ParentPath { get; set; }
+    public string? ForeignArtistId { get; set; }
+    public string? ForeignAlbumId { get; set; }
+    public string? AlbumType { get; set; }
+    public List<MusicCatalogEntryResource> Albums { get; set; } = new();
+    public List<CatalogDetailsTrackResource> Tracks { get; set; } = new();
 }
 
 public class CatalogDetailsEpisodeResource
@@ -54,6 +60,19 @@ public class CatalogDetailsSendResource
     public int ApplicationId { get; set; }
     public int ArrId { get; set; }
     public int? EpisodeArrId { get; set; }
+    public int? AlbumArrId { get; set; }
+}
+
+public class CatalogDetailsTrackResource
+{
+    public PeerItemStatus? LocalStatus { get; set; }
+    public string? Title { get; set; }
+    public int Number { get; set; }
+    public int Disc { get; set; }
+    public int Duration { get; set; }
+    public bool HasFile { get; set; }
+    public string? Quality { get; set; }
+    public long Size { get; set; }
 }
 
 public class CatalogDetailsGetItResource
