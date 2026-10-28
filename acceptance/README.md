@@ -132,7 +132,9 @@ cargo build --release --locked --manifest-path /tmp/v042/transport/Cargo.toml
 pwsh acceptance/Run-S7Transfers.ps1 -OlderNode B -OlderTransportBin /tmp/v042/transport/target/release/nodearr-transport
 ```
 
-`-OlderNode B` makes B an older receiver: with one upload at a time on A, its second request still waits its turn at A, B is never told so and shows nothing as waiting, it is sent once the first is done, and both are imported. `-OlderNode A` makes A an older sender: B fetches from it as before. The upload settings the earlier sidecar does not know are fixed at 0 on that node, and the total upload limit check is skipped when A is the older one. Every other check runs as usual.
+For a sidecar from before 0.5.0, which has no upload line, `-OlderNode B` makes B an older receiver: with one upload at a time on A, its second request still waits its turn at A, B is never told so and shows nothing as waiting, it is sent once the first is done, and both are imported. `-OlderNode A` makes A an older sender: B fetches from it as before. The upload settings the earlier sidecar does not know are fixed at 0 on that node, and the total upload limit check is skipped when A is the older one. Every other check runs as usual.
+
+A sidecar from 0.5.0 on knows the upload line. The script sees `--max-uploads` in its `--help` and runs every check as it does for two current nodes, so the older node is tested on the same transfers, limits and queue.
 
 ### Trying it by hand
 

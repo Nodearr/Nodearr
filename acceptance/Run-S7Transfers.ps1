@@ -55,8 +55,9 @@
 
 .PARAMETER OlderTransportBin
     A sidecar from an earlier release, for one node to run with -OlderNode. The transfer protocol
-    is the sidecar's, so that node speaks to the other as a node on that release would. Its upload
-    settings the earlier sidecar does not know are fixed at 0 in the environment.
+    is the sidecar's, so that node speaks to the other as a node on that release would. A sidecar
+    from before 0.5.0 has no upload line: its upload settings are fixed at 0 in the environment,
+    and its node gets the older checks. A later one gets the checks a current one does.
 
 .PARAMETER OlderNode
     A or B: the node that runs -OlderTransportBin. A is then an older sender, B an older receiver.
@@ -78,6 +79,9 @@ param(
 )
 
 if ($OlderNode -and -not (Test-Path $OlderTransportBin)) { throw "-OlderNode $OlderNode needs -OlderTransportBin, the earlier release's sidecar" }
+# Uploads wait their turn from 0.5.0 on, which brought --max-uploads and --total-upload-limit-kbps.
+# An older sidecar with them is checked as a current one is; one from before has no line.
+$olderQueues = $OlderNode -and ((& $OlderTransportBin --help) -join "`n") -match '--max-uploads'
 
 $ErrorActionPreference = 'Stop'
 # Version 1 only: the APIs leave null properties out of their JSON, and reading one must give $null.
@@ -193,10 +197,12 @@ function Start-Node {
     $env:Nodearr__Transport__BinaryPath = $TransportBin
     Remove-Item Env:Nodearr__Transport__MaxUploads, Env:Nodearr__Transport__TotalUploadLimitKbps -ErrorAction SilentlyContinue
     if ($Name -eq $OlderNode) {
-        # Left at 0, Nodearr does not pass the earlier sidecar the arguments it does not know.
         $env:Nodearr__Transport__BinaryPath = $OlderTransportBin
-        $env:Nodearr__Transport__MaxUploads = 0
-        $env:Nodearr__Transport__TotalUploadLimitKbps = 0
+        if (-not $olderQueues) {
+            # Left at 0, Nodearr does not pass the earlier sidecar the arguments it does not know.
+            $env:Nodearr__Transport__MaxUploads = 0
+            $env:Nodearr__Transport__TotalUploadLimitKbps = 0
+        }
     }
     $env:Nodearr__Transport__Relay = 'disabled'
     $env:Nodearr__Transport__DisablePortMapping = 'true'
@@ -670,9 +676,9 @@ try {
     # --- 3b2. A total upload limit on the sending node ---------------------------------------------
 
     # A is set to send at most half its per-upload limit in all, and B fetches two episodes from it
-    # at once. Together they are held to the total, and each gets a fair part of it. An older
-    # sender has no total limit to hold to.
-    if ($OlderNode -eq 'A') { Write-Host 'Skipped: a total upload limit, which the older sender on A does not have' -ForegroundColor Yellow }
+    # at once. Together they are held to the total, and each gets a fair part of it. A sender from
+    # before 0.5.0 has no total limit to hold to.
+    if ($OlderNode -eq 'A' -and -not $olderQueues) { Write-Host 'Skipped: a total upload limit, which the older sender on A does not have' -ForegroundColor Yellow }
     else {
     $totalLimit = [math]::Max(64, [math]::Floor($UploadLimitKbps / 2))
     $settingsA = Invoke-Node A GET '/settings/node'
@@ -830,8 +836,9 @@ try {
 
     # An older receiver cannot be told it waits, but it waits all the same: the limit is A's, and
     # leaving out the word that it understands queueing does not get round it. Its download simply
-    # looks like one still connecting. An older sender has no line, and sends both at once.
-    if ($OlderNode) {
+    # looks like one still connecting. An older sender has no line, and sends both at once. Both
+    # mean a sidecar from before 0.5.0; a later one queues, and takes the checks a current one does.
+    if ($OlderNode -and -not $olderQueues) {
         if ($OlderNode -eq 'B') {
             $settingsA = Invoke-Node A GET '/settings/node'
             $settingsA.maxUploads = 1
