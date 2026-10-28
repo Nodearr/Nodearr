@@ -17,6 +17,7 @@ interface CssExports {
   'poster': string;
   'selected': string;
   'send': string;
+  'sent': string;
   'title': string;
 }
 export const cssExports: CssExports;

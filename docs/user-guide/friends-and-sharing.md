@@ -159,7 +159,13 @@ Removing a send from **Sent** removes the notification record, but its share lis
 
 When a friend sends you a title, a card such as **Sam sent you Felix The Cat - S1919E01** appears on **Home**.
 
-![Home with Sam's send of a Felix the Cat short at the top, its choices for Sonarr filled in, and Get it](images/received.png)
+![A received movie on Home, with Details, choices for Radarr and Get it](images/received.png)
+
+Select **Details** or the small poster to read about the title in a card over Home. Closing it returns to the same place on Home. A whole-series send opens the series card; a single episode opens that episode. For selected seasons or several episodes, the series card marks the sent episodes **Sent to you**. Those episodes stay visible even when **Show missing episodes** is off.
+
+![A received series card marking the two episodes that were sent](images/received-details.png)
+
+The details card has the same **Get it** choices as the peer catalog. Home keeps its own **Get it** as the quick path for exactly what was sent. Music still uses Home's **Get it**; it has no details card yet.
 
 To request the title:
 
@@ -181,7 +187,7 @@ After **Get it** succeeds, the card stays until Nodearr's local catalog shows yo
 
 **Get it** cannot add titles to Whisparr v2, or add a scene originating in a friend's Whisparr v2 to Whisparr v3. Add those titles in Whisparr yourself, then search there to find your friend's copy.
 
-Select **See it in their catalog** to open **Catalog > Peer Catalog**, or **Put away** to dismiss the card.
+If the friend's catalog has not arrived, or the friend no longer shares the sent files, Home explains that details are unavailable. Opening details checks the sender's current cached offer, without contacting their Arr app. Ending trust removes that friend's received cards. Select **Put away** to dismiss a card yourself.
 
 ### Hashing
 

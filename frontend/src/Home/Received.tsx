@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react';
+import CatalogDetailsButton from 'Catalog/Details/CatalogDetailsButton';
 import GetItForm from 'Catalog/GetIt/GetItForm';
 import {
   GetItOptions,
@@ -10,7 +11,6 @@ import {
 } from 'Catalog/useSharing';
 import Icon from 'Components/Icon';
 import Button from 'Components/Link/Button';
-import Link from 'Components/Link/Link';
 import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import { icons, kinds } from 'Helpers/Props';
 import { getErrorMessage } from 'Nodes/useNodes';
@@ -93,14 +93,33 @@ function ReceivedCard({ received }: { received: ReceivedTitle }) {
 
   return (
     <div className={`${styles.received} ${styles.receivedWithPoster}`}>
-      <Poster
-        src={
-          received.posterItemId ? peerPosterSrc(received.posterItemId) : null
-        }
-        title={received.title ?? ''}
-        size="thumb"
-        isSquare={received.mediaKind === 'music'}
-      />
+      {received.detailsAvailable ? (
+        <CatalogDetailsButton
+          path={`/sharing/sends/received/${received.id}/details`}
+          label={what}
+          variant="poster"
+        >
+          <Poster
+            src={
+              received.posterItemId
+                ? peerPosterSrc(received.posterItemId)
+                : null
+            }
+            title={received.title ?? ''}
+            size="thumb"
+            isSquare={received.mediaKind === 'music'}
+          />
+        </CatalogDetailsButton>
+      ) : (
+        <Poster
+          src={
+            received.posterItemId ? peerPosterSrc(received.posterItemId) : null
+          }
+          title={received.title ?? ''}
+          size="thumb"
+          isSquare={received.mediaKind === 'music'}
+        />
+      )}
 
       <div className={styles.receivedBody}>
         <div className={styles.receivedHeader}>
@@ -113,9 +132,23 @@ function ReceivedCard({ received }: { received: ReceivedTitle }) {
           </div>
 
           <div className={styles.receivedButtons}>
-            <Link className={styles.cardLink} to="/catalog/peers">
-              {translate('ReceivedSeeIt')}
-            </Link>
+            {received.detailsAvailable ? (
+              <CatalogDetailsButton
+                path={`/sharing/sends/received/${received.id}/details`}
+                label={what}
+                variant="title"
+              >
+                {translate('Details')}
+              </CatalogDetailsButton>
+            ) : (
+              <span className={styles.cardLink}>
+                {translate(
+                  received.mediaKind === 'music'
+                    ? 'ReceivedDetailsMusicUnavailable'
+                    : 'ReceivedDetailsUnavailable'
+                )}
+              </span>
+            )}
 
             <Button isDisabled={isPending} onPress={handleDismissPress}>
               {translate('ReceivedPutAway')}

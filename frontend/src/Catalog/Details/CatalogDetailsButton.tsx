@@ -23,6 +23,7 @@ interface CatalogDetails {
   title?: string;
   parentTitle?: string;
   sourceName?: string;
+  sentSummary?: string;
   posterPath?: string;
   year: number;
   overview?: string;
@@ -48,6 +49,7 @@ interface CatalogDetails {
     title?: string;
     path: string;
     hasFile: boolean;
+    wasSent?: boolean;
     localStatus?: PeerItemStatus | null;
   }[];
   send?: ShareKey;
@@ -127,6 +129,9 @@ function SeriesEpisode({
         ).padStart(2, '0')}`}
         {episode.title ? ` · ${episode.title}` : ''}
       </button>
+      {episode.wasSent ? (
+        <span className={styles.sent}>{translate('ReceivedEpisodeSent')}</span>
+      ) : null}
       {showAvailability ? (
         <CatalogAvailability
           status={episode.localStatus ?? (episode.hasFile ? 'have' : 'missing')}
@@ -161,7 +166,7 @@ function CatalogDetailsModal({
   onClose: () => void;
 }) {
   const [selectedPath, setSelectedPath] = useState(path);
-  const peer = path.startsWith('/catalog/peers/');
+  const peer = !path.startsWith('/catalog/local/');
   const [showMissing, setShowMissing] = useCatalogMissingEpisodes(peer, true);
   const handleShowMissingChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -173,9 +178,7 @@ function CatalogDetailsModal({
   const { data, isLoading, error } = useApiQuery<CatalogDetails>({
     path: selectedPath,
     queryOptions: {
-      refetchInterval: selectedPath.startsWith('/catalog/peers/')
-        ? 5000
-        : false,
+      refetchInterval: peer ? 5000 : false,
     },
   });
   const episodeLabel =
@@ -188,6 +191,7 @@ function CatalogDetailsModal({
   const episodes = (data?.episodes ?? []).filter(
     (episode) =>
       showMissing ||
+      episode.wasSent ||
       (peer ? episode.localStatus !== 'missing' : hasLocalFile(episode))
   );
   const seasons = Array.from(
@@ -270,6 +274,16 @@ function CatalogDetailsModal({
                 ) : null}
                 {episodeLabel ? (
                   <div className={styles.parent}>{episodeLabel}</div>
+                ) : null}
+                {data.sentSummary ? (
+                  <p>
+                    {translate('ReceivedDetailsSelection', {
+                      selection: data.sentSummary,
+                    })}
+                    {data.episodes.some((episode) => episode.wasSent)
+                      ? ` ${translate('ReceivedDetailsEpisodes')}`
+                      : null}
+                  </p>
                 ) : null}
                 {data.overview ? (
                   <p className={styles.overview}>{data.overview}</p>

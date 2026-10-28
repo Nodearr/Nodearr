@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using Nodearr.Api.V5.Catalog;
 using Nodearr.Http;
 using Nodearr.Http.REST;
 using NzbDrone.Core.Datastore.Events;
@@ -110,6 +111,7 @@ public class ReceivedTitleResource : RestResource
     // An item of this node's copy of the friend's catalog that is one of the files sent, whose
     // poster is the title's: GET catalog/posters/peer/{posterItemId}. Null until the catalog has one.
     public int? PosterItemId { get; set; }
+    public bool DetailsAvailable { get; set; }
 
     public static ReceivedTitleResource FromModel(ReceivedTitle received, Dictionary<int, Peer> peers)
     {
@@ -229,9 +231,11 @@ public class SendController : Controller, IHandle<SentTitlesChangedEvent>, IHand
     private readonly IGetItService _getItService;
     private readonly IBroadcastSignalRMessage _broadcaster;
     private readonly IPeerCatalogService _peerCatalog;
+    private readonly ILocalHoldingsFactory _holdings;
 
-    public SendController(ISendService sendService, IReceivedService receivedService, IPeerService peerService, IGetItService getItService, IBroadcastSignalRMessage broadcaster, IPeerCatalogService peerCatalog)
+    public SendController(ISendService sendService, IReceivedService receivedService, IPeerService peerService, IGetItService getItService, IBroadcastSignalRMessage broadcaster, IPeerCatalogService peerCatalog, ILocalHoldingsFactory holdings)
     {
+        _holdings = holdings;
         _getItService = getItService;
         _peerCatalog = peerCatalog;
         _sendService = sendService;
@@ -313,9 +317,64 @@ public class SendController : Controller, IHandle<SentTitlesChangedEvent>, IHand
             var resource = ReceivedTitleResource.FromModel(r, peers);
 
             resource.PosterItemId = _peerCatalog.FindItemId(r.PeerId, resource.OfferIds);
+            var item = resource.PosterItemId.HasValue ? _peerCatalog.GetItem(resource.PosterItemId.Value) : null;
+            resource.DetailsAvailable = peers.GetValueOrDefault(r.PeerId)?.State == PeerState.Trusted &&
+                item != null && item.PeerId == r.PeerId && item.MediaKind == r.MediaKind && item.MediaKind != MediaKind.Music;
 
             return resource;
         }));
+    }
+
+    // Resolve the note against the current sender's offer, never another friend's copy.
+    [HttpGet("received/{id:int}/details")]
+    [Produces("application/json")]
+    public Results<Ok<CatalogDetailsResource>, NotFound> GetReceivedDetails(int id)
+    {
+        var received = _receivedService.Waiting().FirstOrDefault(r => r.Id == id);
+        if (received == null || Peers().GetValueOrDefault(received.PeerId)?.State != PeerState.Trusted)
+        {
+            return TypedResults.NotFound();
+        }
+
+        var offerIds = (received.OfferIds ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries);
+        var itemId = _peerCatalog.FindItemId(received.PeerId, offerIds);
+        var item = itemId.HasValue ? _peerCatalog.GetItem(itemId.Value) : null;
+        if (item == null || item.PeerId != received.PeerId || !offerIds.Contains(item.RemoteId) ||
+            item.MediaKind != received.MediaKind || item.MediaKind == MediaKind.Music)
+        {
+            return TypedResults.NotFound();
+        }
+
+        var kind = item.MediaKind == MediaKind.Tv ? "series" : item.IsScene ? "scene" : item.IsAdult ? "film" : "movie";
+        var parts = received.GetParts();
+        int? episodeIndex = null;
+        if (kind == "series" && !received.IsWhole && parts.Seasons.Count == 0 && parts.Episodes.Count == 1)
+        {
+            var episode = parts.Episodes[0];
+            var index = item.GetEpisodeNumbers().IndexOf(episode.EpisodeNumber);
+            if (item.SeasonNumber != episode.SeasonNumber || index < 0)
+            {
+                return TypedResults.NotFound();
+            }
+
+            kind = "episode";
+            episodeIndex = index;
+        }
+
+        var resource = PeerCatalogDetails.Get(_peerCatalog, _holdings, kind, item.Id, episodeIndex);
+        if (resource == null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        resource.SentSummary = received.Summary;
+        foreach (var episode in resource.Episodes)
+        {
+            episode.WasSent = !received.IsWhole && (parts.Seasons.Contains(episode.SeasonNumber) ||
+                parts.Episodes.Any(p => p.SeasonNumber == episode.SeasonNumber && p.EpisodeNumber == episode.EpisodeNumber));
+        }
+
+        return TypedResults.Ok(resource);
     }
 
     [HttpPost("received/{id:int}/dismiss")]

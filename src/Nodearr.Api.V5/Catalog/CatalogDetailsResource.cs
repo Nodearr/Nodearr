@@ -9,6 +9,7 @@ public class CatalogDetailsResource
     public string? Title { get; set; }
     public string? ParentTitle { get; set; }
     public string? SourceName { get; set; }
+    public string? SentSummary { get; set; }
     public string? PosterPath { get; set; }
     public int Year { get; set; }
     public string? Overview { get; set; }
@@ -43,6 +44,7 @@ public class CatalogDetailsEpisodeResource
     public string? Title { get; set; }
     public string Path { get; set; } = string.Empty;
     public bool HasFile { get; set; }
+    public bool WasSent { get; set; }
     public PeerItemStatus? LocalStatus { get; set; }
 }
 
