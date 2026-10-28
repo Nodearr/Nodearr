@@ -378,8 +378,22 @@ try {
     Assert-That 'Sonarr is registered on its own application feed' (
         $bSonarrApp.Count -eq 1 -and $feedUrl -eq "http://host.docker.internal:$($nodes.B.Port)/newznab/$($bSonarrApp[0].id)"
     ) @{ feed = $feedUrl; applicationId = $bSonarrApp[0].id }
-    $rssIndexer.enableRss = $true
-    Invoke-Arr sonarrB PUT "/indexer/$($rssIndexer.id)" $rssIndexer | Out-Null
+    Assert-That 'A new library app defaults to automatic fetching on, with upgrades off' (
+        ($bSonarrApp[0].fields | Where-Object name -eq 'fetchNewFilesAutomatically').value -eq $true -and
+        ($bSonarrApp[0].fields | Where-Object name -eq 'includeAutomaticUpgrades').value -eq $false -and $rssIndexer.enableRss
+    ) @{ rss = $rssIndexer.enableRss }
+    foreach ($enabled in @($false, $true)) {
+        $appSettings = Invoke-Node B GET "/applications/$($bSonarrApp[0].id)"
+        ($appSettings.fields | Where-Object name -eq 'fetchNewFilesAutomatically').value = $enabled
+        Invoke-Node B PUT "/applications/$($appSettings.id)" $appSettings | Out-Null
+        Invoke-NodeCommand B @{ name = 'ApplicationIndexerSync'; forceSync = $true }
+        $indexers = @(Invoke-Arr sonarrB GET '/indexer' | Where-Object name -eq 'Nodearr')
+        $saved = Invoke-Node B GET "/applications/$($appSettings.id)"
+        Assert-That "Automatic fetching set to $enabled in Nodearr sets Sonarr RSS to $enabled" (
+            $indexers.Count -eq 1 -and $indexers[0].enableRss -eq $enabled -and
+            ($saved.fields | Where-Object name -eq 'fetchNewFilesAutomatically').value -eq $enabled
+        ) @{ enabled = $enabled; rss = $indexers[0].enableRss; indexerCount = $indexers.Count }
+    }
     $rss = Invoke-Arr sonarrB POST '/command' @{ name = 'RssSync' }
     Wait-Until -What 'Sonarr RSS sync after pairing' -Condition {
         $command = Invoke-Arr sonarrB GET "/command/$($rss.id)"
@@ -413,8 +427,10 @@ try {
     ) @{ title = $rssGrabs[0].sourceTitle; imported = $rssFile.path; hashMatches = ("$rssLanded" -match $tvHash) }
 
     # Restore the original library for the remaining transfer scenarios.
-    $rssIndexer.enableRss = $false
-    Invoke-Arr sonarrB PUT "/indexer/$($rssIndexer.id)" $rssIndexer | Out-Null
+    $appSettings = Invoke-Node B GET "/applications/$($bSonarrApp[0].id)"
+    ($appSettings.fields | Where-Object name -eq 'fetchNewFilesAutomatically').value = $false
+    Invoke-Node B PUT "/applications/$($appSettings.id)" $appSettings | Out-Null
+    Invoke-NodeCommand B @{ name = 'ApplicationIndexerSync'; forceSync = $true }
     Wait-Until -What 'the RSS download to be cleared' -TimeoutSec 60 -Condition { (Get-Transfers).Count -eq 0 } | Out-Null
     $senderEpisode = @(Invoke-Arr sonarr GET "/episode?seriesId=$($series.sonarr.id)" | Where-Object { $_.seasonNumber -eq 1 -and $_.episodeNumber -eq 4 })
     if ($senderEpisode.Count -ne 1 -or -not $senderEpisode[0].episodeFileId) { throw 'Expected exactly one source episode for the RSS arrival' }

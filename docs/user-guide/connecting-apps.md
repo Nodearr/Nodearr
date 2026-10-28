@@ -118,12 +118,25 @@ Use your Compose service names. Both containers must be on the same network for 
 For Sonarr, Radarr, Whisparr and Lidarr, Nodearr creates three entries named **Nodearr** in the Arr app:
 
 - A download client under **Settings > Download Clients**, using the [SABnzbd](https://sabnzbd.org/) interface and the app's download category. The app removes completed downloads from Nodearr after importing them.
-- An indexer under **Settings > Indexers**, using Newznab and assigned to that download client. Automatic and interactive search are on. RSS is off by default, so the app discovers your friends' files when it searches.
+- An indexer under **Settings > Indexers**, using Newznab and assigned to that download client. Automatic and interactive search are on. For new connections RSS is also on, so the app can fetch new arrivals it is missing from your friends.
 - A webhook under **Settings > Connect**, which notifies Nodearr when the app imports, upgrades, renames or deletes files.
 
 Prowlarr receives only an indexer; see [Prowlarr](#prowlarr).
 
 Deleting a connection in Nodearr removes its imported catalog and tries to remove Nodearr's entries from the Arr app. If the app is offline, remove those entries yourself when it is available. Nodearr keeps the entries if another connection still points to that same app.
+
+### Automatic fetching
+
+In Nodearr, go to **Settings > Apps**, open a library app and choose:
+
+- **Fetch new files from friends automatically**: on for new connections. The app uses RSS to fetch files that arrive after the friend's initial shared catalog and that it monitors and is missing. Automatic downloads use your friends' upload capacity.
+- **Including upgrades**: off by default, and shown when automatic fetching is on. Turn it on to also fetch upgrades allowed by the app's quality profile and Propers and Repacks setting. Replacing existing files uses more of your friends' upload capacity.
+
+Select **Save**. Nodearr applies the choice to the app's **Enable RSS** switch when it syncs the registration, including with **Add Only**. Set this in Nodearr; a later sync replaces changes made directly to that switch in the Arr app.
+
+Existing connections keep their previous RSS choice. After upgrading, Nodearr reads the current switch at the next successful registration sync and saves it as the automatic-fetch setting. Upgrades start off. Prowlarr has neither control because it has no library.
+
+Pairing does not automatically fetch a friend's existing library. Search for those files in the Arr app, or use **Get it** in Nodearr. See [How your Arr apps find it](finding-and-fetching.md#how-your-arr-apps-find-it) for the feed's filtering and connection checks.
 
 ## The two folders that have to line up
 

@@ -380,12 +380,23 @@ const shots = {
   async apps({ a }) {
     await open(a, A, '/settings/apps');
     await shoot(a, 'settings-apps');
+    const beforeSize = a.viewportSize();
+    await a.setViewportSize({ width: beforeSize.width, height: 1200 });
     // The card's whole face is a button laid over its title.
     await a.getByText('Sonarr', { exact: true }).first().click({ force: true });
     await a.waitForSelector('[role="dialog"], .modal, [class*="Modal"]');
     await a.waitForTimeout(600);
-    await shoot(a, 'settings-apps-sonarr');
+    const automatic = a.locator('input[name="fetchNewFilesAutomatically"]');
+    const upgrades = a.locator('input[name="includeAutomaticUpgrades"]');
+    const enabled = await automatic.isChecked();
+    await upgrades.waitFor({ state: enabled ? 'visible' : 'hidden' });
+    await automatic.locator('..').click();
+    await upgrades.waitFor({ state: enabled ? 'hidden' : 'visible' });
+    await automatic.locator('..').click();
+    await upgrades.waitFor({ state: enabled ? 'visible' : 'hidden' });
+    await shoot(a.getByRole('dialog'), 'settings-apps-sonarr');
     await a.keyboard.press('Escape');
+    await a.setViewportSize(beforeSize);
   },
 
   // The invite is deleted straight after, so the code in the picture leads nowhere.

@@ -6,6 +6,8 @@ What changed in each release, newest first. Each item links to the decision reco
 
 ### Changed
 
+- Each library app has **Fetch new files from friends automatically** and **Including upgrades** in Nodearr. New connections fetch missing arrivals automatically, with upgrades off. Existing connections import their current RSS choice at the next successful sync; Nodearr then manages the RSS switch. Prowlarr stays unchanged ([#74](https://github.com/Nodearr/Nodearr/issues/74)).
+
 - Each connected library app has its own RSS feed, listing later arrivals it is missing or could upgrade from friends whose last connection check found a direct route, or who have not yet been checked. Pairing no longer exposes the initial shared library through that feed. Searches and the legacy feed used by Prowlarr remain unchanged. RSS stays off by default until the automatic-fetching settings land ([#73](https://github.com/Nodearr/Nodearr/issues/73), part of [#71](https://github.com/Nodearr/Nodearr/issues/71)).
 
 ## 0.4.2 (pre-release)

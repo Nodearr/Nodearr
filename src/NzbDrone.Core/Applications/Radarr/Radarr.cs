@@ -9,8 +9,8 @@ namespace NzbDrone.Core.Applications.Radarr
 {
     public class Radarr : ApplicationBase<RadarrSettings>, ILibraryAdder, IPosterSource
     {
-        public Radarr(IArrV3Proxy proxy, IConfigFileProvider configFileProvider, Logger logger)
-            : base(proxy, configFileProvider, logger)
+        public Radarr(IArrV3Proxy proxy, IConfigFileProvider configFileProvider, Logger logger, IApplicationsRepository applicationsRepository)
+            : base(proxy, configFileProvider, logger, applicationsRepository)
         {
         }
 

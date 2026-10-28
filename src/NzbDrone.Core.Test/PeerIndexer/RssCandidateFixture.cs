@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using FluentAssertions;
 using NUnit.Framework;
 using NzbDrone.Core.Applications;
+using NzbDrone.Core.Applications.Sonarr;
 using NzbDrone.Core.Catalog;
 using NzbDrone.Core.Nodes;
 using NzbDrone.Core.Nodes.Transport;
@@ -25,6 +26,12 @@ namespace NzbDrone.Core.Test.PeerIndexer
             Mocker.SetConstant<IPeerRepository>(Mocker.Resolve<PeerRepository>());
             Mocker.SetConstant<IPeerCatalogRepository>(Mocker.Resolve<PeerCatalogRepository>());
             Mocker.SetConstant<ILocalHoldingsFactory>(Mocker.Resolve<LocalHoldingsFactory>());
+            Mocker.GetMock<IApplicationFactory>().Setup(f => f.All()).Returns(new List<ApplicationDefinition>
+            {
+                new() { Id = 1, Settings = new SonarrSettings { IncludeAutomaticUpgrades = true } },
+                new() { Id = 2, Settings = new SonarrSettings { IncludeAutomaticUpgrades = true } },
+                new() { Id = 3, Settings = new SonarrSettings { IncludeAutomaticUpgrades = true } }
+            });
             _peer = Mocker.Resolve<IPeerRepository>().Insert(new Peer
             {
                 NodeId = "alice", Name = "Alice", State = PeerState.Trusted,
@@ -96,6 +103,22 @@ namespace NzbDrone.Core.Test.PeerIndexer
         {
             Offer(1, 1080);
             Subject.Search(Browse(upgrades: upgrades)).Items.Should().HaveCount(count);
+        }
+
+        [Test]
+        public void new_apps_should_only_see_missing_items_until_upgrades_are_enabled()
+        {
+            var settings = new SonarrSettings();
+            Mocker.GetMock<IApplicationFactory>().Setup(f => f.All()).Returns(new List<ApplicationDefinition> { new() { Id = 1, Settings = settings } });
+            Offer(1, 1080);
+            Offer(2);
+            Subject.Search(Browse()).Items.Should().ContainSingle(i => i.EpisodeNumbers == "2");
+            settings.IncludeAutomaticUpgrades = true;
+            Subject.Search(Browse()).Items.Should().HaveCount(2);
+            settings.FetchNewFilesAutomatically = false;
+            Subject.Search(Browse()).Items.Should().BeEmpty();
+            Subject.Search(new CandidateQuery { RssApplicationId = 1, TvdbId = 75669 }).Items.Should().HaveCount(2);
+            Subject.Search(new CandidateQuery()).Items.Should().HaveCount(2);
         }
 
         [Test]

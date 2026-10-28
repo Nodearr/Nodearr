@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 using FluentValidation;
 using NzbDrone.Core.Annotations;
 using NzbDrone.Core.Indexers;
@@ -48,6 +49,15 @@ namespace NzbDrone.Core.Applications
         // friends or when the app is added. Each friend can be changed on Catalog > Sharing.
         [FieldDefinition(7, Label = "ApplicationShareWithNewFriends", Type = FieldType.Checkbox, HelpText = "ApplicationShareWithNewFriendsHelpText")]
         public bool ShareWithNewFriends { get; set; } = true;
+
+        // Null only for an existing app whose RSS choice has not been read yet. Keep that marker
+        // in saved settings until registration sync can reach the app, or the owner makes a choice.
+        [JsonIgnore(Condition = JsonIgnoreCondition.Never)]
+        [FieldDefinition(8, Label = "ApplicationFetchAutomatically", Type = FieldType.Checkbox, HelpText = "ApplicationFetchAutomaticallyHelpText")]
+        public bool? FetchNewFilesAutomatically { get; set; } = true;
+
+        [FieldDefinition(9, Label = "ApplicationIncludeUpgrades", Type = FieldType.Checkbox, HelpText = "ApplicationIncludeUpgradesHelpText")]
+        public bool IncludeAutomaticUpgrades { get; set; }
 
         // Not a setting: kept out of what is saved and shown. Lidarr's API is /api/v1.
         string IArrConnection.ApiRoute => ApiRoute;

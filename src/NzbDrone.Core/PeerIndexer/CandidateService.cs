@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Linq.Expressions;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Core.Applications;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Nodes;
 using NzbDrone.Core.PeerCatalog;
@@ -91,12 +92,14 @@ namespace NzbDrone.Core.PeerIndexer
         private readonly IPeerCatalogRepository _items;
         private readonly IPeerRepository _peers;
         private readonly ILocalHoldingsFactory _holdings;
+        private readonly IApplicationFactory _applications;
 
-        public CandidateService(IPeerCatalogRepository items, IPeerRepository peers, ILocalHoldingsFactory holdings)
+        public CandidateService(IPeerCatalogRepository items, IPeerRepository peers, ILocalHoldingsFactory holdings, IApplicationFactory applications)
         {
             _items = items;
             _peers = peers;
             _holdings = holdings;
+            _applications = applications;
         }
 
         public CandidateResult Search(CandidateQuery query)
@@ -296,13 +299,19 @@ namespace NzbDrone.Core.PeerIndexer
 
         private CandidateResult Arrivals(CandidateQuery query, List<MediaKind> kinds, int offset, int limit)
         {
+            var settings = _applications.All().FirstOrDefault(a => a.Id == query.RssApplicationId)?.Settings as ArrApplicationSettings;
+            if (settings?.FetchNewFilesAutomatically != true)
+            {
+                return new CandidateResult();
+            }
+
             var holdings = _holdings.LoadForApplication(query.RssApplicationId.Value);
             var wanted = _items.RssArrivals()
                 .Where(i => i.CandidateId != null && IsAsked(i, query, kinds))
                 .Where(i =>
                 {
                     var status = holdings.Classify(i);
-                    return status == PeerItemStatus.Missing || (query.IncludeUpgrades && status == PeerItemStatus.Upgrade);
+                    return status == PeerItemStatus.Missing || (query.IncludeUpgrades && settings.IncludeAutomaticUpgrades && status == PeerItemStatus.Upgrade);
                 });
             var matches = OnePerFile(wanted).OrderByDescending(i => i.FirstSeen).ThenBy(i => i.CandidateId, StringComparer.Ordinal).ToList();
 
