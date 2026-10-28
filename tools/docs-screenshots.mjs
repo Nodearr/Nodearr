@@ -514,14 +514,14 @@ const shots = {
     await shoot(a, 'peer-catalog-get-it', { chrome: true });
     await a.keyboard.press('Escape');
     await a.getByText('Posters', { exact: true }).click();
-    await a.getByText('Out of the Inkwell (1919)', { exact: true }).waitFor();
+    await a.getByText('Out of the Inkwell', { exact: true }).waitFor();
     await a.waitForTimeout(1200);
     await shoot(a, 'peer-catalog-posters');
     await a.getByRole('button', { name: 'Movies', exact: true }).click();
     await a.waitForLoadState('networkidle');
     await a.waitForTimeout(1200);
-    await expectTitle(a, 'The Little Shop of Horrors (1960)', true);
-    await expectTitle(a, 'Out of the Inkwell (1919)', false);
+    await expectTitle(a, 'The Little Shop of Horrors', true);
+    await expectTitle(a, 'Out of the Inkwell', false);
     await shoot(a, 'peer-catalog-movies-posters');
     await a.getByText('Table', { exact: true }).click();
     await open(a, A, '/catalog/local');
@@ -535,14 +535,14 @@ const shots = {
     await expandFirstSeries(a);
     await shoot(a, 'local-catalog');
     await a.getByText('Posters', { exact: true }).click();
-    await a.getByText('Out of the Inkwell (1919)', { exact: true }).waitFor();
+    await a.getByText('Out of the Inkwell', { exact: true }).waitFor();
     await a.waitForTimeout(1200);
     await shoot(a, 'local-catalog-posters');
     await a.getByRole('button', { name: 'Movies', exact: true }).click();
     await a.waitForLoadState('networkidle');
     await a.waitForTimeout(1200);
-    await expectTitle(a, 'Night of the Living Dead (1968)', true);
-    await expectTitle(a, 'Out of the Inkwell (1919)', false);
+    await expectTitle(a, 'Night of the Living Dead', true);
+    await expectTitle(a, 'Out of the Inkwell', false);
     await shoot(a, 'local-catalog-movies-posters');
     await a.getByText('Table', { exact: true }).click();
   },
@@ -625,7 +625,7 @@ const shots = {
     if (!(await posters.isDisabled())) {
       await posters.click();
     }
-    await a.getByText('Night of the Living Dead (1968)', { exact: true }).waitFor();
+    await a.getByText('Night of the Living Dead', { exact: true }).waitFor();
     await a.getByTitle('Send Night of the Living Dead (1968) to a friend').click();
     dialog = a.getByRole('dialog');
     await dialog.waitFor();

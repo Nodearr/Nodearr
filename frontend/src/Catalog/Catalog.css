@@ -305,6 +305,15 @@
   font-weight: bold;
 }
 
+/* A title that opens its details card is a button, which a parent's ellipsis does not reach. */
+.tileTitle button {
+  display: block;
+  overflow: hidden;
+  max-width: 100%;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .tileDetails {
   overflow: hidden;
   color: var(--helpTextColor);

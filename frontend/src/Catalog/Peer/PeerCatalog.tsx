@@ -23,7 +23,7 @@ import { SortDirection } from 'Helpers/Props/sortDirections';
 import { CatalogKind, LocalCatalogSummary } from 'typings/LocalCatalog';
 import formatDateTime from 'Utilities/Date/formatDateTime';
 import formatBytes from 'Utilities/Number/formatBytes';
-import titleWithYear from 'Utilities/String/titleWithYear';
+import titleWithYear, { yearOnItsOwn } from 'Utilities/String/titleWithYear';
 import translate from 'Utilities/String/translate';
 import CatalogKindButton from '../CatalogKindButton';
 import { getAvailableCatalogKinds } from '../catalogKinds';
@@ -195,10 +195,12 @@ function StatusButton({
 }
 
 // "Pingu (1990)", or "Slint - Spiderland (1991)" for an album.
-function describeTitle(title: PeerCatalogTitle) {
-  const name = title.artist ? `${title.artist} - ${title.title}` : title.title;
+function titleHeading(title: PeerCatalogTitle) {
+  return title.artist ? `${title.artist} - ${title.title}` : title.title;
+}
 
-  return titleWithYear(name, title.year);
+function describeTitle(title: PeerCatalogTitle) {
+  return titleWithYear(titleHeading(title), title.year);
 }
 
 function peerTitleDetailsPath(title: PeerCatalogTitle) {
@@ -249,6 +251,8 @@ function TitleTile({ title }: { title: PeerCatalogTitle }) {
     (s) => `${title[s]} ${translate(STATUS_LABELS[s])}`
   );
   const detailsPath = peerTitleDetailsPath(title);
+  const year = yearOnItsOwn(titleHeading(title), title.year);
+  const shown = year ? titleHeading(title) : describeTitle(title);
 
   return (
     <div className={styles.tile}>
@@ -281,12 +285,13 @@ function TitleTile({ title }: { title: PeerCatalogTitle }) {
             label={describeTitle(title)}
             variant="title"
           >
-            {describeTitle(title)}
+            {shown}
           </CatalogDetailsButton>
         ) : (
-          describeTitle(title)
+          shown
         )}
       </div>
+      {year ? <div className={styles.tileDetails}>{year}</div> : null}
 
       <div className={styles.tileDetails}>{counts.join(', ')}</div>
       <div className={styles.tileDetails}>{title.peerNames.join(', ')}</div>
