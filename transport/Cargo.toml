@@ -10,7 +10,19 @@ description = "Nodearr's peer transport sidecar: iroh endpoints behind a loopbac
 [dependencies]
 # Pinned exactly. Relay and path behaviour were measured against this release (ADR 0011).
 # The net report says what kind of network this is. It is an unstable API, which the exact pin allows for.
-iroh = { version = "=1.3.0", features = ["unstable-net-report"] }
+# iroh's default features, but with aws-lc-rs in place of ring: only aws-lc-rs offers the post-quantum
+# hybrid key exchange X25519MLKEM768 (issue #24). Its Minimal preset picks ring whenever tls-ring is on,
+# so tls-ring must stay off.
+iroh = { version = "=1.3.0", default-features = false, features = [
+    "metrics",
+    "fast-apple-datapath",
+    "portmapper",
+    "tls-aws-lc-rs",
+    "unstable-net-report",
+] }
+# Here to turn on prefer-post-quantum, which offers X25519MLKEM768 first; only a test uses it in code.
+# Peers without it still agree on X25519.
+rustls = { version = "0.23", default-features = false, features = ["prefer-post-quantum"] }
 anyhow = "1"
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "query", "tokio"] }
 base64 = "0.22"

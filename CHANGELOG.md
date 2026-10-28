@@ -4,6 +4,10 @@ What changed in each release, newest first. Each item links to the decision reco
 
 ## Unreleased
 
+### Changed
+
+- Connections between nodes use a post-quantum key exchange, X25519MLKEM768, so traffic recorded today cannot be decrypted later with a quantum computer. Both nodes need this release. With a friend on 0.6.0 or earlier, connections use X25519 as before, and pairing and transfers work as usual. The sidecar is 1 to 2 MB larger, and building it from source needs a C compiler, plus NASM for 32-bit Windows ([#24](https://github.com/Nodearr/Nodearr/issues/24), [ADR 0023](docs/adr/0023-post-quantum-key-exchange-between-nodes.md)).
+
 ### Fixed
 
 - When you revoke a friend part way through sending them a file, your upload list says the upload was cut because trust ended. It could say the friend stopped it, when the friend heard of the revoke and cancelled before your node cut the upload. Your node now ends trust before telling the friend, and an upload the friend stopped a moment before trust ended counts as cut by it, whichever side revoked.

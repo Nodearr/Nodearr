@@ -36,6 +36,7 @@ Your router also receives port-mapping requests unless you turn off **Ask the Ro
 ## Encryption and checking
 
 - Every connection between nodes is encrypted (QUIC, TLS 1.3), and each side proves it holds the key for its node ID during the handshake. A node cannot pretend to be another without that node's key.
+- Two nodes on a release newer than 0.6.0 also use a post-quantum key exchange (X25519MLKEM768). Someone who records their traffic today cannot decrypt it later with a quantum computer. This covers messages and files that pass through a relay, too. With a friend on 0.6.0 or earlier, the connection uses X25519, as before, until they update ([ADR 0023](../adr/0023-post-quantum-key-exchange-between-nodes.md)).
 - Every file is checked against the [BLAKE3](https://github.com/BLAKE3-team/BLAKE3) hash its sender gave before sending. A file that does not match is thrown away and never reaches your Arr app.
 
 ## Keeping your node safe

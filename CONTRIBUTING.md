@@ -15,7 +15,7 @@ Thank you for wanting to help. This is how work on Nodearr is done.
 - [.NET](https://dotnet.microsoft.com/) SDK 10.0.300 or newer
 - [Node.js](https://nodejs.org/) 20
 - [Yarn](https://yarnpkg.com/) 4
-- [Rust](https://www.rust-lang.org/) 1.91 or newer, for the transport sidecar
+- [Rust](https://www.rust-lang.org/) 1.91 or newer, for the transport sidecar, with the C compiler it uses on your system (the Visual Studio C++ build tools on Windows). The sidecar's TLS library, AWS-LC, is written in C.
 
 ### The web UI
 
