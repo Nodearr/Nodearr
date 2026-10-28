@@ -133,6 +133,8 @@ Then a settings page. ADR 0019. Branch `v1/s10-node-settings`.
 
 - Each library app's form owns automatic fetching (on for new apps) and upgrades (off by default), applies RSS at registration sync, and imports an existing connection's current RSS choice before managing it. Prowlarr stays unchanged ([#74](https://github.com/Nodearr/Nodearr/issues/74), ADR 0015). Limits and per-friend opt-out were planned in #75 and #76. Branch `v1/s74-automatic-fetch-settings`.
 
+- Home received-card posters keep their thumbnail width when details are available; full-width poster buttons are scoped to catalog tiles ([#116](https://github.com/Nodearr/Nodearr/issues/116)). Branch `fix/116-home-received-card-layout`. Stylelint, the UI build and the .NET solution build passed. A browser layout check with the built CSS passed 32 received-card cases across four viewport widths, with portrait and square images and placeholders, and with and without details. Restoring the old width rule reproduced the squeezed body. Portrait and square catalog tiles still fill their width, and overlay actions stay compact. This checks layout in a fixture, not a live send between peers.
+
 ## Where V1 stands
 
 The plan's definition of done is "a real Sonarr/Radarr import of a verified, permitted peer transfer between two deployed instances". That has been met between two deployed instances on one machine, many times over, with the failure cases checked. On 2026-10-12 it was met between two machines on different networks: a PC at home and a rented cloud machine, with no port forwarded on the home router (ADR 0011, "Runs between two machines"). The cloud machine had to allow UDP in for the connection to be direct, because the home side ran in Docker Desktop.
@@ -171,6 +173,8 @@ The catalog's Get it action is implemented in #54, connection-loss diagnosis and
 - 0.6.0, the catalogs made alike (#98): Get it on a friend's cards and as an icon on poster tiles (#93, #94), the details friends share (#95), status colours and missing-episode defaults (#96, #97), and a friend's send opening its card on Home (#105); sends already held say so (#102); the Activity badge shows both directions and what needs attention (#101); Lidarr artists and albums (#68); and the loading page's Sonarr leftovers and the sidecar's log lines fixed (#99, #100). It is 0.6.0 and not 0.5.1 because defaults change and migrations 265 to 267 make going back to 0.5.0 unsupported. Post-quantum key exchange (#24) follows in its own release. Branch `v1/s70-release-0.6.0`.
 
 - Revoking a friend mid-transfer ends trust on this node before the courtesy message, so its uploads are cut and listed as Revoked before the friend can cancel them. The sidecar also relabels an upload the friend stopped up to 30 seconds before trust ended, for when the friend revoked first. Found as an intermittent S7 failure. Branch `v1/s106-revoke-upload-race`.
+
+- 0.7.0 release notes prepared from every commit after `v0.6.0`: post-quantum key exchange (#24, ADR 0023), upload status when trust ends (#118), and received-card layout on Home (#116). The source-build prerequisites and older-node compatibility are included. Branch `release/0.7.0`, based on the Home fix. This prepares the changelog; the release has not been published.
 
 ### Next, in order
 

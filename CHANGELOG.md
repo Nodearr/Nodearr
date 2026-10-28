@@ -4,13 +4,23 @@ What changed in each release, newest first. Each item links to the decision reco
 
 ## Unreleased
 
+## 0.7.0 (pre-release)
+
+Connections between updated friends now use a post-quantum key exchange, helping protect messages and files recorded today from decryption by a future quantum computer. This release also fixes the layout of received titles on Home and how interrupted uploads are labelled when trust ends.
+
+Friends on 0.6.0 or earlier still pair and transfer as before. Both nodes need 0.7.0 for the new key exchange; node IDs and trusted friends stay the same.
+
 ### Changed
 
-- Connections between nodes use a post-quantum key exchange, X25519MLKEM768, so traffic recorded today cannot be decrypted later with a quantum computer. Both nodes need this release. With a friend on 0.6.0 or earlier, connections use X25519 as before, and pairing and transfers work as usual. The sidecar is 1 to 2 MB larger, and building it from source needs a C compiler, plus NASM for 32-bit Windows ([#24](https://github.com/Nodearr/Nodearr/issues/24), [ADR 0023](docs/adr/0023-post-quantum-key-exchange-between-nodes.md)).
+- Connections between two updated nodes use X25519MLKEM768, combining the existing X25519 key exchange with ML-KEM-768. It protects their messages and files, including messages carried through a relay. Connections to older friends continue to use X25519. Node identity still uses Ed25519, and the separate connection to n0's relays still uses a classical key exchange ([#24](https://github.com/Nodearr/Nodearr/issues/24), [ADR 0023](docs/adr/0023-post-quantum-key-exchange-between-nodes.md)).
+
+- The transport sidecar is about 1 to 2 MB larger. Building it from source now needs a C compiler for AWS-LC, plus NASM for 32-bit Windows. Release packages include the built sidecar, so these tools are needed only when building from source ([build prerequisites](CONTRIBUTING.md#prerequisites)).
 
 ### Fixed
 
-- When you revoke a friend part way through sending them a file, your upload list says the upload was cut because trust ended. It could say the friend stopped it, when the friend heard of the revoke and cancelled before your node cut the upload. Your node now ends trust before telling the friend, and an upload the friend stopped a moment before trust ended counts as cut by it, whichever side revoked.
+- Titles friends sent on Home keep their text and buttons beside the small poster when details are available, instead of squeezing them into a narrow column ([#116](https://github.com/Nodearr/Nodearr/issues/116)).
+
+- When either side revokes trust during a transfer, the sender's upload list records that trust ended. It could instead say the friend stopped the upload if their cancellation arrived first ([#118](https://github.com/Nodearr/Nodearr/pull/118)).
 
 ## 0.6.0 (pre-release)
 
