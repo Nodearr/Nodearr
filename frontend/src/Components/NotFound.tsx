@@ -11,13 +11,14 @@ function NotFound(props: NotFoundProps) {
   const { message = translate('DefaultNotFoundMessage') } = props;
 
   return (
-    <PageContent title="MIA">
+    <PageContent title="Page not found">
       <div className={styles.container}>
         <div className={styles.message}>{message}</div>
 
         <img
           className={styles.image}
-          src={`${window.Nodearr.urlBase}/Content/Images/404.png`}
+          src={`${window.Nodearr.urlBase}/Content/Images/logo.svg`}
+          alt=""
         />
       </div>
     </PageContent>

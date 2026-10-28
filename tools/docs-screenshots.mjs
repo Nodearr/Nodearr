@@ -429,6 +429,68 @@ async function nodeSettings(page, change) {
 }
 
 const shots = {
+  // Hold the real startup request so the transient splash can be checked and captured.
+  // The broken health item exercises the actual React error boundary without changing data.
+  async branding({ browser }) {
+    for (const theme of ['light', 'dark']) {
+      const context = await browser.newContext({ ...options, colorScheme: theme });
+      const page = await signIn(context, A);
+      let releaseStatus;
+      const statusHeld = new Promise((resolve) => { releaseStatus = resolve; });
+      await page.route('**/api/v5/system/status*', async (route) => {
+        await statusHeld;
+        await route.continue();
+      });
+
+      try {
+        await page.goto(A, { waitUntil: 'domcontentloaded' });
+        await page.getByText('Loading Nodearr…', { exact: true }).waitFor();
+        const logo = page.getByRole('img', { name: 'Nodearr', exact: true });
+        await logo.waitFor();
+        if (!(await logo.evaluate((image) => image.complete && image.naturalWidth > 0 && image.src.endsWith('/Content/Images/logo.svg')))) {
+          throw new Error(`The ${theme} splash did not load Nodearr's logo`);
+        }
+        const background = await page.locator('html').evaluate((element) => getComputedStyle(element).backgroundColor);
+        const expected = theme === 'dark' ? 'rgb(32, 32, 32)' : 'rgb(245, 249, 247)';
+        if (background !== expected) throw new Error(`The ${theme} splash used ${background}`);
+        await shoot(page, `loading-${theme}`, { chrome: true });
+      } finally {
+        releaseStatus();
+      }
+
+      await page.getByText('Loading Nodearr…', { exact: true }).waitFor({ state: 'detached' });
+      await page.unroute('**/api/v5/system/status*');
+      await open(page, A, '/page-that-does-not-exist');
+      await page.getByText('You must be lost, nothing to see here.', { exact: true }).waitFor();
+      if (!(await page.title()).startsWith('Page not found - ')) throw new Error('Incorrect 404 tab title');
+      const mark = page.locator('img[src$="/Content/Images/logo.svg"]');
+      if (await mark.count() < 2) throw new Error('The 404 page is missing its Nodearr mark');
+      await shoot(page, `not-found-${theme}`);
+
+      await page.route('**/api/v5/health*', (route) => route.fulfill({
+        json: [{ source: 'BrandingCheck', message: 'Test error', type: null }],
+      }));
+      await open(page, A, '/system/status');
+      await page.getByText('There was an error loading this page', { exact: true }).waitFor();
+      if (await mark.count() < 2) throw new Error('The error page is missing its Nodearr mark');
+      await page.locator('details').click({ position: { x: 4, y: 7 } });
+      await page.getByText(/Version: /).waitFor();
+      await page.locator('details').click({ position: { x: 4, y: 7 } });
+      await shoot(page, `error-${theme}`);
+      await page.unroute('**/api/v5/health*');
+
+      // All routed pages inherit the configured instance name in the browser tab.
+      for (const route of ['/', '/catalog/local', '/catalog/peers', '/catalog/sharing', '/nodes/trusted', '/nodes/invites', '/activity/transfers', '/settings', '/settings/apps', '/settings/node', '/settings/general', '/system/status', '/system/tasks', '/system/backup', '/system/events', '/system/logs/files']) {
+        await open(page, A, route);
+        const instance = await page.evaluate(() => window.Nodearr.instanceName);
+        const title = await page.title();
+        if (!title.endsWith(instance) || /Sonarr/.test(title)) throw new Error(`Incorrect tab title at ${route}: ${title}`);
+      }
+      await context.close();
+      console.log(`branding: ${theme} loading, 404, error details and routed tab titles passed`);
+    }
+  },
+
   async home({ a }) {
     await open(a, A, '/');
     await shoot(a, 'home', { chrome: true });
