@@ -82,6 +82,7 @@ function SignalRListener() {
     queryClient.invalidateQueries({ queryKey: ['/command'] });
 
     queryClient.invalidateQueries({ queryKey: ['/transfers'] });
+    queryClient.invalidateQueries({ queryKey: ['/transfers/uploads'] });
 
     repopulatePage();
   });

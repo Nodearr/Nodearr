@@ -18,6 +18,12 @@ import { getErrorMessage } from 'Nodes/useNodes';
 import formatBytes from 'Utilities/Number/formatBytes';
 import translate from 'Utilities/String/translate';
 import {
+  getTransferKind,
+  getUploadKind,
+  isRetryingDownload,
+  isWaitingForPeer,
+} from './transferActivity';
+import {
   Transfer,
   TransferAction,
   TransferState,
@@ -43,16 +49,6 @@ const COLUMNS: Column[] = [
   { name: 'actions', label: '', isVisible: true },
 ];
 
-const STATE_KINDS: Record<
-  TransferState,
-  'default' | 'info' | 'success' | 'danger'
-> = {
-  queued: 'default',
-  downloading: 'info',
-  completed: 'success',
-  failed: 'danger',
-};
-
 const STATE_LABELS: Record<TransferState, string> = {
   queued: 'TransferQueued',
   downloading: 'TransferDownloading',
@@ -69,17 +65,6 @@ const UPLOAD_COLUMNS: Column[] = [
   { name: 'started', label: () => translate('UploadStarted'), isVisible: true },
 ];
 
-const UPLOAD_KINDS: Record<
-  UploadState,
-  'default' | 'info' | 'success' | 'danger'
-> = {
-  waiting: 'default',
-  preparing: 'default',
-  sending: 'info',
-  completed: 'success',
-  failed: 'danger',
-};
-
 const UPLOAD_LABELS: Record<UploadState, string> = {
   waiting: 'UploadWaiting',
   preparing: 'UploadPreparing',
@@ -91,6 +76,7 @@ const UPLOAD_LABELS: Record<UploadState, string> = {
 function UploadRow({ upload }: { upload: Upload }) {
   const { state, size, bytesSent } = upload;
   const percent = size > 0 ? Math.min(100, (bytesSent / size) * 100) : 0;
+  const kind = getUploadKind(upload);
 
   return (
     <TableRow>
@@ -131,7 +117,10 @@ function UploadRow({ upload }: { upload: Upload }) {
       <TableRowCell>{upload.peerName}</TableRowCell>
 
       <TableRowCell>
-        <Label kind={UPLOAD_KINDS[state]}>
+        <Label
+          className={kind === 'warning' ? styles.warningStatus : styles.status}
+          kind={kind}
+        >
           {state === 'completed' && upload.attempts > 1
             ? translate('UploadCompletedAfterAttempts', {
                 attempts: upload.attempts,
@@ -143,7 +132,7 @@ function UploadRow({ upload }: { upload: Upload }) {
       <TableRowCell className={styles.progress}>
         <ProgressBar
           progress={state === 'completed' ? 100 : percent}
-          kind={state === 'failed' ? kinds.DANGER : kinds.PRIMARY}
+          kind={kind === 'info' ? 'primary' : kind}
           showText={true}
           width={PROGRESS_WIDTH}
           title={`${formatBytes(bytesSent)} / ${formatBytes(size)}`}
@@ -166,6 +155,7 @@ interface TransferRowProps {
 function TransferRow({ transfer, isBusy, onAction }: TransferRowProps) {
   const { downloadId, state, size, bytesDone } = transfer;
   const percent = size > 0 ? Math.min(100, (bytesDone / size) * 100) : 0;
+  const kind = getTransferKind(transfer);
 
   const handleRemovePress = useCallback(() => {
     onAction(downloadId, 'remove');
@@ -176,17 +166,16 @@ function TransferRow({ transfer, isBusy, onAction }: TransferRowProps) {
   }, [downloadId, onAction]);
 
   // A queued transfer that has already been tried is waiting to be tried again.
-  const isWaitingToRetry = state === 'queued' && transfer.attempts > 0;
+  const isWaitingToRetry = isRetryingDownload(transfer);
 
   // Downloading, but the friend's node has no free upload slot yet.
-  const isWaitingForPeer =
-    state === 'downloading' && typeof transfer.waitingPosition === 'number';
+  const waitingForPeer = isWaitingForPeer(transfer);
 
   let label = STATE_LABELS[state];
 
   if (isWaitingToRetry) {
     label = 'TransferRetrying';
-  } else if (isWaitingForPeer) {
+  } else if (waitingForPeer) {
     label = 'TransferWaiting';
   }
 
@@ -201,7 +190,7 @@ function TransferRow({ transfer, isBusy, onAction }: TransferRowProps) {
           </div>
         ) : null}
 
-        {isWaitingForPeer ? (
+        {waitingForPeer ? (
           <div className={styles.muted}>
             {translate('TransferWaitingForPeer', {
               peer: transfer.peerName ?? '',
@@ -214,7 +203,10 @@ function TransferRow({ transfer, isBusy, onAction }: TransferRowProps) {
       <TableRowCell>{transfer.peerName}</TableRowCell>
 
       <TableRowCell>
-        <Label kind={isWaitingForPeer ? 'default' : STATE_KINDS[state]}>
+        <Label
+          className={kind === 'warning' ? styles.warningStatus : styles.status}
+          kind={kind}
+        >
           {translate(label)}
         </Label>
       </TableRowCell>
@@ -222,7 +214,7 @@ function TransferRow({ transfer, isBusy, onAction }: TransferRowProps) {
       <TableRowCell className={styles.progress}>
         <ProgressBar
           progress={state === 'completed' ? 100 : percent}
-          kind={state === 'failed' ? kinds.DANGER : kinds.PRIMARY}
+          kind={kind === 'info' ? 'primary' : kind}
           showText={true}
           width={PROGRESS_WIDTH}
           title={`${formatBytes(bytesDone)} / ${formatBytes(size)}`}

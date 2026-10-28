@@ -282,6 +282,8 @@ stops everything and removes `nodearr-ui-test`, and the firewall rule if `-OpenF
 
 ## What has and has not been run
 
+`node tools/docs-screenshots.mjs activityStatus` checks direction counts, waiting and retry colors, failed-download precedence, and finished-upload exclusion in both themes using browser-only responses. The `transfers` capture additionally checks the sender's Home sidebar during a real transfer.
+
 Run `node tools/docs-screenshots.mjs branding` against the isolated kit to check Nodearr's loading, missing-page and error screens in both themes, including error details and browser titles across the routed pages. It delays the startup response and supplies a broken health item in the browser only; it does not change the kit's data. It also captures these screens for the troubleshooting guide.
 
 The script was run solo on Windows 11, from the PowerShell that comes with Windows, and steps 2 to 9 were done in the pages as written. Doing them changed four things before this guide was published: the overview on **Home** now counts what is new to your apps, a help text about invites was out of date, a whole series sent was searched for episode by episode down to ones the friend did not have, and B's Nodearr is opened at `127.0.0.1`.
