@@ -37,6 +37,9 @@ namespace NzbDrone.Core.Nodes.Settings
         // The most each upload may send, in kilobytes per second. Zero is no limit.
         public int UploadLimitKbps { get; set; }
 
+        // The most all uploads together may send, in kilobytes per second. Zero is no limit.
+        public int TotalUploadLimitKbps { get; set; }
+
         // The most each download may take, in kilobytes per second. Zero is no limit.
         public int DownloadLimitKbps { get; set; }
 

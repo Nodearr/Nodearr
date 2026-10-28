@@ -18,6 +18,7 @@ These settings control your node's name, peer connections and download storage (
 | **Wait for a Direct Route** | 20 seconds | How long a transfer waits for a direct connection before it fails with `NoDirectRoute`. | The transport restarts | `Nodearr__Transport__DirectTimeoutSeconds` |
 | **Download Folder** | `downloads` in the data folder | Where transfers are written: `incomplete` while they arrive, `complete` once checked. Your Arr apps must see this same folder. It cannot be moved while transfers are under way. | At once | `Nodearr__Transport__DownloadFolder` |
 | **Upload Limit** | None | The most each upload to a friend may send, in kilobytes per second. 0 is no limit. | The transport restarts | `Nodearr__Transport__UploadLimitKbps` |
+| **Total Upload Limit** | None | The most all uploads to friends may send together, in kilobytes per second, shared evenly between the uploads running at once. Each upload still keeps to **Upload Limit**. 0 is no limit. | The transport restarts | `Nodearr__Transport__TotalUploadLimitKbps` |
 | **Download Limit** | None | The most each download from a friend may take, in kilobytes per second. 0 is no limit. | The transport restarts | `Nodearr__Transport__DownloadLimitKbps` |
 | **Catalog Sync Interval** | 15 minutes | Minutes between scheduled catalog refreshes: 10 to 120. Set 0 to disable scheduled refreshes. Pairing, sends, removal notices and **Sync Peer Catalogs** can still trigger a refresh. | At once | |
 

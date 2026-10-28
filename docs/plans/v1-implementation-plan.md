@@ -148,6 +148,7 @@ V1 is done. What follows is open, most useful first. Each item in the first list
 The catalog's Get it action is implemented in #54, connection-loss diagnosis and upload history in #55 and #56, its views in #58, Send it from the local table and posters in #59, and the Activity badge in #60. Details cards for Sonarr, Radarr and Whisparr entries in both catalogs are #64; Lidarr cards are deferred to #68 while their design is reconsidered. The remaining slice is LAN throughput measurement (#57), which needs the owner's second machine.
 
 - Each trusted friend's automatic-fetch choice is saved on that node and filters all library-app feeds; manual searches stay available ([#76](https://github.com/Nodearr/Nodearr/issues/76), ADR 0015). Transfer limits remain in #75 before #71 is complete. Branch `v1/s76-per-friend-automatic-fetch`.
+- A total upload limit on **Settings > Node**, shared by all uploads at once: each chunk an upload sends books its time at the total rate after what the others have booked, so uploads take turns, and unused time is not saved up for a burst ([#84](https://github.com/Nodearr/Nodearr/issues/84), ADR 0019). The first of #75's three parts; most uploads at once (#85) and most downloads at once (#86) remain. Branch `84-a-total-upload-limit-shared-by-all-uploads-at-once`.
 
 ### Next, in order
 

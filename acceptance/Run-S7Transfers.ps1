@@ -647,6 +647,42 @@ try {
     $settingsB.downloadLimitKbps = 0
     Invoke-Node B PUT "/settings/node/$($settingsB.id)" $settingsB | Out-Null
 
+    # --- 3b2. A total upload limit on the sending node ---------------------------------------------
+
+    # A is set to send at most half its per-upload limit in all, and B fetches two episodes from it
+    # at once. Together they are held to the total, and each gets a fair part of it.
+    $totalLimit = [math]::Max(64, [math]::Floor($UploadLimitKbps / 2))
+    $settingsA = Invoke-Node A GET '/settings/node'
+    $settingsA.totalUploadLimitKbps = $totalLimit
+    $totalLimited = Invoke-Node A PUT "/settings/node/$($settingsA.id)" $settingsA
+    Wait-Until -What "A's transport to be reachable again" -TimeoutSec 60 -Condition { (Invoke-Node A GET '/settings/node').transportRunning } | Out-Null
+    $pair = foreach ($episode in $episodesB[0], $episodesB[1]) {
+        $offer = @(Invoke-Arr sonarrB GET "/release?episodeId=$($episode.id)" | Where-Object indexer -eq 'Nodearr')[0]
+        Invoke-WebRequest "http://127.0.0.1:$($nodes.B.Port)/newznab/api?t=get&id=$($offer.guid -replace '^nodearr:', '')&apikey=$($nodes.B.Key)" -OutFile $ticketFile
+        (Invoke-RestMethod ($addUrl -replace 'cat=tv', 'cat=limit-test') -Method Post -Form @{ name = Get-Item $ticketFile }).nzo_ids[0]
+    }
+    $both = Wait-Until -What 'both transfers to be under way' -TimeoutSec 60 -EverySec 0.5 -Condition {
+        $moving = @(Get-Transfers | Where-Object { $_.state -eq 'downloading' -and $_.bytesDone -gt 0 })
+        if ($moving.Count -ge 2) { $moving }
+    }
+    $fromEach = @{}
+    $both | ForEach-Object { $fromEach[$_.downloadId] = [long]$_.bytesDone }
+    $watch = [Diagnostics.Stopwatch]::StartNew()
+    Start-Sleep -Seconds 10
+    $seconds = $watch.Elapsed.TotalSeconds
+    $rates = @(Get-Transfers | Where-Object { $fromEach.ContainsKey($_.downloadId) } | ForEach-Object { [math]::Round(([long]$_.bytesDone - $fromEach[$_.downloadId]) / 1024 / $seconds) })
+    $sumKbps = ($rates | Measure-Object -Sum).Sum
+    Assert-That 'A total upload limit on the sending node holds two transfers from it together, each getting a fair part' (
+        $totalLimited.totalUploadLimitKbps -eq $totalLimit -and $totalLimited.transportRestarted -and $totalLimited.transportRunning -and
+        $rates.Count -eq 2 -and $sumKbps -le ($totalLimit * 1.25) -and @($rates | Where-Object { $_ -ge $totalLimit * 0.25 }).Count -eq 2
+    ) @{ totalUploadLimitKbps = $totalLimit; uploadLimitKbps = $UploadLimitKbps; measuredKbps = $rates; togetherKbps = $sumKbps; restarted = $totalLimited.transportRestarted }
+
+    foreach ($id in $pair) { Invoke-Sab "mode=queue&name=delete&del_files=1&value=$id" | Out-Null }
+    Wait-Until -What 'the limited transfers to be removed' -TimeoutSec 30 -Condition { (Get-Transfers).Count -eq 0 } | Out-Null
+    $settingsA = Invoke-Node A GET '/settings/node'
+    $settingsA.totalUploadLimitKbps = 0
+    Invoke-Node A PUT "/settings/node/$($settingsA.id)" $settingsA | Out-Null
+
     # --- 3c. A friend's PROPER replaces a copy that is not one -------------------------------------
 
     # A's Sonarr takes a PROPER of the first episode in place of its copy, as it would from any

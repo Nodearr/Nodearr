@@ -25,6 +25,9 @@ public class TransportOptions
     // The most each upload may send, in kilobytes per second. No limit when not set.
     public int? UploadLimitKbps { get; set; }
 
+    // The most all uploads together may send, in kilobytes per second. No limit when not set.
+    public int? TotalUploadLimitKbps { get; set; }
+
     // The most each download may take, in kilobytes per second. No limit when not set.
     public int? DownloadLimitKbps { get; set; }
 

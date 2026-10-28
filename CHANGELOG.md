@@ -7,6 +7,7 @@ What changed in each release, newest first. Each item links to the decision reco
 ### Added
 
 - Choose whether to automatically fetch new files from each friend under **Catalog > Sharing**. Searches and **Get it** still find their files ([#76](https://github.com/Nodearr/Nodearr/issues/76)).
+- A **Total Upload Limit** on **Settings > Node**, beside the upload limit: the most all uploads to friends may send together, shared evenly between them, 0 for none, or `Nodearr__Transport__TotalUploadLimitKbps` in the environment. Each upload still keeps to the per-upload limit ([#84](https://github.com/Nodearr/Nodearr/issues/84), part of [#75](https://github.com/Nodearr/Nodearr/issues/75)).
 
 ### Changed
 

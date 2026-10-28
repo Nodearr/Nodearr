@@ -75,6 +75,7 @@ namespace NzbDrone.Core.Nodes.Settings
                 DirectTimeoutSeconds = _options.DirectTimeoutSeconds ?? _configService.TransferDirectTimeout,
                 DownloadFolder = _options.DownloadFolder ?? _configService.TransferDownloadFolder,
                 UploadLimitKbps = _options.UploadLimitKbps ?? _configService.TransferUploadLimit,
+                TotalUploadLimitKbps = _options.TotalUploadLimitKbps ?? _configService.TransferTotalUploadLimit,
                 DownloadLimitKbps = _options.DownloadLimitKbps ?? _configService.TransferDownloadLimit,
 
                 // Not something a container is built around, so the environment does not set it.
@@ -102,6 +103,7 @@ namespace NzbDrone.Core.Nodes.Settings
             Add(_options.DirectTimeoutSeconds.HasValue, nameof(NodeSettings.DirectTimeoutSeconds));
             Add(_options.DownloadFolder != null, nameof(NodeSettings.DownloadFolder));
             Add(_options.UploadLimitKbps.HasValue, nameof(NodeSettings.UploadLimitKbps));
+            Add(_options.TotalUploadLimitKbps.HasValue, nameof(NodeSettings.TotalUploadLimitKbps));
             Add(_options.DownloadLimitKbps.HasValue, nameof(NodeSettings.DownloadLimitKbps));
 
             return names;

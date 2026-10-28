@@ -5514,6 +5514,11 @@
             "type": "integer",
             "format": "int32"
           },
+          "totalUploadLimitKbps": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
           "downloadLimitKbps": {
             "type": "integer",
             "format": "int32",

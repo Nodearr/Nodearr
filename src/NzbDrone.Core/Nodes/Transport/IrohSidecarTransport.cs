@@ -487,6 +487,12 @@ namespace NzbDrone.Core.Nodes.Transport
                 startInfo.ArgumentList.Add(settings.UploadLimitKbps.ToString());
             }
 
+            if (settings.TotalUploadLimitKbps > 0)
+            {
+                startInfo.ArgumentList.Add("--total-upload-limit-kbps");
+                startInfo.ArgumentList.Add(settings.TotalUploadLimitKbps.ToString());
+            }
+
             if (settings.DownloadLimitKbps > 0)
             {
                 startInfo.ArgumentList.Add("--download-limit-kbps");
