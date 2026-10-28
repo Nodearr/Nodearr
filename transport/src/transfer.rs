@@ -142,6 +142,10 @@ pub struct UploadState {
 /// How long a finished upload stays in the list, so that whoever is watching sees how it ended.
 const UPLOAD_HISTORY: Duration = Duration::from_secs(300);
 
+/// How soon before this node ends trust an upload stopped by the other node counts as stopped
+/// because of it. Longer than Nodearr waits for the other node to answer.
+const TRUST_ENDED_WINDOW: Duration = Duration::from_secs(30);
+
 struct Download {
     state: Arc<Mutex<DownloadState>>,
     abort: AbortHandle,
@@ -368,7 +372,21 @@ impl Transfers {
                 closed += 1;
             }
         }
+        drop(uploads);
+        self.relabel_stopped_by_revoke(&node.to_string());
         closed
+    }
+
+    /// The node that ended trust may have cancelled its download before this node heard about
+    /// it. What it stopped a moment ago, it stopped because trust ended.
+    fn relabel_stopped_by_revoke(&self, node: &str) {
+        let mut states = self.upload_states.lock().unwrap();
+        for upload in states.values_mut().filter(|u| u.remote_node_id == node) {
+            let just_stopped = upload.finished.is_some_and(|at| at.elapsed() < TRUST_ENDED_WINDOW);
+            if just_stopped && upload.failure.as_ref().is_some_and(|f| f.kind == "Stopped") {
+                upload.failure = Some(Failure { kind: "Revoked", message: "trust in this node ended".into() });
+            }
+        }
     }
 
     /// Cuts one upload. Used when Nodearr stops sharing the file with that node part way through.
@@ -1227,6 +1245,36 @@ mod tests {
         let (_tx, rx) = watch::channel(SelectedPath::Relay { local: "relay".into(), remote: "relay".into() });
         let mut monitor = PathMonitor { selected: rx };
         assert!(!monitor.wait_direct_after_loss(Duration::from_secs(1)).await);
+    }
+
+    #[test]
+    fn ending_trust_relabels_an_upload_the_other_node_stopped_a_moment_before() {
+        let transfers = slots(0);
+        let stopped = |id: &str, remote: &str, finished: Instant| UploadState {
+            id: id.into(),
+            remote_node_id: remote.into(),
+            failure: Some(Failure { kind: "Stopped", message: "connection lost".into() }),
+            finished: Some(finished),
+            ..prior_upload()
+        };
+        let long_ago = Instant::now() - TRUST_ENDED_WINDOW - Duration::from_secs(1);
+        {
+            let mut states = transfers.upload_states.lock().unwrap();
+            states.insert(1, stopped("1", "peer-a", Instant::now()));
+            states.insert(2, stopped("2", "peer-a", long_ago));
+            states.insert(3, stopped("3", "peer-b", Instant::now()));
+            states.insert(4, UploadState { id: "4".into(), ..prior_upload() });
+        }
+
+        transfers.relabel_stopped_by_revoke("peer-a");
+
+        let states = transfers.upload_states.lock().unwrap();
+        let kind = |id: u64| states[&id].failure.as_ref().unwrap().kind;
+        assert_eq!(kind(1), "Revoked");
+        // Stopped well before, by another node, or for another reason: left as it was.
+        assert_eq!(kind(2), "Stopped");
+        assert_eq!(kind(3), "Stopped");
+        assert_eq!(kind(4), "DirectPathLost");
     }
 
     #[test]

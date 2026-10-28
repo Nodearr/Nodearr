@@ -477,6 +477,22 @@ namespace NzbDrone.Core.Test.Nodes
             Assert.Throws<PeerException>(() => _bob.Service.Ping(_bob.PeerFor(_alice).Id));
         }
 
+        // Ending trust cuts the uploads to the other node. Done after telling it, the other node
+        // could cancel its downloads first, and the uploads would read as stopped by it.
+        [Test]
+        public void revoking_should_end_trust_here_before_telling_the_other_node()
+        {
+            GivenPaired(_alice, _bob);
+            PeerState? bobsStateWhenAliceEndedTrust = null;
+            _alice.Events.Setup(e => e.PublishEvent(It.Is<PeerStateChangedEvent>(c => c.Peer.State == PeerState.Revoked)))
+                .Callback(() => bobsStateWhenAliceEndedTrust = _bob.PeerFor(_alice).State);
+
+            _alice.Service.Revoke(_alice.PeerFor(_bob).Id);
+
+            bobsStateWhenAliceEndedTrust.Should().Be(PeerState.Trusted);
+            _bob.PeerFor(_alice).State.Should().Be(PeerState.Revoked);
+        }
+
         [Test]
         public void revoking_should_work_when_the_other_node_is_offline()
         {
