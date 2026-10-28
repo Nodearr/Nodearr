@@ -65,11 +65,21 @@ RSS is off on the indexer Nodearr registers. A user can turn it on in the Arr ap
 
 **Amendment, 2026-10-26 ([#72](https://github.com/Nodearr/Nodearr/issues/72)).** RSS is set to off only when Nodearr creates its indexer. Later registration syncs preserve the Arr app's RSS setting, including when a sync is forced. Search settings and the download-client pin remain managed by Nodearr. Prowlarr's separate sync profile remains unchanged. Unit tests cover both RSS states and forced syncs; `acceptance/Run-S3CatalogImport.ps1` enables RSS in a real Sonarr and checks it after a forced application sync.
 
+**Amendment, 2026-10-27 ([#73](https://github.com/Nodearr/Nodearr/issues/73)).** Each library app is registered at `/newznab/{applicationId}`. Its queryless browse feed is filtered: files missing from that application's library, or upgrades under that application's own quality profile and Propers and Repacks setting. Both are included until #74 introduces the upgrade setting. Searches with IDs, text, artist, album, season or episode criteria keep their existing behavior. `/newznab` remains unfiltered for Prowlarr and registrations awaiting sync. Registration updates preserve RSS as agreed in #72.
+
+The issue described RSS as `t=search`, but real Sonarr 4.0.20 uses queryless `t=tvsearch` for RSS and connection tests. The filter therefore applies to queryless `search`, `tvsearch`, `movie` and `music` requests on the app-specific route. Filtering only `search` would still download the initial library during Sonarr's RSS sync.
+
+The old address is also migrated for **Add Only** registrations, since earlier guidance recommended that mode to preserve RSS. This migration changes the connection fields only; the app's RSS, search and download-client choices stay as they were.
+
+Nodearr records when each offered file was first received, retaining that time across full and incremental catalog updates. The first successful catalog establishes a baseline, including when it is empty. Only files first received after that baseline and after pairing enter the app's browse feed. Existing catalogs are baselined on upgrade. Fingerprint changes do not turn an existing file into a new arrival. A friend known to lack a direct route is skipped; an unchecked friend remains eligible. Filtering precedes pagination and deduplication, so rejected files do not hide eligible ones on later pages. RSS stays off for newly registered indexers in this slice; #74 changes that default.
+
 ### Anime
 
 Nodearr registers its Sonarr indexer with an anime category and with "anime standard format search" on. Sonarr then also searches anime by ID, season and episode, which is the one way Nodearr matches.
 
 ## Evidence
+
+- #73, 2026-10-27: the solution builds with analyzers enabled and no warnings or errors. The peer catalog, indexer, application registration and migration suites pass 374 tests; the Newznab controller passes 12. `acceptance/Run-S7Transfers.ps1` passes 22 checks against real Sonarr 4.0.20 and Radarr 6.4.4, including RSS skipping the initial paired library and importing a later episode with the same SHA-256. The consumer ports were 38989 and 37878 to leave a separate UI test environment running. The app feed uses each requesting app's holdings, preserves first-seen times across full and incremental updates, and keeps existing rows out of RSS after migration.
 
 - 74 unit tests. Every Sonarr quality is built into a title and read back with Sonarr's own parser, which this code base carries. Search runs against a real SQLite database.
 - `acceptance/Run-S6Indexer.ps1`: 14 of 14 checks pass. Node A has a library. Node B's own Sonarr 4.0.20 and Radarr 6.4.4 know the same series and movie and have no files. After pairing, the script searches from B's Sonarr and Radarr and reads what they make of the answers:

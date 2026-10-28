@@ -290,6 +290,7 @@ namespace NzbDrone.Core.PeerCatalog
                 }
 
                 peer.CatalogSyncedAt = DateTime.UtcNow;
+                peer.CatalogFirstSyncedAt ??= peer.CatalogSyncedAt;
                 peer.CatalogError = null;
             }
             catch (TransportException ex) when (ex.Failure is TransportFailure.Blocked or TransportFailure.NotAuthorized)
@@ -305,7 +306,7 @@ namespace NzbDrone.Core.PeerCatalog
                 peer.CatalogError = ex.Message;
             }
 
-            _peers.SetFields(peer, p => p.CatalogVersion, p => p.CatalogSyncedAt, p => p.CatalogError);
+            _peers.SetFields(peer, p => p.CatalogVersion, p => p.CatalogSyncedAt, p => p.CatalogFirstSyncedAt, p => p.CatalogError);
         }
 
         // The whole set is replaced, so what the peer stopped offering is gone.
@@ -353,6 +354,8 @@ namespace NzbDrone.Core.PeerCatalog
         private List<PeerCatalogItem> ToItems(Peer peer, List<OfferItem> offered)
         {
             var holdings = _holdings.Load();
+            var firstSeen = _items.ForPeer(peer.Id).ToDictionary(i => i.RemoteId, i => i.FirstSeen ?? peer.CatalogFirstSyncedAt);
+            var now = DateTime.UtcNow;
             var items = offered
                 .Where(o => o.Id.IsNotNullOrWhiteSpace())
                 .DistinctBy(o => o.Id)
@@ -364,6 +367,7 @@ namespace NzbDrone.Core.PeerCatalog
                 item.LocalStatus = holdings.Classify(item);
                 item.CandidateId = _candidateIds.For(peer.NodeId, item.RemoteId);
                 item.ReleaseTitle = ReleaseTitleBuilder.For(item);
+                item.FirstSeen = firstSeen.GetValueOrDefault(item.RemoteId) ?? now;
             }
 
             return items;
@@ -483,8 +487,9 @@ namespace NzbDrone.Core.PeerCatalog
             {
                 peer.CatalogVersion = null;
                 peer.CatalogSyncedAt = null;
+                peer.CatalogFirstSyncedAt = null;
                 peer.CatalogError = null;
-                _peers.SetFields(peer, p => p.CatalogVersion, p => p.CatalogSyncedAt, p => p.CatalogError);
+                _peers.SetFields(peer, p => p.CatalogVersion, p => p.CatalogSyncedAt, p => p.CatalogFirstSyncedAt, p => p.CatalogError);
             }
         }
     }

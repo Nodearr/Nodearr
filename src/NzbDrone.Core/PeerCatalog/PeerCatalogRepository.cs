@@ -10,6 +10,7 @@ namespace NzbDrone.Core.PeerCatalog
     public interface IPeerCatalogRepository : IBasicRepository<PeerCatalogItem>
     {
         List<PeerCatalogItem> ForPeer(int peerId);
+        List<PeerCatalogItem> RssArrivals();
         List<PeerCatalogItem> ForRemoteIds(int peerId, IEnumerable<string> remoteIds);
         PeerCatalogItem FindByCandidateId(string candidateId);
         List<PeerCatalogItem> FindByMediaIds(MediaKind kind, int tvdbId, int tmdbId, string imdbId);
@@ -41,6 +42,23 @@ namespace NzbDrone.Core.PeerCatalog
         public List<PeerCatalogItem> ForPeer(int peerId)
         {
             return Query(i => i.PeerId == peerId);
+        }
+
+        public List<PeerCatalogItem> RssArrivals()
+        {
+            using var connection = _database.OpenConnection();
+
+            // Never let the initial snapshot, a changed fingerprint or a failed connection check
+            // announce a whole existing library to the Arr apps.
+            return connection.Query<PeerCatalogItem>(@"
+                SELECT i.* FROM [PeerCatalogItems] i
+                INNER JOIN [Peers] p ON p.[Id] = i.[PeerId]
+                WHERE p.[State] = 1
+                  AND (p.[ConnectionChecked] IS NULL OR p.[ConnectionPath] = 1)
+                  AND i.[FirstSeen] > p.[CatalogFirstSyncedAt]
+                  AND i.[FirstSeen] > p.[StateChanged]
+                ORDER BY i.[FirstSeen] DESC, i.[Id] DESC")
+                .ToList();
         }
 
         public List<PeerCatalogItem> ForRemoteIds(int peerId, IEnumerable<string> remoteIds)

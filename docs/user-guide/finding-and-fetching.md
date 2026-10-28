@@ -66,13 +66,13 @@ After you [connect an Arr app](connecting-apps.md), it searches Nodearr alongsid
 - Automatic searches can select a Nodearr result when it is the best acceptable match.
 - Newly shared files do not trigger downloads by default. Nodearr registers its indexer with RSS disabled. Search in the Arr app to discover those files.
 
-To enable RSS searches:
+To enable RSS, in the Arr app go to **Settings > Indexers**, edit the **Nodearr** indexer, turn on **Enable RSS** and save it. Nodearr preserves that choice when it syncs its registration, including with **Full Sync**.
 
-1. In Nodearr, go to **Settings > Apps**, edit the app, set **Sync Level** to **Add Only** and select **Save**.
-2. In the Arr app, go to **Settings > Indexers**, edit the **Nodearr** indexer, turn on **Enable RSS** and save it.
+Each connected library app has its own RSS feed. It lists files that arrived in a friend's shared catalog after the initial sync and that this app is missing or could upgrade under its quality profile. A file you already have at that quality, or a title outside that app's library, is left out. Pairing does not announce the friend's existing library through RSS; you can still find those files by searching.
 
-> [!NOTE]
-> With **Full Sync**, Nodearr restores RSS to its disabled default at the next sync.
+RSS skips friends whose last connection check found no direct route, because their files cannot be downloaded. Friends not yet checked remain eligible. A later catalog update that only changes an existing file's description does not announce it as a new arrival.
+
+Existing indexers receive their app-specific address at the next registration sync. This address update also applies with **Add Only**, preserving the indexer's switches. The legacy address used by Prowlarr and registrations not yet updated keeps its unfiltered feed. RSS remains off by default for newly registered indexers.
 
 Results use the release name saved by the sender's Arr app, or a title Nodearr builds from the catalog metadata. The receiving app evaluates quality and custom formats from that title as it does for any indexer.
 

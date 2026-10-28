@@ -18,7 +18,7 @@ services:
       - tv-b:/tv
       - ${DOWNLOADS_B_DIR}:/downloads
     ports:
-      - "127.0.0.1:28989:8989"
+      - "127.0.0.1:${SONARR_B_PORT:-28989}:8989"
 
   radarr-b:
     restart: "no"
@@ -37,7 +37,7 @@ services:
       - movies-b:/movies
       - ${DOWNLOADS_B_DIR}:/downloads
     ports:
-      - "127.0.0.1:27878:7878"
+      - "127.0.0.1:${RADARR_B_PORT:-27878}:7878"
 
 volumes:
   sonarr-b-config:

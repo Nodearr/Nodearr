@@ -53,6 +53,9 @@ namespace NzbDrone.Core.Nodes
         // The last catalog snapshot received from this node.
         public string CatalogVersion { get; set; }
         public DateTime? CatalogSyncedAt { get; set; }
+
+        // The first successfully stored snapshot, including an empty catalog. RSS starts after it.
+        public DateTime? CatalogFirstSyncedAt { get; set; }
         public string CatalogError { get; set; }
 
         public NodeAddress ToAddress()

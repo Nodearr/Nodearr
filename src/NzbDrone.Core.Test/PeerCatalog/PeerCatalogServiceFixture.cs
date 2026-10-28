@@ -81,6 +81,82 @@ namespace NzbDrone.Core.Test.PeerCatalog
         private Peer StoredPeer => Mocker.Resolve<IPeerRepository>().Get(_alice.Id);
 
         [Test]
+        public void first_snapshot_should_be_baselined_and_full_refresh_should_keep_arrival_times()
+        {
+            Subject.Sync(_alice.Id);
+            var baseline = StoredPeer.CatalogFirstSyncedAt.Value;
+            var firstSeen = Stored.ToDictionary(i => i.RemoteId, i => i.FirstSeen);
+            firstSeen.Values.Should().OnlyContain(t => t.HasValue && t <= baseline);
+
+            GivenOffer("v2", 4);
+            Subject.Sync(_alice.Id);
+            StoredPeer.CatalogFirstSyncedAt.Should().Be(baseline);
+            Stored.Where(i => firstSeen.ContainsKey(i.RemoteId)).Should().OnlyContain(i => i.FirstSeen == firstSeen[i.RemoteId]);
+            Stored.Single(i => i.RemoteId == "e-1-4").FirstSeen.Should().BeAfter(baseline);
+        }
+
+        [Test]
+        public void an_empty_first_catalog_should_still_establish_a_baseline()
+        {
+            GivenOffer("empty", 0);
+            _version = Offer.VersionOf(Array.Empty<(string, string)>());
+            Subject.Sync(_alice.Id);
+            var baseline = StoredPeer.CatalogFirstSyncedAt.Value;
+            GivenOffer("later", 1);
+            Subject.Sync(_alice.Id);
+            Stored.Should().ContainSingle(i => i.FirstSeen > baseline);
+        }
+
+        [Test]
+        public void updating_pre_upgrade_rows_should_keep_them_at_the_existing_baseline()
+        {
+            Subject.Sync(_alice.Id);
+            var baseline = StoredPeer.CatalogFirstSyncedAt;
+            var items = Stored;
+            foreach (var item in items)
+            {
+                item.FirstSeen = null;
+            }
+
+            Mocker.Resolve<IPeerCatalogRepository>().UpdateMany(items);
+            GivenOffer("v2", 3);
+            Subject.Sync(_alice.Id);
+            Stored.Should().OnlyContain(i => i.FirstSeen == baseline);
+        }
+
+        [Test]
+        public void incremental_fingerprint_changes_should_keep_first_seen_and_date_new_arrivals()
+        {
+            Subject.Sync(_alice.Id);
+            var original = Stored.ToDictionary(i => i.RemoteId, i => i.FirstSeen);
+            var changed = _offered[0];
+            changed.Fingerprint = "1111111111111111";
+            var arrival = new OfferItem { Id = "e-new", Kind = MediaKind.Tv, TvdbId = 75669, SeasonNumber = 1, EpisodeNumbers = new List<int> { 4 }, Fingerprint = "2222222222222222" };
+
+            // A whole snapshot from an older peer lacks fingerprints. Fill them in so the delta
+            // can be checked against the same version calculation used by the sender.
+            var stored = Stored;
+            foreach (var item in stored)
+            {
+                item.Fingerprint = "0000000000000000";
+            }
+
+            Mocker.Resolve<IPeerCatalogRepository>().UpdateMany(stored);
+            var remaining = stored.Where(i => i.RemoteId != changed.Id).Select(i => (i.RemoteId, i.Fingerprint)).Append((changed.Id, changed.Fingerprint)).Append((arrival.Id, arrival.Fingerprint)).ToList();
+            var version = Offer.VersionOf(remaining);
+            Mocker.GetMock<IPeerService>().Setup(s => s.Ask(It.IsAny<Peer>(), It.IsAny<PeerMessage>())).Returns(new PeerReply
+            {
+                Ok = true, CatalogChanges = true, CatalogVersion = version, CatalogItemCount = 4, CatalogTotalPages = 1,
+                CatalogItems = new List<OfferItem> { changed, arrival }
+            });
+
+            Subject.Sync(_alice.Id);
+            Stored.Where(i => original.ContainsKey(i.RemoteId)).Should().OnlyContain(i => i.FirstSeen == original[i.RemoteId]);
+            Stored.Single(i => i.RemoteId == arrival.Id).FirstSeen.Should().BeAfter(StoredPeer.CatalogFirstSyncedAt.Value);
+            StoredPeer.CatalogVersion.Should().Be(version);
+        }
+
+        [Test]
         public void should_store_every_page_of_what_a_peer_offers()
         {
             Subject.Sync(_alice.Id);
