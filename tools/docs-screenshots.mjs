@@ -49,10 +49,13 @@
 // with no file there gets a plain placeholder, never the fetched poster.
 
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { musicKit, musicManifest, prepareMusic } from './ui-test-music.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -218,6 +221,11 @@ if (process.argv[2] === 'prepare') {
   process.exit(0);
 }
 
+if (process.argv[2] === 'prepareMusic') {
+  await prepareMusic(kit, { a: setUp('a', A, 'Alex'), b: setUp('b', B, 'Sam') });
+  process.exit(0);
+}
+
 // --- Posters ---------------------------------------------------------------------------------
 
 const posters = path.join(root, 'tools', 'screenshot-posters');
@@ -247,14 +255,21 @@ async function swapPosters(context, node) {
 
     if (parts[at + 1] === 'local') {
       const [applicationId, subject, arrId] = parts.slice(at + 2, at + 5);
-      const kind = { series: 'tv', movie: 'movie', album: 'music' }[subject.toLowerCase()];
+      if (['artist', 'album'].includes(subject.toLowerCase())) {
+        title = (await node.api('GET', `/catalog/music/local/${subject}/${applicationId}/${arrId}`)).title;
+      }
+      const kind = { series: 'tv', movie: 'movie' }[subject.toLowerCase()];
       const titles = await node.api('GET', '/sharing/titles');
-      title = titles.find((t) => `${t.applicationId}` === applicationId && `${t.arrId}` === arrId && t.mediaKind === kind)?.title;
+      title ??= titles.find((t) => `${t.applicationId}` === applicationId && `${t.arrId}` === arrId && t.mediaKind === kind)?.title;
     } else if (parts[at + 1] === 'peer') {
       const items = await node.api('GET', '/catalog/peers/items?page=1&pageSize=1000');
       title = items.records.find((i) => `${i.id}` === parts[at + 2])?.title;
     }
 
+    // Original geometric artwork, not the unverified cover art fetched by Lidarr.
+    if (musicManifest.albums.some((album) => album.title === title || album.artist === title)) {
+      return route.fulfill({ status: 200, contentType: 'image/svg+xml', body: readFileSync(path.join(root, 'tools/music-fixtures/cover.svg')) });
+    }
     const image = posterFile(title);
     if (!image) {
       if (!missing.has(title)) console.warn(`${node.name}: no public-domain poster for ${title ?? route.request().url()}; a placeholder is shown`);
@@ -430,6 +445,147 @@ async function nodeSettings(page, change) {
 }
 
 const shots = {
+  // Run after prepareMusic, before downloading into B. Deliberately requires exact fixture state.
+  async music({ browser }) {
+    const nodes = { a: setUp('a', A, 'Alex'), b: setUp('b', B, 'Sam') };
+    const apps = musicKit(kit);
+    const source = (await nodes.a.api('GET', '/catalog/music/peer?level=album')).records;
+    assert.equal(source.length, 0, 'B must still have only an incomplete album');
+    const offered = (await nodes.b.api('GET', '/catalog/music/peer?level=album')).records;
+    assert.equal(offered.length, musicManifest.albums.length);
+    assert.equal(new Set(offered.map((entry) => entry.key)).size, musicManifest.albums.length);
+    const lofi = offered.find((entry) => entry.title === 'Lofi Ftw');
+    assert(lofi);
+    const partial = await nodes.b.api('GET', lofi.path);
+    assert.equal(partial.tracks.length, 9);
+    assert.equal(partial.tracks.filter((track) => track.localStatus === 'upgrade').length, 1);
+    assert.equal(partial.tracks.filter((track) => track.localStatus === 'missing').length, 8);
+    const roots = (await nodes.b.api('GET', '/catalog/music/peer?level=artist')).records;
+    assert.equal(roots.length, 2);
+    const komiku = roots.find((entry) => entry.title === 'Komiku');
+    const komikuAlbums = musicManifest.albums.filter((album) => album.artist === 'Komiku').length;
+    assert.equal(komiku.albumCount, komikuAlbums);
+    assert.equal(komiku.getIt.scope, 'artist');
+    assert.equal(lofi.getIt.scope, 'file');
+    for (const theme of ['light', 'dark']) {
+      const context = await browser.newContext({ ...options, colorScheme: theme });
+      context.setDefaultTimeout(15000);
+      const failures = [];
+      context.on('page', (page) => page.on('pageerror', (error) => failures.push(error.message)));
+      try {
+        for (const [side, base] of [['a', A], ['b', B]]) {
+          await swapPosters(context, nodes[side]);
+          const page = await signIn(context, base);
+          for (const peer of [false, true]) {
+            await open(page, base, `/catalog/${peer ? 'peers' : 'local'}`);
+            await page.getByRole('button', { name: 'Music', exact: true }).click();
+            const area = page.getByRole('region', { name: 'Music', exact: true });
+            for (const [level, label] of [['artist', 'Artists'], ['album', 'Albums']]) {
+              const toggle = area.getByRole('button', { name: label, exact: true });
+              if (await toggle.isEnabled()) await toggle.click();
+              const entries = (await nodes[side].api('GET', `/catalog/music/${peer ? 'peer' : 'local'}?level=${level}&pageSize=48`)).records;
+              for (const view of ['Table', 'Posters']) {
+                console.log(`music checking ${theme} ${side} ${peer ? 'peer' : 'local'} ${level} ${view}: ${entries.length} entries`);
+                const control = page.getByRole('button', { name: view, exact: true });
+                if (await control.isEnabled()) await control.click();
+                for (const entry of entries) {
+                  const details = area.getByRole('button', { name: `Details: ${entry.title}`, exact: true });
+                  await details.first().waitFor(); // Poster and title intentionally open the same card.
+                  assert.equal(await details.count(), 2);
+                }
+                assert.equal(await area.getByRole('button', { name: /^Send/ }).count(), entries.filter((entry) => entry.send).length);
+                assert.equal(await area.getByRole('button', { name: /^Get (it|.*)/ }).count(), entries.filter((entry) => entry.getIt).length);
+              }
+            }
+          }
+          await page.close();
+        }
+        const page = await signIn(context, B);
+        await open(page, B, '/catalog/peers');
+        await page.getByRole('button', { name: 'Music', exact: true }).click();
+        const area = page.getByRole('region', { name: 'Music', exact: true });
+        const artists = area.getByRole('button', { name: 'Artists', exact: true });
+        if (await artists.isEnabled()) await artists.click();
+        await area.getByRole('button', { name: 'Details: Komiku', exact: true }).first().click();
+        let card = page.getByRole('dialog', { name: 'Komiku', exact: true });
+        await card.getByRole('button', { name: `Details: ${musicManifest.albums[1].title}`, exact: true }).waitFor();
+        assert.equal(await card.locator('img').count(), komikuAlbums);
+        if (theme === 'dark') await shoot(card, 'music-artist', { margin: 0 });
+        await card.getByRole('button', { name: `Details: ${musicManifest.albums[1].title}`, exact: true }).click();
+        card = page.getByRole('dialog', { name: musicManifest.albums[1].title, exact: true });
+        await card.getByRole('region', { name: 'Songs', exact: true }).waitFor();
+        assert.equal(await card.getByRole('region', { name: 'Songs', exact: true }).locator('li').count(), 13);
+        assert.equal(await card.getByRole('region', { name: 'Songs', exact: true }).getByRole('button').count(), 0);
+        await card.getByRole('button', { name: 'Back', exact: true }).click();
+        await page.getByRole('dialog', { name: 'Komiku', exact: true }).waitFor();
+        await page.keyboard.press('Escape');
+        const albums = area.getByRole('button', { name: 'Albums', exact: true });
+        await albums.click();
+        await area.getByRole('button', { name: 'Details: Lofi Ftw', exact: true }).first().click();
+        card = page.getByRole('dialog', { name: 'Lofi Ftw', exact: true });
+        await card.getByRole('region', { name: 'Songs', exact: true }).waitFor();
+        const songs = card.getByRole('region', { name: 'Songs', exact: true });
+        assert.equal(await songs.getByText('Missing', { exact: true }).count(), 8);
+        assert.equal(await songs.getByText('Upgrade', { exact: true }).count(), 1);
+        if (theme === 'dark') await shoot(card, 'music-album', { margin: 0 });
+        await page.keyboard.press('Escape');
+        assert.deepEqual(failures, []);
+        console.log(`music: ${theme} local/peer artist/album table/poster parity, cards, songs and availability passed`);
+      } finally { await context.close(); }
+    }
+    // Real Home sends, with separate artist/album scope, not fabricated received records.
+    const local = (await nodes.a.api('GET', '/catalog/music/local?level=artist')).records.find((entry) => entry.title === 'Komiku');
+    const detail = await nodes.a.api('GET', local.path);
+    const sentAlbum = detail.albums.find((entry) => entry.title === musicManifest.albums[1].title);
+    const peer = await friendOf(nodes.a, nodes.b);
+    for (const [entry, expected] of [[local, 'artist'], [sentAlbum, 'album']]) {
+      const before = new Set((await nodes.b.api('GET', '/sharing/sends/received')).map((note) => note.id));
+      await nodes.a.api('POST', '/sharing/sends', { peerId: peer.id, items: [entry.send] });
+      const note = await until('music send to reach Home', async () => {
+        const added = (await nodes.b.api('GET', '/sharing/sends/received')).filter((note) => !before.has(note.id));
+        assert(added.length <= 1, 'Duplicate received music cards');
+        return added[0];
+      });
+      const received = await nodes.b.api('GET', `/sharing/sends/received/${note.id}/details`);
+      assert.equal(received.kind, expected);
+      assert.equal(expected === 'artist' ? received.albums.length : received.tracks.length, expected === 'artist' ? komikuAlbums : 13);
+      await nodes.b.api('POST', `/sharing/sends/received/${note.id}/dismiss`);
+    }
+    // Download through Nodearr/Torznab/Lidarr, then compare imported bytes by recording ID.
+    for (const entry of [komiku, lofi]) {
+      const selection = entry.getIt;
+      const route = `/catalog/peers/items/${selection.itemId}/getit`;
+      const choices = await nodes.b.api('GET', `${route}?scope=${selection.scope}`);
+      assert(!choices.plan.problem, choices.plan.problem);
+      assert.equal(choices.plan.targets.length, 1);
+      const queued = await nodes.b.api('POST', route, { ...selection, options: choices.plan.targets[0].defaults });
+      await until('music Get it to finish', async () => {
+        const state = await nodes.b.api('GET', `/command/${queued.id}`);
+        assert.notEqual(state.status, 'failed', state.message);
+        return state.status === 'completed';
+      }, 300);
+    }
+    for (const fixture of musicManifest.albums) {
+      const artist = await until(`Lidarr to add ${fixture.artist}`, async () => (await apps.b.api('GET', '/artist')).find((artist) => artist.foreignArtistId === fixture.artistId));
+      const album = await until(`Lidarr to import ${fixture.title}`, async () => {
+        const album = (await apps.b.api('GET', `/album?artistId=${artist.id}`)).find((album) => album.foreignAlbumId === fixture.albumId);
+        if (!album) return false;
+        const files = (await apps.b.api('GET', `/trackfile?artistId=${artist.id}`)).filter((file) => file.albumId === album.id);
+        assert(files.length <= fixture.tracks, 'Duplicate imported songs');
+        return files.length === fixture.tracks && files.every((file) => file.quality.quality.name === 'MP3-320') && album;
+      }, 600);
+      assert.equal(artist.monitorNewItems, fixture.artist === 'Komiku' ? 'all' : 'none');
+      assert.equal(album.monitored, true);
+      const sourceArtist = (await apps.a.api('GET', '/artist')).find((artist) => artist.foreignArtistId === fixture.artistId);
+      const sourceAlbum = (await apps.a.api('GET', `/album?artistId=${sourceArtist.id}`)).find((album) => album.foreignAlbumId === fixture.albumId);
+      const fingerprints = async (app, artistId, albumId) => {
+        const files = (await app.api('GET', `/trackfile?artistId=${artistId}`)).filter((file) => file.albumId === albumId);
+        return files.map((file) => createHash('sha256').update(readFileSync(path.join(app.folder, `music-${app.side}`, file.path.replace(/^\/music\//, '')))).digest('hex')).sort();
+      };
+      assert.deepEqual(await fingerprints(apps.a, sourceArtist.id, sourceAlbum.id), await fingerprints(apps.b, artist.id, album.id));
+      console.log(`music: ${fixture.artist} / ${fixture.title}: ${fixture.tracks} imported songs, matching SHA256`);
+    }
+  },
   // Requires the reused kit: A holds B's Little Shop, Felix E01/E02 but not E03,
   // and the original Metropolis; B offers its PROPER. Creates and puts away four sends.
   async receivedAvailability({ a, browser }) {
@@ -1281,7 +1437,7 @@ const b = await signIn(contextB, B);
 try {
   for (const [name, take] of Object.entries(shots)) {
     // These checks need the fixture states described above, so run them by name.
-    if (wanted.includes(name) || (wanted.length === 0 && !['transfers', 'catalogAvailability', 'receivedDetails', 'receivedAvailability'].includes(name))) {
+    if (wanted.includes(name) || (wanted.length === 0 && !['transfers', 'catalogAvailability', 'receivedDetails', 'receivedAvailability', 'music'].includes(name))) {
       await take({ a, b, browser });
     }
   }

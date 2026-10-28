@@ -30,6 +30,7 @@ import CatalogKindButton from '../CatalogKindButton';
 import { getAvailableCatalogKinds } from '../catalogKinds';
 import CatalogDetailsButton from '../Details/CatalogDetailsButton';
 import CatalogGetItButton from '../GetIt/CatalogGetItButton';
+import MusicCatalog from '../Music/MusicCatalog';
 import Poster, { peerPosterSrc } from '../Poster';
 import useCatalogMissingEpisodes from '../useCatalogMissingEpisodes';
 import {
@@ -481,7 +482,7 @@ function PeerCatalog() {
     sortDirection,
     queryParams: { ...(status ? { status } : {}), kind },
     queryOptions: {
-      enabled: view === 'table' && kind !== 'series',
+      enabled: view === 'table' && kind !== 'series' && kind !== 'music',
       refetchInterval: 5000,
     },
   });
@@ -502,7 +503,10 @@ function PeerCatalog() {
     page,
     pageSize: POSTER_PAGE_SIZE,
     queryParams: { ...(status ? { status } : {}), kind },
-    queryOptions: { enabled: view === 'posters', refetchInterval: 5000 },
+    queryOptions: {
+      enabled: view === 'posters' && kind !== 'music',
+      refetchInterval: 5000,
+    },
   });
 
   const handleViewPress = useCallback((next: View) => {
@@ -667,7 +671,7 @@ function PeerCatalog() {
       <PageContentBody>
         {isSummaryLoading ? <LoadingIndicator /> : null}
 
-        {summaryError || activeError ? (
+        {summaryError || (kind !== 'music' && activeError) ? (
           <Alert kind={kinds.DANGER}>{translate('CatalogLoadError')}</Alert>
         ) : null}
 
@@ -745,6 +749,10 @@ function PeerCatalog() {
           </div>
         ) : null}
 
+        {kind === 'music' ? (
+          <MusicCatalog peer={true} view={view} status={status} />
+        ) : null}
+
         {view === 'table' && kind === 'series' ? (
           <label className={styles.missingFilter}>
             <input
@@ -756,9 +764,12 @@ function PeerCatalog() {
           </label>
         ) : null}
 
-        {view === 'posters' && titles.isLoading ? <LoadingIndicator /> : null}
+        {view === 'posters' && kind !== 'music' && titles.isLoading ? (
+          <LoadingIndicator />
+        ) : null}
 
         {view === 'posters' &&
+        kind !== 'music' &&
         !titles.isLoading &&
         titles.records.length > 0 ? (
           <div>
@@ -782,7 +793,9 @@ function PeerCatalog() {
           </div>
         ) : null}
 
-        {view === 'table' && activeLoading ? <LoadingIndicator /> : null}
+        {view === 'table' && kind !== 'music' && activeLoading ? (
+          <LoadingIndicator />
+        ) : null}
 
         {view === 'table' &&
         kind === 'series' &&
@@ -949,6 +962,7 @@ function PeerCatalog() {
 
         {view === 'table' &&
         kind !== 'series' &&
+        kind !== 'music' &&
         !items.isLoading &&
         items.records.length > 0 ? (
           <div>

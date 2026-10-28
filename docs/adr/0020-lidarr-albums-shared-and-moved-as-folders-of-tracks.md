@@ -18,6 +18,14 @@ Everything Nodearr shares so far is one file: an episode file, a movie file, a [
 
 ## Decision
 
+### Amendment, 2026-10-28: artist and album browsing (#68)
+
+The music catalogs use the same artist and album entries in their table and poster views. Artist cards show their albums with cover thumbnails; album cards show songs in Lidarr's selected release, including missing local tracks. Send and Get it operate at artist and album level only, matching Lidarr's capabilities. Songs are informational and never become independent download requests.
+
+The local catalog retains artist and album descriptions, genres and the selected release's track list. New optional offer fields carry artist descriptions and genres, track duration and MusicBrainz recording IDs. Peers see only complete, currently shared albums from a trusted sender; artist cards group by that sender and MusicBrainz artist ID, never by a name or another friend's library. Missing optional metadata on older offers leaves details absent without making those offers unusable. Migration 267 adds nullable columns and requests one full peer catalog to recover fields discarded by older receivers.
+
+A catalog artist Get it monitors the whole artist, including future albums, and initially searches the offered missing or upgradable albums. An explicit `Artist` scope distinguishes whole-artist retrieval; existing `File` and `Title` music requests keep their album-only meaning. An album selection preserves its scope and existing artist settings. Both use the existing add/monitor/search service and verified album-folder transfer pipeline. Song availability is compared within the album by recording ID and the local quality profile; older offers without IDs show unknown local song status rather than guessing by title or position.
+
 Lidarr is supported the way its releases work: the unit Nodearr offers, matches, transfers and hands back is an album, and an album is a folder of track files.
 
 ### L1: the library

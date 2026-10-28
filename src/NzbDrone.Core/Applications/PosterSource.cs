@@ -10,7 +10,8 @@ namespace NzbDrone.Core.Applications
     {
         Series,
         Movie,
-        Album
+        Album,
+        Artist
     }
 
     // An Arr app that can hand over the poster it keeps for a title. The Arr apps download each

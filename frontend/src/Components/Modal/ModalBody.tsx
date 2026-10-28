@@ -1,5 +1,5 @@
 import React from 'react';
-import Scroller from 'Components/Scroller/Scroller';
+import Scroller, { OnScroll } from 'Components/Scroller/Scroller';
 import { ScrollDirection } from 'Helpers/Props/scrollDirections';
 import styles from './ModalBody.css';
 
@@ -8,11 +8,14 @@ interface ModalBodyProps {
   innerClassName?: string;
   children?: React.ReactNode;
   scrollDirection?: ScrollDirection;
+  scrollTop?: number;
+  onScroll?: (payload: OnScroll) => void;
 }
 
 function ModalBody({
   innerClassName = styles.innerModalBody,
   scrollDirection = 'vertical',
+  scrollTop = 0,
   children,
   ...otherProps
 }: ModalBodyProps) {
@@ -28,7 +31,7 @@ function ModalBody({
       {...otherProps}
       className={className}
       scrollDirection={scrollDirection}
-      scrollTop={0}
+      scrollTop={scrollTop}
     >
       {hasScroller ? (
         <div className={innerClassName}>{children}</div>

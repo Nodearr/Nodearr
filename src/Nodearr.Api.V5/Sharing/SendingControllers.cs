@@ -327,7 +327,7 @@ public class SendController : Controller, IHandle<SentTitlesChangedEvent>, IHand
             resource.PosterItemId = _peerCatalog.FindItemId(r.PeerId, resource.OfferIds);
             var item = resource.PosterItemId.HasValue ? _peerCatalog.GetItem(resource.PosterItemId.Value) : null;
             resource.DetailsAvailable = peers.GetValueOrDefault(r.PeerId)?.State == PeerState.Trusted &&
-                item != null && item.PeerId == r.PeerId && item.MediaKind == r.MediaKind && item.MediaKind != MediaKind.Music;
+                item != null && item.PeerId == r.PeerId && item.MediaKind == r.MediaKind && (item.MediaKind != MediaKind.Music || item.IsAlbum);
 
             return resource;
         }));
@@ -348,9 +348,27 @@ public class SendController : Controller, IHandle<SentTitlesChangedEvent>, IHand
         var itemId = _peerCatalog.FindItemId(received.PeerId, offerIds);
         var item = itemId.HasValue ? _peerCatalog.GetItem(itemId.Value) : null;
         if (item == null || item.PeerId != received.PeerId || !offerIds.Contains(item.RemoteId) ||
-            item.MediaKind != received.MediaKind || item.MediaKind == MediaKind.Music)
+            item.MediaKind != received.MediaKind)
         {
             return TypedResults.NotFound();
+        }
+
+        if (item.MediaKind == MediaKind.Music)
+        {
+            var musicKind = received.IsWhole || received.GetParts().Albums.Count > 1 ? "artist" : "album";
+            var music = MusicCatalogDetails.Get(_peerCatalog, _holdings, musicKind, item.Id);
+            if (music == null)
+            {
+                return TypedResults.NotFound();
+            }
+
+            music.SentSummary = received.Summary;
+            foreach (var album in music.Albums)
+            {
+                album.WasSent = !received.IsWhole && received.GetParts().Albums.Contains(album.ForeignAlbumId, StringComparer.OrdinalIgnoreCase);
+            }
+
+            return TypedResults.Ok(music);
         }
 
         var kind = item.MediaKind == MediaKind.Tv ? "series" : item.IsScene ? "scene" : item.IsAdult ? "film" : "movie";

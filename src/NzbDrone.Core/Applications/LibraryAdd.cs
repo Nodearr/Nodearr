@@ -48,6 +48,7 @@ namespace NzbDrone.Core.Applications
         public List<SeasonEpisode> OfferedEpisodes { get; set; } = new();
         public List<SeasonEpisode> UpgradeEpisodes { get; set; } = new();
         public List<string> OfferedAlbums { get; set; } = new();
+        public List<string> UpgradeAlbums { get; set; } = new();
 
         // How to add it, when it is not there yet.
         public string RootFolderPath { get; set; }

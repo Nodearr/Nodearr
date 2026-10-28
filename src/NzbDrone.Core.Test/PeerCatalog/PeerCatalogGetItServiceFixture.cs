@@ -173,8 +173,10 @@ namespace NzbDrone.Core.Test.PeerCatalog
             _asked.OfferedEpisodes.Select(e => e.EpisodeNumber).Should().BeEquivalentTo(new[] { 1, 2 });
         }
 
-        [Test]
-        public void an_album_should_add_its_artist_and_monitor_that_album_only()
+        [TestCase(CatalogGetItScope.File, false)]
+        [TestCase(CatalogGetItScope.Title, false)]
+        [TestCase(CatalogGetItScope.Artist, true)]
+        public void music_should_preserve_the_selected_album_or_whole_artist_scope(CatalogGetItScope scope, bool whole)
         {
             var item = Mocker.Resolve<IPeerCatalogRepository>().Insert(new PeerCatalogItem
             {
@@ -188,11 +190,19 @@ namespace NzbDrone.Core.Test.PeerCatalog
                 Tracks = JsonSerializer.Serialize(new List<OfferTrack> { new() { Id = "t-3-1", Extension = ".flac", Size = 100 } })
             });
 
-            Subject.Execute(Queue(item, CatalogGetItScope.Title));
+            var second = new PeerCatalogItem
+            {
+                PeerId = _alice.Id, RemoteId = "a-3-2", MediaKind = MediaKind.Music, Artist = item.Artist,
+                Title = "Tweez", ForeignArtistId = item.ForeignArtistId, ForeignAlbumId = "11111111-2222-3333-4444-555555555555", Tracks = item.Tracks
+            };
+            Mocker.Resolve<IPeerCatalogRepository>().Insert(second);
+            Subject.Execute(Queue(item, scope));
 
             _askedApp.Should().Be(3);
-            _asked.Should().Match<LibraryAddRequest>(r => !r.Whole && r.ForeignArtistId == item.ForeignArtistId && r.MetadataProfileId == 2);
-            _asked.Albums.Should().Equal(item.ForeignAlbumId);
+            _asked.Whole.Should().Be(whole);
+            _asked.Should().Match<LibraryAddRequest>(r => r.ForeignArtistId == item.ForeignArtistId && r.MetadataProfileId == 2);
+            _asked.Albums.Should().BeEquivalentTo(whole ? new string[0] : new[] { item.ForeignAlbumId });
+            _asked.OfferedAlbums.Should().BeEquivalentTo(whole ? new[] { item.ForeignAlbumId, second.ForeignAlbumId } : new[] { item.ForeignAlbumId });
         }
 
         [Test]

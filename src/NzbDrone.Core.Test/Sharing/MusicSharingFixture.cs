@@ -124,6 +124,31 @@ namespace NzbDrone.Core.Test.Sharing
         }
 
         [Test]
+        public void shared_details_should_include_only_offered_album_tracks_and_no_library_paths()
+        {
+            var artist = Mocker.Resolve<ICatalogArtistRepository>().ForArrIds(3, new[] { 7 }).Single();
+            artist.Overview = "Biography";
+            artist.Genres = "Ambient";
+            Mocker.Resolve<ICatalogArtistRepository>().Update(artist);
+            var album = Mocker.Resolve<ICatalogAlbumRepository>().ForArrIds(3, new[] { 70 }).Single();
+            album.Overview = "Album description";
+            album.Tracks = System.Text.Json.JsonSerializer.Serialize(new[] { new CatalogAlbumTrack { TrackFileId = 701, Duration = 120000 } });
+            Mocker.Resolve<ICatalogAlbumRepository>().Update(album);
+            var file = Mocker.Resolve<ICatalogTrackFileRepository>().ForArrIds(3, new[] { 701 }).Single();
+            file.ForeignRecordingId = "11111111-1111-1111-1111-111111111111";
+            Mocker.Resolve<ICatalogTrackFileRepository>().Update(file);
+            GivenShared(Low);
+
+            var offer = Subject.BuildOffer(Bob, true).Items.Single();
+            offer.ArtistOverview.Should().Be("Biography");
+            offer.ArtistGenres.Should().Be("Ambient");
+            offer.Overview.Should().Be("Album description");
+            offer.Tracks.Single(t => t.Id == "t-3-701").Duration.Should().Be(120000);
+            offer.Tracks.Single(t => t.Id == "t-3-701").ForeignRecordingId.Should().Be(file.ForeignRecordingId);
+            System.Text.Json.JsonSerializer.Serialize(offer).Should().NotContain("/music").And.NotContain("Secret Name");
+        }
+
+        [Test]
         public void share_everything_should_offer_every_whole_album()
         {
             Subject.SetShareAll(_bob.Id, true);

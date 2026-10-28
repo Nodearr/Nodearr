@@ -166,6 +166,8 @@ The catalog's Get it action is implemented in #54, connection-loss diagnosis and
 
 - Received sends compare the exact offered files with current local holdings. Already-held cards keep Details and Put away, expire a day after first visible display, and leave sender delivery unchanged; partial sends and upgrades retain Get it with file counts ([#102](https://github.com/Nodearr/Nodearr/issues/102); ADR 0021). Branch `v1/s102-held-sends`.
 
+- Lidarr artist and album browsing, cards, Send and Get it share the same entries in table and poster views. Album cards list songs and local availability without song-level downloads. Optional music metadata and migration 267 preserve older offers. The UI kit uses three pinned CC0 albums resolved and imported by real Lidarr instances ([#68](https://github.com/Nodearr/Nodearr/issues/68); ADR 0020/0021). Branch `v1/s68-lidarr-catalog`.
+
 ### Next, in order
 
 1. ~~**Posters, part 1: a friend's catalog with pictures** (S57).~~ Done (ADR 0022).

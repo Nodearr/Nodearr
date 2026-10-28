@@ -123,3 +123,9 @@ Verification on Windows: the solution built with analyzers and no warnings; 6,63
 - 2026-10-19: **monitoring an existing title adds to what was chosen before.** The Sonarr and Lidarr adders turn monitoring on for what was sent without turning other monitored parts off. A new title starts with only the requested parts. A whole series means Sonarr's All Episodes choice, which leaves specials out; Season 0 or its episodes must be sent explicitly. Searching still uses the Arr app's enabled indexers and profiles, so it can choose a release from another indexer.
 
 - 2026-10-19: **searching before matching offers are known.** Sonarr falls back to searching every missing episode of the requested parts when no offered episodes are known yet. For a whole artist, Lidarr falls back to Artist Search when no offered albums are known. Once offers are known, the limited searches described above apply.
+
+### Amendment, 2026-10-28: music details and catalog actions (#68)
+
+Received music sends resolve the same cached, trusted album offers used by the peer catalog. A whole artist opens its artist card; a single album opens directly; a selection of albums opens the artist with the sent albums marked. Withdrawing the offer removes its details and actions. No card calls the sender's Lidarr. Home's Get it still uses the exact sent selection.
+
+Catalog artist requests use a new explicit `Artist` scope; existing music `File` and `Title` requests retain their album-only meaning. Artist requests monitor future albums and search only the sender's currently offered missing or upgradable albums initially. Album requests do not expand into whole-artist requests. Existing artist configuration is preserved. This extends the artist/album pipeline from ADR 0020 without adding song-level requests.

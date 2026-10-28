@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Messaging;
 using NzbDrone.Core.Datastore;
@@ -141,6 +142,8 @@ namespace NzbDrone.Core.Catalog
     // Lidarr's: an artist, by its MusicBrainz ID.
     public class CatalogArtist : CatalogModel
     {
+        public string Overview { get; set; }
+        public string Genres { get; set; }
         public string ForeignArtistId { get; set; }
         public string Name { get; set; }
         public string SortName { get; set; }
@@ -153,6 +156,12 @@ namespace NzbDrone.Core.Catalog
     // as a folder of tracks.
     public class CatalogAlbum : CatalogModel
     {
+        public string Overview { get; set; }
+        public string Genres { get; set; }
+        public string Tracks { get; set; }
+
+        public List<CatalogAlbumTrack> GetTracks() => string.IsNullOrEmpty(Tracks) ? new() : JsonSerializer.Deserialize<List<CatalogAlbumTrack>>(Tracks) ?? new();
+
         public int ArrArtistId { get; set; }
         public string ForeignAlbumId { get; set; }
         public string Title { get; set; }
@@ -173,6 +182,7 @@ namespace NzbDrone.Core.Catalog
 
     public class CatalogTrackFile : CatalogFile
     {
+        public string ForeignRecordingId { get; set; }
         public int ArrArtistId { get; set; }
         public int ArrAlbumId { get; set; }
 
@@ -181,6 +191,16 @@ namespace NzbDrone.Core.Catalog
         public string TrackTitle { get; set; }
         public int TrackNumber { get; set; }
         public int DiscNumber { get; set; }
+    }
+
+    public class CatalogAlbumTrack
+    {
+        public string ForeignRecordingId { get; set; }
+        public string Title { get; set; }
+        public int Number { get; set; }
+        public int Disc { get; set; }
+        public int Duration { get; set; }
+        public int TrackFileId { get; set; }
     }
 
     // Everything one Arr app reported in one refresh.

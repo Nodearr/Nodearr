@@ -201,6 +201,12 @@ namespace NzbDrone.Core.Sharing
         public string Artist { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string ArtistOverview { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string ArtistGenres { get; set; }
+
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string ForeignArtistId { get; set; }
 
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -255,6 +261,10 @@ namespace NzbDrone.Core.Sharing
     // asks for.
     public class OfferTrack
     {
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string ForeignRecordingId { get; set; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? Duration { get; set; }
         public string Id { get; set; }
         public string Extension { get; set; }
         public long Size { get; set; }

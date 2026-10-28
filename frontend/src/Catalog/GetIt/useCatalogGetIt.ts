@@ -10,7 +10,7 @@ import fetchJson, { ApiError } from 'Utilities/Fetch/fetchJson';
 import getQueryPath from 'Utilities/Fetch/getQueryPath';
 import { GetItOptions, GetItPlan, PeerItemStatus } from '../useSharing';
 
-export type CatalogGetItScope = 'file' | 'season' | 'title';
+export type CatalogGetItScope = 'file' | 'season' | 'title' | 'artist';
 
 export interface CatalogGetItSelection {
   itemId: number;

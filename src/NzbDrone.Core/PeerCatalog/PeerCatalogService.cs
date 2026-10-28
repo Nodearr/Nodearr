@@ -26,6 +26,7 @@ namespace NzbDrone.Core.PeerCatalog
         List<PeerCatalogTitle> GetTitles(PeerItemStatus? status, string kind = null);
         List<PeerCatalogSeries> GetSeries(PeerItemStatus? status);
         PeerCatalogItem GetItem(int itemId);
+        List<PeerCatalogItem> GetMusic();
 
         // An item of this node's copy of a friend's catalog that is one of these offered files,
         // for its poster. Null until the catalog holds one of them.
@@ -133,6 +134,12 @@ namespace NzbDrone.Core.PeerCatalog
         public int? FindItemId(int peerId, IEnumerable<string> offerIds)
         {
             return _items.ForRemoteIds(peerId, offerIds).OrderBy(i => i.Id).FirstOrDefault()?.Id;
+        }
+
+        public List<PeerCatalogItem> GetMusic()
+        {
+            var trusted = _peers.All().Where(p => p.State == PeerState.Trusted).Select(p => p.Id).ToHashSet();
+            return _items.All().Where(i => trusted.Contains(i.PeerId) && i.MediaKind == MediaKind.Music && i.IsAlbum).ToList();
         }
 
         public PeerCatalogItem GetItem(int itemId)

@@ -97,6 +97,7 @@ namespace NzbDrone.Core.PeerCatalog
         // Lidarr's albums by MusicBrainz release group, each with its artist's quality profile and
         // one of its track files, the one of the quality most of them have.
         private readonly ILookup<string, (CatalogAlbum Album, int ProfileId, CatalogFile File)> _albumsByReleaseGroup;
+        private readonly ILookup<(int, int), CatalogTrackFile> _tracksByAlbum;
 
         // By application and the Arr app's profile ID. Only profiles whose ranking has been read.
         private readonly Dictionary<(int, int), QualityRanking> _rankings;
@@ -143,6 +144,7 @@ namespace NzbDrone.Core.PeerCatalog
             var tracks = (trackFiles ?? Enumerable.Empty<CatalogTrackFile>())
                 .Where(f => f.MissingSince == null)
                 .ToLookup(f => (f.ApplicationId, f.ArrAlbumId));
+            _tracksByAlbum = tracks;
 
             _albumsByReleaseGroup = (albums ?? Enumerable.Empty<CatalogAlbum>())
                 .Where(a => a.MissingSince == null && a.ForeignAlbumId.IsNotNullOrWhiteSpace() && profileOfArtist.ContainsKey((a.ApplicationId, a.ArrArtistId)))
@@ -170,6 +172,26 @@ namespace NzbDrone.Core.PeerCatalog
 
         // Lidarr knows an album by its release group, whichever edition of it it holds. It is
         // held only when every track is, as Lidarr takes a release only when it is the whole album.
+        public PeerItemStatus? ClassifyTrack(PeerCatalogItem item, OfferTrack track)
+        {
+            if (Classify(item) == PeerItemStatus.NotInLibrary)
+            {
+                return PeerItemStatus.NotInLibrary;
+            }
+
+            if (string.IsNullOrEmpty(track.ForeignRecordingId) || string.IsNullOrEmpty(item.ForeignAlbumId))
+            {
+                return null;
+            }
+
+            var albums = _albumsByReleaseGroup[item.ForeignAlbumId.ToLowerInvariant()].ToList();
+            var files = albums.SelectMany(a => _tracksByAlbum[(a.Album.ApplicationId, a.Album.ArrId)]
+                .Where(f => string.Equals(f.ForeignRecordingId, track.ForeignRecordingId, StringComparison.OrdinalIgnoreCase))
+                .Select(f => (File: (CatalogFile)f, Ranking: RankingFor(a.Album.ApplicationId, a.ProfileId)))).ToList();
+            var candidate = new PeerCatalogItem { Quality = track.Quality ?? item.Quality, QualitySource = item.QualitySource, Resolution = item.Resolution };
+            return Compare(candidate, files);
+        }
+
         private PeerItemStatus ClassifyAlbum(PeerCatalogItem item)
         {
             var albums = item.ForeignAlbumId.IsNullOrWhiteSpace() ? new List<(CatalogAlbum Album, int ProfileId, CatalogFile File)>() : _albumsByReleaseGroup[item.ForeignAlbumId].ToList();

@@ -40,6 +40,27 @@ namespace NzbDrone.Core.Test.PeerCatalog
             _profiles = new List<CatalogQualityProfile> { new() { ApplicationId = 3, ArrId = 1, QualityRanking = Ranking().ToStored() } };
         }
 
+        [Test]
+        public void new_music_metadata_should_be_optional_and_bounded_without_discarding_the_album()
+        {
+            var offer = Offer("things-we-lost");
+            offer.ArtistOverview = new string('x', 4001);
+            offer.ArtistGenres = "Ambient";
+            offer.Tracks[0].Duration = -1;
+            offer.Tracks[0].ForeignRecordingId = "not-an-id";
+            offer.Tracks[1].Duration = 123000;
+            offer.Tracks[1].ForeignRecordingId = "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA";
+
+            var item = PeerCatalogItem.FromOffer(1, offer);
+            item.IsAlbum.Should().BeTrue();
+            item.ArtistOverview.Should().BeNull();
+            item.ArtistGenres.Should().Be("Ambient");
+            item.GetTracks()[0].Duration.Should().BeNull();
+            item.GetTracks()[0].ForeignRecordingId.Should().BeNull();
+            item.GetTracks()[1].Duration.Should().Be(123000);
+            item.GetTracks()[1].ForeignRecordingId.Should().Be("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        }
+
         private PeerItemStatus Classify(PeerCatalogItem item)
         {
             return new LocalHoldings(new List<CatalogSeries>(), new List<CatalogEpisode>(), new List<CatalogEpisodeFile>(), new List<CatalogMovie>(), new List<CatalogMovieFile>(), _profiles, _artists, _albums, _trackFiles).Classify(item);

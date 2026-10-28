@@ -1508,6 +1508,226 @@
         }
       }
     },
+    "/api/v5/catalog/music/local": {
+      "get": {
+        "tags": [
+          "MusicCatalog"
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          },
+          {
+            "name": "sortKey",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortDirection",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/SortDirection"
+            }
+          },
+          {
+            "name": "level",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "artist"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MusicCatalogEntryResourcePagingResource"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v5/catalog/music/local/{kind}/{applicationId}/{arrId}": {
+      "get": {
+        "tags": [
+          "MusicCatalog"
+        ],
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "applicationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "arrId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogDetailsResource"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
+    "/api/v5/catalog/music/peer": {
+      "get": {
+        "tags": [
+          "MusicCatalog"
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 10
+            }
+          },
+          {
+            "name": "sortKey",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortDirection",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/SortDirection"
+            }
+          },
+          {
+            "name": "level",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "artist"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/PeerItemStatus"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MusicCatalogEntryResourcePagingResource"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v5/catalog/music/peer/{kind}/{itemId}": {
+      "get": {
+        "tags": [
+          "MusicCatalog"
+        ],
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogDetailsResource"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
     "/newznab/api": {
       "get": {
         "tags": [
@@ -3940,6 +4160,36 @@
           "size": {
             "type": "integer",
             "format": "int64"
+          },
+          "parentPath": {
+            "type": "string",
+            "nullable": true
+          },
+          "foreignArtistId": {
+            "type": "string",
+            "nullable": true
+          },
+          "foreignAlbumId": {
+            "type": "string",
+            "nullable": true
+          },
+          "albumType": {
+            "type": "string",
+            "nullable": true
+          },
+          "albums": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MusicCatalogEntryResource"
+            },
+            "nullable": true
+          },
+          "tracks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CatalogDetailsTrackResource"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -3963,6 +4213,47 @@
             "type": "integer",
             "format": "int32",
             "nullable": true
+          },
+          "albumArrId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CatalogDetailsTrackResource": {
+        "type": "object",
+        "properties": {
+          "localStatus": {
+            "$ref": "#/components/schemas/PeerItemStatus"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "number": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "disc": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "duration": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "hasFile": {
+            "type": "boolean"
+          },
+          "quality": {
+            "type": "string",
+            "nullable": true
+          },
+          "size": {
+            "type": "integer",
+            "format": "int64"
           }
         },
         "additionalProperties": false
@@ -4049,7 +4340,8 @@
         "enum": [
           "file",
           "season",
-          "title"
+          "title",
+          "artist"
         ],
         "type": "string"
       },
@@ -5527,6 +5819,96 @@
         ],
         "type": "string"
       },
+      "MusicCatalogEntryResource": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "parentTitle": {
+            "type": "string",
+            "nullable": true
+          },
+          "sourceName": {
+            "type": "string",
+            "nullable": true
+          },
+          "path": {
+            "type": "string",
+            "nullable": true
+          },
+          "posterPath": {
+            "type": "string",
+            "nullable": true
+          },
+          "year": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "albumCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "trackCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "localStatus": {
+            "$ref": "#/components/schemas/PeerItemStatus"
+          },
+          "send": {
+            "$ref": "#/components/schemas/CatalogDetailsSendResource"
+          },
+          "getIt": {
+            "$ref": "#/components/schemas/CatalogDetailsGetItResource"
+          },
+          "foreignAlbumId": {
+            "type": "string",
+            "nullable": true
+          },
+          "wasSent": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "MusicCatalogEntryResourcePagingResource": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sortKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "sortDirection": {
+            "$ref": "#/components/schemas/SortDirection"
+          },
+          "totalRecords": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MusicCatalogEntryResource"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "NodeIdentityResource": {
         "type": "object",
         "properties": {
@@ -6199,7 +6581,8 @@
         "enum": [
           "series",
           "movie",
-          "album"
+          "album",
+          "artist"
         ],
         "type": "string"
       },
@@ -7258,6 +7641,9 @@
     },
     {
       "name": "LogFile"
+    },
+    {
+      "name": "MusicCatalog"
     },
     {
       "name": "Newznab"

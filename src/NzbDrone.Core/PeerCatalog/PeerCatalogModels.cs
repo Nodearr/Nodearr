@@ -86,6 +86,8 @@ namespace NzbDrone.Core.PeerCatalog
         // From a peer's Lidarr: an album, by its artist and MusicBrainz IDs, and its tracks as
         // JSON, each with the peer's name for it. See OfferItem.
         public string Artist { get; set; }
+        public string ArtistOverview { get; set; }
+        public string ArtistGenres { get; set; }
         public string ForeignArtistId { get; set; }
         public string ForeignAlbumId { get; set; }
         public string AlbumType { get; set; }
@@ -210,9 +212,11 @@ namespace NzbDrone.Core.PeerCatalog
             return new OfferTrack
             {
                 Id = track.Id,
+                ForeignRecordingId = Guid.TryParse(track.ForeignRecordingId, out var recording) ? recording.ToString() : null,
                 Extension = track.Extension,
                 Size = track.Size,
                 Quality = track.Quality,
+                Duration = track.Duration is > 0 and < 86400000 ? track.Duration : null,
                 Blake3 = track.Blake3,
                 Title = title is { Length: > 0 and <= 300 } && !title.Any(char.IsControl) ? title : null,
                 Number = track.Number is > 0 and < 10000 ? track.Number : null,
@@ -280,6 +284,8 @@ namespace NzbDrone.Core.PeerCatalog
                 StashId = offer.StashId,
                 TpdbId = offer.TpdbId,
                 Artist = isMusic ? offer.Artist : null,
+                ArtistOverview = isMusic ? SafeText(offer.ArtistOverview, 4000) : null,
+                ArtistGenres = isMusic ? SafeText(offer.ArtistGenres, 500) : null,
                 ForeignArtistId = isMusic ? offer.ForeignArtistId : null,
                 ForeignAlbumId = isMusic ? offer.ForeignAlbumId?.ToLowerInvariant() : null,
                 AlbumType = isMusic ? offer.AlbumType : null,

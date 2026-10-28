@@ -155,6 +155,36 @@ namespace NzbDrone.Api.Test.Sharing
             Subject.GetReceivedDetails(7).Result.Should().BeOfType<NotFound>();
         }
 
+        [TestCase(true, "artist")]
+        [TestCase(false, "album")]
+        public void music_sends_should_open_the_original_artist_or_album_selection(bool whole, string kind)
+        {
+            _received.MediaKind = MediaKind.Music;
+            _received.IsWhole = whole;
+            _items.ForEach(i =>
+            {
+                i.MediaKind = MediaKind.Music;
+                i.Artist = "Artist";
+                i.ForeignArtistId = "11111111-1111-1111-1111-111111111111";
+                i.ForeignAlbumId = "22222222-2222-2222-2222-222222222222";
+                i.Tracks = JsonSerializer.Serialize(new[] { new OfferTrack { Id = "t-1-1", Title = "Song", Extension = ".flac", Size = 100 } });
+            });
+            Mocker.GetMock<IPeerCatalogService>().Setup(s => s.GetMusic()).Returns(_items);
+
+            Subject.GetReceived().Value.Single().DetailsAvailable.Should().BeTrue();
+            var details = Details;
+            details.Kind.Should().Be(kind);
+            if (whole)
+            {
+                details.GetIt.Scope.Should().Be(CatalogGetItScope.Artist);
+            }
+            else
+            {
+                details.GetIt.Scope.Should().Be(CatalogGetItScope.File);
+                details.Tracks.Should().ContainSingle().Which.Title.Should().Be("Song");
+            }
+        }
+
         [Test]
         public void revoked_trust_should_make_even_a_cached_offer_unavailable()
         {

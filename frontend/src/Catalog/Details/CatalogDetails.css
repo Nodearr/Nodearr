@@ -12,6 +12,7 @@
 
 .poster {
   display: block;
+  width: 100%;
 }
 
 .title:hover,
@@ -144,6 +145,35 @@
 
 .send {
   margin-bottom: 16px;
+}
+
+.albums {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 16px;
+}
+
+.albumLink {
+  display: block;
+  padding: 0;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.tracks {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tracks li {
+  display: flex;
+  flex-wrap: wrap;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--borderColor);
+  gap: 8px;
 }
 
 

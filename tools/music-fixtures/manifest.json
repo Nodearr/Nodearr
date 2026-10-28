@@ -1,0 +1,29 @@
+{
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "albums": [
+    {
+      "slug": "lofi-ftw",
+      "title": "Lofi Ftw",
+      "artist": "Loyalty Freak Music",
+      "artistId": "ee06b60c-a554-4bd7-819b-7b22c5d7d38e",
+      "albumId": "2f7614cf-3b04-4aa5-bb34-f1e64d7fcf60",
+      "releaseId": "47b7b3d8-36e7-4ab0-929d-e579c582d029",
+      "tracks": 9,
+      "source": "https://loyaltyfreakmusic.com/music/lofi-ftw/",
+      "download": "https://loyaltyfreakmusic.com/wp-content/uploads/2024/09/Loyalty-Freak-Music-LOFI-FTW.zip",
+      "sha256": "78f3a29d80ab89fda1e01d0c641b93d09a2f890d9f7f0e7deec2ae8f1de8b8a7"
+    },
+    {
+      "slug": "adventure",
+      "title": "The adventure goes on, vol.1",
+      "artist": "Komiku",
+      "artistId": "fca800c1-6fc3-4bfb-a5de-8c2398c27bc0",
+      "albumId": "0520eabc-e117-48ce-b229-a6ea84c349aa",
+      "releaseId": "59d2fc91-8a6a-45da-9e12-51b01d2a50d7",
+      "tracks": 13,
+      "source": "https://loyaltyfreakmusic.com/music/the-adventure-goes-on-vol-1/",
+      "download": "https://loyaltyfreakmusic.com/wp-content/uploads/2020/09/Komiku-The-adventure-goes-on-vol.1.zip",
+      "sha256": "530bcc7d70d4e0b6507743cc0493d5fb06837ce7004cc8dbeeef4776cd60cf46"
+    }
+  ]
+}

@@ -468,6 +468,10 @@ namespace NzbDrone.Core.Sharing
                 item.Year = album.Year;
                 item.ReleaseDate = album.ReleaseDate;
                 item.Artist = artist.Name;
+                item.Overview = album.Overview;
+                item.Genres = album.Genres;
+                item.ArtistOverview = artist.Overview;
+                item.ArtistGenres = artist.Genres;
                 item.ForeignArtistId = artist.ForeignArtistId;
                 item.ForeignAlbumId = album.ForeignAlbumId;
                 item.AlbumType = album.AlbumType;
@@ -478,13 +482,16 @@ namespace NzbDrone.Core.Sharing
                 item.Quality = files.GroupBy(f => f.Quality).OrderByDescending(g => g.Count()).First().Key;
                 item.Size = files.Sum(f => f.Size);
                 item.DateAdded = files.Max(f => f.DateAdded);
+                var durations = album.GetTracks().Where(t => t.Duration is > 0 and < 86400000).ToLookup(t => t.TrackFileId, t => (int?)t.Duration);
                 item.Tracks = files.Select(f => new OfferTrack
                 {
                     Id = $"t-{f.ApplicationId}-{f.ArrId}",
+                    ForeignRecordingId = f.ForeignRecordingId,
                     Extension = ExtensionOf(f.Path),
                     Size = f.Size,
                     Quality = f.Quality,
                     Title = f.TrackTitle.IsNotNullOrWhiteSpace() ? f.TrackTitle : null,
+                    Duration = durations[f.ArrId].FirstOrDefault(),
                     Number = f.TrackNumber > 0 ? f.TrackNumber : null,
                     Disc = f.DiscNumber > 0 ? f.DiscNumber : null
                 }).ToList();

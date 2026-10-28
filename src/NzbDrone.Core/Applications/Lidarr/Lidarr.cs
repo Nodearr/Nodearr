@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using Newtonsoft.Json.Linq;
 using NLog;
 using NzbDrone.Core.Catalog;
@@ -79,7 +80,29 @@ namespace NzbDrone.Core.Applications.Lidarr
         // track is named after the first.
         private void AddTrackFiles(ApplicationCatalog catalog, LidarrArtistResource artist)
         {
-            var tracks = _proxy.Get<List<LidarrTrackResource>>(Settings, $"/track?artistId={artist.Id}")
+            var allTracks = _proxy.Get<List<LidarrTrackResource>>(Settings, $"/track?artistId={artist.Id}");
+            foreach (var album in catalog.Albums.Where(a => a.ArrArtistId == artist.Id))
+            {
+                var selectedTracks = allTracks.Where(t => t.AlbumId == album.ArrId).ToList();
+                if (selectedTracks.Count > 0)
+                {
+                    album.TrackCount = selectedTracks.Count;
+                }
+
+                album.Tracks = JsonSerializer.Serialize(selectedTracks
+                    .OrderBy(t => t.MediumNumber).ThenBy(t => t.AbsoluteTrackNumber)
+                    .Select(t => new CatalogAlbumTrack
+                    {
+                        Title = t.Title,
+                        ForeignRecordingId = t.ForeignRecordingId,
+                        Number = int.TryParse(t.TrackNumber, out var number) ? number : t.AbsoluteTrackNumber,
+                        Disc = t.MediumNumber,
+                        Duration = t.Duration,
+                        TrackFileId = t.TrackFileId
+                    }).ToList());
+            }
+
+            var tracks = allTracks
                 .Where(t => t.TrackFileId > 0)
                 .GroupBy(t => t.TrackFileId)
                 .ToDictionary(g => g.Key, g => g.OrderBy(t => t.MediumNumber).ThenBy(t => t.AbsoluteTrackNumber).First());
@@ -91,7 +114,8 @@ namespace NzbDrone.Core.Applications.Lidarr
                 if (tracks.TryGetValue(file.Id, out var track))
                 {
                     catalogFile.TrackTitle = track.Title;
-                    catalogFile.TrackNumber = track.AbsoluteTrackNumber;
+                    catalogFile.ForeignRecordingId = track.ForeignRecordingId;
+                    catalogFile.TrackNumber = int.TryParse(track.TrackNumber, out var number) ? number : track.AbsoluteTrackNumber;
                     catalogFile.DiscNumber = track.MediumNumber;
                 }
 
@@ -195,7 +219,7 @@ namespace NzbDrone.Core.Applications.Lidarr
                 // send is not a search of every indexer for each album.
                 var offered = request.OfferedAlbums.Select(a => a.ToLowerInvariant()).ToHashSet();
                 var search = albums
-                    .Where(a => offered.Contains(ForeignId(a)) && !IsComplete(a))
+                    .Where(a => offered.Contains(ForeignId(a)) && (!IsComplete(a) || request.UpgradeAlbums.Contains(ForeignId(a), StringComparer.OrdinalIgnoreCase)))
                     .Select(a => a.Value<int>("id"))
                     .ToList();
 
@@ -246,6 +270,11 @@ namespace NzbDrone.Core.Applications.Lidarr
         // An album's own cover, or its artist's picture where Lidarr has no cover for it.
         public byte[] GetPoster(PosterSubject subject, int arrId)
         {
+            if (subject == PosterSubject.Artist)
+            {
+                return PosterImages.FromMediaCover(_proxy, Settings, $"artist/{arrId}/poster-500.jpg");
+            }
+
             if (subject != PosterSubject.Album)
             {
                 return null;
