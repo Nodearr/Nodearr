@@ -4,7 +4,7 @@
 
 **Catalog > Peer Catalog** lists every file your friends share with you, each marked against your own library:
 
-![Catalog > Peer Catalog: Sam's files, with posters, each marked Not in library or Have](images/peer-catalog.png)
+![Catalog > Peer Catalog: Sam's shared series and episodes, marked Missing or Have](images/peer-catalog.png)
 
 | Status | Meaning |
 | --- | --- |
@@ -13,9 +13,13 @@
 | **Have** | You have a file, and this offer is not an upgrade under your local quality profile. This also applies when upgrades are off or the cutoff is met. |
 | **Not in library** | None of your Arr apps has it. **Get it** can add it for you. |
 
+These words use the same colors in both catalogs, in tables, posters and details cards: green for **Have**, red for **Missing**, blue for **Upgrade**, and neutral for **Not in library**. The light theme uses darker shades of the same colors so they remain readable.
+
 Both **Table** and **Posters** have the same kind filters: **Series**, **Movies**, **Music** when Lidarr is connected, and **Scenes** when Whisparr is connected. The selection is remembered on this page. In **Table**, a show opens into seasons, then episode files. A file with several episodes appears once under its season. Show and season rows count distinct episodes across friends, missing or upgradable episodes and total offered size; their status is **Missing** if any episode is missing, otherwise **Upgrade** if any is upgradable. The tree uses Sonarr's TVDB season and episode numbers. Anime rows show absolute numbers, scene numbers appear alongside TVDB numbers when they differ, daily shows show air dates, and specials (season 0) appear last.
 
 Select **Posters** to switch from the file list to a grid for the selected kind. The grid groups files into one tile per title, including copies shared by different friends. Each tile shows how many files you have or are missing. Select **Table** to return to the file list.
+
+**Show missing episodes** starts on in the peer series table and cards. It shows the episodes your app is missing that the friend shares. Turn it off to hide those **Missing** entries; **Have**, **Upgrade** and neutral **Not in library** entries remain. Episodes the friend cannot provide are never added to this list. The table and cards share this choice, and your browser remembers it separately from the local catalog.
 
 Select a series, episode, movie, Whisparr film or scene poster or title to open its details card. For a file with several episodes, choose the episode in the card. The details are what that friend shared from their Arr app: descriptions, genres, network or studio, runtime, dates and file resolution where available. An episode card includes its series genres, network and runtime. Cards read the copy already stored on your node; opening one does not fetch more details from the friend. After updating, older cached catalogs refresh in full at the next successful sync to fill in missing details. The arrow beside a series or season expands its rows. A peer details card offers **Get it** for the title or episode it shows when something is missing or upgradable. Lidarr details cards are planned separately.
 
@@ -38,6 +42,16 @@ Posters come from your friends' Arr apps. Nodearr caches each image for 30 days 
 Filter by friend or select a status to show only matching files. To refresh all friends' offers now, select **Sync Peer Catalogs**. Scheduled refreshes run every 15 minutes by default; change **Catalog Sync Interval** under **Settings > Node** if needed.
 
 **Home** shows how many files your friends have that you are missing or could upgrade.
+
+## What you have
+
+**Catalog > Local** shows what your connected Arr apps hold. In the series table and cards, **Show missing episodes** starts off, showing only downloaded episodes. Turn it on to include the missing episodes your Arr app knows about. The table and cards share this choice, and your browser remembers it separately from the peer catalog.
+
+![The local series table showing downloaded files by default](images/local-catalog.png)
+
+Local posters show the number of files you have in green. A file's **Have** status describes the library; its separate readability icon says whether Nodearr can read it to send.
+
+![The local catalog's series posters with green file counts](images/local-catalog-posters.png)
 
 ## Get it from the catalog
 

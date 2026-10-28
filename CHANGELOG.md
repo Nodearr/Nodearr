@@ -8,6 +8,11 @@ What changed in each release, newest first. Each item links to the decision reco
 
 - Peer catalog details cards offer **Get it** for series, episode files and movies that are missing or upgradable. Poster tiles use a download icon over the poster, matching local Send icons and remaining visible on touch screens ([#93](https://github.com/Nodearr/Nodearr/issues/93), [#94](https://github.com/Nodearr/Nodearr/issues/94)).
 
+### Changed
+
+- Catalog tables, posters and details cards share status colors in both themes: green for files you have, red for missing, blue for upgrades and neutral for titles outside your library. The words remain alongside the colors ([#96](https://github.com/Nodearr/Nodearr/issues/96)).
+- Local series tables and cards start with **Show missing episodes** off; peer tables and cards start with it on. Each catalog remembers its choice per browser. On the peer side it controls only **Missing** episodes the friend shares; **Have**, **Upgrade** and **Not in library** remain visible ([#97](https://github.com/Nodearr/Nodearr/issues/97)).
+
 ### Fixed
 
 - Friend details cards recover descriptions and genres missing from catalogs cached before shared details were added. Updating requests a full catalog once, preserving file arrival dates. Episode cards also show the series genres, network and runtime when shared ([#95](https://github.com/Nodearr/Nodearr/issues/95)).

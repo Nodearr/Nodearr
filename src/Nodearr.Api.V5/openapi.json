@@ -2105,6 +2105,14 @@
             "schema": {
               "$ref": "#/components/schemas/PeerItemStatus"
             }
+          },
+          {
+            "name": "showMissing",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": true
+            }
           }
         ],
         "responses": {
@@ -3858,6 +3866,10 @@
           },
           "localStatus": {
             "$ref": "#/components/schemas/PeerItemStatus"
+          },
+          "hasFile": {
+            "type": "boolean",
+            "nullable": true
           },
           "size": {
             "type": "integer",

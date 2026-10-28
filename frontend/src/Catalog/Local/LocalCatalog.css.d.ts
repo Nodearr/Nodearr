@@ -6,7 +6,6 @@ interface CssExports {
   'counts': string;
   'episodeTitles': string;
   'mediaTypes': string;
-  'missing': string;
   'missingFilter': string;
   'path': string;
   'summary': string;

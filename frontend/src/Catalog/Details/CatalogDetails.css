@@ -142,12 +142,6 @@
   margin-bottom: 16px;
 }
 
-.available,
-.missing {
-  margin-left: 8px;
-  color: var(--textColor);
-  font-size: 12px;
-}
 
 @media (max-width: 600px) {
   .card {

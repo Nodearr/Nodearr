@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import CommandNames from 'Commands/CommandNames';
 import { useCommandExecuting, useExecuteCommand } from 'Commands/useCommands';
 import Alert from 'Components/Alert';
@@ -25,11 +25,13 @@ import formatDateTime from 'Utilities/Date/formatDateTime';
 import formatBytes from 'Utilities/Number/formatBytes';
 import titleWithYear, { yearOnItsOwn } from 'Utilities/String/titleWithYear';
 import translate from 'Utilities/String/translate';
+import CatalogAvailability, { STATUS_LABELS } from '../CatalogAvailability';
 import CatalogKindButton from '../CatalogKindButton';
 import { getAvailableCatalogKinds } from '../catalogKinds';
 import CatalogDetailsButton from '../Details/CatalogDetailsButton';
 import CatalogGetItButton from '../GetIt/CatalogGetItButton';
 import Poster, { peerPosterSrc } from '../Poster';
+import useCatalogMissingEpisodes from '../useCatalogMissingEpisodes';
 import {
   PeerCatalogItem,
   PeerCatalogSeries,
@@ -111,23 +113,6 @@ const STATUSES: PeerItemStatus[] = [
   'notInLibrary',
   'have',
 ];
-
-const STATUS_LABELS: Record<PeerItemStatus, string> = {
-  missing: 'PeerItemMissing',
-  upgrade: 'PeerItemUpgrade',
-  notInLibrary: 'PeerItemNotInLibrary',
-  have: 'PeerItemHave',
-};
-
-const STATUS_KINDS: Record<
-  PeerItemStatus,
-  'danger' | 'info' | 'default' | 'success'
-> = {
-  missing: 'danger',
-  upgrade: 'info',
-  notInLibrary: 'default',
-  have: 'success',
-};
 
 function pad(value: number) {
   return value.toString().padStart(2, '0');
@@ -247,9 +232,6 @@ function peerEpisodeOptions(item: PeerCatalogItem) {
 }
 
 function TitleTile({ title }: { title: PeerCatalogTitle }) {
-  const counts = STATUSES.filter((s) => title[s] > 0).map(
-    (s) => `${title[s]} ${translate(STATUS_LABELS[s])}`
-  );
   const detailsPath = peerTitleDetailsPath(title);
   const year = yearOnItsOwn(titleHeading(title), title.year);
   const shown = year ? titleHeading(title) : describeTitle(title);
@@ -305,7 +287,13 @@ function TitleTile({ title }: { title: PeerCatalogTitle }) {
       </div>
       {year ? <div className={styles.tileDetails}>{year}</div> : null}
 
-      <div className={styles.tileDetails}>{counts.join(', ')}</div>
+      <div className={styles.tileStatuses}>
+        {STATUSES.filter((status) => title[status] > 0).map((status) => (
+          <CatalogAvailability key={status} status={status}>
+            {title[status]} {translate(STATUS_LABELS[status])}
+          </CatalogAvailability>
+        ))}
+      </div>
       <div className={styles.tileDetails}>{title.peerNames.join(', ')}</div>
     </div>
   );
@@ -411,16 +399,7 @@ function PeerItemRow({ item }: { item: PeerCatalogItem }) {
       </TableRowCell>
 
       <TableRowCell>
-        <Label
-          kind={STATUS_KINDS[item.localStatus]}
-          title={
-            item.localStatus === 'upgrade'
-              ? translate('PeerItemUpgradeHelpText')
-              : undefined
-          }
-        >
-          {translate(STATUS_LABELS[item.localStatus])}
-        </Label>
+        <CatalogAvailability status={item.localStatus} />
       </TableRowCell>
 
       <TableRowCell>
@@ -450,6 +429,14 @@ function PeerItemRow({ item }: { item: PeerCatalogItem }) {
 }
 
 function PeerCatalog() {
+  const [showMissing, setShowMissing] = useCatalogMissingEpisodes(true);
+  const handleShowMissingChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setShowMissing(event.target.checked);
+      setPage(1);
+    },
+    [setShowMissing]
+  );
   const [status, setStatus] = useState<PeerItemStatus | undefined>(undefined);
   const [savedKind, setSavedKind] = useState<CatalogKind>(readKind);
   const [page, setPage] = useState(1);
@@ -461,6 +448,10 @@ function PeerCatalog() {
   const [sortKey, setSortKey] = useState('title');
   const [sortDirection, setSortDirection] =
     useState<SortDirection>('ascending');
+
+  useEffect(() => {
+    setPage(1);
+  }, [showMissing]);
 
   const executeCommand = useExecuteCommand();
   const isSyncing = useCommandExecuting(CommandNames.PeerCatalogSync);
@@ -499,7 +490,7 @@ function PeerCatalog() {
     path: '/catalog/peers/series',
     page,
     pageSize: PAGE_SIZE,
-    queryParams: status ? { status } : undefined,
+    queryParams: { ...(status ? { status } : {}), showMissing },
     queryOptions: {
       enabled: view === 'table' && kind === 'series',
       refetchInterval: 5000,
@@ -690,9 +681,11 @@ function PeerCatalog() {
               <div className={styles.cardName}>{summary.peerName}</div>
 
               <div className={styles.muted}>
-                {STATUSES.map(
-                  (s) => `${summary[s]} ${translate(STATUS_LABELS[s])}`
-                ).join(', ')}
+                {STATUSES.map((status) => (
+                  <CatalogAvailability key={status} status={status}>
+                    {summary[status]} {translate(STATUS_LABELS[status])}
+                  </CatalogAvailability>
+                ))}
               </div>
 
               <div className={styles.muted}>
@@ -750,6 +743,17 @@ function PeerCatalog() {
               />
             ))}
           </div>
+        ) : null}
+
+        {view === 'table' && kind === 'series' ? (
+          <label className={styles.missingFilter}>
+            <input
+              type="checkbox"
+              checked={showMissing}
+              onChange={handleShowMissingChange}
+            />
+            {translate('CatalogShowMissingEpisodes')}
+          </label>
         ) : null}
 
         {view === 'posters' && titles.isLoading ? <LoadingIndicator /> : null}
@@ -849,9 +853,7 @@ function PeerCatalog() {
                           </div>
                         </TableRowCell>
                         <TableRowCell>
-                          <Label kind={STATUS_KINDS[show.status]}>
-                            {translate(STATUS_LABELS[show.status])}
-                          </Label>
+                          <CatalogAvailability status={show.status} />
                         </TableRowCell>
                         <TableRowCell />
                         <TableRowCell>{formatBytes(show.size)}</TableRowCell>
@@ -905,9 +907,9 @@ function PeerCatalog() {
                                     </div>
                                   </TableRowCell>
                                   <TableRowCell>
-                                    <Label kind={STATUS_KINDS[season.status]}>
-                                      {translate(STATUS_LABELS[season.status])}
-                                    </Label>
+                                    <CatalogAvailability
+                                      status={season.status}
+                                    />
                                   </TableRowCell>
                                   <TableRowCell />
                                   <TableRowCell>

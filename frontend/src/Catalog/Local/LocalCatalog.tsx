@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import CommandNames from 'Commands/CommandNames';
 import { useCommandExecuting, useExecuteCommand } from 'Commands/useCommands';
 import Alert from 'Components/Alert';
@@ -32,11 +32,13 @@ import formatDateTime from 'Utilities/Date/formatDateTime';
 import formatBytes from 'Utilities/Number/formatBytes';
 import titleWithYear, { yearOnItsOwn } from 'Utilities/String/titleWithYear';
 import translate from 'Utilities/String/translate';
+import CatalogAvailability from '../CatalogAvailability';
 import CatalogKindButton from '../CatalogKindButton';
 import { getAvailableCatalogKinds } from '../catalogKinds';
 import CatalogDetailsButton from '../Details/CatalogDetailsButton';
 import Poster, { localPosterSrc } from '../Poster';
 import SendFromCatalogButton from '../Sharing/SendFromCatalogButton';
+import useCatalogMissingEpisodes from '../useCatalogMissingEpisodes';
 import { ShareKey, TitleKey } from '../useSharing';
 import catalogStyles from '../Catalog.css';
 import styles from './LocalCatalog.css';
@@ -316,11 +318,11 @@ function TitleTile({ title }: { title: LocalCatalogTitle }) {
       </div>
       {year ? <div className={catalogStyles.tileDetails}>{year}</div> : null}
 
-      <div className={catalogStyles.tileDetails}>
+      <CatalogAvailability status="have">
         {title.files === 1
           ? translate('SharingOneFile')
           : translate('SharingFileCount', { count: title.files })}
-      </div>
+      </CatalogAvailability>
       <div className={catalogStyles.tileDetails}>{title.applicationName}</div>
     </div>
   );
@@ -383,7 +385,7 @@ function LocalFileRow({ file }: { file: LocalCatalogFile }) {
     file.mediaType === 'episode' ? episodeDetailsOptions(file) : undefined;
 
   return (
-    <TableRow className={missing ? styles.missing : undefined}>
+    <TableRow>
       <TableRowCell className={catalogStyles.posterCell}>
         {detailsPath ? (
           <CatalogDetailsButton
@@ -472,9 +474,8 @@ function LocalFileRow({ file }: { file: LocalCatalogFile }) {
       </TableRowCell>
 
       <TableRowCell>
-        {missing ? (
-          <Label kind={kinds.WARNING}>{translate('Missing')}</Label>
-        ) : (
+        <CatalogAvailability status={missing ? 'missing' : 'have'} />
+        {missing ? null : (
           <Icon
             name={file.readable ? icons.CHECK : icons.WARNING}
             kind={file.readable ? kinds.SUCCESS : kinds.WARNING}
@@ -544,7 +545,7 @@ function LocalCatalog() {
   const [savedKind, setSavedKind] = useState<CatalogKind>(readKind);
   const [page, setPage] = useState(1);
   const [view, setView] = useState<View>(readView);
-  const [showMissing, setShowMissing] = useState(true);
+  const [showMissing, setShowMissing] = useCatalogMissingEpisodes(false);
   const [expandedShows, setExpandedShows] = useState<Set<string>>(new Set());
   const [expandedSeasons, setExpandedSeasons] = useState<Set<string>>(
     new Set()
@@ -553,6 +554,10 @@ function LocalCatalog() {
   const [sortDirection, setSortDirection] = useState<SortDirection>(
     'ascending' as SortDirection
   );
+
+  useEffect(() => {
+    setPage(1);
+  }, [showMissing]);
 
   const executeCommand = useExecuteCommand();
   const isRefreshing = useCommandExecuting(CommandNames.CatalogRefresh);
@@ -663,7 +668,7 @@ function LocalCatalog() {
       setShowMissing(event.target.checked);
       setPage(1);
     },
-    []
+    [setShowMissing]
   );
 
   const handleShowToggle = useCallback((showKey: string) => {
@@ -798,9 +803,9 @@ function LocalCatalog() {
                 {application.missingFiles > 0 ? (
                   <>
                     {' '}
-                    <Label kind={kinds.WARNING}>
+                    <CatalogAvailability status="missing">
                       {application.missingFiles} {translate('Missing')}
-                    </Label>
+                    </CatalogAvailability>
                   </>
                 ) : null}
               </div>
@@ -948,10 +953,14 @@ function LocalCatalog() {
                         <TableRowCell>{formatBytes(show.size)}</TableRowCell>
                         <TableRowCell />
                         <TableRowCell>
+                          <CatalogAvailability status="have">
+                            {show.episodes - show.missing}{' '}
+                            {translate('PeerItemHave')}
+                          </CatalogAvailability>
                           {show.missing > 0 ? (
-                            <Label kind={kinds.WARNING}>
+                            <CatalogAvailability status="missing">
                               {show.missing} {translate('Missing')}
-                            </Label>
+                            </CatalogAvailability>
                           ) : null}
                         </TableRowCell>
                         <TableRowCell />
@@ -1015,10 +1024,14 @@ function LocalCatalog() {
                                   </TableRowCell>
                                   <TableRowCell />
                                   <TableRowCell>
+                                    <CatalogAvailability status="have">
+                                      {season.episodes - season.missing}{' '}
+                                      {translate('PeerItemHave')}
+                                    </CatalogAvailability>
                                     {season.missing > 0 ? (
-                                      <Label kind={kinds.WARNING}>
+                                      <CatalogAvailability status="missing">
                                         {season.missing} {translate('Missing')}
-                                      </Label>
+                                      </CatalogAvailability>
                                     ) : null}
                                   </TableRowCell>
                                   <TableRowCell />

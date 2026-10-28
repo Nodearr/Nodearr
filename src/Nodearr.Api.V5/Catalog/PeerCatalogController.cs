@@ -303,9 +303,23 @@ public class PeerCatalogController : Controller
 
     [HttpGet("series")]
     [Produces("application/json")]
-    public Ok<PagingResource<PeerCatalogSeriesResource>> GetSeries([FromQuery] PagingRequestResource paging, [FromQuery] PeerItemStatus? status = null)
+    public Ok<PagingResource<PeerCatalogSeriesResource>> GetSeries([FromQuery] PagingRequestResource paging, [FromQuery] PeerItemStatus? status = null, [FromQuery] bool showMissing = true)
     {
         var series = _peerCatalogService.GetSeries(status);
+        if (!showMissing)
+        {
+            // Filter before paging and grouping so totals, seasons and status describe visible files.
+            series = series.Select(show => new PeerCatalogSeries
+            {
+                Key = show.Key,
+                Title = show.Title,
+                Year = show.Year,
+                SeriesType = show.SeriesType,
+                PosterItemId = show.PosterItemId,
+                Items = show.Items.Where(i => i.LocalStatus != PeerItemStatus.Missing).ToList()
+            }).Where(show => show.Items.Count > 0).ToList();
+        }
+
         var pageSize = Math.Clamp(paging.PageSize ?? 50, 1, 250);
         var page = Math.Max(1, paging.Page ?? 1);
         var names = _peerCatalogService.GetSummaries().ToDictionary(s => s.PeerId, s => s.PeerName);

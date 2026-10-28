@@ -32,6 +32,7 @@ public class CatalogDetailsResource
     public CatalogDetailsSendResource? Send { get; set; }
     public CatalogDetailsGetItResource? GetIt { get; set; }
     public PeerItemStatus? LocalStatus { get; set; }
+    public bool? HasFile { get; set; }
     public long Size { get; set; }
 }
 

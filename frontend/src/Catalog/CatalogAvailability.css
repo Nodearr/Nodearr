@@ -1,0 +1,22 @@
+.status {
+  display: inline-block;
+  margin: 2px 6px 2px 0;
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.have {
+  color: var(--catalogHaveColor);
+}
+
+.missing {
+  color: var(--catalogMissingColor);
+}
+
+.upgrade {
+  color: var(--catalogUpgradeColor);
+}
+
+.notInLibrary {
+  color: var(--textColor);
+}

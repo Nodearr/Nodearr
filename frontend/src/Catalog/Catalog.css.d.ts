@@ -12,6 +12,7 @@ interface CssExports {
   'error': string;
   'inlineCheck': string;
   'inviteCode': string;
+  'missingFilter': string;
   'movieCheck': string;
   'muted': string;
   'nested': string;
@@ -35,6 +36,7 @@ interface CssExports {
   'tileDetails': string;
   'tilePoster': string;
   'tileSend': string;
+  'tileStatuses': string;
   'tileTitle': string;
   'tiles': string;
   'title': string;

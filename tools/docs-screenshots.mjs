@@ -14,7 +14,8 @@
 // skipped.
 //
 // With no arguments, the capture command takes every screenshot. Pass screenshot names to capture
-// only those pages. The "send" screenshot changes the test data: Sam sends Alex a Felix the Cat
+// only those pages. `catalogAvailability` needs the mixed library states described above its
+// implementation and is run explicitly. The "send" screenshot changes the test data: Sam sends Alex a Felix the Cat
 // short from its table row and Alex sends Sam Night of the Living Dead from its poster. Recreate
 // the kit before capturing "send" a second time.
 //
@@ -499,7 +500,7 @@ const shots = {
 
   async catalog({ a }) {
     await open(a, A, '/catalog/peers');
-    await a.getByRole('button', { name: 'Series', exact: true }).click();
+    await selectCatalogKind(a, 'Series');
     await a.getByText('Out of the Inkwell (1919)', { exact: true }).waitFor();
     await a.getByRole('button', { name: 'Movies', exact: true }).click();
     await a.getByText('The Little Shop of Horrors (1960)', { exact: true }).waitFor();
@@ -509,7 +510,7 @@ const shots = {
     await expandFirstSeries(a);
     await shoot(a, 'peer-catalog');
     await a.getByRole('button', { name: 'Get it', exact: true }).last().click();
-    await a.locator('select[name="qualityProfileId"]').waitFor({ state: 'visible' });
+    await a.getByRole('dialog').last().getByRole('button', { name: 'Get it', exact: true }).waitFor();
     await a.waitForLoadState('networkidle');
     await shoot(a, 'peer-catalog-get-it', { chrome: true });
     await a.keyboard.press('Escape');
@@ -534,11 +535,11 @@ const shots = {
     await movieGet.hover();
     await shoot(a, 'peer-catalog-movies-posters');
     await movieGet.click();
-    await a.locator('select[name="qualityProfileId"]').waitFor();
+    await a.getByRole('dialog').last().getByRole('button', { name: 'Get it', exact: true }).waitFor();
     await a.keyboard.press('Escape');
     await a.getByText('Table', { exact: true }).click();
     await open(a, A, '/catalog/local');
-    await a.getByRole('button', { name: 'Series', exact: true }).click();
+    await selectCatalogKind(a, 'Series');
     await a.getByText('Out of the Inkwell (1919)', { exact: true }).waitFor();
     await a.getByRole('button', { name: 'Movies', exact: true }).click();
     await a.getByText('Night of the Living Dead (1968)', { exact: true }).waitFor();
@@ -580,7 +581,7 @@ const shots = {
     await season.waitFor();
     if (await season.inputValue() !== '1919') throw new Error('Series card Get it did not select the offered season');
     await a.keyboard.press('Escape');
-    await card.getByRole('button', { name: /^S1919E02/ }).click();
+    await card.getByRole('button', { name: /^S1919E03/ }).click();
     await card.getByRole('button', { name: 'Get it', exact: true }).waitFor();
     const request = a.waitForRequest((r) => r.method() === 'GET' && /\/catalog\/peers\/items\/\d+\/getit/.test(r.url()));
     await card.getByRole('button', { name: 'Get it', exact: true }).click();
@@ -594,7 +595,7 @@ const shots = {
     await a.getByRole('button', { name: 'Movies', exact: true }).click();
     await a.getByRole('button', { name: /^Details: Metropolis/ }).first().click();
     await card.getByRole('button', { name: 'Get it', exact: true }).click();
-    await a.locator('select[name="qualityProfileId"]').waitFor();
+    await a.getByRole('dialog').last().getByRole('button', { name: 'Get it', exact: true }).waitFor();
     await a.keyboard.press('Escape');
     await a.keyboard.press('Escape');
     await a.getByRole('button', { name: /^Details: The Little Shop of Horrors/ }).first().click();
@@ -664,6 +665,121 @@ const shots = {
     await shoot(card, 'peer-movie-details');
     await a.keyboard.press('Escape');
     console.log('Peer series, episode and movie cards match the sender metadata');
+  },
+
+  // Uses real mixed library states: Felix has both held and missing episodes on A;
+  // Metropolis is an upgrade and Aladdin is outside A's library. No responses are mocked.
+  async catalogAvailability({ a }) {
+    const originalScheme = await a.evaluate(() => matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    if (await a.evaluate(() => window.Nodearr.theme) !== 'auto') {
+      throw new Error('Use the kit with Nodearr__Theme=auto to check both system themes');
+    }
+    const keys = ['nodearr.localCatalog.showMissingEpisodes', 'nodearr.peerCatalog.showMissingEpisodes'];
+    const preferences = await a.evaluate((names) => names.map((key) => localStorage.getItem(key)), keys);
+    const colors = {};
+    async function checkColors(scope, theme) {
+      const seen = await scope.locator('[data-catalog-status]').evaluateAll((elements) => elements.map((element) => ({
+        status: element.dataset.catalogStatus, color: getComputedStyle(element).color, text: element.textContent.trim(),
+      })));
+      for (const item of seen) {
+        if (!item.text) throw new Error('Availability needs words as well as color');
+        const key = `${theme}:${item.status}`;
+        if (colors[key] && colors[key] !== item.color) throw new Error(`Inconsistent ${key} across catalog views`);
+        colors[key] = item.color;
+      }
+    }
+    async function table(route) {
+      await open(a, A, route);
+      await selectCatalogKind(a, 'Series');
+    }
+    try {
+      for (const theme of ['dark', 'light']) {
+        await a.emulateMedia({ colorScheme: theme });
+        await a.evaluate((names) => names.forEach((key) => localStorage.removeItem(key)), keys);
+        await table('/catalog/local');
+        const toggle = a.getByRole('checkbox', { name: 'Show missing episodes', exact: true });
+        if (await toggle.isChecked()) throw new Error('Local missing must default off');
+        await a.getByRole('button', { name: 'Expand Out of the Inkwell', exact: true }).click();
+        await a.getByRole('button', { name: 'Expand Season 1', exact: true }).click();
+        await checkColors(a, theme);
+        await toggle.check();
+        await a.locator('[data-catalog-status="missing"]').first().waitFor();
+        await checkColors(a, theme);
+        await a.reload({ waitUntil: 'networkidle' });
+        if (!(await toggle.isChecked())) throw new Error('Local missing choice was not remembered');
+        await a.getByRole('button', { name: /^Details: Out of the Inkwell/ }).first().click();
+        const card = a.getByRole('dialog').first();
+        const cardToggle = card.getByRole('checkbox', { name: 'Show missing episodes', exact: true });
+        if (!(await cardToggle.isChecked())) throw new Error('Local card did not share table preference');
+        await checkColors(card, theme);
+        await card.locator('li').filter({ has: a.locator('[data-catalog-status="missing"]') }).first().getByRole('button').click();
+        await card.locator('[data-catalog-status="missing"]').waitFor();
+        await checkColors(card, theme);
+        await card.getByRole('button', { name: 'Back to series', exact: true }).click();
+        await cardToggle.uncheck();
+        await card.waitFor();
+        if (await card.locator('[data-catalog-status="missing"]').count()) throw new Error('Local card still shows missing episodes');
+        await checkColors(card, theme);
+        await a.keyboard.press('Escape');
+        await card.waitFor({ state: 'hidden' });
+        await until('local card choice to update the table', async () => !(await toggle.isChecked()), 10);
+        await table('/catalog/peers');
+        if (!(await toggle.isChecked())) throw new Error('Peer missing must default on independently');
+        await a.getByRole('button', { name: /^Expand Felix the Cat$/i }).click();
+        await a.getByRole('button', { name: 'Expand Season 1919', exact: true }).click();
+        await a.getByText('Missing', { exact: true }).last().waitFor();
+        await checkColors(a, theme);
+        await shoot(a, `catalog-availability-${theme}`);
+        await a.getByRole('button', { name: /^Missing \(/ }).click();
+        await a.getByRole('button', { name: /^Details: Felix the Cat/i }).first().click();
+        if (!(await cardToggle.isChecked())) throw new Error('Peer card must default to showing missing');
+        await card.locator('[data-catalog-status="missing"]').first().waitFor();
+        await checkColors(card, theme);
+        await card.locator('li').filter({ has: a.locator('[data-catalog-status="missing"]') }).first().getByRole('button').click();
+        await card.locator('[data-catalog-status="missing"]').waitFor();
+        await checkColors(card, theme);
+        await card.getByRole('button', { name: 'Back to series', exact: true }).click();
+        await cardToggle.uncheck();
+        await card.waitFor();
+        if (await card.locator('[data-catalog-status="missing"]').count()) throw new Error('Peer card still shows Missing');
+        await a.keyboard.press('Escape');
+        await card.waitFor({ state: 'hidden' });
+        await until('peer card choice to update the table', async () => !(await toggle.isChecked()), 10);
+        await a.reload({ waitUntil: 'networkidle' });
+        if (await toggle.isChecked()) throw new Error('Peer missing choice was not remembered');
+        await toggle.check();
+        await a.getByRole('button', { name: /^All \(/ }).click();
+        await a.getByRole('button', { name: 'Movies', exact: true }).click();
+        await a.locator('[data-catalog-status="notInLibrary"]').first().waitFor();
+        await a.locator('[data-catalog-status="upgrade"]').first().waitFor();
+        await checkColors(a, theme);
+        const posters = a.getByRole('button', { name: 'Posters', exact: true });
+        await posters.click();
+        await a.locator('[data-catalog-status="upgrade"]').first().waitFor();
+        await checkColors(a, theme);
+        await a.getByRole('button', { name: /^Details: Metropolis/ }).first().click();
+        await card.locator('[data-catalog-status="upgrade"]').waitFor();
+        await checkColors(card, theme);
+        await a.keyboard.press('Escape');
+        await card.waitFor({ state: 'hidden' });
+        await open(a, A, '/catalog/local');
+        const localPosters = a.getByRole('button', { name: 'Posters', exact: true });
+        if (await localPosters.isEnabled()) await localPosters.click();
+        await a.locator('[data-catalog-status="have"]').first().waitFor();
+        await checkColors(a, theme);
+        const palette = ['have', 'missing', 'upgrade', 'notInLibrary'].map((status) => colors[`${theme}:${status}`]);
+        if (palette.some((color) => !color) || new Set(palette).size !== 4) throw new Error('All four states need distinct colors');
+        if (theme === 'light' && ['have', 'missing', 'upgrade', 'notInLibrary'].some((status) => colors[`dark:${status}`] === colors[`light:${status}`])) {
+          throw new Error('The theme did not change the availability palette');
+        }
+        console.log(`${theme}: consistent colors in tables, posters and cards; defaults and remembered filters passed`);
+      }
+    } finally {
+      await a.emulateMedia({ colorScheme: originalScheme });
+      await a.evaluate(({ names, values }) => names.forEach((key, i) => {
+        if (values[i] == null) localStorage.removeItem(key); else localStorage.setItem(key, values[i]);
+      }), { names: keys, values: preferences });
+    }
   },
 
   async settings({ a }) {
@@ -870,8 +986,8 @@ const b = await signIn(contextB, B);
 
 try {
   for (const [name, take] of Object.entries(shots)) {
-    // transfers needs a transfer started by hand, so it is only taken when named.
-    if (wanted.includes(name) || (wanted.length === 0 && name !== 'transfers')) {
+    // These checks need the fixture states described above, so run them by name.
+    if (wanted.includes(name) || (wanted.length === 0 && !['transfers', 'catalogAvailability'].includes(name))) {
       await take({ a, b, browser });
     }
   }

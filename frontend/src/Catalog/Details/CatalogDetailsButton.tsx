@@ -9,10 +9,12 @@ import useApiQuery from 'Helpers/Hooks/useApiQuery';
 import { kinds } from 'Helpers/Props';
 import formatBytes from 'Utilities/Number/formatBytes';
 import translate from 'Utilities/String/translate';
+import CatalogAvailability from '../CatalogAvailability';
 import CatalogGetItButton from '../GetIt/CatalogGetItButton';
 import { CatalogGetItSelection } from '../GetIt/useCatalogGetIt';
 import Poster from '../Poster';
 import SendFromCatalogButton from '../Sharing/SendFromCatalogButton';
+import useCatalogMissingEpisodes from '../useCatalogMissingEpisodes';
 import { MediaKind, PeerItemStatus, ShareKey } from '../useSharing';
 import styles from './CatalogDetails.css';
 
@@ -51,17 +53,8 @@ interface CatalogDetails {
   send?: ShareKey;
   getIt?: CatalogGetItSelection & { mediaKind: MediaKind };
   localStatus?: PeerItemStatus | null;
+  hasFile?: boolean | null;
   size: number;
-}
-
-function statusLabel(status: PeerItemStatus) {
-  const labels: Record<PeerItemStatus, string> = {
-    have: 'PeerItemHave',
-    upgrade: 'PeerItemUpgrade',
-    missing: 'PeerItemMissing',
-    notInLibrary: 'PeerItemNotInLibrary',
-  };
-  return translate(labels[status]);
 }
 
 function hasLocalFile(episode: CatalogDetails['episodes'][number]) {
@@ -135,13 +128,9 @@ function SeriesEpisode({
         {episode.title ? ` · ${episode.title}` : ''}
       </button>
       {showAvailability ? (
-        <span
-          className={hasLocalFile(episode) ? styles.available : styles.missing}
-        >
-          {episode.localStatus == null
-            ? translate(episode.hasFile ? 'CatalogDetailsInLibrary' : 'Missing')
-            : statusLabel(episode.localStatus)}
-        </span>
+        <CatalogAvailability
+          status={episode.localStatus ?? (episode.hasFile ? 'have' : 'missing')}
+        />
       ) : null}
     </li>
   );
@@ -172,12 +161,13 @@ function CatalogDetailsModal({
   onClose: () => void;
 }) {
   const [selectedPath, setSelectedPath] = useState(path);
-  const [showMissing, setShowMissing] = useState(true);
+  const peer = path.startsWith('/catalog/peers/');
+  const [showMissing, setShowMissing] = useCatalogMissingEpisodes(peer, true);
   const handleShowMissingChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       setShowMissing(event.target.checked);
     },
-    []
+    [setShowMissing]
   );
   const backToSeries = useCallback(() => setSelectedPath(path), [path]);
   const { data, isLoading, error } = useApiQuery<CatalogDetails>({
@@ -196,11 +186,18 @@ function CatalogDetailsModal({
         )}E${String(data.episodeNumber).padStart(2, '0')}`
       : undefined;
   const episodes = (data?.episodes ?? []).filter(
-    (episode) => showMissing || hasLocalFile(episode)
+    (episode) =>
+      showMissing ||
+      (peer ? episode.localStatus !== 'missing' : hasLocalFile(episode))
   );
   const seasons = Array.from(
     new Set(episodes.map((episode) => episode.seasonNumber))
   );
+
+  let availability = data?.localStatus;
+  if (availability == null && data?.hasFile != null) {
+    availability = data.hasFile ? 'have' : 'missing';
+  }
 
   return (
     <Modal isOpen={true} onModalClose={onClose}>
@@ -285,9 +282,9 @@ function CatalogDetailsModal({
                   <Detail
                     label={translate('CatalogDetailsLocalStatus')}
                     value={
-                      data.localStatus == null
-                        ? undefined
-                        : statusLabel(data.localStatus)
+                      availability == null ? undefined : (
+                        <CatalogAvailability status={availability} />
+                      )
                     }
                   />
                   <Detail
