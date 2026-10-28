@@ -10,6 +10,8 @@ What changed in each release, newest first. Each item links to the decision reco
 
 ### Fixed
 
+- Titles friends sent on Home keep their text and buttons beside the small poster when details are available, instead of squeezing them into a narrow column ([#116](https://github.com/Nodearr/Nodearr/issues/116)).
+
 - When you revoke a friend part way through sending them a file, your upload list says the upload was cut because trust ended. It could say the friend stopped it, when the friend heard of the revoke and cancelled before your node cut the upload. Your node now ends trust before telling the friend, and an upload the friend stopped a moment before trust ended counts as cut by it, whichever side revoked.
 
 ## 0.6.0 (pre-release)

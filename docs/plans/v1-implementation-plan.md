@@ -133,6 +133,8 @@ Then a settings page. ADR 0019. Branch `v1/s10-node-settings`.
 
 - Each library app's form owns automatic fetching (on for new apps) and upgrades (off by default), applies RSS at registration sync, and imports an existing connection's current RSS choice before managing it. Prowlarr stays unchanged ([#74](https://github.com/Nodearr/Nodearr/issues/74), ADR 0015). Limits and per-friend opt-out were planned in #75 and #76. Branch `v1/s74-automatic-fetch-settings`.
 
+- Home received-card posters keep their thumbnail width when details are available; full-width poster buttons are scoped to catalog tiles ([#116](https://github.com/Nodearr/Nodearr/issues/116)). Branch `fix/116-home-received-card-layout`. Stylelint, the UI build and the .NET solution build passed. A browser layout check with the built CSS passed 32 received-card cases across four viewport widths, with portrait and square images and placeholders, and with and without details. Restoring the old width rule reproduced the squeezed body. Portrait and square catalog tiles still fill their width, and overlay actions stay compact. This checks layout in a fixture, not a live send between peers.
+
 ## Where V1 stands
 
 The plan's definition of done is "a real Sonarr/Radarr import of a verified, permitted peer transfer between two deployed instances". That has been met between two deployed instances on one machine, many times over, with the failure cases checked. On 2026-10-12 it was met between two machines on different networks: a PC at home and a rented cloud machine, with no port forwarded on the home router (ADR 0011, "Runs between two machines"). The cloud machine had to allow UDP in for the connection to be direct, because the home side ran in Docker Desktop.
