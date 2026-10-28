@@ -174,6 +174,8 @@ The catalog's Get it action is implemented in #54, connection-loss diagnosis and
 
 - Revoking a friend mid-transfer ends trust on this node before the courtesy message, so its uploads are cut and listed as Revoked before the friend can cancel them. The sidecar also relabels an upload the friend stopped up to 30 seconds before trust ended, for when the friend revoked first. Found as an intermittent S7 failure. Branch `v1/s106-revoke-upload-race`.
 
+- 0.7.0 release notes prepared from every commit after `v0.6.0`: post-quantum key exchange (#24, ADR 0023), upload status when trust ends (#118), and received-card layout on Home (#116). The source-build prerequisites and older-node compatibility are included. Branch `release/0.7.0`, based on the Home fix. This prepares the changelog; the release has not been published.
+
 ### Next, in order
 
 1. ~~**Posters, part 1: a friend's catalog with pictures** (S57).~~ Done (ADR 0022).
