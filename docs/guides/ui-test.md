@@ -188,7 +188,7 @@ Then, on A, clear its checkbox under **Hidden** and select **Save**. On B, selec
 
 - [ ] A card says "... sent you Cowboy Bebop", with **Root Folder**, **Quality Profile** and **Series Type** filled in.
 - [ ] Select **Get it**. The card says it is asking Sonarr, then "Added to Sonarr, monitoring the whole series, and searching for 3 episodes": the three A has. Sonarr monitors the whole series, so it looks for the rest on its own later, as it would for any series.
-- [ ] **Activity > Transfers** shows Cowboy Bebop's three episodes arriving from A, then done. Up to three files can arrive at once.
+- [ ] **Activity > Transfers** shows Cowboy Bebop's three episodes arriving from A, then done. Up to three files arrive at once, the default of **Most Downloads at Once**.
 - [ ] In B's Sonarr, **Series > Cowboy Bebop** shows the three episodes with files. Sonarr imported what Nodearr fetched.
 
 **Then the other way round.** B sends **Spirited Away** to A, and A selects **Get it** on its card.

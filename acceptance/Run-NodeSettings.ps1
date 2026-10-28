@@ -153,17 +153,17 @@ try {
     $initial = Get-Settings A
     Assert-That 'A new node shows its settings, and which of them the environment fixes' (
         $initial.relay -eq 'disabled' -and -not $initial.portMapping -and $initial.port -eq 0 -and $initial.directTimeoutSeconds -eq 20 -and
-        $initial.uploadLimitKbps -eq 0 -and $initial.totalUploadLimitKbps -eq 0 -and $initial.downloadLimitKbps -eq 0 -and $initial.nodeName -eq '' -and $initial.downloadFolder -eq '' -and
+        $initial.uploadLimitKbps -eq 0 -and $initial.totalUploadLimitKbps -eq 0 -and $initial.maxDownloads -eq 3 -and $initial.downloadLimitKbps -eq 0 -and $initial.nodeName -eq '' -and $initial.downloadFolder -eq '' -and
         (@($initial.fixedByEnvironment) -join ',') -eq 'PortMapping,Relay' -and $initial.defaultNodeName -and
         $initial.defaultDownloadFolder -eq (Join-Path $nodes.A.Data 'downloads') -and $initial.transportRunning
     ) @{ settings = $initial }
 
     # --- Bad settings are refused, and say which --------------------------------------------------
 
-    $bad = Set-Settings A @{ port = 80; directTimeoutSeconds = 1; uploadLimitKbps = 5; totalUploadLimitKbps = 5; downloadLimitKbps = 5; downloadFolder = 'not/a/whole/path'; nodeName = ('x' * 80) } -AllowError
+    $bad = Set-Settings A @{ port = 80; directTimeoutSeconds = 1; uploadLimitKbps = 5; totalUploadLimitKbps = 5; downloadLimitKbps = 5; maxDownloads = -1; downloadFolder = 'not/a/whole/path'; nodeName = ('x' * 80) } -AllowError
     $afterBad = Get-Settings A
     Assert-That 'Settings that cannot work are refused together, each named, and nothing is changed' (
-        $bad.Failed -and $bad.Status -eq 400 -and (Get-Refused $bad) -eq 'DirectTimeoutSeconds,DownloadFolder,DownloadLimitKbps,NodeName,Port,TotalUploadLimitKbps,UploadLimitKbps' -and
+        $bad.Failed -and $bad.Status -eq 400 -and (Get-Refused $bad) -eq 'DirectTimeoutSeconds,DownloadFolder,DownloadLimitKbps,MaxDownloads,NodeName,Port,TotalUploadLimitKbps,UploadLimitKbps' -and
         $afterBad.port -eq 0 -and $afterBad.nodeName -eq '' -and $afterBad.directTimeoutSeconds -eq 20
     ) @{ status = $bad.Status; refused = (Get-Refused $bad); messages = @($bad.Errors | ForEach-Object errorMessage) }
 
@@ -192,7 +192,7 @@ try {
     ) @{ saved = $named.nodeName; restarted = $named.transportRestarted; bSees = $seenByB.name; error = $seenByB.lastError }
 
     $port = Get-FreeUdpPort
-    $moved = Set-Settings A @{ port = $port; uploadLimitKbps = 2048; totalUploadLimitKbps = 3072; downloadLimitKbps = 4096; directTimeoutSeconds = 30 }
+    $moved = Set-Settings A @{ port = $port; uploadLimitKbps = 2048; totalUploadLimitKbps = 3072; downloadLimitKbps = 4096; maxDownloads = 5; directTimeoutSeconds = 30 }
     $identityAfter = Invoke-Node A GET '/nodes/identity'
     $command = (Get-CimInstance Win32_Process -Filter "Name = 'nodearr-transport.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -match [regex]::Escape($nodes.A.Data) }).CommandLine
     Assert-That 'A new port, limits and wait restart the transport, which comes back as the same node on that port' (
@@ -228,7 +228,7 @@ try {
     $identityRestarted = Start-Node A
     $kept = Get-Settings A
     Assert-That 'After Nodearr restarts, the settings are as they were saved and the node is still itself' (
-        $kept.nodeName -eq 'John' -and $kept.port -eq $port -and $kept.uploadLimitKbps -eq 2048 -and $kept.totalUploadLimitKbps -eq 3072 -and $kept.downloadLimitKbps -eq 4096 -and $kept.directTimeoutSeconds -eq 30 -and
+        $kept.nodeName -eq 'John' -and $kept.port -eq $port -and $kept.uploadLimitKbps -eq 2048 -and $kept.totalUploadLimitKbps -eq 3072 -and $kept.downloadLimitKbps -eq 4096 -and $kept.maxDownloads -eq 5 -and $kept.directTimeoutSeconds -eq 30 -and
         $kept.downloadFolder -eq $newFolder -and $kept.relay -eq 'disabled' -and
         $identityRestarted.nodeId -eq $identityA.nodeId -and $identityRestarted.name -eq 'John' -and (Get-Ports $identityRestarted) -contains "$port"
     ) @{ settings = @{ nodeName = $kept.nodeName; port = $kept.port; uploadLimitKbps = $kept.uploadLimitKbps; downloadFolder = $kept.downloadFolder }; sameNode = ($identityRestarted.nodeId -eq $identityA.nodeId) }

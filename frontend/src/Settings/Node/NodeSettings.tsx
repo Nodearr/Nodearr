@@ -314,6 +314,24 @@ function NodeSettings() {
                   />
                 )}
               </FormGroup>
+
+              <FormGroup>
+                <FormLabel>{translate('NodeSettingsMaxDownloads')}</FormLabel>
+
+                {isFixed('maxDownloads') ? (
+                  <FixedSetting value={settings.maxDownloads.value} />
+                ) : (
+                  <FormInputGroup
+                    type={inputTypes.NUMBER}
+                    name="maxDownloads"
+                    min={0}
+                    max={100}
+                    helpText={translate('NodeSettingsMaxDownloadsHelpText')}
+                    onChange={handleInputChange}
+                    {...settings.maxDownloads}
+                  />
+                )}
+              </FormGroup>
             </FieldSet>
 
             <FieldSet legend={translate('Catalog')}>

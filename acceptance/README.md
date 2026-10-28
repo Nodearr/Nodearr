@@ -116,6 +116,7 @@ Requires PowerShell 7, a built Nodearr, Docker, ffmpeg and a built transport sid
 - A total upload limit on node A, half its upload limit, holds two transfers from it together, and each gets at least a quarter of it.
 - A's Sonarr takes a PROPER of an episode B holds. B is offered it as a PROPER, shown it as an upgrade, and its Sonarr grabs it from A and imports it in place of its copy.
 - Node B is killed in the middle and started again. The transfer carries on from what had arrived.
+- With **Most Downloads at Once** set to 1 on node B, Sonarr grabs two episodes: the second waits as queued in Nodearr, in the SABnzbd queue and in Sonarr's queue, starts once the first is done, and both are imported.
 - Node A revokes trust in the middle. The transfer stops, and Sonarr records why and blocklists the release.
 - B's Sonarr is switched to call the series daily, while A's still calls it standard. It then asks by the day the episode aired, is answered with a title written by day, and imports the file.
 - Node A, the one sending, shows each upload while it leaves and lists how each ended: sent, stopped by the other side, or cut when trust ended.

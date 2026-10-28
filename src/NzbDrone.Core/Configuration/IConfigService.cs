@@ -98,6 +98,7 @@ namespace NzbDrone.Core.Configuration
         int TransferUploadLimit { get; set; }
         int TransferTotalUploadLimit { get; set; }
         int TransferDownloadLimit { get; set; }
+        int TransferMaxDownloads { get; set; }
         int CatalogSyncInterval { get; set; }
 
         // Proxy

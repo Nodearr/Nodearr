@@ -5,6 +5,7 @@ using System.Linq;
 using NLog;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Nodes;
+using NzbDrone.Core.Nodes.Settings;
 using NzbDrone.Core.Nodes.Transport;
 using NzbDrone.Core.PeerCatalog;
 using NzbDrone.Core.PeerIndexer;
@@ -48,7 +49,6 @@ namespace NzbDrone.Core.Transfers
     // folder moves into place only once the last one is verified (ADR 0020).
     public class TransferService : ITransferService, IHandle<PeerStateChangedEvent>, IHandle<PeerDeletedEvent>
     {
-        public const int MaxConcurrent = 3;
         public const int MaxAttempts = 3;
 
         // Folders named alike waiting under complete/ before one more is refused.
@@ -62,6 +62,7 @@ namespace NzbDrone.Core.Transfers
         private readonly IFileTransport _transport;
         private readonly ITransferFolders _folders;
         private readonly IRouteDiagnosis _routes;
+        private readonly INodeSettingsProvider _settings;
         private readonly IEventAggregator _eventAggregator;
         private readonly Logger _logger;
         private readonly object _sync = new();
@@ -72,6 +73,7 @@ namespace NzbDrone.Core.Transfers
                                IFileTransport transport,
                                ITransferFolders folders,
                                IRouteDiagnosis routes,
+                               INodeSettingsProvider settings,
                                IEventAggregator eventAggregator,
                                Logger logger)
         {
@@ -81,6 +83,7 @@ namespace NzbDrone.Core.Transfers
             _transport = transport;
             _folders = folders;
             _routes = routes;
+            _settings = settings;
             _eventAggregator = eventAggregator;
             _logger = logger;
         }
@@ -252,11 +255,16 @@ namespace NzbDrone.Core.Transfers
                     changed |= Follow(job, progress.GetValueOrDefault(job.TransportId));
                 }
 
+                // Read on every tick, so a new limit applies at once. Lowering it lets what is
+                // already running finish; nothing is stopped part way.
+                var limit = _settings.Get().MaxDownloads;
                 var running = active.Count(j => j.State == TransferState.Downloading);
 
+                // In the order the Arr apps asked. A transfer waiting to be tried again keeps its
+                // place, as it had already been given a slot.
                 foreach (var job in active.Where(j => j.State == TransferState.Queued).OrderBy(j => j.Added))
                 {
-                    if (running >= MaxConcurrent)
+                    if (limit > 0 && running >= limit)
                     {
                         break;
                     }

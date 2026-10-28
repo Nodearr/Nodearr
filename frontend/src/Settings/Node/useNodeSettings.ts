@@ -14,6 +14,7 @@ export interface NodeSettingsModel {
   uploadLimitKbps: number;
   totalUploadLimitKbps: number;
   downloadLimitKbps: number;
+  maxDownloads: number;
   catalogSyncInterval: number;
 
   // Told by the server, and ignored when sent back.

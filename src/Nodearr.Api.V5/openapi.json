@@ -5524,6 +5524,11 @@
             "format": "int32",
             "nullable": true
           },
+          "maxDownloads": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
           "catalogSyncInterval": {
             "type": "integer",
             "format": "int32",

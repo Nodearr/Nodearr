@@ -2368,6 +2368,8 @@
   "NodeSettingsDownloadLimit": "Download Limit",
   "NodeSettingsDownloadLimitHelpText": "The most each download from another node may use. 0 is no limit.",
   "NodeSettingsUploadLimit": "Upload Limit",
+  "NodeSettingsMaxDownloads": "Most Downloads at Once",
+  "NodeSettingsMaxDownloadsHelpText": "Downloads from other nodes beyond this wait their turn, shown as Queued here and in the Arr app. 0 is no limit.",
   "NodeSettingsTotalUploadLimit": "Total Upload Limit",
   "NodeSettingsTotalUploadLimitHelpText": "The most all uploads to other nodes may use together, shared evenly between them. 0 is no limit.",
   "NodeSettingsCatalogSyncInterval": "Catalog Sync Interval",
