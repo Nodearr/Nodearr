@@ -401,6 +401,11 @@ namespace NzbDrone.Core.Nodes
                 throw new PeerException("Only a trusted node can be revoked");
             }
 
+            // Trust ends here first, which cuts what is moving between the nodes. Told first, the
+            // other node could cancel its downloads before this one cut them, and the uploads would
+            // read as stopped by the other side.
+            peer = ChangeState(peer, PeerState.Revoked, "Revoked here");
+
             try
             {
                 // A courtesy, so the other side shows the right state. Revocation does not depend on it.
@@ -411,7 +416,7 @@ namespace NzbDrone.Core.Nodes
                 _logger.Debug(ex, "Unable to tell {0} that it was revoked", peer.Name);
             }
 
-            return ChangeState(peer, PeerState.Revoked, "Revoked here");
+            return peer;
         }
 
         public void Delete(int id)

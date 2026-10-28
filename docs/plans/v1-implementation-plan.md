@@ -170,6 +170,8 @@ The catalog's Get it action is implemented in #54, connection-loss diagnosis and
 
 - 0.6.0, the catalogs made alike (#98): Get it on a friend's cards and as an icon on poster tiles (#93, #94), the details friends share (#95), status colours and missing-episode defaults (#96, #97), and a friend's send opening its card on Home (#105); sends already held say so (#102); the Activity badge shows both directions and what needs attention (#101); Lidarr artists and albums (#68); and the loading page's Sonarr leftovers and the sidecar's log lines fixed (#99, #100). It is 0.6.0 and not 0.5.1 because defaults change and migrations 265 to 267 make going back to 0.5.0 unsupported. Post-quantum key exchange (#24) follows in its own release. Branch `v1/s70-release-0.6.0`.
 
+- Revoking a friend mid-transfer ends trust on this node before the courtesy message, so its uploads are cut and listed as Revoked before the friend can cancel them. The sidecar also relabels an upload the friend stopped up to 30 seconds before trust ended, for when the friend revoked first. Found as an intermittent S7 failure. Branch `v1/s106-revoke-upload-race`.
+
 ### Next, in order
 
 1. ~~**Posters, part 1: a friend's catalog with pictures** (S57).~~ Done (ADR 0022).

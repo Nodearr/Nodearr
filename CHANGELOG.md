@@ -2,6 +2,12 @@
 
 What changed in each release, newest first. Each item links to the decision record that explains it, and the [V1 plan](docs/plans/v1-implementation-plan.md) has the whole story, slice by slice.
 
+## Unreleased
+
+### Fixed
+
+- When you revoke a friend part way through sending them a file, your upload list says the upload was cut because trust ended. It could say the friend stopped it, when the friend heard of the revoke and cancelled before your node cut the upload. Your node now ends trust before telling the friend, and an upload the friend stopped a moment before trust ended counts as cut by it, whichever side revoked.
+
 ## 0.6.0 (pre-release)
 
 The catalogs work the same way in both directions: a friend's titles open the same details cards as your own, with **Get it** where yours have **Send**, and colours show at a glance what you have, what is missing and what is an upgrade. Lidarr gets full artist and album browsing.
