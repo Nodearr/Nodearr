@@ -168,7 +168,7 @@ function SecuritySettings({
   }
 
   return (
-    <FieldSet legend={translate('Security')}>
+    <FieldSet legend={translate('Security')} helpTopic="security">
       <FormGroup>
         <FormLabel>{translate('Authentication')}</FormLabel>
 

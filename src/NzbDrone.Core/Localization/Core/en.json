@@ -1,4 +1,7 @@
 {
+  "Documentation": "Documentation",
+  "DocumentationHelp": "Documentation: {topic} (opens in a new tab)",
+  "Troubleshooting": "Troubleshooting",
   "About": "About",
   "Absolute": "Absolute",
   "AbsoluteEpisodeNumber": "Absolute Episode Number",

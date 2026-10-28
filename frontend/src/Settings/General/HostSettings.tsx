@@ -47,7 +47,7 @@ function HostSettings({
   const isWindowsService = useIsWindowsService();
 
   return (
-    <FieldSet legend={translate('Host')}>
+    <FieldSet legend={translate('Host')} helpTopic="host">
       <FormGroup advancedSettings={showAdvancedSettings} isAdvanced={true}>
         <FormLabel>{translate('BindAddress')}</FormLabel>
 

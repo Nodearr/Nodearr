@@ -145,7 +145,7 @@ function NodeInvites() {
   return (
     <PageContent title={translate('Invites')}>
       <PageContentBody>
-        <FieldSet legend={translate('InviteCreate')}>
+        <FieldSet legend={translate('InviteCreate')} helpTopic="invites">
           <p className={styles.muted}>{translate('InviteCreateHelpText')}</p>
 
           <div className={styles.formRow}>
@@ -205,7 +205,7 @@ function NodeInvites() {
           ) : null}
         </FieldSet>
 
-        <FieldSet legend={translate('InviteRedeem')}>
+        <FieldSet legend={translate('InviteRedeem')} helpTopic="redeemInvite">
           <p className={styles.muted}>{translate('InviteRedeemHelpText')}</p>
 
           <div className={styles.formRow}>

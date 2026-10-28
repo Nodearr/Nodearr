@@ -57,7 +57,7 @@ function SendFromCatalogDialog({
   return (
     <Modal isOpen={true} onModalClose={onClose}>
       <ModalContent onModalClose={onClose}>
-        <ModalHeader>{translate('SendToFriend')}</ModalHeader>
+        <ModalHeader helpTopic="send">{translate('SendToFriend')}</ModalHeader>
         <ModalBody>
           {areTitlesLoading || arePeersLoading ? <LoadingIndicator /> : null}
           {titlesError || peersError ? (

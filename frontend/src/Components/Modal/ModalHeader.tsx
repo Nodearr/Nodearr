@@ -1,14 +1,17 @@
 import React, { ForwardedRef, forwardRef, ReactNode } from 'react';
+import DocumentationLink from 'Components/DocumentationLink';
+import { DocumentationTopic } from 'Utilities/Documentation/documentation';
 import { useModalContext } from './ModalContext';
 import styles from './ModalHeader.css';
 
 interface ModalHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
+  helpTopic?: DocumentationTopic;
 }
 
 const ModalHeader = forwardRef(
   (
-    { children, ...otherProps }: ModalHeaderProps,
+    { children, helpTopic, ...otherProps }: ModalHeaderProps,
     ref: ForwardedRef<HTMLDivElement>
   ) => {
     const { headerId } = useModalContext();
@@ -20,7 +23,14 @@ const ModalHeader = forwardRef(
         className={styles.modalHeader}
         {...otherProps}
       >
-        {children}
+        {helpTopic ? (
+          <div className={styles.withHelp}>
+            <span className={styles.title}>{children}</span>
+            <DocumentationLink topic={helpTopic} />
+          </div>
+        ) : (
+          children
+        )}
       </div>
     );
   }

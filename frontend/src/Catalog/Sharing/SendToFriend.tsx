@@ -409,7 +409,11 @@ function SendToFriend({
   );
 
   if (!isModal) {
-    return <FieldSet legend={translate('SendToFriend')}>{form}</FieldSet>;
+    return (
+      <FieldSet legend={translate('SendToFriend')} helpTopic="send">
+        {form}
+      </FieldSet>
+    );
   }
 
   const handleModalClose = onModalClose ?? (() => undefined);
@@ -417,7 +421,7 @@ function SendToFriend({
   return (
     <Modal isOpen={true} onModalClose={handleModalClose}>
       <ModalContent onModalClose={handleModalClose}>
-        <ModalHeader>{translate('SendToFriend')}</ModalHeader>
+        <ModalHeader helpTopic="send">{translate('SendToFriend')}</ModalHeader>
         <ModalBody>{form}</ModalBody>
       </ModalContent>
     </Modal>

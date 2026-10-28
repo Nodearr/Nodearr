@@ -4,6 +4,10 @@ What changed in each release, newest first. Each item links to the decision reco
 
 ## Unreleased
 
+### Added
+
+- Question-mark help links open the relevant user guide for each page, with focused help beside settings sections and in invite, app connection, path mapping, fetch and send flows ([#120](https://github.com/Nodearr/Nodearr/issues/120)).
+
 ## 0.7.0 (pre-release)
 
 Connections between updated friends now use a post-quantum key exchange, helping protect messages and files recorded today from decryption by a future quantum computer. This release also fixes the layout of received titles on Home and how interrupted uploads are labelled when trust ends.
