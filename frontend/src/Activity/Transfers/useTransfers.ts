@@ -65,10 +65,11 @@ export const useTransfers = (refetchInterval?: number) =>
     queryOptions: { refetchInterval },
   });
 
-export const useUploads = () =>
+// The always-mounted sidebar owns the fallback timer; the page shares its cached response.
+export const useUploads = (refetchInterval?: number) =>
   useApiQuery<Upload[]>({
     path: UPLOADS_PATH,
-    queryOptions: { refetchInterval: 15000 },
+    queryOptions: { refetchInterval },
   });
 
 export type TransferAction = 'remove' | 'retry';

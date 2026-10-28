@@ -160,7 +160,9 @@ The catalog's Get it action is implemented in #54, connection-loss diagnosis and
 
 - Loading, error and missing-page screens use Nodearr's existing logo; loading text is plain and pinned tabs use teal. Unused inherited artwork was removed, and the remaining visible branding was audited ([#99](https://github.com/Nodearr/Nodearr/issues/99), part of #98). Branch `v1/s99-loading-branding`.
 
-- Transport stderr events are plain single lines with their original levels and targets. Nodearr maps them to NLog, preserving unknown output at Info; formatter and parser regressions cover the boundary ([#100](https://github.com/Nodearr/Nodearr/issues/100), part of #98; ADR 0013). Branch `v1/s100-transport-logging`.
+- Transport stderr events are plain single lines with their original levels and targets. Nodearr maps them to NLog, preserving unknown output at Info; formatter and parser regressions cover the boundary ([#100](https://github.com/Nodearr/Nodearr/issues/100); ADR 0013). Branch `v1/s100-transport-logging`.
+
+- Activity counts unfinished downloads and active uploads with distinct SVG icons, shares waiting/retry/failure colors with transfer rows, and leaves finished uploads in history without holding the badge red ([#101](https://github.com/Nodearr/Nodearr/issues/101); ADR 0016). Branch `v1/s101-activity-status`.
 
 ### Next, in order
 
