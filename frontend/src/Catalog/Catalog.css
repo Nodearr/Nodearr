@@ -106,6 +106,10 @@
   gap: 4px 16px;
 }
 
+.peerFetch {
+  margin-top: 8px;
+}
+
 .columns {
   display: flex;
   flex-wrap: wrap;

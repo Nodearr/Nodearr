@@ -25,6 +25,7 @@ export function Check({
   label,
   isChecked,
   isIndeterminate = false,
+  isDisabled = false,
   className,
   poster,
   onToggle,
@@ -33,6 +34,7 @@ export function Check({
   label: string;
   isChecked: boolean;
   isIndeterminate?: boolean;
+  isDisabled?: boolean;
   className?: string;
   poster?: React.ReactNode;
   onToggle: (id: string) => void;
@@ -61,6 +63,7 @@ export function Check({
         className={styles.checkBox}
         type="checkbox"
         checked={isChecked}
+        disabled={isDisabled}
         onChange={handleChange}
       />
       {poster}

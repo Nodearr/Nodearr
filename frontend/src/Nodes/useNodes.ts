@@ -36,6 +36,7 @@ export interface Peer {
   connectionAddress?: string;
   connectionChecked?: string;
   shareAll: boolean;
+  fetchNewFilesAutomatically: boolean;
   // The Arr apps that everything leaves out for this friend.
   excludedApplicationIds: number[];
 }
@@ -55,7 +56,11 @@ const IDENTITY_PATH = '/nodes/identity';
 const PEERS_PATH = '/nodes/peers';
 const INVITES_PATH = '/nodes/invites';
 
-function send<T>(method: 'POST' | 'DELETE', path: string, body?: unknown) {
+function send<T>(
+  method: 'POST' | 'PUT' | 'DELETE',
+  path: string,
+  body?: unknown
+) {
   return fetchJson<T, unknown>({
     path: getQueryPath(path),
     method,
@@ -81,6 +86,18 @@ export const useNodeIdentity = () =>
 export const usePeers = () => useApiQuery<Peer[]>({ path: PEERS_PATH });
 
 export const useInvites = () => useApiQuery<Invite[]>({ path: INVITES_PATH });
+
+export const useSetPeerAutomaticFetch = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<Peer, ApiError, { id: number; enabled: boolean }>({
+    mutationFn: ({ id, enabled }) =>
+      send('PUT', `${PEERS_PATH}/${id}/automaticfetch`, {
+        fetchNewFilesAutomatically: enabled,
+      }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: [PEERS_PATH] }),
+  });
+};
 
 export type PeerAction = 'ping' | 'block' | 'unblock' | 'revoke' | 'delete';
 

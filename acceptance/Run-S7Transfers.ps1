@@ -412,6 +412,26 @@ try {
     Invoke-NodeCommand B @{ name = 'PeerCatalogSync' }
     Wait-Until -What 'B to receive the new episode' -Condition { (Invoke-Node B GET '/catalog/peers/items?pageSize=50').totalRecords -eq 5 } | Out-Null
     $rssEpisode = @(Invoke-Arr sonarrB GET "/episode?seriesId=$($series.sonarrB.id)" | Where-Object { $_.seasonNumber -eq 1 -and $_.episodeNumber -eq 4 })[0]
+    $aOnB = @(Invoke-Node B GET '/nodes/peers' | Where-Object state -eq 'trusted')[0]
+    Assert-That 'A newly paired friend allows automatic fetching by default' ($aOnB.fetchNewFilesAutomatically -eq $true) @{ enabled = $aOnB.fetchNewFilesAutomatically }
+    Invoke-Node B PUT "/nodes/peers/$($aOnB.id)/automaticfetch" @{ fetchNewFilesAutomatically = $false } | Out-Null
+    $savedPeer = @(Invoke-Node B GET '/nodes/peers' | Where-Object id -eq $aOnB.id)[0]
+    $rss = Invoke-Arr sonarrB POST '/command' @{ name = 'RssSync' }
+    Wait-Until -What 'Sonarr RSS sync with the friend opted out' -Condition {
+        $command = Invoke-Arr sonarrB GET "/command/$($rss.id)"
+        if ($command.status -eq 'failed') { throw 'Sonarr RSS sync failed' }
+        $command.status -eq 'completed'
+    } | Out-Null
+    $search = @(Invoke-Arr sonarrB GET "/release?episodeId=$($rssEpisode.id)")
+    Assert-That 'Opting out a friend stops RSS but keeps manual episode search available' (
+        $savedPeer.fetchNewFilesAutomatically -eq $false -and
+        -not (Invoke-Arr sonarrB GET "/episode/$($rssEpisode.id)").hasFile -and
+        @(Get-History sonarrB "/history/series?seriesId=$($series.sonarrB.id)" | Where-Object eventType -eq 'grabbed').Count -eq 0 -and
+        @($search | Where-Object title -eq $rssName).Count -gt 0
+    ) @{ enabled = $savedPeer.fetchNewFilesAutomatically; searchResults = $search.Count }
+    Invoke-Node B PUT "/nodes/peers/$($aOnB.id)/automaticfetch" @{ fetchNewFilesAutomatically = $true } | Out-Null
+    $savedPeer = @(Invoke-Node B GET '/nodes/peers' | Where-Object id -eq $aOnB.id)[0]
+    Assert-That 'Re-enabling automatic fetching is saved' ($savedPeer.fetchNewFilesAutomatically -eq $true) @{ enabled = $savedPeer.fetchNewFilesAutomatically }
     $rss = Invoke-Arr sonarrB POST '/command' @{ name = 'RssSync' }
     $rssImported = Wait-Until -What 'Sonarr to import the RSS arrival' -TimeoutSec 180 -EverySec 2 -Condition {
         Invoke-Arr sonarrB POST '/command' @{ name = 'RefreshMonitoredDownloads' } | Out-Null

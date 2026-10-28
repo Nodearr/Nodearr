@@ -60,6 +60,14 @@ What you can do depends on where trust stands:
 - **Block** ends trust here and turns that node away whenever it connects, before it reaches Nodearr. It stops transfers and clears their catalog here, without telling them. They cannot pair with you again, even with a new invite, until you unblock them. Unblocking does not restore trust: it takes a new invite.
 - **Delete** forgets a node that is not trusted. A blocked node cannot be deleted, so it stays blocked.
 
+## Choosing which friends to fetch from automatically
+
+On **Catalog > Sharing**, each trusted friend has **Fetch new files from this friend automatically**, selected by default. Clear it to leave that friend's new files out of every app's automatic-fetch feed. Select it again to include eligible arrivals. The change is saved immediately and applies to all your library apps.
+
+Each app also needs **Fetch new files from friends automatically** enabled under **Settings > Apps**. An app can only fetch an upgrade automatically if **Including upgrades** is enabled there. See [Finding and fetching](finding-and-fetching.md#how-your-arr-apps-find-it).
+
+This choice does not change what you share with the friend. You can still browse their catalog, use **Get it**, and find their files in an Arr app's manual searches. If a transfer from another friend needs to resume and this friend has an identical copy, Nodearr can use that copy even when automatic fetching from this friend is off.
+
 ## Choosing what to share
 
 By default, a new friend can access files from apps with **Share With New Friends** enabled, except titles on **Hidden**. Both Whisparr versions start with this setting off; other library apps start with it on. You can choose to share only lists when creating or redeeming an invite.

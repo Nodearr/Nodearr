@@ -4,6 +4,10 @@ What changed in each release, newest first. Each item links to the decision reco
 
 ## Unreleased
 
+### Added
+
+- Choose whether to automatically fetch new files from each friend under **Catalog > Sharing**. Searches and **Get it** still find their files ([#76](https://github.com/Nodearr/Nodearr/issues/76)).
+
 ### Changed
 
 - Each library app has **Fetch new files from friends automatically** and **Including upgrades** in Nodearr. New connections fetch missing arrivals automatically, with upgrades off. Existing connections import their current RSS choice at the next successful sync; Nodearr then manages the RSS switch. Prowlarr stays unchanged ([#74](https://github.com/Nodearr/Nodearr/issues/74)).

@@ -18,6 +18,7 @@ interface CssExports {
   'newList': string;
   'newListName': string;
   'peerApps': string;
+  'peerFetch': string;
   'peerName': string;
   'peerRow': string;
   'peerShare': string;

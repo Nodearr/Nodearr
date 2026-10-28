@@ -54,6 +54,7 @@ namespace NzbDrone.Core.PeerCatalog
                 SELECT i.* FROM [PeerCatalogItems] i
                 INNER JOIN [Peers] p ON p.[Id] = i.[PeerId]
                 WHERE p.[State] = 1
+                  AND p.[FetchNewFilesAutomatically] = 1
                   AND (p.[ConnectionChecked] IS NULL OR p.[ConnectionPath] = 1)
                   AND i.[FirstSeen] > p.[CatalogFirstSyncedAt]
                   AND i.[FirstSeen] > p.[StateChanged]

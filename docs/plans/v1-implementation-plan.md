@@ -131,7 +131,7 @@ Then a settings page. ADR 0019. Branch `v1/s10-node-settings`.
 
 - App-specific RSS feeds filter later arrivals against the requesting app's library, skip friends known to lack a direct route, and exclude the initial catalog. Searches and the legacy feed are unchanged ([#73](https://github.com/Nodearr/Nodearr/issues/73), ADR 0015). Automatic-fetching settings, limits and per-friend opt-out remain in #74–#76 before #71 is complete. Branch `v1/s73-filtered-rss`.
 
-- Each library app's form owns automatic fetching (on for new apps) and upgrades (off by default), applies RSS at registration sync, and imports an existing connection's current RSS choice before managing it. Prowlarr stays unchanged ([#74](https://github.com/Nodearr/Nodearr/issues/74), ADR 0015). Limits and per-friend opt-out remain in #75 and #76. Branch `v1/s74-automatic-fetch-settings`.
+- Each library app's form owns automatic fetching (on for new apps) and upgrades (off by default), applies RSS at registration sync, and imports an existing connection's current RSS choice before managing it. Prowlarr stays unchanged ([#74](https://github.com/Nodearr/Nodearr/issues/74), ADR 0015). Limits and per-friend opt-out were planned in #75 and #76. Branch `v1/s74-automatic-fetch-settings`.
 
 ## Where V1 stands
 
@@ -146,6 +146,8 @@ On 2026-10-14 two home networks connected directly and moved a file: two Windows
 V1 is done. What follows is open, most useful first. Each item in the first list is a slice that needs nothing but this machine.
 
 The catalog's Get it action is implemented in #54, connection-loss diagnosis and upload history in #55 and #56, its views in #58, Send it from the local table and posters in #59, and the Activity badge in #60. Details cards for Sonarr, Radarr and Whisparr entries in both catalogs are #64; Lidarr cards are deferred to #68 while their design is reconsidered. The remaining slice is LAN throughput measurement (#57), which needs the owner's second machine.
+
+- Each trusted friend's automatic-fetch choice is saved on that node and filters all library-app feeds; manual searches stay available ([#76](https://github.com/Nodearr/Nodearr/issues/76), ADR 0015). Transfer limits remain in #75 before #71 is complete. Branch `v1/s76-per-friend-automatic-fetch`.
 
 ### Next, in order
 

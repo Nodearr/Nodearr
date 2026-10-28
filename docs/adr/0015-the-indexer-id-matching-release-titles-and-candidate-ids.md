@@ -77,11 +77,15 @@ Nodearr records when each offered file was first received, retaining that time a
 
 Existing app settings are migrated to an unset automatic-fetch choice. Before writing a registration, the first successful sync reads the existing Nodearr indexer's RSS switch and saves that choice in Nodearr. An app with no existing Nodearr indexer gets the new default. A failed read is retried at a later sync without writing a registration or replacing the unset choice. Upgrades start off for existing apps too. The migration is local; reaching the Arr app happens in normal registration sync, rather than in a database upgrade.
 
+**Amendment, 2026-10-27 ([#76](https://github.com/Nodearr/Nodearr/issues/76)).** Each trusted friend has a local **Fetch new files from this friend automatically** setting, on for existing and new friends. When off, that friend's offers are removed from every app-specific browse feed before classification, deduplication and pagination. It does not change sharing, manual searches, Get it, or the legacy feed. Re-enabling makes eligible later arrivals available again. Identical-copy transfer failover remains available even for a friend excluded from RSS, because the receiving app does not identify how a transfer was initiated.
+
 ### Anime
 
 Nodearr registers its Sonarr indexer with an anime category and with "anime standard format search" on. Sonarr then also searches anime by ID, season and episode, which is the one way Nodearr matches.
 
 ## Evidence
+
+- #76, 2026-10-27: 185 focused core tests pass, including migration defaults, saved peer choices, filtering across two apps and friends, duplicate offers, and unchanged searches. S7 passes 28 checks against real Sonarr and Radarr, including disabling a friend for RSS, finding its later episode by manual search, and re-enabling RSS delivery. A mobile browser check covers pending state, save failure, and persistence after reload. The Sharing screenshot and V5 API description were refreshed.
 
 - #74, 2026-10-27: the solution builds with analyzers enabled and no warnings or errors; 381 core/application/indexer/migration tests and 12 controller tests pass. Frontend lint, type checking, style checks and the production build pass. The existing screenshot command checks that the upgrades control hides and returns when automatic fetching is toggled, and the guide's app screenshots were refreshed. S7 passes 25 checks, including new-app defaults and switching real Sonarr RSS off and on from Nodearr. The migration fixture checks all five library app kinds, preserves other settings and leaves Prowlarr unchanged; registration tests check both existing RSS states and failed reads and saves.
 
