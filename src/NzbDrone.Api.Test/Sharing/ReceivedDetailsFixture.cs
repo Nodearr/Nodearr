@@ -65,6 +65,34 @@ namespace NzbDrone.Api.Test.Sharing
         private CatalogDetailsResource Details => Subject.GetReceivedDetails(7).Result.Should().BeOfType<Ok<CatalogDetailsResource>>().Subject.Value;
 
         [Test]
+        public void received_cards_should_expose_current_availability_and_the_first_seen_time()
+        {
+            _received.Availability = new ReceivedAvailability { AlreadyHaveIt = true, NewFiles = 0, UpgradeFiles = 0 };
+            _received.AlreadyHeldSeenAt = DateTime.UtcNow.AddHours(-1);
+
+            var resource = Subject.GetReceived().Value.Single();
+            resource.AlreadyHaveIt.Should().BeTrue();
+            resource.NewFiles.Should().Be(0);
+            resource.UpgradeFiles.Should().Be(0);
+            resource.AlreadyHeldSeenAt.Should().Be(_received.AlreadyHeldSeenAt);
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void seen_should_only_acknowledge_a_waiting_card(bool waiting)
+        {
+            Mocker.GetMock<IReceivedService>().Setup(s => s.MarkSeen(7)).Returns(waiting);
+            if (waiting)
+            {
+                Subject.MarkSeen(7).Result.Should().BeOfType<NoContent>();
+            }
+            else
+            {
+                Subject.MarkSeen(7).Result.Should().BeOfType<NotFound>();
+            }
+        }
+
+        [Test]
         public void whole_series_should_use_the_existing_cached_card_without_contacting_the_friend()
         {
             Subject.GetReceived().Value.Single().DetailsAvailable.Should().BeTrue();

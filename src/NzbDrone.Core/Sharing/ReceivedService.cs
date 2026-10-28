@@ -15,6 +15,7 @@ namespace NzbDrone.Core.Sharing
     {
         // What friends sent that has not been acted on or put away, newest first.
         List<ReceivedTitle> Waiting();
+        bool MarkSeen(int id);
         void Dismiss(int id);
     }
 
@@ -63,9 +64,23 @@ namespace NzbDrone.Core.Sharing
             var now = DateTime.UtcNow;
             var holdings = new Lazy<LocalHoldings>(() => _holdings.Load());
 
-            foreach (var received in waiting.Where(r => r.GetItState == GetItState.Done))
+            foreach (var received in waiting)
             {
-                if (received.GetItCompletedAt <= now.AddHours(-24) || HasSentFiles(received, holdings))
+                // Expired successful operations need no catalog lookup.
+                var completed = received.GetItState == GetItState.Done && received.GetItCompletedAt <= now.AddHours(-24);
+                if (!completed)
+                {
+                    received.Availability = Availability(received, holdings);
+                }
+
+                if (!received.Availability.AlreadyHaveIt && received.AlreadyHeldSeenAt.HasValue && !completed)
+                {
+                    received.AlreadyHeldSeenAt = null;
+                    _received.SetFields(received, r => r.AlreadyHeldSeenAt);
+                }
+
+                var heldAndSeen = received.GetItState != GetItState.Working && received.Availability.AlreadyHaveIt && received.AlreadyHeldSeenAt <= now.AddHours(-24);
+                if (completed || (received.GetItState == GetItState.Done && received.Availability.AlreadyHaveIt) || heldAndSeen)
                 {
                     received.Handled = now;
                     _received.SetFields(received, r => r.Handled);
@@ -73,6 +88,24 @@ namespace NzbDrone.Core.Sharing
             }
 
             return waiting.Where(r => r.Handled == null).ToList();
+        }
+
+        public bool MarkSeen(int id)
+        {
+            var received = _received.Find(id);
+            if (received == null || received.Handled.HasValue || _peers.Find(received.PeerId)?.State != PeerState.Trusted)
+            {
+                return false;
+            }
+
+            if (received.GetItState is GetItState.None or GetItState.Failed && !received.AlreadyHeldSeenAt.HasValue &&
+                Availability(received, new Lazy<LocalHoldings>(() => _holdings.Load())).AlreadyHaveIt)
+            {
+                received.AlreadyHeldSeenAt = DateTime.UtcNow;
+                _received.SetFields(received, r => r.AlreadyHeldSeenAt);
+            }
+
+            return true;
         }
 
         public void Dismiss(int id)
@@ -84,13 +117,25 @@ namespace NzbDrone.Core.Sharing
             _eventAggregator.PublishEvent(new ReceivedTitlesChangedEvent());
         }
 
-        private bool HasSentFiles(ReceivedTitle received, Lazy<LocalHoldings> holdings)
+        private ReceivedAvailability Availability(ReceivedTitle received, Lazy<LocalHoldings> holdings)
         {
-            var offerIds = (received.OfferIds ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries).Distinct().ToList();
+            var offerIds = (received.OfferIds ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
             var items = _peerItems.ForRemoteIds(received.PeerId, offerIds);
 
-            // A partial or withdrawn offer cannot prove that everything sent has arrived.
-            return offerIds.Count > 0 && items.Count == offerIds.Count && items.All(i => holdings.Value.Classify(i) == PeerItemStatus.Have);
+            // A partial, withdrawn or mismatched offer cannot prove everything is held, or give reliable counts.
+            if (offerIds.Count == 0 || items.Count != offerIds.Count ||
+                !offerIds.SetEquals(items.Select(i => i.RemoteId)) || items.Any(i => i.PeerId != received.PeerId || i.MediaKind != received.MediaKind))
+            {
+                return new ReceivedAvailability();
+            }
+
+            var statuses = items.Select(i => holdings.Value.Classify(i)).ToList();
+            return new ReceivedAvailability
+            {
+                AlreadyHaveIt = statuses.All(s => s == PeerItemStatus.Have),
+                NewFiles = statuses.Count(s => s is PeerItemStatus.Missing or PeerItemStatus.NotInLibrary),
+                UpgradeFiles = statuses.Count(s => s == PeerItemStatus.Upgrade)
+            };
         }
 
         // Handled before the friend is answered, so an answer means it was kept. The same send

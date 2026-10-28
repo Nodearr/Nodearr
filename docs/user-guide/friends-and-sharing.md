@@ -167,6 +167,16 @@ Select **Details** or the small poster to read about the title in a card over Ho
 
 The details card has the same **Get it** choices as the peer catalog. Home keeps its own **Get it** as the quick path for exactly what was sent. Music still uses Home's **Get it**; it has no details card yet.
 
+If you have every file your friend sent and their copies are not upgrades, Home says **You already have it.** and offers no **Get it**. You can still read the details or select **Put away**. The notification leaves Home 24 hours after it first appears on screen in an active Home tab. An unseen notification stays until you see it; revisiting Home does not restart the day.
+
+![A received movie already held, with Details and Put away](images/received-already-held.png)
+
+If you have only some files, **New files** counts the sent files you are missing. **Upgrades** counts files that are better under your app's quality rules, including PROPER and REPACK when the app allows them. These cards keep **Get it**. Counts describe files, so one file covering several episodes counts once. They appear after the sender's complete offer is available; a withdrawn or incomplete offer is not treated as already held.
+
+![A series send with one new file and Get it](images/received-partly-held.png)
+
+If your library changes and a previously held send now contains missing files or upgrades, the card keeps **Get it** and its previous display time is cleared. Your friend's send still says **Told**; it does not report whether you already had the files.
+
 To request the title:
 
 1. Choose an **App** if you have more than one of the required type, such as separate Sonarr instances for HD and 4K.
@@ -183,7 +193,7 @@ A series goes to Sonarr, a movie to Radarr, music to Lidarr, and a film or scene
 
 The card reports what happened or explains a failure and lets you retry. If you add or remove root folders or profiles in the Arr app, the card updates its choices when it checks the app again. Choices you made are kept while the app still offers them.
 
-After **Get it** succeeds, the card stays until Nodearr's local catalog shows you have the files that were sent, or until 24 hours after that success, whichever comes first. Home checks while it is open and when you reload it. A failed card stays until you retry or select **Put away**, so you can read the reason.
+After **Get it** succeeds, the card stays until Nodearr's local catalog shows you have the files that were sent, or until 24 hours after that success, whichever comes first. Home checks while it is open and when you reload it. A failed card stays until you retry or select **Put away**, unless the files become held, when it follows the already-held notification rules above.
 
 **Get it** cannot add titles to Whisparr v2, or add a scene originating in a friend's Whisparr v2 to Whisparr v3. Add those titles in Whisparr yourself, then search there to find your friend's copy.
 

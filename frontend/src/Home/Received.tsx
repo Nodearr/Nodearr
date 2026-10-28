@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import CatalogDetailsButton from 'Catalog/Details/CatalogDetailsButton';
 import GetItForm from 'Catalog/GetIt/GetItForm';
 import {
@@ -7,6 +7,7 @@ import {
   useDismissReceived,
   useGetIt,
   useGetItPlan,
+  useMarkReceivedSeen,
   useReceived,
 } from 'Catalog/useSharing';
 import Icon from 'Components/Icon';
@@ -29,7 +30,8 @@ function GetItSection({ received }: { received: ReceivedTitle }) {
     [mutate, received.id]
   );
   const isIdle =
-    received.getItState === 'none' || received.getItState === 'failed';
+    (received.getItState === 'none' || received.getItState === 'failed') &&
+    !received.alreadyHaveIt;
   const { data: plan, isFetching, error } = useGetItPlan(received.id, isIdle);
 
   if (received.getItState === 'working') {
@@ -49,8 +51,31 @@ function GetItSection({ received }: { received: ReceivedTitle }) {
     );
   }
 
+  if (received.alreadyHaveIt) {
+    return (
+      <div className={getItStyles.getItDone}>
+        <Icon name={icons.CHECK_CIRCLE} kind={kinds.SUCCESS} />{' '}
+        {translate('ReceivedAlreadyHaveIt')}
+      </div>
+    );
+  }
+
   return (
     <>
+      {received.newFiles == null ? null : (
+        <div className={getItStyles.getItNote}>
+          {translate('ReceivedNewFiles', { count: received.newFiles })}
+          {received.upgradeFiles ? (
+            <>
+              {' '}
+              {translate('ReceivedUpgradeFiles', {
+                count: received.upgradeFiles,
+              })}
+            </>
+          ) : null}
+        </div>
+      )}
+
       {received.getItState === 'failed' ? (
         <div className={getItStyles.getItError}>
           {translate('GetItFailed', { message: received.getItMessage ?? '' })}
@@ -82,6 +107,38 @@ function GetItSection({ received }: { received: ReceivedTitle }) {
 
 function ReceivedCard({ received }: { received: ReceivedTitle }) {
   const { mutate: dismiss, isPending } = useDismissReceived();
+  const { mutate: markSeen } = useMarkReceivedSeen();
+  const card = useRef<HTMLDivElement>(null);
+  const shouldMarkSeen =
+    received.alreadyHaveIt &&
+    !received.alreadyHeldSeenAt &&
+    (received.getItState === 'none' || received.getItState === 'failed');
+
+  useEffect(() => {
+    if (!shouldMarkSeen || !card.current) {
+      return;
+    }
+
+    let visible = false;
+    let marked = false;
+    const seen = () => {
+      if (visible && document.visibilityState === 'visible' && !marked) {
+        marked = true;
+        markSeen(received.id);
+      }
+    };
+    const observer = new IntersectionObserver(([entry]) => {
+      visible = entry.isIntersecting;
+      seen();
+    });
+    observer.observe(card.current);
+    document.addEventListener('visibilitychange', seen);
+
+    return () => {
+      observer.disconnect();
+      document.removeEventListener('visibilitychange', seen);
+    };
+  }, [shouldMarkSeen, received.id, markSeen]);
 
   const handleDismissPress = useCallback(() => {
     dismiss(received.id);
@@ -92,7 +149,11 @@ function ReceivedCard({ received }: { received: ReceivedTitle }) {
     : received.title ?? '';
 
   return (
-    <div className={`${styles.received} ${styles.receivedWithPoster}`}>
+    <div
+      ref={card}
+      data-received-id={received.id}
+      className={`${styles.received} ${styles.receivedWithPoster}`}
+    >
       {received.detailsAvailable ? (
         <CatalogDetailsButton
           path={`/sharing/sends/received/${received.id}/details`}
