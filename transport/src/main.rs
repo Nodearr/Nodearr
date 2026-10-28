@@ -678,3 +678,18 @@ async fn disconnect(State(app): State<Arc<App>>, Json(body): Json<DisconnectBody
         Err(_) => (StatusCode::BAD_REQUEST, "bad node id").into_response(),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use rustls::NamedGroup;
+
+    /// Connections between nodes offer the post-quantum hybrid first (issue #24). This fails to
+    /// build without the aws-lc-rs provider, and fails if prefer-post-quantum is dropped.
+    #[test]
+    fn key_exchange_offers_x25519mlkem768_first() {
+        let provider = rustls::crypto::aws_lc_rs::default_provider();
+        let groups: Vec<NamedGroup> = provider.kx_groups.iter().map(|group| group.name()).collect();
+        assert_eq!(groups.first(), Some(&NamedGroup::X25519MLKEM768));
+        assert!(groups.contains(&NamedGroup::X25519), "older nodes still need plain X25519");
+    }
+}

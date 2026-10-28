@@ -8,6 +8,9 @@
     built from one Linux machine for every architecture: pip install cargo-zigbuild brings both.
     macOS and Windows targets are built with plain cargo on their own system.
 
+    The sidecar's TLS comes from aws-lc-rs, which compiles the C library AWS-LC with the C compiler
+    each of those already uses. 32-bit Windows also needs NASM on the path.
+
     Prints the path of the built binary.
 
 .PARAMETER Runtime
@@ -43,6 +46,10 @@ if ($target -like '*-linux-*') {
     cargo zigbuild @cargoArgs | Out-Host
 }
 else {
+    if ($target -eq 'i686-pc-windows-msvc' -and -not (Get-Command nasm -ErrorAction SilentlyContinue)) {
+        throw '32-bit Windows needs NASM on the path for AWS-LC: https://www.nasm.us/'
+    }
+
     cargo build @cargoArgs | Out-Host
 }
 

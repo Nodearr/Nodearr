@@ -92,6 +92,21 @@ jobs:
           "$RUNNER_TEMP/zigbuild/bin/pip" install --no-cache-dir cargo-zigbuild==0.23.4
           echo "$RUNNER_TEMP/zigbuild/bin" >> "$GITHUB_PATH"
 
+      # aws-lc-rs compiles AWS-LC, whose 32-bit Windows assembly needs NASM. The other targets need
+      # only the C compiler their toolchain already has: 64-bit Windows uses prebuilt NASM objects.
+      # nasm.us publishes no checksums. This is the zip whose nasm.exe matches the one in the
+      # installer that winget lists with its SHA-256.
+      - name: NASM
+        if: matrix.target == 'i686-pc-windows-msvc'
+        shell: pwsh
+        run: |
+          $zip = Join-Path $env:RUNNER_TEMP nasm.zip
+          Invoke-WebRequest https://www.nasm.us/pub/nasm/releasebuilds/2.16.03/win64/nasm-2.16.03-win64.zip -OutFile $zip
+          $hash = (Get-FileHash $zip -Algorithm SHA256).Hash
+          if ($hash -ne '3EE4782247BCB874378D02F7EAB4E294A84D3D15F3F6EE2DE2F47A46AA7226E6') { throw "NASM download has SHA-256 $hash" }
+          Expand-Archive $zip -DestinationPath $env:RUNNER_TEMP
+          Join-Path $env:RUNNER_TEMP nasm-2.16.03 >> $env:GITHUB_PATH
+
       - name: Build
         shell: pwsh
         run: |
