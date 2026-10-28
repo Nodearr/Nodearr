@@ -164,6 +164,12 @@ Each missing file and peer details card has **Get it**; posters show a download 
 - [ ] At phone width, the poster download icon is visible without hovering, stays within the image, and opens the same dialog. On desktop, reach it with the keyboard. Tiles with **Have** have no icon and keep the same poster height as actionable tiles.
 - [ ] An **Upgrade** has Get it; your Arr app's search rules still apply. A withdrawn offer or revoked friendship cannot be requested from a dialog left open. Catalog requests create no new send card on Home.
 
+### Shared details and updating an older cache
+
+- [ ] On A, open Sam's Felix the Cat series card, select an episode, then open Metropolis. Compare descriptions, genres, network when present, runtime, dates, IDs and file resolutions with the local cards on B. Episode descriptions must belong to the selected episode. Fields absent from the Arr app stay absent.
+- [ ] Run `node tools/docs-screenshots.mjs peerMetadata` with the kit environment described in the script. It compares the API resources and checks the visible series, episode and movie cards, then refreshes their guide screenshots. This check works after the fixture titles have been imported too.
+- [ ] For upgrade coverage, use B's previous-release package as sender. With both nodes stopped, seed A's disposable cache with the pre-details shape: clear only `PeerCatalogItems.Overview`, `Genres`, `Network`, `Runtime` and `EpisodeDetails`, keeping the peer version, file fingerprints and arrival timestamps. Start A on the old receiver package, sync, and confirm those details stay missing even though B's local cards have them. Stop A and start the new receiver on that same data. After sync, the cards regain their details while the sender version, fingerprints, each file's `FirstSeen` and the peer's `CatalogFirstSyncedAt` remain unchanged. Use only the isolated kit data for this check.
+
 ## 7. Choose what to share
 
 On the side that has Out of the Inkwell, A, open **Catalog > Sharing**.

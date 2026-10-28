@@ -154,6 +154,7 @@ The catalog's Get it action is implemented in #54, connection-loss diagnosis and
 - 0.5.0, automatic fetching from friends (#71): each app's own RSS feed lists only later arrivals it wants from friends reachable directly (#73); fetching is set per app, on by default with upgrades off (#74), and per friend (#76); a total upload limit (#84), and most downloads (#86) and most uploads (#85) at once, uploads now three by default. It is 0.5.0 and not 0.4.3 because Arr apps start fetching on their own, and nodes queue each other's requests. The story's two-node sign-off is run on this release. Branch `v1/s69-release-0.5.0`.
 
 - Peer details cards and poster tiles share the existing Get it workflow: cards select their title or episode file, and posters use a download overlay matching local Send ([#93](https://github.com/Nodearr/Nodearr/issues/93), [#94](https://github.com/Nodearr/Nodearr/issues/94), part of #98; ADR 0021). Branch `v1/s93-s94-peer-get-it`.
+- Peer details recover metadata discarded by older receivers: migration 265 requests a full offer once without resetting RSS arrival times, and episode cards include series genres, network and runtime ([#95](https://github.com/Nodearr/Nodearr/issues/95), part of #98; ADR 0014). Branch `v1/s95-peer-card-details`.
 
 ### Next, in order
 

@@ -89,7 +89,7 @@ namespace NzbDrone.Api.Test.Catalog
         [Test]
         public void local_series_and_each_episode_should_show_their_own_arr_details_and_file_resolution()
         {
-            _series.Add(new CatalogSeries { ApplicationId = 1, ArrId = 10, Title = "Pingu", Overview = "Series story", Genres = "Family", Network = "SRF", TvdbId = 5 });
+            _series.Add(new CatalogSeries { ApplicationId = 1, ArrId = 10, Title = "Pingu", Overview = "Series story", Genres = "Family", Network = "SRF", Runtime = 5, TvdbId = 5 });
             _episodes.Add(new CatalogEpisode { ApplicationId = 1, ArrId = 11, ArrSeriesId = 10, Title = "First", Overview = "First story", SeasonNumber = 1, EpisodeNumber = 1, ArrEpisodeFileId = 20 });
             _episodes.Add(new CatalogEpisode { ApplicationId = 1, ArrId = 12, ArrSeriesId = 10, Title = "Second", Overview = "Second story", SeasonNumber = 1, EpisodeNumber = 2, ArrEpisodeFileId = 20 });
             _episodes.Add(new CatalogEpisode { ApplicationId = 1, ArrId = 13, ArrSeriesId = 10, Title = "Missing", SeasonNumber = 1, EpisodeNumber = 3 });
@@ -109,6 +109,9 @@ namespace NzbDrone.Api.Test.Catalog
             var second = Local.GetDetails("episode", 1, 12).Result.Should().BeOfType<Ok<CatalogDetailsResource>>().Subject.Value;
             first.Title.Should().Be("First");
             first.Overview.Should().Be("First story");
+            first.Genres.Should().Be("Family");
+            first.Network.Should().Be("SRF");
+            first.Runtime.Should().Be(5);
             second.Title.Should().Be("Second");
             second.Overview.Should().Be("Second story");
             second.Resolution.Should().Be(1080);
@@ -164,7 +167,7 @@ namespace NzbDrone.Api.Test.Catalog
         {
             var offered = new OfferItem
             {
-                Id = "e-1-20", Kind = MediaKind.Tv, Title = "Pingu", Overview = "Series story", TvdbId = 5,
+                Id = "e-1-20", Kind = MediaKind.Tv, Title = "Pingu", Overview = "Series story", Genres = "Family", Network = "SRF", Runtime = 5, TvdbId = 5,
                 EpisodeNumbers = new List<int> { 1, 2 }, EpisodeTitles = new List<string> { "First", "Second" },
                 EpisodeOverviews = new List<string> { "First story", "Second story" }, SeasonNumber = 1,
                 Resolution = 720, Quality = "WEBDL-720p", Size = 100
@@ -206,6 +209,9 @@ namespace NzbDrone.Api.Test.Catalog
             series.Episodes.Select(e => e.Path).Should().Equal("/catalog/peers/details/episode/42?episodeIndex=0", "/catalog/peers/details/episode/42?episodeIndex=1");
             episode.Title.Should().Be("Second");
             episode.Overview.Should().Be("Second story");
+            episode.Genres.Should().Be(series.Genres).And.Be("Family");
+            episode.Network.Should().Be(series.Network).And.Be("SRF");
+            episode.Runtime.Should().Be(series.Runtime).And.Be(5);
             episode.SourceName.Should().Be("Alice");
             episode.Resolution.Should().Be(720);
             episode.Send.Should().BeNull();
@@ -262,7 +268,7 @@ namespace NzbDrone.Api.Test.Catalog
             var item = PeerCatalogItem.FromOffer(3, new OfferItem
             {
                 Id = "m-1-40", Kind = MediaKind.Movie, Title = "A title", Adult = adult,
-                ItemType = scene ? "scene" : "movie", Studio = "Studio", Overview = "Peer description",
+                ItemType = scene ? "scene" : "movie", Studio = "Studio", Overview = "Peer description", Genres = "Drama", Runtime = 90, ReleaseDate = "2020-01-02",
                 Resolution = 1080, TmdbId = 77
             });
             item.Id = 42;
@@ -272,6 +278,10 @@ namespace NzbDrone.Api.Test.Catalog
 
             var card = controller.GetDetails(kind, 42).Result.Should().BeOfType<Ok<CatalogDetailsResource>>().Subject.Value;
             card.Overview.Should().Be("Peer description");
+            card.Genres.Should().Be("Drama");
+            card.Runtime.Should().Be(90);
+            card.Studio.Should().Be("Studio");
+            card.ReleaseDate.Should().Be("2020-01-02");
             card.Resolution.Should().Be(1080);
             card.LocalStatus.Should().Be(PeerItemStatus.NotInLibrary);
             card.GetIt.ItemId.Should().Be(42);
