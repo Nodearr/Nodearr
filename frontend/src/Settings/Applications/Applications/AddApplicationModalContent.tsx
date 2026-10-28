@@ -47,7 +47,7 @@ function AddApplicationModalContent({
 
   return (
     <ModalContent onModalClose={onModalClose}>
-      <ModalHeader>{translate('AddApplication')}</ModalHeader>
+      <ModalHeader helpTopic="apps">{translate('AddApplication')}</ModalHeader>
 
       <ModalBody>
         {isSchemaFetching ? <LoadingIndicator /> : null}

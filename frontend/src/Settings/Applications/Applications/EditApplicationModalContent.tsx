@@ -124,7 +124,7 @@ function EditApplicationModalContent({
 
   return (
     <ModalContent onModalClose={onModalClose}>
-      <ModalHeader>
+      <ModalHeader helpTopic="apps">
         {id
           ? translate('EditApplicationImplementation', {
               implementationName: implementationName ?? '',

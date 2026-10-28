@@ -151,7 +151,7 @@ function Hashing() {
   }
 
   return (
-    <FieldSet legend={translate('SharingHashing')}>
+    <FieldSet legend={translate('SharingHashing')} helpTopic="hashing">
       <p className={styles.muted}>{translate('SharingHashingHelpText')}</p>
 
       {data.shared === 0 ? (
@@ -436,7 +436,7 @@ function Sharing() {
           />
         ))}
 
-        <FieldSet legend={translate('SharingNewList')}>
+        <FieldSet legend={translate('SharingNewList')} helpTopic="sharing">
           {createError ? (
             <Alert kind={kinds.DANGER}>
               {translate('SharingSaveError')}: {getErrorMessage(createError)}

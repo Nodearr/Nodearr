@@ -81,7 +81,7 @@ function EditRemotePathMappingModalContent({
 
   return (
     <ModalContent onModalClose={onModalClose}>
-      <ModalHeader>
+      <ModalHeader helpTopic="paths">
         {id
           ? translate('EditRemotePathMapping')
           : translate('AddRemotePathMapping')}

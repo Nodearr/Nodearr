@@ -133,7 +133,10 @@ function NodeSettings() {
               </FormGroup>
             </FieldSet>
 
-            <FieldSet legend={translate('NodeSettingsReaching')}>
+            <FieldSet
+              legend={translate('NodeSettingsReaching')}
+              helpTopic="node"
+            >
               <FormGroup>
                 <FormLabel>{translate('NodeSettingsRelay')}</FormLabel>
 
@@ -240,7 +243,7 @@ function NodeSettings() {
               </FormGroup>
             </FieldSet>
 
-            <FieldSet legend={translate('Transfers')}>
+            <FieldSet legend={translate('Transfers')} helpTopic="transfers">
               <FormGroup>
                 <FormLabel>{translate('NodeSettingsDownloadFolder')}</FormLabel>
 

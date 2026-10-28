@@ -1,0 +1,21 @@
+.link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 6px;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  color: inherit;
+  vertical-align: middle;
+
+  &:hover,
+  &:focus-visible {
+    color: var(--iconButtonHoverColor);
+  }
+
+  &:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+  }
+}

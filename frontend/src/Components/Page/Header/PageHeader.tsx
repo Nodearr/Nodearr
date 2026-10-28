@@ -1,15 +1,19 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { toggleIsSidebarVisible } from 'App/appStore';
+import DocumentationLink from 'Components/DocumentationLink';
 import IconButton from 'Components/Link/IconButton';
 import Link from 'Components/Link/Link';
 import useKeyboardShortcuts from 'Helpers/Hooks/useKeyboardShortcuts';
 import { icons } from 'Helpers/Props';
+import { getPageDocumentation } from 'Utilities/Documentation/documentation';
 import translate from 'Utilities/String/translate';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import PageHeaderActionsMenu from './PageHeaderActionsMenu';
 import styles from './PageHeader.css';
 
 function PageHeader() {
+  const { pathname } = useLocation();
   const [isKeyboardShortcutsModalOpen, setIsKeyboardShortcutsModalOpen] =
     useState(false);
 
@@ -60,6 +64,7 @@ function PageHeader() {
       </div>
 
       <div className={styles.right}>
+        <DocumentationLink topic={getPageDocumentation(pathname)} />
         <PageHeaderActionsMenu
           onKeyboardShortcutsPress={handleOpenKeyboardShortcutsModal}
         />

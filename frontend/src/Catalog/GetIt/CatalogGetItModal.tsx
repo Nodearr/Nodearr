@@ -97,7 +97,7 @@ function CatalogGetItModal({
   return (
     <Modal isOpen={true} onModalClose={onModalClose}>
       <ModalContent onModalClose={onModalClose}>
-        <ModalHeader>
+        <ModalHeader helpTopic="getIt">
           {translate('GetIt')} - {title}
         </ModalHeader>
         <ModalBody>

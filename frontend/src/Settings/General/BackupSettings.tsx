@@ -30,7 +30,7 @@ function BackupSettings({
   }
 
   return (
-    <FieldSet legend={translate('Backups')}>
+    <FieldSet legend={translate('Backups')} helpTopic="backups">
       <FormGroup advancedSettings={showAdvancedSettings} isAdvanced={true}>
         <FormLabel>{translate('Folder')}</FormLabel>
 

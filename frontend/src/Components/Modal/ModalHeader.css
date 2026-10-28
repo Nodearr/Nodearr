@@ -6,3 +6,18 @@
   border-bottom: 1px solid var(--borderColor);
   font-size: 18px;
 }
+
+.withHelp {
+  display: flex;
+  align-items: center;
+
+  > a {
+    flex-shrink: 0;
+  }
+}
+
+.title {
+  @add-mixin truncate;
+
+  min-width: 0;
+}
