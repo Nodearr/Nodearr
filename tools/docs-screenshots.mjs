@@ -516,13 +516,26 @@ const shots = {
     await a.getByText('Posters', { exact: true }).click();
     await a.getByText('Out of the Inkwell', { exact: true }).waitFor();
     await a.waitForTimeout(1200);
+    const seriesGet = a.getByRole('button', { name: /^Get Felix the Cat/i });
+    await seriesGet.hover();
     await shoot(a, 'peer-catalog-posters');
+    await seriesGet.click();
+    await a.locator('select[name="catalogGetItScope"]').waitFor();
+    if (await a.locator('select[name="catalogGetItScope"]').inputValue() !== 'title') {
+      throw new Error('The peer poster icon did not select the whole series');
+    }
+    await a.keyboard.press('Escape');
     await a.getByRole('button', { name: 'Movies', exact: true }).click();
     await a.waitForLoadState('networkidle');
     await a.waitForTimeout(1200);
     await expectTitle(a, 'The Little Shop of Horrors', true);
     await expectTitle(a, 'Out of the Inkwell', false);
+    const movieGet = a.getByRole('button', { name: /^Get Metropolis/ });
+    await movieGet.hover();
     await shoot(a, 'peer-catalog-movies-posters');
+    await movieGet.click();
+    await a.locator('select[name="qualityProfileId"]').waitFor();
+    await a.keyboard.press('Escape');
     await a.getByText('Table', { exact: true }).click();
     await open(a, A, '/catalog/local');
     await a.getByRole('button', { name: 'Series', exact: true }).click();
@@ -545,6 +558,51 @@ const shots = {
     await expectTitle(a, 'Out of the Inkwell', false);
     await shoot(a, 'local-catalog-movies-posters');
     await a.getByText('Table', { exact: true }).click();
+  },
+
+  // The peer cards use the same Get it workflow as their rows and tiles. Changing the card
+  // from a series to an episode must also change the selection supplied to that workflow.
+  async peerCards({ a }) {
+    await open(a, A, '/catalog/peers');
+    await a.getByRole('button', { name: 'Series', exact: true }).click();
+    const postersButton = a.getByRole('button', { name: 'Posters', exact: true });
+    if (await postersButton.isEnabled()) await postersButton.click();
+    await a.getByRole('button', { name: /^Details: Felix the Cat/i }).first().click();
+    const card = a.getByRole('dialog').first();
+    await card.getByRole('button', { name: 'Get it', exact: true }).waitFor();
+    await shoot(card, 'peer-catalog-details');
+    await card.getByRole('button', { name: 'Get it', exact: true }).click();
+    const scope = a.locator('select[name="catalogGetItScope"]');
+    await scope.waitFor();
+    if (await scope.inputValue() !== 'title') throw new Error('Series card Get it did not select the whole series');
+    await scope.selectOption('season');
+    const season = a.locator('select[name="seasonNumber"]');
+    await season.waitFor();
+    if (await season.inputValue() !== '1919') throw new Error('Series card Get it did not select the offered season');
+    await a.keyboard.press('Escape');
+    await card.getByRole('button', { name: /^S1919E02/ }).click();
+    await card.getByRole('button', { name: 'Get it', exact: true }).waitFor();
+    const request = a.waitForRequest((r) => r.method() === 'GET' && /\/catalog\/peers\/items\/\d+\/getit/.test(r.url()));
+    await card.getByRole('button', { name: 'Get it', exact: true }).click();
+    const episodePlan = new URL((await request).url());
+    await scope.waitFor();
+    if (await scope.inputValue() !== 'file' || episodePlan.searchParams.get('scope') !== 'file') {
+      throw new Error('Episode card Get it did not select its file');
+    }
+    await a.keyboard.press('Escape');
+    await a.keyboard.press('Escape');
+    await a.getByRole('button', { name: 'Movies', exact: true }).click();
+    await a.getByRole('button', { name: /^Details: Metropolis/ }).first().click();
+    await card.getByRole('button', { name: 'Get it', exact: true }).click();
+    await a.locator('select[name="qualityProfileId"]').waitFor();
+    await a.keyboard.press('Escape');
+    await a.keyboard.press('Escape');
+    await a.getByRole('button', { name: /^Details: The Little Shop of Horrors/ }).first().click();
+    await card.getByText('Have', { exact: true }).waitFor();
+    if (await card.getByRole('button', { name: 'Get it', exact: true }).count()) {
+      throw new Error('A held movie card still offers Get it');
+    }
+    await a.keyboard.press('Escape');
   },
 
   async settings({ a }) {

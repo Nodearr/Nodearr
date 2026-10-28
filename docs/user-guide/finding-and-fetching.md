@@ -17,7 +17,9 @@ Both **Table** and **Posters** have the same kind filters: **Series**, **Movies*
 
 Select **Posters** to switch from the file list to a grid for the selected kind. The grid groups files into one tile per title, including copies shared by different friends. Each tile shows how many files you have or are missing. Select **Table** to return to the file list.
 
-Select a series, episode, movie, Whisparr film or scene poster or title to open its details card. For a file with several episodes, choose the episode in the card. The details are what that friend shared from their Arr app, including the resolution they reported; your Nodearr does not connect to the friend's Arr app. The arrow beside a series or season expands its rows, and **Get it** remains a separate action. Lidarr details cards are planned separately.
+Select a series, episode, movie, Whisparr film or scene poster or title to open its details card. For a file with several episodes, choose the episode in the card. The details are what that friend shared from their Arr app, including the resolution they reported; your Nodearr does not connect to the friend's Arr app. The arrow beside a series or season expands its rows. A peer details card offers **Get it** for the title or episode it shows when something is missing or upgradable. Lidarr details cards are planned separately.
+
+![A friend's series details card, with Get it and its offered episodes](images/peer-catalog-details.png)
 
 ![The Series Posters view of Sam's catalog: tiles for Felix the Cat and Out of the Inkwell](images/peer-catalog-posters.png)
 
@@ -33,7 +35,7 @@ Filter by friend or select a status to show only matching files. To refresh all 
 
 ## Get it from the catalog
 
-Select **Get it** beside a file or under a poster. For TV, choose **Episode file**, **Season** or **Whole series** in the dialog. An episode file can contain several episodes; all of them are selected together. Whole series follows Sonarr's All Episodes choice and leaves specials out; choose season 0 or an episode file for those. For music, the selection is one complete album.
+Select **Get it** beside a file, on its details card, or use the download icon over a poster. The icon appears on hover or keyboard focus, and stays visible on touch screens. A series card or poster starts at **Whole series**; an episode card starts at its **Episode file**, and a movie card selects that movie. For TV, choose **Episode file**, **Season** or **Whole series** in the dialog. An episode file can contain several episodes; all of them are selected together. Whole series follows Sonarr's All Episodes choice and leaves specials out; choose season 0 or an episode file for those. For music, the selection is one complete album.
 
 ![Get it from a friend's catalog, with the episode file and Sonarr's choices](images/peer-catalog-get-it.png)
 
@@ -51,7 +53,7 @@ Both nodes must be running, and your friend must share at least one file you wan
 
 1. In Nodearr, go to **Nodes > Trusted Nodes** and select **Check connection** for your friend. **Direct** means files can move. **Relay only** allows messages but no media transfers; if it stays that way, see [Relay only](troubleshooting.md#relay-only).
 2. Open **Catalog > Peer Catalog** and select **Sync Peer Catalogs**. Find a file your friend shares. If their catalog is empty, ask them to check their app choices and **Hidden** on **Catalog > Sharing**.
-3. Select **Get it** beside the file or under its poster, check the choices, then select **Get it** in the dialog. You can also add it in your Arr app and run an interactive search there. If the app rejects a result, read its reason; your quality profile or other rules may exclude it.
+3. Select **Get it** beside the file or on its card, or use the download icon over its poster, check the choices, then select **Get it** in the dialog. You can also add it in your Arr app and run an interactive search there. If the app rejects a result, read its reason; your quality profile or other rules may exclude it.
 4. In Nodearr, open **Activity > Transfers** and wait for **Completed**. The file has then passed verification. Your Arr app imports it at its next download-client check, usually within a minute, then removes the completed download from Nodearr.
 5. Check the title in your Arr app to confirm that the file was imported. If the transfer completed but import failed, check the app's queue and Nodearr's **System > Status** for a folder-access warning.
 

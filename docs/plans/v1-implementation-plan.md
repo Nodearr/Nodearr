@@ -153,6 +153,8 @@ The catalog's Get it action is implemented in #54, connection-loss diagnosis and
 - Most uploads at once on **Settings > Node**, 3 by default: a sender with no free slot keeps a request in line instead of refusing it, asks Nodearr again when its turn comes, and tells a receiver that accepts it `{"queued": N}` until the header, every 15 seconds. Older nodes interoperate in both directions: an older receiver waits its turn untold, so leaving out the flag does not skip the line, and an older sender never queues ([#85](https://github.com/Nodearr/Nodearr/issues/85), ADR 0016 and 0019). With it, #75 is complete; #71 needs only its two-node sign-off run. Branch `85-most-uploads-at-once-further-requests-wait-their-turn-and-the-receiver-knows-it-is-queued`.
 - 0.5.0, automatic fetching from friends (#71): each app's own RSS feed lists only later arrivals it wants from friends reachable directly (#73); fetching is set per app, on by default with upgrades off (#74), and per friend (#76); a total upload limit (#84), and most downloads (#86) and most uploads (#85) at once, uploads now three by default. It is 0.5.0 and not 0.4.3 because Arr apps start fetching on their own, and nodes queue each other's requests. The story's two-node sign-off is run on this release. Branch `v1/s69-release-0.5.0`.
 
+- Peer details cards and poster tiles share the existing Get it workflow: cards select their title or episode file, and posters use a download overlay matching local Send ([#93](https://github.com/Nodearr/Nodearr/issues/93), [#94](https://github.com/Nodearr/Nodearr/issues/94), part of #98; ADR 0021). Branch `v1/s93-s94-peer-get-it`.
+
 ### Next, in order
 
 1. ~~**Posters, part 1: a friend's catalog with pictures** (S57).~~ Done (ADR 0022).

@@ -197,6 +197,9 @@ namespace NzbDrone.Api.Test.Catalog
             series.Resolutions.Should().Equal(1080, 720);
             series.Quality.Should().BeNull();
             series.Send.Should().BeNull();
+            series.GetIt.ItemId.Should().Be(42);
+            series.GetIt.Scope.Should().Be(CatalogGetItScope.Title);
+            series.GetIt.MediaKind.Should().Be(MediaKind.Tv);
             series.Episodes.Select(e => e.Title).Should().Equal("First", "Second");
             series.Episodes.Select(e => e.LocalStatus).Should().Equal(PeerItemStatus.Have, PeerItemStatus.Missing);
             episode.LocalStatus.Should().Be(PeerItemStatus.Missing);
@@ -206,10 +209,49 @@ namespace NzbDrone.Api.Test.Catalog
             episode.SourceName.Should().Be("Alice");
             episode.Resolution.Should().Be(720);
             episode.Send.Should().BeNull();
+            episode.GetIt.ItemId.Should().Be(42);
+            episode.GetIt.Scope.Should().Be(CatalogGetItScope.File);
+            controller.GetDetails("episode", 42, 0).Result.Should().BeOfType<Ok<CatalogDetailsResource>>().Subject.Value.GetIt.Should().BeNull();
             controller.GetDetails("episode", 42, 2).Result.Should().BeOfType<NotFound>();
             controller.GetDetails("episode", 42, -1).Result.Should().BeOfType<NotFound>();
             controller.GetDetails("episode", 42).Result.Should().BeOfType<NotFound>();
             controller.GetDetails("series", 999).Result.Should().BeOfType<NotFound>();
+        }
+
+        [Test]
+        public void series_card_should_offer_get_it_only_for_a_current_trusted_selection_not_already_held()
+        {
+            var have = PeerCatalogItem.FromOffer(3, new OfferItem
+            {
+                Id = "e-1", Kind = MediaKind.Tv, Title = "Pingu", TvdbId = 5, SeasonNumber = 1,
+                EpisodeNumbers = new List<int> { 1 }, Resolution = 720
+            });
+            have.Id = 42;
+            var missing = PeerCatalogItem.FromOffer(4, new OfferItem
+            {
+                Id = "e-2", Kind = MediaKind.Tv, Title = "Pingu", TvdbId = 5, SeasonNumber = 1,
+                EpisodeNumbers = new List<int> { 2 }, Resolution = 720
+            });
+            missing.Id = 43;
+            _series.Add(new CatalogSeries { ApplicationId = 1, ArrId = 10, TvdbId = 5 });
+            _episodes.Add(new CatalogEpisode { ApplicationId = 1, ArrSeriesId = 10, SeasonNumber = 1, EpisodeNumber = 1, ArrEpisodeFileId = 20 });
+            _episodeFiles.Add(new CatalogEpisodeFile { ApplicationId = 1, ArrId = 20, Resolution = 720 });
+            Mocker.GetMock<IPeerCatalogService>().Setup(s => s.GetItem(42)).Returns(have);
+            var trusted = new List<PeerCatalogSummary> { new() { PeerId = 3 } };
+            Mocker.GetMock<IPeerCatalogService>().Setup(s => s.GetSummaries()).Returns(trusted);
+            Mocker.GetMock<IPeerCatalogService>().Setup(s => s.GetSeries(null)).Returns(new List<PeerCatalogSeries>
+            {
+                new() { Key = NzbDrone.Core.Posters.PeerPosters.KeyOf(have), Items = new List<PeerCatalogItem> { have, missing } }
+            });
+            var controller = new PeerCatalogController(Mocker.GetMock<IPeerCatalogService>().Object, Mocker.GetMock<ILocalHoldingsFactory>().Object);
+            controller.GetDetails("series", 42).Result.Should().BeOfType<Ok<CatalogDetailsResource>>().Subject.Value.GetIt.Should().BeNull();
+            trusted.Add(new PeerCatalogSummary { PeerId = 4 });
+            controller.GetDetails("series", 42).Result.Should().BeOfType<Ok<CatalogDetailsResource>>().Subject.Value.GetIt.ItemId.Should().Be(42);
+            trusted.RemoveAll(p => p.PeerId == 3);
+            controller.GetDetails("series", 42).Result.Should().BeOfType<Ok<CatalogDetailsResource>>().Subject.Value.GetIt.ItemId.Should().Be(43);
+            trusted.Add(new PeerCatalogSummary { PeerId = 3 });
+            _episodeFiles[0].Resolution = 480;
+            controller.GetDetails("series", 42).Result.Should().BeOfType<Ok<CatalogDetailsResource>>().Subject.Value.GetIt.ItemId.Should().Be(42);
         }
 
         [TestCase(false, false, "movie")]
@@ -225,17 +267,25 @@ namespace NzbDrone.Api.Test.Catalog
             });
             item.Id = 42;
             Mocker.GetMock<IPeerCatalogService>().Setup(s => s.GetItem(42)).Returns(item);
-            Mocker.GetMock<IPeerCatalogService>().Setup(s => s.GetSummaries()).Returns(new List<PeerCatalogSummary>());
+            Mocker.GetMock<IPeerCatalogService>().Setup(s => s.GetSummaries()).Returns(new List<PeerCatalogSummary> { new() { PeerId = 3, PeerName = "Alice" } });
             var controller = new PeerCatalogController(Mocker.GetMock<IPeerCatalogService>().Object, Mocker.GetMock<ILocalHoldingsFactory>().Object);
 
             var card = controller.GetDetails(kind, 42).Result.Should().BeOfType<Ok<CatalogDetailsResource>>().Subject.Value;
             card.Overview.Should().Be("Peer description");
             card.Resolution.Should().Be(1080);
             card.LocalStatus.Should().Be(PeerItemStatus.NotInLibrary);
+            card.GetIt.ItemId.Should().Be(42);
+            card.GetIt.Scope.Should().Be(CatalogGetItScope.File);
+            card.GetIt.MediaKind.Should().Be(MediaKind.Movie);
             _movies.Add(new CatalogMovie { ApplicationId = 1, ArrId = 10, TmdbId = 77, ArrMovieFileId = 20 });
             controller.GetDetails(kind, 42).Result.Should().BeOfType<Ok<CatalogDetailsResource>>().Subject.Value.LocalStatus.Should().Be(PeerItemStatus.Missing);
             _movieFiles.Add(new CatalogMovieFile { ApplicationId = 1, ArrId = 20, Resolution = 1080 });
             controller.GetDetails(kind, 42).Result.Should().BeOfType<Ok<CatalogDetailsResource>>().Subject.Value.LocalStatus.Should().Be(PeerItemStatus.Have);
+            controller.GetDetails(kind, 42).Result.Should().BeOfType<Ok<CatalogDetailsResource>>().Subject.Value.GetIt.Should().BeNull();
+            _movieFiles[0].Resolution = 720;
+            controller.GetDetails(kind, 42).Result.Should().BeOfType<Ok<CatalogDetailsResource>>().Subject.Value.GetIt.Should().NotBeNull();
+            Mocker.GetMock<IPeerCatalogService>().Setup(s => s.GetSummaries()).Returns(new List<PeerCatalogSummary>());
+            controller.GetDetails(kind, 42).Result.Should().BeOfType<Ok<CatalogDetailsResource>>().Subject.Value.GetIt.Should().BeNull();
             controller.GetDetails("episode", 42, 0).Result.Should().BeOfType<NotFound>();
         }
     }

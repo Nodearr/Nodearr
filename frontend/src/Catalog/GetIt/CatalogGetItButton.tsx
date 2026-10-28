@@ -2,7 +2,8 @@ import React, { useCallback, useState } from 'react';
 import { useCommand } from 'Commands/useCommands';
 import Icon from 'Components/Icon';
 import Button from 'Components/Link/Button';
-import { icons } from 'Helpers/Props';
+import IconButton from 'Components/Link/IconButton';
+import { icons, kinds } from 'Helpers/Props';
 import translate from 'Utilities/String/translate';
 import { MediaKind } from '../useSharing';
 import CatalogGetItModal from './CatalogGetItModal';
@@ -13,6 +14,8 @@ interface CatalogGetItButtonProps {
   scope: CatalogGetItScope;
   mediaKind: MediaKind;
   title: string;
+  variant?: 'button' | 'card' | 'icon';
+  className?: string;
 }
 
 function CatalogGetItButton({
@@ -20,6 +23,8 @@ function CatalogGetItButton({
   scope,
   mediaKind,
   title,
+  variant = 'button',
+  className,
 }: CatalogGetItButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [commandId, setCommandId] = useState<number | null>(null);
@@ -34,10 +39,24 @@ function CatalogGetItButton({
 
   return (
     <>
-      <Button onPress={handlePress}>
-        {isWorking ? <Icon name={icons.SPINNER} isSpinning={true} /> : null}{' '}
-        {translate('GetIt')}
-      </Button>
+      {variant === 'icon' ? (
+        <IconButton
+          className={className}
+          name={isWorking ? icons.SPINNER : icons.DOWNLOAD}
+          isSpinning={isWorking}
+          title={translate('GetTitle', { title })}
+          aria-label={translate('GetTitle', { title })}
+          onPress={handlePress}
+        />
+      ) : (
+        <Button
+          kind={variant === 'card' ? kinds.PRIMARY : kinds.DEFAULT}
+          onPress={handlePress}
+        >
+          {isWorking ? <Icon name={icons.SPINNER} isSpinning={true} /> : null}{' '}
+          {translate('GetIt')}
+        </Button>
+      )}
       {isOpen ? (
         <CatalogGetItModal
           selection={{ itemId, scope }}

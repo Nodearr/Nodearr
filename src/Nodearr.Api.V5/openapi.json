@@ -3727,6 +3727,22 @@
         },
         "additionalProperties": false
       },
+      "CatalogDetailsGetItResource": {
+        "type": "object",
+        "properties": {
+          "itemId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "scope": {
+            "$ref": "#/components/schemas/CatalogGetItScope"
+          },
+          "mediaKind": {
+            "$ref": "#/components/schemas/MediaKind"
+          }
+        },
+        "additionalProperties": false
+      },
       "CatalogDetailsResource": {
         "type": "object",
         "properties": {
@@ -3836,6 +3852,9 @@
           },
           "send": {
             "$ref": "#/components/schemas/CatalogDetailsSendResource"
+          },
+          "getIt": {
+            "$ref": "#/components/schemas/CatalogDetailsGetItResource"
           },
           "localStatus": {
             "$ref": "#/components/schemas/PeerItemStatus"
