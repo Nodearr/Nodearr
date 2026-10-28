@@ -20,7 +20,7 @@ sequenceDiagram
     Nodearr->>Arr: POST /api/v3/downloadclient (SABnzbd, name Nodearr)
     Arr->>Nodearr: Connection test: /sabnzbd/api version and get_config
     Arr-->>Nodearr: Download client ID
-    Nodearr->>Arr: POST /api/v3/indexer (Newznab, name Nodearr, downloadClientId set, RSS off)
+    Nodearr->>Arr: POST /api/v3/indexer (Newznab, name Nodearr, downloadClientId set, RSS from automatic-fetch setting)
     Arr->>Nodearr: Connection test: /newznab/api caps, then a search with no IDs
     Nodearr-->>Arr: Peer candidates, or a stand-in item when there are none
     Arr-->>Nodearr: Indexer saved

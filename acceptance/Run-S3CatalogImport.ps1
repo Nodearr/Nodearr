@@ -214,8 +214,8 @@ foreach ($app in 'sonarr', 'radarr') {
 
     Assert-That "$app got one Nodearr download client and one pinned Nodearr indexer while the catalog was empty" (
         $registered.Indexer.implementation -eq 'Newznab' -and $registered.Client.implementation -eq 'Sabnzbd' -and
-        $registered.Indexer.downloadClientId -eq $registered.Client.id -and -not $registered.Indexer.enableRss -and
-        $indexerFields.baseUrl -eq "http://host.docker.internal:$NodearrPort/newznab" -and
+        $registered.Indexer.downloadClientId -eq $registered.Client.id -and $registered.Indexer.enableRss -and
+        $indexerFields.baseUrl -eq "http://host.docker.internal:$NodearrPort/newznab/$($applicationIds[$app])" -and
         $clientFields.host -eq 'host.docker.internal' -and $clientFields.port -eq $NodearrPort -and $clientFields.urlBase -eq 'sabnzbd' -and
         $clientFields[$definitions[$app].CategoryField] -eq $definitions[$app].Category
     ) @{
@@ -338,15 +338,14 @@ Assert-That 'Purging removes the missing file from the catalog' (@($afterPurge).
 
 # --- 6. Repeatable sync, scheduling, and removal -----------------------------------------------
 
-$sonarrIndexer = Invoke-Api sonarr GET '/indexer' | Where-Object name -eq 'Nodearr' | Select-Object -First 1
-$sonarrIndexer.enableRss = $true
-Invoke-Api sonarr PUT "/indexer/$($sonarrIndexer.id)" $sonarrIndexer | Out-Null
-$rssBefore = (Invoke-Api sonarr GET '/indexer' | Where-Object name -eq 'Nodearr').enableRss
-Assert-That 'RSS can be enabled on the Sonarr indexer' $rssBefore @{ enableRss = $rssBefore }
-
-Invoke-Command-Api nodearr @{ name = 'ApplicationIndexerSync'; forceSync = $true }
-$rssAfter = (Invoke-Api sonarr GET '/indexer' | Where-Object name -eq 'Nodearr').enableRss
-Assert-That 'Resync preserves the RSS setting chosen in Sonarr' $rssAfter @{ before = $rssBefore; after = $rssAfter }
+foreach ($enabled in @($false, $true)) {
+    $settings = Invoke-Api nodearr GET "/applications/$($applicationIds.sonarr)"
+    ($settings.fields | Where-Object name -eq 'fetchNewFilesAutomatically').value = $enabled
+    Invoke-Api nodearr PUT "/applications/$($settings.id)" $settings | Out-Null
+    Invoke-Command-Api nodearr @{ name = 'ApplicationIndexerSync'; forceSync = $true }
+    $rss = (Invoke-Api sonarr GET '/indexer' | Where-Object name -eq 'Nodearr').enableRss
+    Assert-That "Nodearr's automatic-fetch setting $enabled is applied to Sonarr RSS" ($rss -eq $enabled) @{ enabled = $enabled; rss = $rss }
+}
 $counts = @{}
 foreach ($app in 'sonarr', 'radarr') {
     $counts[$app] = @{

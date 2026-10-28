@@ -10,8 +10,8 @@ namespace NzbDrone.Core.Applications.Sonarr
 {
     public class Sonarr : ApplicationBase<SonarrSettings>, ILibraryAdder, IPosterSource
     {
-        public Sonarr(IArrV3Proxy proxy, IConfigFileProvider configFileProvider, Logger logger)
-            : base(proxy, configFileProvider, logger)
+        public Sonarr(IArrV3Proxy proxy, IConfigFileProvider configFileProvider, Logger logger, IApplicationsRepository applicationsRepository)
+            : base(proxy, configFileProvider, logger, applicationsRepository)
         {
         }
 

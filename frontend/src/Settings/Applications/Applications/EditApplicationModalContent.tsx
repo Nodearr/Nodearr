@@ -183,6 +183,15 @@ function EditApplicationModalContent({
 
             {/* No Tags field: Prowlarr matched indexers to apps by tag, and Nodearr has one indexer. */}
             {fields.map((field) => {
+              if (
+                field.name === 'includeAutomaticUpgrades' &&
+                !fields.find(
+                  (item) => item.name === 'fetchNewFilesAutomatically'
+                )?.value
+              ) {
+                return null;
+              }
+
               return (
                 <ProviderFieldFormGroup
                   key={field.name}

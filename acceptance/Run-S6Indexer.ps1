@@ -248,8 +248,8 @@ try {
         $registered[$app] = Wait-Until -What "B's indexer in $app" -Condition { Invoke-Arr $app GET '/indexer' | Where-Object name -eq 'Nodearr' | Select-Object -First 1 }
     }
     $sonarrFields = Get-Fields $registered.sonarrB
-    Assert-That "B's Sonarr and Radarr accept Nodearr as an indexer while B has no trusted nodes, with RSS off" (
-        -not $registered.sonarrB.enableRss -and -not $registered.radarrB.enableRss -and
+    Assert-That "B's Sonarr and Radarr accept Nodearr as an indexer while B has no trusted nodes, with RSS on" (
+        $registered.sonarrB.enableRss -and $registered.radarrB.enableRss -and
         $registered.sonarrB.enableAutomaticSearch -and $registered.radarrB.enableInteractiveSearch -and
         $registered.sonarrB.downloadClientId -gt 0 -and $registered.radarrB.downloadClientId -gt 0
     ) @{ sonarr = @{ enableRss = $registered.sonarrB.enableRss; downloadClientId = $registered.sonarrB.downloadClientId }; radarr = @{ enableRss = $registered.radarrB.enableRss; downloadClientId = $registered.radarrB.downloadClientId } }

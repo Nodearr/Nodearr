@@ -30,12 +30,14 @@ namespace NzbDrone.Core.Applications
         protected readonly IArrV3Proxy _proxy;
         protected readonly IConfigFileProvider _configFileProvider;
         protected readonly Logger _logger;
+        private readonly IApplicationsRepository _applicationsRepository;
 
-        protected ApplicationBase(IArrV3Proxy proxy, IConfigFileProvider configFileProvider, Logger logger)
+        protected ApplicationBase(IArrV3Proxy proxy, IConfigFileProvider configFileProvider, Logger logger, IApplicationsRepository applicationsRepository)
         {
             _proxy = proxy;
             _configFileProvider = configFileProvider;
             _logger = logger;
+            _applicationsRepository = applicationsRepository;
         }
 
         public abstract string Name { get; }
@@ -152,6 +154,21 @@ namespace NzbDrone.Core.Applications
 
         public void SyncRegistration(bool force)
         {
+            if (!Settings.FetchNewFilesAutomatically.HasValue)
+            {
+                var indexer = _proxy.GetArray(Settings, "/indexer").OfType<JObject>().FirstOrDefault(p => IsOurs(p, "Newznab"));
+                Settings.FetchNewFilesAutomatically = indexer?.Value<bool?>("enableRss") ?? true;
+                try
+                {
+                    _applicationsRepository.UpdateSettings((ApplicationDefinition)Definition);
+                }
+                catch
+                {
+                    Settings.FetchNewFilesAutomatically = null;
+                    throw;
+                }
+            }
+
             var nodearr = new Uri(Settings.NodearrUrl.TrimEnd('/') + "/");
             var apiKey = _configFileProvider.ApiKey;
 
@@ -195,10 +212,10 @@ namespace NzbDrone.Core.Applications
                 {
                     { "enableAutomaticSearch", true },
                     { "enableInteractiveSearch", true },
+                    { "enableRss", Settings.FetchNewFilesAutomatically.Value },
                     { "downloadClientId", downloadClient.Value<int>("id") }
                 },
-                force,
-                new Dictionary<string, JToken> { { "enableRss", false } });
+                force);
 
             // The Arr app tells Nodearr when a file is imported, upgraded, renamed or deleted, so
             // the catalog follows the library within seconds and not at the next full read. It is
@@ -281,7 +298,7 @@ namespace NzbDrone.Core.Applications
             return path.Replace('\\', '/').TrimEnd('/') + "/";
         }
 
-        private JObject EnsureProvider(string what, string resource, string implementation, Dictionary<string, JToken> fields, Dictionary<string, JToken> properties, bool force, Dictionary<string, JToken> createProperties = null)
+        private JObject EnsureProvider(string what, string resource, string implementation, Dictionary<string, JToken> fields, Dictionary<string, JToken> properties, bool force)
         {
             try
             {
@@ -292,14 +309,6 @@ namespace NzbDrone.Core.Applications
                     var schema = _proxy.GetArray(Settings, resource + "/schema").OfType<JObject>().First(p => p.Value<string>("implementation") == implementation);
 
                     schema["name"] = RemoteName;
-                    if (createProperties != null)
-                    {
-                        foreach (var property in createProperties)
-                        {
-                            schema[property.Key] = property.Value;
-                        }
-                    }
-
                     Apply(schema, fields, properties);
                     _logger.Info("Adding Nodearr as {0} to {1}", what, Definition.Name);
 
@@ -308,12 +317,17 @@ namespace NzbDrone.Core.Applications
 
                 if (((ApplicationDefinition)Definition).SyncLevel != ApplicationSyncLevel.FullSync)
                 {
-                    // Older guidance recommended Add Only to preserve RSS. Those registrations
-                    // still need the safe feed address, without changing any of their switches.
-                    var baseUrl = existing["fields"]?.OfType<JObject>().FirstOrDefault(f => f.Value<string>("name") == "baseUrl");
-                    if (resource == "/indexer" && baseUrl?.Value<string>("value") == Settings.NodearrUrl.TrimEnd('/') + "/newznab")
+                    if (resource != "/indexer")
                     {
-                        Apply(existing, fields.Where(f => f.Key is "baseUrl" or "apiPath" or "apiKey").ToDictionary(f => f.Key, f => f.Value), new Dictionary<string, JToken>());
+                        return existing;
+                    }
+
+                    var baseUrl = existing["fields"]?.OfType<JObject>().FirstOrDefault(f => f.Value<string>("name") == "baseUrl");
+                    var connectionFields = baseUrl?.Value<string>("value") == Settings.NodearrUrl.TrimEnd('/') + "/newznab"
+                        ? fields.Where(f => f.Key is "baseUrl" or "apiPath" or "apiKey").ToDictionary(f => f.Key, f => f.Value)
+                        : new Dictionary<string, JToken>();
+                    if (Apply(existing, connectionFields, new Dictionary<string, JToken> { { "enableRss", Settings.FetchNewFilesAutomatically.Value } }) || force)
+                    {
                         return _proxy.Put(Settings, $"{resource}/{existing.Value<int>("id")}", existing);
                     }
 

@@ -60,7 +60,7 @@ Check, in order:
 
 1. In **Catalog > Peer Catalog**, select **Sync Peer Catalogs** and check that the file appears. If it does not, ask your friend to check their sharing choices.
 2. Check the file's status. **Not in library** means you must add the series, movie, scene or album to the relevant Arr app first. **Have** means your app's quality profile would not treat the offer as an upgrade. These labels explain your library state; they do not filter Nodearr's search results.
-3. Run an interactive search in the Arr app. Nodearr's indexer has RSS off by default, so a newly shared file does not trigger a download on its own. See [how your Arr apps find it](finding-and-fetching.md#how-your-arr-apps-find-it).
+3. Run an interactive search in the Arr app. RSS skips the friend's initial library and only offers later arrivals when **Fetch new files from friends automatically** is on for that app in Nodearr. See [how your Arr apps find it](finding-and-fetching.md#how-your-arr-apps-find-it).
 4. If the result appears but the app rejects it, read the reason in the interactive search. The quality profile, custom format score or blocklist may exclude it.
 5. Check the indexer categories. Whisparr v2 and v3 need XXX categories; [Lidarr](https://lidarr.audio/) needs Audio categories. [Sonarr](https://sonarr.tv/)'s and [Radarr](https://radarr.video/)'s default categories exclude both.
 6. **Through Prowlarr?** The copies [Prowlarr](https://prowlarr.com/) makes of Nodearr's indexer are switched off on purpose. The app has to be added to Nodearr directly. See [Prowlarr](connecting-apps.md#prowlarr).

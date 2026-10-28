@@ -13,8 +13,8 @@ namespace NzbDrone.Core.Applications.Whisparr
     // movies marked as adult content, which only an adult search finds (ADR 0015, amendments).
     public class WhisparrV3 : ApplicationBase<WhisparrV3Settings>, ILibraryAdder, IPosterSource
     {
-        public WhisparrV3(IArrV3Proxy proxy, IConfigFileProvider configFileProvider, Logger logger)
-            : base(proxy, configFileProvider, logger)
+        public WhisparrV3(IArrV3Proxy proxy, IConfigFileProvider configFileProvider, Logger logger, IApplicationsRepository applicationsRepository)
+            : base(proxy, configFileProvider, logger, applicationsRepository)
         {
         }
 

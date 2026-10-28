@@ -13,8 +13,8 @@ namespace NzbDrone.Core.Applications.Whisparr
     // scenes by Whisparr's text search (ADR 0015, amendments).
     public class WhisparrV2 : ApplicationBase<WhisparrV2Settings>, IPosterSource
     {
-        public WhisparrV2(IArrV3Proxy proxy, IConfigFileProvider configFileProvider, Logger logger)
-            : base(proxy, configFileProvider, logger)
+        public WhisparrV2(IArrV3Proxy proxy, IConfigFileProvider configFileProvider, Logger logger, IApplicationsRepository applicationsRepository)
+            : base(proxy, configFileProvider, logger, applicationsRepository)
         {
         }
 

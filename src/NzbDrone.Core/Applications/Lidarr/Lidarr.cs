@@ -12,8 +12,8 @@ namespace NzbDrone.Core.Applications.Lidarr
     // grabs and imports a whole album at once (ADR 0020).
     public class Lidarr : ApplicationBase<LidarrSettings>, ILibraryAdder, IPosterSource
     {
-        public Lidarr(IArrV3Proxy proxy, IConfigFileProvider configFileProvider, Logger logger)
-            : base(proxy, configFileProvider, logger)
+        public Lidarr(IArrV3Proxy proxy, IConfigFileProvider configFileProvider, Logger logger, IApplicationsRepository applicationsRepository)
+            : base(proxy, configFileProvider, logger, applicationsRepository)
         {
         }
 
