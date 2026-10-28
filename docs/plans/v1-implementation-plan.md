@@ -166,7 +166,9 @@ The catalog's Get it action is implemented in #54, connection-loss diagnosis and
 
 - Received sends compare the exact offered files with current local holdings. Already-held cards keep Details and Put away, expire a day after first visible display, and leave sender delivery unchanged; partial sends and upgrades retain Get it with file counts ([#102](https://github.com/Nodearr/Nodearr/issues/102); ADR 0021). Branch `v1/s102-held-sends`.
 
-- Lidarr artist and album browsing, cards, Send and Get it share the same entries in table and poster views. Album cards list songs and local availability without song-level downloads. Optional music metadata and migration 267 preserve older offers. The UI kit uses three pinned CC0 albums resolved and imported by real Lidarr instances ([#68](https://github.com/Nodearr/Nodearr/issues/68); ADR 0020/0021). Branch `v1/s68-lidarr-catalog`.
+- Lidarr artist and album browsing, cards, Send and Get it share the same entries in table and poster views. Album cards list songs and local availability without song-level downloads. Optional music metadata and migration 267 preserve older offers. The UI kit uses two pinned CC0 albums resolved and imported by real Lidarr instances; three other candidates were turned down, as `tools/music-fixtures/README.md` records ([#68](https://github.com/Nodearr/Nodearr/issues/68); ADR 0020/0021). Branch `v1/s68-lidarr-catalog`.
+
+- 0.6.0, the catalogs made alike (#98): Get it on a friend's cards and as an icon on poster tiles (#93, #94), the details friends share (#95), status colours and missing-episode defaults (#96, #97), and a friend's send opening its card on Home (#105); sends already held say so (#102); the Activity badge shows both directions and what needs attention (#101); Lidarr artists and albums (#68); and the loading page's Sonarr leftovers and the sidecar's log lines fixed (#99, #100). It is 0.6.0 and not 0.5.1 because defaults change and migrations 265 to 267 make going back to 0.5.0 unsupported. Post-quantum key exchange (#24) follows in its own release. Branch `v1/s70-release-0.6.0`.
 
 ### Next, in order
 

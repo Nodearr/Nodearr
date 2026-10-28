@@ -2,7 +2,11 @@
 
 What changed in each release, newest first. Each item links to the decision record that explains it, and the [V1 plan](docs/plans/v1-implementation-plan.md) has the whole story, slice by slice.
 
-## Unreleased
+## 0.6.0 (pre-release)
+
+The catalogs work the same way in both directions: a friend's titles open the same details cards as your own, with **Get it** where yours have **Send**, and colours show at a glance what you have, what is missing and what is an upgrade. Lidarr gets full artist and album browsing.
+
+This release changes the database, so going back to 0.5.0 afterwards is not supported. Friends on 0.5.0 keep working with it.
 
 ### Added
 
