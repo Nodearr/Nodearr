@@ -256,27 +256,39 @@ function TitleTile({ title }: { title: PeerCatalogTitle }) {
 
   return (
     <div className={styles.tile}>
-      {detailsPath ? (
-        <CatalogDetailsButton
-          path={detailsPath}
-          label={describeTitle(title)}
-          variant="poster"
-        >
+      <div className={styles.tilePoster}>
+        {detailsPath ? (
+          <CatalogDetailsButton
+            path={detailsPath}
+            label={describeTitle(title)}
+            variant="poster"
+          >
+            <Poster
+              src={peerPosterSrc(title.posterItemId)}
+              title={describeTitle(title)}
+              size="tile"
+              isSquare={title.mediaKind === 'music'}
+            />
+          </CatalogDetailsButton>
+        ) : (
           <Poster
             src={peerPosterSrc(title.posterItemId)}
             title={describeTitle(title)}
             size="tile"
             isSquare={title.mediaKind === 'music'}
           />
-        </CatalogDetailsButton>
-      ) : (
-        <Poster
-          src={peerPosterSrc(title.posterItemId)}
-          title={describeTitle(title)}
-          size="tile"
-          isSquare={title.mediaKind === 'music'}
-        />
-      )}
+        )}
+        {title.missing + title.upgrade + title.notInLibrary > 0 ? (
+          <CatalogGetItButton
+            itemId={title.posterItemId}
+            scope="title"
+            mediaKind={title.mediaKind}
+            title={describeTitle(title)}
+            variant="icon"
+            className={styles.tileSend}
+          />
+        ) : null}
+      </div>
 
       <div className={styles.tileTitle} title={describeTitle(title)}>
         {detailsPath ? (
@@ -295,14 +307,6 @@ function TitleTile({ title }: { title: PeerCatalogTitle }) {
 
       <div className={styles.tileDetails}>{counts.join(', ')}</div>
       <div className={styles.tileDetails}>{title.peerNames.join(', ')}</div>
-      {title.missing + title.upgrade + title.notInLibrary > 0 ? (
-        <CatalogGetItButton
-          itemId={title.posterItemId}
-          scope="title"
-          mediaKind={title.mediaKind}
-          title={describeTitle(title)}
-        />
-      ) : null}
     </div>
   );
 }

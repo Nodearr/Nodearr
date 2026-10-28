@@ -158,6 +158,9 @@ public class PeerCatalogController : Controller
             return TypedResults.NotFound();
         }
 
+        var summaries = _peerCatalogService.GetSummaries();
+        var trusted = summaries.Select(s => s.PeerId).ToHashSet();
+
         if (kind == "episode")
         {
             var numbers = item.GetEpisodeNumbers();
@@ -176,7 +179,7 @@ public class PeerCatalogController : Controller
                 Kind = kind,
                 Title = selected?.Title ?? (numbers.Count == 1 ? item.EpisodeTitles : null),
                 ParentTitle = item.Title,
-                SourceName = _peerCatalogService.GetSummaries().FirstOrDefault(s => s.PeerId == item.PeerId)?.PeerName,
+                SourceName = summaries.FirstOrDefault(s => s.PeerId == item.PeerId)?.PeerName,
                 PosterPath = $"/catalog/posters/peer/{item.Id}",
                 Year = item.Year,
                 Overview = selected?.Overview,
@@ -190,7 +193,10 @@ public class PeerCatalogController : Controller
                 Quality = item.Quality,
                 Resolution = item.Resolution,
                 Size = item.Size,
-                LocalStatus = localStatus
+                LocalStatus = localStatus,
+                GetIt = trusted.Contains(item.PeerId) && localStatus != PeerItemStatus.Have
+                    ? new CatalogDetailsGetItResource { ItemId = item.Id, Scope = CatalogGetItScope.File, MediaKind = item.MediaKind }
+                    : null
             });
         }
 
@@ -205,12 +211,14 @@ public class PeerCatalogController : Controller
             ? _peerCatalogService.GetSeries(null)?.FirstOrDefault(s => s.Key == NzbDrone.Core.Posters.PeerPosters.KeyOf(item))?.Items ?? new List<PeerCatalogItem> { item }
             : new List<PeerCatalogItem>();
         var holdings = _localHoldingsFactory.Load();
+        var getItem = (kind == "series" ? seriesItems : new List<PeerCatalogItem> { item })
+            .FirstOrDefault(i => trusted.Contains(i.PeerId) && holdings.Classify(i) != PeerItemStatus.Have);
 
         return TypedResults.Ok(new CatalogDetailsResource
         {
             Kind = kind,
             Title = item.Title,
-            SourceName = _peerCatalogService.GetSummaries().FirstOrDefault(s => s.PeerId == item.PeerId)?.PeerName,
+            SourceName = summaries.FirstOrDefault(s => s.PeerId == item.PeerId)?.PeerName,
             PosterPath = $"/catalog/posters/peer/{item.Id}",
             Year = item.Year,
             Overview = item.Overview,
@@ -241,7 +249,15 @@ public class PeerCatalogController : Controller
                 .Select(g => g.First())
                 .OrderBy(e => e.SeasonNumber == 0 ? int.MaxValue : e.SeasonNumber)
                 .ThenBy(e => e.EpisodeNumber).ToList(),
-            Size = kind == "series" ? 0 : item.Size
+            Size = kind == "series" ? 0 : item.Size,
+            GetIt = getItem == null ? null : new CatalogDetailsGetItResource
+            {
+                // Keep the series anchor stable as individual episodes finish importing, so an
+                // open Get it dialog can still find the command that started from this card.
+                ItemId = trusted.Contains(item.PeerId) ? item.Id : getItem.Id,
+                Scope = kind == "series" ? CatalogGetItScope.Title : CatalogGetItScope.File,
+                MediaKind = item.MediaKind
+            }
         });
     }
 

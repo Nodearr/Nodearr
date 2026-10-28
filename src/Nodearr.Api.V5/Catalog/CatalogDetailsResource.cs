@@ -1,4 +1,5 @@
 using NzbDrone.Core.PeerCatalog;
+using NzbDrone.Core.Sharing;
 
 namespace Nodearr.Api.V5.Catalog;
 
@@ -29,6 +30,7 @@ public class CatalogDetailsResource
     public List<int> Resolutions { get; set; } = new();
     public List<CatalogDetailsEpisodeResource> Episodes { get; set; } = new();
     public CatalogDetailsSendResource? Send { get; set; }
+    public CatalogDetailsGetItResource? GetIt { get; set; }
     public PeerItemStatus? LocalStatus { get; set; }
     public long Size { get; set; }
 }
@@ -49,4 +51,11 @@ public class CatalogDetailsSendResource
     public int ApplicationId { get; set; }
     public int ArrId { get; set; }
     public int? EpisodeArrId { get; set; }
+}
+
+public class CatalogDetailsGetItResource
+{
+    public int ItemId { get; set; }
+    public CatalogGetItScope Scope { get; set; }
+    public MediaKind MediaKind { get; set; }
 }

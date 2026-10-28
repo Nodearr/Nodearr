@@ -2,6 +2,12 @@
 
 What changed in each release, newest first. Each item links to the decision record that explains it, and the [V1 plan](docs/plans/v1-implementation-plan.md) has the whole story, slice by slice.
 
+## Unreleased
+
+### Added
+
+- Peer catalog details cards offer **Get it** for series, episode files and movies that are missing or upgradable. Poster tiles use a download icon over the poster, matching local Send icons and remaining visible on touch screens ([#93](https://github.com/Nodearr/Nodearr/issues/93), [#94](https://github.com/Nodearr/Nodearr/issues/94)).
+
 ## 0.5.0 (pre-release)
 
 Your Arr apps now fetch new files from friends by themselves. When a friend gets something you are missing, it arrives without anyone searching, and limits keep a node with many friends from being swamped ([#71](https://github.com/Nodearr/Nodearr/issues/71)).

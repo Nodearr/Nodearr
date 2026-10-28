@@ -9,9 +9,11 @@ import useApiQuery from 'Helpers/Hooks/useApiQuery';
 import { kinds } from 'Helpers/Props';
 import formatBytes from 'Utilities/Number/formatBytes';
 import translate from 'Utilities/String/translate';
+import CatalogGetItButton from '../GetIt/CatalogGetItButton';
+import { CatalogGetItSelection } from '../GetIt/useCatalogGetIt';
 import Poster from '../Poster';
 import SendFromCatalogButton from '../Sharing/SendFromCatalogButton';
-import { PeerItemStatus, ShareKey } from '../useSharing';
+import { MediaKind, PeerItemStatus, ShareKey } from '../useSharing';
 import styles from './CatalogDetails.css';
 
 interface CatalogDetails {
@@ -47,6 +49,7 @@ interface CatalogDetails {
     localStatus?: PeerItemStatus | null;
   }[];
   send?: ShareKey;
+  getIt?: CatalogGetItSelection & { mediaKind: MediaKind };
   localStatus?: PeerItemStatus | null;
   size: number;
 }
@@ -179,6 +182,11 @@ function CatalogDetailsModal({
   const backToSeries = useCallback(() => setSelectedPath(path), [path]);
   const { data, isLoading, error } = useApiQuery<CatalogDetails>({
     path: selectedPath,
+    queryOptions: {
+      refetchInterval: selectedPath.startsWith('/catalog/peers/')
+        ? 5000
+        : false,
+    },
   });
   const episodeLabel =
     data?.kind === 'episode'
@@ -248,6 +256,18 @@ function CatalogDetailsModal({
                       items={[data.send]}
                       label={data.title ?? data.parentTitle ?? ''}
                       showLabel={true}
+                    />
+                  </div>
+                ) : null}
+                {data.getIt && !error ? (
+                  <div className={styles.send}>
+                    <CatalogGetItButton
+                      key={selectedPath}
+                      itemId={data.getIt.itemId}
+                      scope={data.getIt.scope}
+                      mediaKind={data.getIt.mediaKind}
+                      title={episodeLabel ?? data.title ?? ''}
+                      variant="card"
                     />
                   </div>
                 ) : null}
