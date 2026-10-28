@@ -2,6 +2,12 @@
 
 What changed in each release, newest first. Each item links to the decision record that explains it, and the [V1 plan](docs/plans/v1-implementation-plan.md) has the whole story, slice by slice.
 
+## Unreleased
+
+### Changed
+
+- Connections between nodes use a post-quantum key exchange, X25519MLKEM768, so traffic recorded today cannot be decrypted later with a quantum computer. Both nodes need this release. With a friend on 0.6.0 or earlier, connections use X25519 as before, and pairing and transfers work as usual. The sidecar is 1 to 2 MB larger, and building it from source needs a C compiler, plus NASM for 32-bit Windows ([#24](https://github.com/Nodearr/Nodearr/issues/24), [ADR 0023](docs/adr/0023-post-quantum-key-exchange-between-nodes.md)).
+
 ## 0.6.0 (pre-release)
 
 The catalogs work the same way in both directions: a friend's titles open the same details cards as your own, with **Get it** where yours have **Send**, and colours show at a glance what you have, what is missing and what is an upgrade. Lidarr gets full artist and album browsing.

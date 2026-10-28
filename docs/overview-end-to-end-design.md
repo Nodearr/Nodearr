@@ -135,6 +135,7 @@ This has worked between two home networks with no port forwarded, and between a 
 
 - **What a friend sees** is the offer built for them: what is shared with them, described as above. Not what is hidden, not what is shared only with others, and not where anything is stored.
 - **What the relay sees** is that two node IDs are talking, and the encrypted messages that pass through it before a direct path forms. Never a file.
+- **What is recorded today stays secret later.** Two updated nodes agree on keys with a post-quantum key exchange, X25519MLKEM768, which a future quantum computer cannot undo. With an older node they fall back to X25519 ([ADR 0023](adr/0023-post-quantum-key-exchange-between-nodes.md)).
 - **What anyone else sees** is nothing. Nodearr makes no calls home: no update checks, no error reporting, no analytics. The code it was derived from did, and all of it was taken out ([ADR 0018](adr/0018-diagnostics-and-no-calls-home.md)).
 - The web UI and the API ask for a sign-in or an API key, as Sonarr's do. That is separate from trust between nodes: an API key is not a node's identity.
 

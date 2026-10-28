@@ -131,7 +131,7 @@ Run the following commands from the repository root using PowerShell 7. Install 
    pwsh build/Build-Transport.ps1 -Runtime linux-arm64
    ```
 
-   It prints where the binary is. macOS and Windows sidecars are built with plain cargo on macOS and Windows.
+   It prints where the binary is. macOS and Windows sidecars are built with plain cargo on macOS and Windows. The 32-bit Windows sidecar (`win-x86`) also needs [NASM](https://www.nasm.us/) on the path, for AWS-LC's assembly.
 
 3. Package it:
 
