@@ -115,9 +115,11 @@ The categories in the request decide what can be found, not which app sent it. S
 
 When an Arr app grabs a Nodearr result, it sends the request to Nodearr's download client using the [SABnzbd](https://sabnzbd.org/) interface. In Nodearr, **Activity > Transfers** shows the download and any files you are uploading to friends.
 
-The number beside **Activity** counts downloads that are queued, downloading, waiting to retry, or failed and still need attention. Completed downloads and uploads do not count. The badge disappears at zero and turns red while any failed download remains. It updates as transfers change.
+The **Activity** badge counts unfinished downloads and active uploads, each with its own icon. Hover it for counts of downloading, sending, waiting, retrying and failed work. It updates even while you are on another page and disappears when there is nothing active or needing attention.
 
-![Activity sidebar badge showing one unfinished download while a Felix the Cat short comes from Sam, with completed Out of the Inkwell uploads below](images/transfers.png)
+The badge and transfer status labels use the same colors: teal while files move, amber while waiting or retrying, green when complete, and red when failed. A failed download keeps the badge red until you select **Retry** or **Remove**. Completed downloads and finished uploads do not count. A cut or failed upload stays in the **Sending** history but does not keep the badge red: the receiving node owns retrying or removing that download.
+
+![Activity showing downloads arriving from Sam and the sidebar's direction count](images/transfers.png)
 
 - **Queued**: waiting its turn. Three downloads run at once unless **Most Downloads at Once** on **Settings > Node** says otherwise, and the rest start in the order your Arr apps asked for them. Your Arr app's queue shows it as queued too.
 - **Downloading**: arriving from your friend, with its progress. Your Arr app's queue shows the same.

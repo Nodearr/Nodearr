@@ -111,6 +111,7 @@ import {
   faTimes as fasTimes,
   faTimesCircle as fasTimesCircle,
   faTrashAlt as fasTrashAlt,
+  faUpload as fasUpload,
   faUser as fasUser,
   faUserPlus as fasUserPlus,
   faVial as fasVial,
@@ -241,6 +242,7 @@ export const UNGROUP = farObjectUngroup;
 export const UNKNOWN = fasQuestion;
 export const UNMONITORED = farBookmark;
 export const UPDATE = fasRetweet;
+export const UPLOAD = fasUpload;
 export const UNSAVED_SETTING = farDotCircle;
 export const VIEW = fasEye;
 export const WARNING = fasExclamationTriangle;

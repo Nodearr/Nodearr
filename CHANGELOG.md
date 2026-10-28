@@ -12,6 +12,8 @@ What changed in each release, newest first. Each item links to the decision reco
 
 ### Changed
 
+- The **Activity** badge shows unfinished downloads and active uploads beside matching icons, with counts in a hover summary. It turns amber for waiting or retrying and red for failed downloads needing attention. Transfer rows use matching colors; finished uploads do not keep a badge visible ([#101](https://github.com/Nodearr/Nodearr/issues/101)).
+
 - Catalog tables, posters and details cards share status colors in both themes: green for files you have, red for missing, blue for upgrades and neutral for titles outside your library. The words remain alongside the colors ([#96](https://github.com/Nodearr/Nodearr/issues/96)).
 - Local series tables and cards start with **Show missing episodes** off; peer tables and cards start with it on. Each catalog remembers its choice per browser. On the peer side it controls only **Missing** episodes the friend shares; **Have**, **Upgrade** and **Not in library** remain visible ([#97](https://github.com/Nodearr/Nodearr/issues/97)).
 

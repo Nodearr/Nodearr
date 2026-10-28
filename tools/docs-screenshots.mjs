@@ -429,6 +429,68 @@ async function nodeSettings(page, change) {
 }
 
 const shots = {
+  // Browser-only responses exercise every activity state without changing the kit's jobs.
+  // The real sending/receiving check and guide capture use slowedTransfer below.
+  async activityStatus({ browser }) {
+    for (const theme of ['light', 'dark']) {
+      const context = await browser.newContext({ ...options, colorScheme: theme });
+      const page = await signIn(context, A);
+      let downloads = [];
+      let uploads = [];
+      await page.route(/\/api\/v5\/transfers(?:\/uploads)?(?:\?|$)/, (route) => route.fulfill({
+        json: new URL(route.request().url()).pathname.endsWith('/uploads') ? uploads : downloads,
+      }));
+      const download = (state, extra = {}) => ({ id: 101, downloadId: 'activity-check', title: 'Download check', peerName: 'Sam', mediaKind: 'tv', state, failure: 'None', attempts: 0, size: 1000, bytesDone: 500, added: '2026-10-25T12:00:00Z', ...extra });
+      const upload = (state, extra = {}) => ({ id: 'activity-upload', title: 'Upload check', peerName: 'Sam', state, attempts: 1, size: 1000, bytesSent: 500, started: '2026-10-25T12:00:00Z', ...extra });
+      const cases = [
+        { downloads: [], uploads: [], description: null },
+        { downloads: [download('downloading')], uploads: [upload('sending')], description: '1 downloading, 1 sending', directions: [['download', '1'], ['upload', '1']], kinds: ['info', 'info'], kind: 'info' },
+        { downloads: [download('queued')], uploads: [upload('waiting', { queuePosition: 1 })], description: '2 waiting', directions: [['download', '1'], ['upload', '1']], kinds: ['warning', 'warning'], kind: 'warning' },
+        { downloads: [download('downloading', { waitingPosition: 1 })], uploads: [], description: '1 waiting', directions: [['download', '1']], kinds: ['warning'], kind: 'warning' },
+        { downloads: [download('queued', { attempts: 1 })], uploads: [upload('preparing', { attempts: 2, lastFailure: 'ConnectionLost' })], description: '2 retrying', directions: [['download', '1'], ['upload', '1']], kinds: ['warning', 'warning'], kind: 'warning' },
+        { downloads: [download('failed')], uploads: [upload('waiting')], description: '1 waiting, 1 failed', directions: [['download', '1'], ['upload', '1']], kinds: ['danger', 'warning'], kind: 'danger' },
+        { downloads: [download('completed')], uploads: [upload('failed')], description: null, kinds: ['success', 'danger'] },
+        { downloads: [], uploads: [upload('completed')], description: null, kinds: ['success'] },
+        { downloads: [], uploads: [upload('sending')], description: '1 sending', directions: [['upload', '1']], kinds: ['info'], kind: 'info' },
+      ];
+      for (const scenario of cases) {
+        downloads = scenario.downloads;
+        uploads = scenario.uploads;
+        await open(page, A, '/activity/transfers');
+        const badge = page.getByRole('link', { name: /^Activity/ }).locator('span[aria-label]');
+        if (scenario.description === null) {
+          if (await badge.count()) throw new Error('Finished/history-only activity kept a badge');
+        } else {
+          if (await badge.getAttribute('title') !== scenario.description || JSON.stringify(await badge.locator('svg').evaluateAll((icons) => icons.map((icon) => [icon.dataset.icon, icon.parentElement.textContent]))) !== JSON.stringify(scenario.directions)) {
+            throw new Error(`Incorrect ${theme} activity badge: ${await badge.textContent()}, ${await badge.getAttribute('title')}`);
+          }
+          await checkColor(badge, scenario.kind);
+        }
+        const labels = page.getByRole('row').filter({ hasText: /(?:Download|Upload) check/ }).locator('td:nth-child(3) > span');
+        for (const [index, kind] of (scenario.kinds ?? []).entries()) await checkColor(labels.nth(index), kind);
+      }
+      // The always-mounted sidebar must also show sending while another page is open.
+      await open(page, A, '/');
+      await page.getByLabel('1 sending', { exact: true }).waitFor();
+      await context.close();
+      console.log(`activityStatus: ${theme} directions, waiting, retries, failure precedence, history exclusion and row colors passed`);
+
+      async function checkColor(label, kind) {
+        const expected = await page.evaluate((kind) => {
+          const color = getComputedStyle(document.documentElement).getPropertyValue(`--${kind}Color`).trim();
+          const swatch = document.createElement('span');
+          swatch.style.backgroundColor = color;
+          document.body.append(swatch);
+          const resolved = getComputedStyle(swatch).backgroundColor;
+          swatch.remove();
+          return resolved;
+        }, kind);
+        const actual = await label.evaluate((element) => getComputedStyle(element).backgroundColor);
+        if (actual !== expected) throw new Error(`${kind} activity label used ${actual}, expected ${expected}`);
+      }
+    }
+  },
+
   // Hold the real startup request so the transient splash can be checked and captured.
   // The broken health item exercises the actual React error boundary without changing data.
   async branding({ browser }) {
@@ -1080,14 +1142,18 @@ async function slowedTransfer(a, b, start) {
   console.log("B's uploads slowed; waiting for a transfer to A");
   try {
     await start();
-    await a.getByLabel(/\d+ unfinished downloads?/).first().waitFor({
+    await a.getByLabel(/\d+ downloading/).first().waitFor({
       timeout: 120000,
     });
     await open(a, A, '/activity/transfers');
     await a.getByText('Downloading').first().waitFor({ timeout: 120000 });
-    await a.getByLabel(/\d+ unfinished downloads?/).first().waitFor();
+    await a.getByLabel(/\d+ downloading/).first().waitFor();
+    await b.goto(B + '/');
+    await b.getByLabel(/\d+ sending/).first().waitFor();
+    console.log('Sending is visible in the sender sidebar on Home during a real transfer');
     await a.waitForTimeout(4000);
     await open(a, A, '/activity/transfers');
+    await a.getByLabel(/\d+ downloading/).first().waitFor();
     await shoot(a, 'transfers', { chrome: true });
   } finally {
     await nodeSettings(b, { uploadLimitKbps: before.uploadLimitKbps });

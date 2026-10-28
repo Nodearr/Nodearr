@@ -3,10 +3,14 @@
 interface CssExports {
   'actionButton': string;
   'actions': string;
+  'counts': string;
+  'directionCount': string;
   'error': string;
   'muted': string;
   'progress': string;
+  'status': string;
   'title': string;
+  'warningStatus': string;
 }
 export const cssExports: CssExports;
 export default cssExports;

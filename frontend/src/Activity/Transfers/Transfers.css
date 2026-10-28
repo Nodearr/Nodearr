@@ -30,3 +30,24 @@
 .actionButton {
   margin-right: 6px;
 }
+
+.status {
+  composes: label from '~Components/Label.css';
+}
+
+.warningStatus {
+  composes: status;
+
+  color: var(--black);
+}
+
+.counts {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.directionCount {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
