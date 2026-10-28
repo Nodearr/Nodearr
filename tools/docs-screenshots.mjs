@@ -605,6 +605,67 @@ const shots = {
     await a.keyboard.press('Escape');
   },
 
+  // Details are read from the received offer. Compare them with the sender's local cards,
+  // then check the visible series, selected episode and movie rather than only their JSON.
+  async peerMetadata({ a }) {
+    const receiver = setUp('a', A, 'Alex');
+    const sender = setUp('b', B, 'Sam');
+    const titles = await receiver.api('GET', '/catalog/peers/titles?kind=series&pageSize=50');
+    const title = titles.records.find((item) => /felix/i.test(item.title));
+    if (!title) throw new Error('Sam must share Felix the Cat before checking peer metadata');
+    const series = await receiver.api('GET', `/catalog/peers/details/series/${title.posterItemId}`);
+    const shared = await sender.api('GET', '/sharing/titles');
+    const owner = shared.find((item) => item.mediaKind === 'tv' && /felix/i.test(item.title));
+    const local = await sender.api('GET', `/catalog/local/details/series/${owner.applicationId}/${owner.arrId}`);
+    for (const field of ['overview', 'genres', 'network', 'runtime', 'tvdbId', 'tmdbId', 'imdbId', 'year']) {
+      if (series[field] !== local[field]) throw new Error(`Peer series differs from local ${field}`);
+    }
+    if (!series.overview || !series.genres || !series.runtime) throw new Error('Series metadata is missing');
+    const episode = await receiver.api('GET', series.episodes[0].path);
+    const localEpisode = await sender.api('GET', local.episodes.find((item) =>
+      item.seasonNumber === episode.seasonNumber && item.episodeNumber === episode.episodeNumber).path);
+    for (const field of ['title', 'overview', 'airDate', 'resolution', 'quality', 'size']) {
+      if (episode[field] !== localEpisode[field]) throw new Error(`Peer episode differs from local ${field}`);
+    }
+    for (const field of ['genres', 'network', 'runtime']) {
+      if (episode[field] !== series[field]) throw new Error(`Episode lost parent ${field}`);
+    }
+    await open(a, A, '/catalog/peers');
+    await a.getByRole('button', { name: 'Series', exact: true }).click();
+    const posters = a.getByRole('button', { name: 'Posters', exact: true });
+    if (await posters.isEnabled()) await posters.click();
+    await a.getByRole('button', { name: /^Details: Felix the Cat/i }).first().click();
+    const card = a.getByRole('dialog').first();
+    async function visibleDetails(details) {
+      if (!details.overview || !details.genres) throw new Error('Card needs description and genres');
+      for (const value of [details.overview, details.genres, details.network, `${details.runtime} min`].filter(Boolean)) {
+        await card.getByText(value, { exact: true }).waitFor();
+      }
+    }
+    await visibleDetails(series);
+    await shoot(card, 'peer-catalog-details');
+    await card.getByRole('button', { name: /^S1919E01/ }).click();
+    await visibleDetails(episode);
+    await card.getByText(`${episode.resolution}p`, { exact: true }).waitFor();
+    await shoot(card, 'peer-episode-details');
+    await a.keyboard.press('Escape');
+    const movies = await receiver.api('GET', '/catalog/peers/titles?kind=movie&pageSize=50');
+    const movie = movies.records.find((item) => item.title === 'Metropolis');
+    const film = await receiver.api('GET', `/catalog/peers/details/movie/${movie.posterItemId}`);
+    const ownerMovie = shared.find((item) => item.title === 'Metropolis');
+    const localMovie = await sender.api('GET', `/catalog/local/details/movie/${ownerMovie.applicationId}/${ownerMovie.arrId}`);
+    for (const field of ['overview', 'genres', 'runtime', 'studio', 'releaseDate', 'resolution', 'quality', 'size', 'year', 'tmdbId', 'imdbId']) {
+      if (film[field] !== localMovie[field]) throw new Error(`Peer movie differs from local ${field}`);
+    }
+    await a.getByRole('button', { name: 'Movies', exact: true }).click();
+    await a.getByRole('button', { name: /^Details: Metropolis/ }).first().click();
+    await visibleDetails(film);
+    await card.getByText(`${film.resolution}p`, { exact: true }).waitFor();
+    await shoot(card, 'peer-movie-details');
+    await a.keyboard.press('Escape');
+    console.log('Peer series, episode and movie cards match the sender metadata');
+  },
+
   async settings({ a }) {
     await open(a, A, '/settings/node');
     await shoot(a, 'settings-node');

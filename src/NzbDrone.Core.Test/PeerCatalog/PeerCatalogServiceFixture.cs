@@ -243,6 +243,49 @@ namespace NzbDrone.Core.Test.PeerCatalog
         }
 
         [Test]
+        public void invalidating_a_legacy_cache_should_restore_details_without_new_file_arrivals()
+        {
+            _offered[0].Overview = "Series description";
+            _offered[0].Genres = "Family";
+            _offered[0].Network = "SRF";
+            _offered[0].Runtime = 5;
+            _offered[0].EpisodeTitles = new List<string> { "First" };
+            _offered[0].EpisodeOverviews = new List<string> { "Episode description" };
+            Subject.Sync(_alice.Id);
+            var baseline = StoredPeer.CatalogFirstSyncedAt;
+            var arrivals = Stored.ToDictionary(i => i.RemoteId, i => i.FirstSeen);
+            var legacy = Stored;
+            foreach (var item in legacy)
+            {
+                item.Overview = null;
+                item.Genres = null;
+                item.Network = null;
+                item.Runtime = 0;
+                item.EpisodeDetails = null;
+            }
+
+            Mocker.Resolve<IPeerCatalogRepository>().UpdateMany(legacy);
+            Subject.Sync(_alice.Id);
+            Stored.Should().OnlyContain(i => i.Overview == null);
+
+            // Migration 265 invalidates the version, without changing the sender or its offer.
+            var peer = StoredPeer;
+            peer.CatalogVersion = null;
+            Mocker.Resolve<IPeerRepository>().Update(peer);
+            Subject.Sync(_alice.Id);
+
+            var refreshed = Stored.Single(i => i.RemoteId == "e-1-1");
+            refreshed.Overview.Should().Be("Series description");
+            refreshed.Genres.Should().Be("Family");
+            refreshed.Network.Should().Be("SRF");
+            refreshed.Runtime.Should().Be(5);
+            refreshed.GetEpisodeDetails().Single().Overview.Should().Be("Episode description");
+            StoredPeer.CatalogVersion.Should().Be(_version);
+            StoredPeer.CatalogFirstSyncedAt.Should().Be(baseline);
+            Stored.Should().OnlyContain(i => i.FirstSeen == arrivals[i.RemoteId]);
+        }
+
+        [Test]
         public void should_drop_oversized_or_invalid_peer_descriptions_without_losing_the_offer()
         {
             _offered[0].Overview = new string('x', 4001);

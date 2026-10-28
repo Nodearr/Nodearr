@@ -17,9 +17,15 @@ Both **Table** and **Posters** have the same kind filters: **Series**, **Movies*
 
 Select **Posters** to switch from the file list to a grid for the selected kind. The grid groups files into one tile per title, including copies shared by different friends. Each tile shows how many files you have or are missing. Select **Table** to return to the file list.
 
-Select a series, episode, movie, Whisparr film or scene poster or title to open its details card. For a file with several episodes, choose the episode in the card. The details are what that friend shared from their Arr app, including the resolution they reported; your Nodearr does not connect to the friend's Arr app. The arrow beside a series or season expands its rows. A peer details card offers **Get it** for the title or episode it shows when something is missing or upgradable. Lidarr details cards are planned separately.
+Select a series, episode, movie, Whisparr film or scene poster or title to open its details card. For a file with several episodes, choose the episode in the card. The details are what that friend shared from their Arr app: descriptions, genres, network or studio, runtime, dates and file resolution where available. An episode card includes its series genres, network and runtime. Cards read the copy already stored on your node; opening one does not fetch more details from the friend. After updating, older cached catalogs refresh in full at the next successful sync to fill in missing details. The arrow beside a series or season expands its rows. A peer details card offers **Get it** for the title or episode it shows when something is missing or upgradable. Lidarr details cards are planned separately.
 
-![A friend's series details card, with Get it and its offered episodes](images/peer-catalog-details.png)
+![A friend's series details card, with description, genres, runtime and offered episodes](images/peer-catalog-details.png)
+
+An episode has its own description and air date, and a movie has its own description, genres and runtime:
+
+![A friend's episode card with description, genres, air date and file resolution](images/peer-episode-details.png)
+
+![A friend's movie card with description, genres, runtime and file resolution](images/peer-movie-details.png)
 
 ![The Series Posters view of Sam's catalog: tiles for Felix the Cat and Out of the Inkwell](images/peer-catalog-posters.png)
 

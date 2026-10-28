@@ -8,6 +8,10 @@ What changed in each release, newest first. Each item links to the decision reco
 
 - Peer catalog details cards offer **Get it** for series, episode files and movies that are missing or upgradable. Poster tiles use a download icon over the poster, matching local Send icons and remaining visible on touch screens ([#93](https://github.com/Nodearr/Nodearr/issues/93), [#94](https://github.com/Nodearr/Nodearr/issues/94)).
 
+### Fixed
+
+- Friend details cards recover descriptions and genres missing from catalogs cached before shared details were added. Updating requests a full catalog once, preserving file arrival dates. Episode cards also show the series genres, network and runtime when shared ([#95](https://github.com/Nodearr/Nodearr/issues/95)).
+
 ## 0.5.0 (pre-release)
 
 Your Arr apps now fetch new files from friends by themselves. When a friend gets something you are missing, it arrives without anyone searching, and limits keep a node with many friends from being swamped ([#71](https://github.com/Nodearr/Nodearr/issues/71)).
