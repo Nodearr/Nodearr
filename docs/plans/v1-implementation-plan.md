@@ -155,6 +155,7 @@ The catalog's Get it action is implemented in #54, connection-loss diagnosis and
 
 - Peer details cards and poster tiles share the existing Get it workflow: cards select their title or episode file, and posters use a download overlay matching local Send ([#93](https://github.com/Nodearr/Nodearr/issues/93), [#94](https://github.com/Nodearr/Nodearr/issues/94), part of #98; ADR 0021). Branch `v1/s93-s94-peer-get-it`.
 - Peer details recover metadata discarded by older receivers: migration 265 requests a full offer once without resetting RSS arrival times, and episode cards include series genres, network and runtime ([#95](https://github.com/Nodearr/Nodearr/issues/95), part of #98; ADR 0014). Branch `v1/s95-peer-card-details`.
+- Catalog availability uses shared colors in tables, posters and cards in both themes ([#96](https://github.com/Nodearr/Nodearr/issues/96)). Local episode lists start with missing hidden; peer lists show shared **Missing** offers by default, and tables and cards share a remembered choice per catalog ([#97](https://github.com/Nodearr/Nodearr/issues/97), the last two slices of #98; ADR 0014). Branch `v1/s96-s97-catalog-availability`.
 
 ### Next, in order
 

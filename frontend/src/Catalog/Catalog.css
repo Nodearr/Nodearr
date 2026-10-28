@@ -321,3 +321,15 @@
   white-space: nowrap;
   font-size: 12px;
 }
+
+.missingFilter {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  gap: 8px;
+}
+
+.tileStatuses {
+  display: flex;
+  flex-wrap: wrap;
+}

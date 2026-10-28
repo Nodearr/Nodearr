@@ -107,6 +107,7 @@ namespace NzbDrone.Api.Test.Catalog
 
             var first = Local.GetDetails("episode", 1, 11).Result.Should().BeOfType<Ok<CatalogDetailsResource>>().Subject.Value;
             var second = Local.GetDetails("episode", 1, 12).Result.Should().BeOfType<Ok<CatalogDetailsResource>>().Subject.Value;
+            first.HasFile.Should().BeTrue();
             first.Title.Should().Be("First");
             first.Overview.Should().Be("First story");
             first.Genres.Should().Be("Family");
@@ -127,6 +128,7 @@ namespace NzbDrone.Api.Test.Catalog
             _episodes.Add(new CatalogEpisode { ApplicationId = 1, ArrId = 12, ArrSeriesId = 10, Title = "Missing", Overview = "Its story", MissingSince = DateTime.UtcNow });
 
             var card = Local.GetDetails("episode", 1, 12).Result.Should().BeOfType<Ok<CatalogDetailsResource>>().Subject.Value;
+            card.HasFile.Should().BeFalse();
             card.Overview.Should().Be("Its story");
             card.Resolution.Should().Be(0);
             card.Send.Should().BeNull();
@@ -155,11 +157,57 @@ namespace NzbDrone.Api.Test.Catalog
 
             var card = Local.GetDetails(kind, 2, 30).Result.Should().BeOfType<Ok<CatalogDetailsResource>>().Subject.Value;
             card.Kind.Should().Be(kind);
+            card.HasFile.Should().BeTrue();
             card.Overview.Should().Be("Arr description");
             card.Resolution.Should().Be(2160);
             card.Send.MediaKind.Should().Be("movie");
             card.Send.ArrId.Should().Be(30);
             Local.GetDetails(kind == "movie" ? "scene" : "movie", 2, 30).Result.Should().BeOfType<NotFound>();
+        }
+
+        [Test]
+        public void hiding_peer_missing_should_filter_before_paging_and_recount_visible_seasons()
+        {
+            var have = new PeerCatalogItem { Id = 1, PeerId = 3, SeasonNumber = 1, EpisodeNumbers = "1", LocalStatus = PeerItemStatus.Have, Size = 100 };
+            var missing = new PeerCatalogItem { Id = 2, PeerId = 3, SeasonNumber = 2, EpisodeNumbers = "2", LocalStatus = PeerItemStatus.Missing, Size = 200 };
+            var upgrade = new PeerCatalogItem { Id = 3, PeerId = 3, SeasonNumber = 1, EpisodeNumbers = "3", LocalStatus = PeerItemStatus.Upgrade, Size = 300 };
+            var unknown = new PeerCatalogItem { Id = 4, PeerId = 3, SeasonNumber = 1, EpisodeNumbers = "4", LocalStatus = PeerItemStatus.NotInLibrary };
+            var shows = new List<PeerCatalogSeries>
+            {
+                new() { Key = "only-missing", Items = new List<PeerCatalogItem> { missing } },
+                new() { Key = "mixed", Items = new List<PeerCatalogItem> { have, missing, upgrade } },
+                new() { Key = "unknown", Items = new List<PeerCatalogItem> { unknown } }
+            };
+            Mocker.GetMock<IPeerCatalogService>().Setup(s => s.GetSeries(null)).Returns(shows);
+            Mocker.GetMock<IPeerCatalogService>().Setup(s => s.GetSummaries()).Returns(new List<PeerCatalogSummary>());
+            var controller = new PeerCatalogController(Mocker.GetMock<IPeerCatalogService>().Object, Mocker.GetMock<ILocalHoldingsFactory>().Object);
+            var page = new PagingRequestResource { Page = 1, PageSize = 1 };
+
+            var filtered = controller.GetSeries(page, showMissing: false).Value;
+            filtered.TotalRecords.Should().Be(2);
+            var show = filtered.Records.Single();
+            show.Key.Should().Be("mixed");
+            show.Status.Should().Be(PeerItemStatus.Upgrade);
+            show.Episodes.Should().Be(2);
+            show.Missing.Should().Be(0);
+            show.Upgrade.Should().Be(1);
+            show.Size.Should().Be(400);
+            show.Seasons.Should().ContainSingle(s => s.SeasonNumber == 1);
+            show.Seasons.Single().Items.Select(i => i.Id).Should().Equal(1, 3);
+            controller.GetSeries(new PagingRequestResource { Page = 2, PageSize = 1 }, showMissing: false)
+                .Value.Records.Single().Status.Should().Be(PeerItemStatus.NotInLibrary);
+            var unfiltered = controller.GetSeries(new PagingRequestResource { PageSize = 50 }).Value;
+            unfiltered.TotalRecords.Should().Be(3);
+            unfiltered.Records.Single(s => s.Key == "mixed").Missing.Should().Be(1);
+        }
+
+        [Test]
+        public void a_movie_without_a_file_should_report_missing_independently_of_send_availability()
+        {
+            _movies.Add(new CatalogMovie { ApplicationId = 2, ArrId = 30, Title = "A missing movie" });
+            var card = Local.GetDetails("movie", 2, 30).Result.Should().BeOfType<Ok<CatalogDetailsResource>>().Subject.Value;
+            card.HasFile.Should().BeFalse();
+            card.Send.Should().BeNull();
         }
 
         [Test]
