@@ -27,6 +27,8 @@ namespace NzbDrone.Core.Test.Transfers
         private ITransferFolders _folders;
         private List<FileTransferProgress> _progress;
         private List<FileTransferRequest> _started;
+        private int _maxDownloads;
+        private bool _transportReportsStarted;
 
         [SetUp]
         public void Setup()
@@ -35,6 +37,8 @@ namespace NzbDrone.Core.Test.Transfers
             Mocker.SetConstant<ITransferRepository>(Mocker.Resolve<TransferRepository>());
 
             Mocker.GetMock<INodeSettingsProvider>().SetupGet(s => s.DownloadFolder).Returns(TempFolder);
+            _maxDownloads = NodeSettingsDefaults.MaxDownloads;
+            Mocker.GetMock<INodeSettingsProvider>().Setup(s => s.Get()).Returns(() => new NodeSettings { MaxDownloads = _maxDownloads });
             _folders = new TransferFolders(Mocker.GetMock<INodeSettingsProvider>().Object);
             Mocker.SetConstant(_folders);
 
@@ -49,7 +53,17 @@ namespace NzbDrone.Core.Test.Transfers
             _started = new List<FileTransferRequest>();
 
             Mocker.GetMock<IFileTransport>().Setup(t => t.List()).Returns(() => _progress.ToList());
-            Mocker.GetMock<IFileTransport>().Setup(t => t.Start(It.IsAny<FileTransferRequest>())).Callback<FileTransferRequest>(_started.Add);
+            _transportReportsStarted = false;
+            Mocker.GetMock<IFileTransport>().Setup(t => t.Start(It.IsAny<FileTransferRequest>())).Callback<FileTransferRequest>(r =>
+            {
+                _started.Add(r);
+
+                // Only where a test says so: most leave the transport silent, as after a restart.
+                if (_transportReportsStarted)
+                {
+                    _progress.Add(new FileTransferProgress { Id = r.Id, State = FileTransferState.Connecting, Size = 1000 });
+                }
+            });
         }
 
         [TearDown]
@@ -184,19 +198,134 @@ namespace NzbDrone.Core.Test.Transfers
             _started[0].Destination.Should().StartWith(Path.Combine(TempFolder, "incomplete")).And.EndWith(Title + ".mkv");
         }
 
+        private List<TransferJob> GivenWaiting(int count)
+        {
+            _transportReportsStarted = true;
+            var jobs = new List<TransferJob>();
+
+            for (var i = 0; i < count; i++)
+            {
+                GivenCandidate("c" + i, "e-1-" + i, "Title." + i);
+                jobs.Add(Subject.Add("c" + i, "tv"));
+            }
+
+            return jobs;
+        }
+
+        private void Finish(TransferJob job)
+        {
+            GivenTransport(job, FileTransferState.Completed, 1000);
+        }
+
         [Test]
         public void only_so_many_transfers_should_run_at_once()
         {
-            for (var i = 0; i < TransferService.MaxConcurrent + 2; i++)
-            {
-                GivenCandidate("c" + i, "e-1-" + i, "Title." + i);
-                Subject.Add("c" + i, "tv");
-            }
+            GivenWaiting(NodeSettingsDefaults.MaxDownloads + 2);
 
             Subject.Tick();
 
-            Subject.All().Count(j => j.State == TransferState.Downloading).Should().Be(TransferService.MaxConcurrent);
+            Subject.All().Count(j => j.State == TransferState.Downloading).Should().Be(NodeSettingsDefaults.MaxDownloads);
             Subject.All().Count(j => j.State == TransferState.Queued).Should().Be(2);
+        }
+
+        [Test]
+        public void transfers_should_wait_their_turn_in_the_order_they_were_asked_for()
+        {
+            _maxDownloads = 1;
+            var jobs = GivenWaiting(3);
+
+            Subject.Tick();
+            Stored(jobs[0]).State.Should().Be(TransferState.Downloading);
+            Stored(jobs[1]).State.Should().Be(TransferState.Queued);
+            Stored(jobs[2]).State.Should().Be(TransferState.Queued);
+
+            Finish(jobs[0]);
+            Subject.Tick();
+            Subject.Tick();
+
+            Stored(jobs[0]).State.Should().Be(TransferState.Completed);
+            Stored(jobs[1]).State.Should().Be(TransferState.Downloading);
+            Stored(jobs[2]).State.Should().Be(TransferState.Queued);
+            _started.Select(r => r.Id).Should().Equal(jobs[0].DownloadId, jobs[1].DownloadId);
+        }
+
+        [Test]
+        public void no_limit_should_start_everything_at_once()
+        {
+            _maxDownloads = 0;
+            GivenWaiting(8);
+
+            Subject.Tick();
+
+            Subject.All().Should().OnlyContain(j => j.State == TransferState.Downloading);
+        }
+
+        [Test]
+        public void a_new_limit_should_apply_at_the_next_tick_without_stopping_what_runs()
+        {
+            _maxDownloads = 1;
+            var jobs = GivenWaiting(4);
+            Subject.Tick();
+
+            _maxDownloads = 3;
+            Subject.Tick();
+            Subject.All().Count(j => j.State == TransferState.Downloading).Should().Be(3);
+
+            _maxDownloads = 1;
+            Subject.Tick();
+            Subject.All().Count(j => j.State == TransferState.Downloading).Should().Be(3);
+            Stored(jobs[3]).State.Should().Be(TransferState.Queued);
+        }
+
+        [Test]
+        public void a_queued_transfer_should_survive_a_restart_and_start_when_its_turn_comes()
+        {
+            _maxDownloads = 1;
+            var jobs = GivenWaiting(2);
+            Subject.Tick();
+
+            // A new service reads the same stored transfers, as Nodearr does when it starts again.
+            var restarted = Mocker.Resolve<TransferService>();
+            restarted.Find(jobs[1].DownloadId).State.Should().Be(TransferState.Queued);
+
+            Finish(jobs[0]);
+            restarted.Tick();
+            restarted.Tick();
+
+            restarted.Find(jobs[1].DownloadId).State.Should().Be(TransferState.Downloading);
+        }
+
+        [Test]
+        public void removing_a_queued_transfer_should_not_ask_the_transport_anything()
+        {
+            _maxDownloads = 1;
+            var jobs = GivenWaiting(2);
+            Subject.Tick();
+
+            Subject.Remove(jobs[1].DownloadId, true).Should().BeTrue();
+
+            Mocker.GetMock<IFileTransport>().Verify(t => t.Cancel(jobs[1].DownloadId), Times.Never());
+            Subject.Find(jobs[1].DownloadId).Should().BeNull();
+            _started.Select(r => r.Id).Should().Equal(jobs[0].DownloadId);
+        }
+
+        [Test]
+        public void trying_a_failed_transfer_again_should_wait_behind_those_already_waiting()
+        {
+            _maxDownloads = 1;
+            var jobs = GivenWaiting(3);
+            Subject.Tick();
+            GivenTransport(jobs[0], FileTransferState.Failed, 0, "NotFound");
+            Subject.Tick();
+            Stored(jobs[0]).State.Should().Be(TransferState.Failed);
+
+            var again = Subject.Retry(jobs[0].DownloadId);
+            Subject.Tick();
+
+            Stored(jobs[1]).State.Should().Be(TransferState.Downloading);
+            Subject.Find(again.DownloadId).State.Should().Be(TransferState.Queued);
+            Stored(jobs[2]).State.Should().Be(TransferState.Queued);
+            Subject.All().Where(j => j.State == TransferState.Queued).OrderBy(j => j.Added).Select(j => j.DownloadId).Should().Equal(jobs[2].DownloadId, again.DownloadId);
         }
 
         [Test]

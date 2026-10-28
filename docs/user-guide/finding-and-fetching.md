@@ -97,7 +97,7 @@ The number beside **Activity** counts downloads that are queued, downloading, wa
 
 ![Activity sidebar badge showing one unfinished download while a Frieren episode comes from Sam, with completed Cowboy Bebop uploads below](images/transfers.png)
 
-- **Queued**: waiting for a slot. Three transfers run at once.
+- **Queued**: waiting its turn. Three downloads run at once unless **Most Downloads at Once** on **Settings > Node** says otherwise, and the rest start in the order your Arr apps asked for them. Your Arr app's queue shows it as queued too.
 - **Downloading**: arriving from your friend, with its progress. Your Arr app's queue shows the same.
 - **Completed**: it arrived, matched the hash your friend's node gave before sending, and was moved into place in one step. Your Arr app imports it at its next check, usually within a minute, and then asks Nodearr to remove it.
 - **Failed**: the transfer stopped without a verified file. **Activity > Transfers** and the Arr app's history show the reason. See [When a transfer fails](#when-a-transfer-fails).

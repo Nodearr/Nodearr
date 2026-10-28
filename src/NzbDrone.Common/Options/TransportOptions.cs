@@ -31,6 +31,9 @@ public class TransportOptions
     // The most each download may take, in kilobytes per second. No limit when not set.
     public int? DownloadLimitKbps { get; set; }
 
+    // The most downloads from other nodes that run at once. Three when not set, 0 for no limit.
+    public int? MaxDownloads { get; set; }
+
     // Where transfers are written: incomplete/ while they arrive, complete/ once verified.
     // Defaults to a downloads folder in the data folder.
     public string DownloadFolder { get; set; }

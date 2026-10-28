@@ -752,6 +752,56 @@ try {
     $landedTwo = docker exec nodearr-s7-sonarr-b-1 sha256sum $fileTwo.path
     Assert-That 'The file that was resumed is still whole and correct when Sonarr imports it' ("$landedTwo" -match $tvHash) @{ path = $fileTwo.path; hashMatches = ("$landedTwo" -match $tvHash) }
 
+    # --- 4a. One download at a time ---------------------------------------------------------------
+
+    # B takes one download at a time. Its Sonarr loses the first two episodes and searches for
+    # both: one arrives while the other waits, queued in Nodearr and in Sonarr's own queue, and
+    # starts only once the first is done.
+    Wait-Until -What 'the resumed download to be cleared' -TimeoutSec 60 -Condition { (Get-Transfers).Count -eq 0 } | Out-Null
+    $settingsB = Invoke-Node B GET '/settings/node'
+    $settingsB.maxDownloads = 1
+    $oneAtATime = Invoke-Node B PUT "/settings/node/$($settingsB.id)" $settingsB
+    foreach ($episode in $episodesB[0], $episodesB[1]) {
+        $fileId = (Invoke-Arr sonarrB GET "/episode/$($episode.id)").episodeFileId
+        Invoke-Arr sonarrB DELETE "/episodefile/$fileId" | Out-Null
+    }
+    Invoke-Arr sonarrB POST '/command' @{ name = 'EpisodeSearch'; episodeIds = @($episodesB[0].id, $episodesB[1].id) } | Out-Null
+    $waiting = Wait-Until -What 'one download under way and one waiting' -TimeoutSec 90 -EverySec 0.5 -Condition {
+        $all = @(Get-Transfers)
+        $running = @($all | Where-Object state -eq 'downloading')
+        $queued = @($all | Where-Object state -eq 'queued')
+        if ($all.Count -eq 2 -and $running.Count -eq 1 -and $queued.Count -eq 1) { @{ Running = $running[0]; Queued = $queued[0] } }
+    }
+    $queuedSlot = (Invoke-Sab 'mode=queue&start=0&limit=0&category=tv').queue.slots | Where-Object nzo_id -eq $waiting.Queued.downloadId
+    $inSonarr = Wait-Until -What "Sonarr's queue to show the waiting download" -TimeoutSec 30 -EverySec 1 -Condition {
+        Invoke-Arr sonarrB POST '/command' @{ name = 'RefreshMonitoredDownloads' } | Out-Null
+        @((Invoke-Arr sonarrB GET '/queue?pageSize=50').records) | Where-Object { $_.downloadId -eq $waiting.Queued.downloadId } | Select-Object -First 1
+    }
+    Assert-That 'With one download at a time, a second grab waits, queued in Nodearr and in Sonarr''s queue' (
+        $oneAtATime.maxDownloads -eq 1 -and -not $oneAtATime.transportRestarted -and
+        $queuedSlot.status -eq 'Queued' -and $inSonarr.status -eq 'queued' -and $inSonarr.trackedDownloadStatus -eq 'ok'
+    ) @{ running = $waiting.Running.title; waiting = $waiting.Queued.title; sabStatus = $queuedSlot.status; sonarrStatus = $inSonarr.status; sonarrTracked = $inSonarr.trackedDownloadStatus; restarted = $oneAtATime.transportRestarted }
+
+    # The waiting one starts once the first is no longer downloading, and both are imported.
+    $turn = Wait-Until -What 'the waiting download to start' -TimeoutSec 180 -EverySec 0.5 -Condition {
+        $all = @(Get-Transfers)
+        $second = $all | Where-Object downloadId -eq $waiting.Queued.downloadId | Select-Object -First 1
+        if ($second.state -eq 'downloading') { @{ FirstStillDownloading = @($all | Where-Object { $_.downloadId -eq $waiting.Running.downloadId -and $_.state -eq 'downloading' }).Count -gt 0 } }
+    }
+    $bothBack = Wait-Until -What "B's Sonarr to import both episodes" -TimeoutSec 240 -EverySec 2 -Condition {
+        Invoke-Arr sonarrB POST '/command' @{ name = 'RefreshMonitoredDownloads' } | Out-Null
+        $back = @($episodesB[0], $episodesB[1] | ForEach-Object { Invoke-Arr sonarrB GET "/episode/$($_.id)" } | Where-Object hasFile)
+        if ($back.Count -eq 2) { $back }
+    }
+    Assert-That 'The waiting download starts only once the first is done, and Sonarr imports both' (
+        -not $turn.FirstStillDownloading -and $bothBack.Count -eq 2
+    ) @{ firstStillDownloading = $turn.FirstStillDownloading; imported = @($bothBack | ForEach-Object { "S$($_.seasonNumber)E$($_.episodeNumber)" }) }
+
+    Wait-Until -What 'the downloads to be cleared' -TimeoutSec 60 -Condition { (Get-Transfers).Count -eq 0 } | Out-Null
+    $settingsB = Invoke-Node B GET '/settings/node'
+    $settingsB.maxDownloads = 3
+    Invoke-Node B PUT "/settings/node/$($settingsB.id)" $settingsB | Out-Null
+
     # --- 4b. The series is unshared in the middle ------------------------------------------------
 
     # A puts the series on its Hidden list while episode 3 is on its way. Trust stays.
@@ -815,7 +865,9 @@ try {
     # --- 6. What the sending node saw of all that ---------------------------------------------------
 
     # The first episode was fetched by number, by day, and after it changed. The changed file took
-    # two attempts, which should remain one completed upload row.
+    # two attempts, which should remain one completed upload row. Its PROPER, fetched one at a
+    # time with the second episode, is a file of another name. The second episode was fetched
+    # after the restart and again one at a time.
     $uploads = @(Invoke-Node A GET '/transfers/uploads')
     $ended = { param([string] $name, [string] $state, [string] $failure) @($uploads | Where-Object { $_.title -eq "$name.mkv" -and $_.state -eq $state -and (-not $failure -or $_.failure -eq $failure) }).Count }
     $completedAttempts = @($uploads | Where-Object { $_.title -eq "$($episodeNames[0]).mkv" -and $_.state -eq 'completed' -and $_.attempts -eq 2 -and $_.lastFailure -eq 'VerificationFailed' }).Count
@@ -827,7 +879,7 @@ try {
     $wentAway = (& $ended $episodeNames[1] 'failed' 'Stopped') + (& $ended $episodeNames[1] 'failed' 'DirectPathLost')
     Assert-That 'Afterwards the sending node lists each upload and how it ended: sent, stopped by the other side, cut when unshared, or cut when trust ended' (
         (& $ended $episodeNames[0] 'completed') -eq 3 -and (& $ended $episodeNames[0] 'failed' 'VerificationFailed') -eq 0 -and $completedAttempts -eq 1 -and (& $ended $movieName 'completed') -eq 1 -and
-        (& $ended $episodeNames[1] 'completed') -eq 1 -and $resumedUpload -eq 1 -and $wentAway -ge 2 -and
+        (& $ended $episodeNames[1] 'completed') -eq 2 -and $resumedUpload -eq 1 -and $wentAway -ge 2 -and
         (& $ended $episodeNames[2] 'failed' 'NotAuthorized') -eq 1 -and
         (& $ended $episodeNames[2] 'failed' 'Revoked') -eq 1 -and @($uploads | Where-Object { $_.state -in 'sending', 'preparing' }).Count -eq 0
     ) @{ uploads = @($uploads | ForEach-Object { "$($_.title -replace '\.720p.*', '') -> $($_.state) attempts=$($_.attempts) previous=$($_.lastFailure) failure=$($_.failure) $($_.bytesSent)/$($_.size)" }) }

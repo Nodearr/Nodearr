@@ -1,5 +1,9 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json.Nodes;
+using FluentAssertions;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Moq;
 using Nodearr.Http.Sabnzbd;
 using NUnit.Framework;
@@ -47,6 +51,24 @@ namespace Nodearr.Http.Test.Sabnzbd
             Subject.Api("get_config", null, null, "wrong");
 
             Mocker.GetMock<ITransferFolders>().Verify(f => f.EnsureCategoryFolders(It.IsAny<IEnumerable<string>>()), Times.Never());
+        }
+
+        // A download waiting for a free slot is in SABnzbd's queue as Queued, which the Arr apps
+        // show as queued and do not take for a stalled download.
+        [Test]
+        public void a_download_waiting_its_turn_should_be_in_the_queue_as_queued()
+        {
+            Subject.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
+            Mocker.GetMock<ITransferService>().Setup(t => t.All()).Returns(new List<TransferJob>
+            {
+                new() { DownloadId = "SABnzbd_nzo_running", State = TransferState.Downloading, Category = "tv", Size = 1000, BytesDone = 500 },
+                new() { DownloadId = "SABnzbd_nzo_waiting", State = TransferState.Queued, Category = "tv", Size = 1000 }
+            });
+
+            var result = (ContentResult)Subject.Api("queue", null, null, "key");
+            var slots = JsonNode.Parse(result.Content)["queue"]["slots"].AsArray();
+
+            slots.Select(s => ((string)s["nzo_id"], (string)s["status"])).Should().Equal(("SABnzbd_nzo_running", "Downloading"), ("SABnzbd_nzo_waiting", "Queued"));
         }
     }
 }

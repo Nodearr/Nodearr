@@ -36,6 +36,7 @@ namespace NzbDrone.Core.Test.Transfers
             Mocker.SetConstant<ITransferRepository>(Mocker.Resolve<TransferRepository>());
 
             Mocker.GetMock<INodeSettingsProvider>().SetupGet(s => s.DownloadFolder).Returns(TempFolder);
+            Mocker.GetMock<INodeSettingsProvider>().Setup(s => s.Get()).Returns(new NodeSettings { MaxDownloads = NodeSettingsDefaults.MaxDownloads });
             _folders = new TransferFolders(Mocker.GetMock<INodeSettingsProvider>().Object);
             Mocker.SetConstant(_folders);
 

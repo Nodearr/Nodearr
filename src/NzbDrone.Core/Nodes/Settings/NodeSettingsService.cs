@@ -155,6 +155,11 @@ namespace NzbDrone.Core.Nodes.Settings
                     ? $"Use 0 for no limit, or at least {MinDownloadLimit} KB/s"
                     : null);
 
+            Check(nameof(NodeSettings.MaxDownloads), () =>
+                settings.MaxDownloads is < 0 or > NodeSettingsDefaults.MaxMaxDownloads
+                    ? $"Use 0 for no limit, or from 1 to {NodeSettingsDefaults.MaxMaxDownloads}"
+                    : null);
+
             Check(nameof(NodeSettings.DownloadFolder), () => CheckDownloadFolder(settings.DownloadFolder, current.DownloadFolder));
 
             // Sonarr's own words for its RSS Sync Interval.
@@ -200,6 +205,7 @@ namespace NzbDrone.Core.Nodes.Settings
             Write(nameof(NodeSettings.UploadLimitKbps), before.UploadLimitKbps, settings.UploadLimitKbps, v => _configService.TransferUploadLimit = v);
             Write(nameof(NodeSettings.TotalUploadLimitKbps), before.TotalUploadLimitKbps, settings.TotalUploadLimitKbps, v => _configService.TransferTotalUploadLimit = v);
             Write(nameof(NodeSettings.DownloadLimitKbps), before.DownloadLimitKbps, settings.DownloadLimitKbps, v => _configService.TransferDownloadLimit = v);
+            Write(nameof(NodeSettings.MaxDownloads), before.MaxDownloads, settings.MaxDownloads, v => _configService.TransferMaxDownloads = v);
             Write(nameof(NodeSettings.CatalogSyncInterval), before.CatalogSyncInterval, settings.CatalogSyncInterval, v => _configService.CatalogSyncInterval = v);
 
             var after = _provider.Get();
@@ -213,7 +219,8 @@ namespace NzbDrone.Core.Nodes.Settings
             result.Settings = after;
             result.TransportRunning = _transport.IsRunning;
 
-            // The name and the download folder are read when they are needed. The rest is given
+            // The name, the download folder and how many downloads run at once are read when they
+            // are needed. The rest is given
             // to the transport when it starts, so it has to start again to take them.
             var transportChanged = before.Relay != after.Relay ||
                                    (before.RelayUrl ?? string.Empty) != (after.RelayUrl ?? string.Empty) ||
