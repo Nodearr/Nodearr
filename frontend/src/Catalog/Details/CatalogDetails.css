@@ -135,7 +135,11 @@
 }
 
 .episodes li {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
   padding: 3px 0;
+  gap: 0 8px;
 }
 
 .send {
@@ -147,4 +151,10 @@
   .card {
     flex-direction: column;
   }
+}
+
+.sent {
+  color: var(--linkColor);
+  font-weight: bold;
+  font-size: 12px;
 }

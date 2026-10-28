@@ -2721,6 +2721,39 @@
         }
       }
     },
+    "/api/v5/sharing/sends/received/{id}/details": {
+      "get": {
+        "tags": [
+          "Send"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogDetailsResource"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
     "/api/v5/sharing/sends/received/{id}/dismiss": {
       "post": {
         "tags": [
@@ -3729,6 +3762,9 @@
           "hasFile": {
             "type": "boolean"
           },
+          "wasSent": {
+            "type": "boolean"
+          },
           "localStatus": {
             "$ref": "#/components/schemas/PeerItemStatus"
           }
@@ -3767,6 +3803,10 @@
             "nullable": true
           },
           "sourceName": {
+            "type": "string",
+            "nullable": true
+          },
+          "sentSummary": {
             "type": "string",
             "nullable": true
           },
@@ -6251,6 +6291,9 @@
             "type": "integer",
             "format": "int32",
             "nullable": true
+          },
+          "detailsAvailable": {
+            "type": "boolean"
           }
         },
         "additionalProperties": false

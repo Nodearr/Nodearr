@@ -368,6 +368,7 @@ export interface ReceivedTitle {
   getItMessage?: string;
   // An item of this node's copy of the friend's catalog for its poster, once it has one.
   posterItemId?: number | null;
+  detailsAvailable: boolean;
 }
 
 export type GetItState = 'none' | 'working' | 'done' | 'failed';
@@ -412,8 +413,7 @@ export const useReceived = () =>
   useApiQuery<ReceivedTitle[]>({
     path: RECEIVED_PATH,
     queryOptions: {
-      refetchInterval: (query) =>
-        query.state.data?.some((r) => r.getItState === 'done') ? 30_000 : false,
+      refetchInterval: (query) => (query.state.data?.length ? 5000 : false),
     },
   });
 

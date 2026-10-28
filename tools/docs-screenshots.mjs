@@ -15,7 +15,8 @@
 //
 // With no arguments, the capture command takes every screenshot. Pass screenshot names to capture
 // only those pages. `catalogAvailability` needs the mixed library states described above its
-// implementation and is run explicitly. The "send" screenshot changes the test data: Sam sends Alex a Felix the Cat
+// implementation and is run explicitly. `receivedDetails` likewise needs the five prepared sends.
+// The "send" screenshot changes the test data: Sam sends Alex a Felix the Cat
 // short from its table row and Alex sends Sam Night of the Living Dead from its poster. Recreate
 // the kit before capturing "send" a second time.
 //
@@ -782,6 +783,64 @@ const shots = {
     }
   },
 
+  // Prepare whole-series, season, multi-episode, single-episode and movie sends from B
+  // to A first. This read-only check opens both controls and keeps Home as the current page.
+  async receivedDetails({ a }) {
+    const receiver = setUp('a', A, 'Alex');
+    const notes = (await receiver.api('GET', '/sharing/sends/received')).filter((note) => note.detailsAvailable);
+    const cases = [
+      notes.find((note) => note.mediaKind === 'tv' && note.isWhole),
+      notes.find((note) => /^Season /.test(note.summary ?? '')),
+      notes.find((note) => note.summary === '2 episodes'),
+      notes.find((note) => /^S\d+E\d+$/.test(note.summary ?? '')),
+      notes.find((note) => note.mediaKind === 'movie'),
+    ];
+    if (cases.some((note) => !note)) throw new Error('Prepare all five received-send cases before running receivedDetails');
+    await open(a, A, '/');
+    const preference = await a.evaluate(() => localStorage.getItem('nodearr.peerCatalog.showMissingEpisodes'));
+    await a.evaluate(() => localStorage.setItem('nodearr.peerCatalog.showMissingEpisodes', 'false'));
+    try {
+      for (const note of cases) {
+        const what = note.summary ? `${note.title} - ${note.summary}` : note.title;
+        const expected = await receiver.api('GET', `/sharing/sends/received/${note.id}/details`);
+        for (const index of [1, 0]) {
+          await a.getByRole('button', { name: `Details: ${what}`, exact: true }).nth(index).click();
+          const card = a.getByRole('dialog', { name: expected.title, exact: true });
+          await card.waitFor();
+          if (new URL(a.url()).pathname !== '/') throw new Error('Received details navigated away from Home');
+          const markers = card.locator('li').getByText('Sent to you', { exact: true });
+          const sent = expected.episodes.filter((episode) => episode.wasSent);
+          if (await markers.count() !== sent.length) throw new Error('The card did not mark every sent episode');
+          for (const episode of sent) {
+            const number = `S${String(episode.seasonNumber).padStart(2, '0')}E${String(episode.episodeNumber).padStart(2, '0')}`;
+            await card.locator('li').filter({ has: a.getByRole('button', { name: new RegExp(`^${number}`) }) }).getByText('Sent to you', { exact: true }).waitFor();
+          }
+          if (expected.getIt) {
+            await card.getByRole('button', { name: 'Get it', exact: true }).click();
+            const getIt = a.getByRole('dialog', { name: /^Get it -/ });
+            await getIt.getByRole('button', { name: 'Get it', exact: true }).waitFor();
+            const scope = getIt.locator('select[name="catalogGetItScope"]');
+            if (await scope.count() && await scope.inputValue() !== expected.getIt.scope) throw new Error('Wrong Get it selection from received details');
+            await a.keyboard.press('Escape');
+            await getIt.waitFor({ state: 'hidden' });
+          }
+          if (index === 1 && note.summary === '2 episodes') await shoot(card, 'received-details');
+          await a.keyboard.press('Escape');
+          await card.waitFor({ state: 'hidden' });
+        }
+      }
+      const movie = cases[4];
+      const homeCard = a.getByRole('button', { name: `Details: ${movie.title}`, exact: true }).first().locator('xpath=..');
+      await shoot(homeCard, 'received');
+      console.log('Whole, season, multiple-episode, single-episode and movie sends open from both Home controls, with correct markers and Get it');
+    } finally {
+      await a.evaluate((value) => {
+        if (value == null) localStorage.removeItem('nodearr.peerCatalog.showMissingEpisodes');
+        else localStorage.setItem('nodearr.peerCatalog.showMissingEpisodes', value);
+      }, preference);
+    }
+  },
+
   async settings({ a }) {
     await open(a, A, '/settings/node');
     await shoot(a, 'settings-node');
@@ -987,7 +1046,7 @@ const b = await signIn(contextB, B);
 try {
   for (const [name, take] of Object.entries(shots)) {
     // These checks need the fixture states described above, so run them by name.
-    if (wanted.includes(name) || (wanted.length === 0 && !['transfers', 'catalogAvailability'].includes(name))) {
+    if (wanted.includes(name) || (wanted.length === 0 && !['transfers', 'catalogAvailability', 'receivedDetails'].includes(name))) {
       await take({ a, b, browser });
     }
   }

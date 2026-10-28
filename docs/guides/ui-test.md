@@ -203,6 +203,10 @@ Then, on A, clear its checkbox under **Hidden** and select **Save**. On B, selec
 **B gets it.** On B's **Home**:
 
 - [ ] A card says "... sent you Out of the Inkwell", with **Root Folder**, **Quality Profile** and **Series Type** filled in.
+- [ ] Select **Details**, then close the card and select the small poster. Both open Out of the Inkwell's details over Home. Closing it retains Home's scroll position, and the card's **Get it** opens the existing catalog choices.
+- [ ] Send one episode, a season and two selected episodes separately. One episode opens directly. The partial series cards mark only the sent episodes **Sent to you**, keeping those visible even with **Show missing episodes** off. Home's own **Get it** still acts on the original send.
+- [ ] Withdraw the sent files in the sender's **Hidden** list, then sync the receiver. Its Home card explains that details are unavailable; its old details endpoint returns 404. Restore sharing. End trust and check the friend's received cards disappear and cannot reopen cached details.
+- [ ] For automated browser coverage, prepare whole-series, season, two-episode, single-episode and movie sends from B to A, then run `node tools/docs-screenshots.mjs receivedDetails` with the kit environment described in the script. It checks both controls, selected markers and Get it without navigating away, and retakes `received.png` and `received-details.png`. This named check does not download files or dismiss sends.
 - [ ] Select **Get it**. The card says it is asking Sonarr, then "Added to Sonarr, monitoring the whole series, and searching for 3 episodes": the three A has. Sonarr monitors the whole series, so it looks for the rest on its own later, as it would for any series.
 - [ ] **Activity > Transfers** shows Out of the Inkwell's three episodes arriving from A, then done. Up to three files arrive at once, the default of **Most Downloads at Once**.
 - [ ] In B's Sonarr, **Series > Out of the Inkwell** shows the three episodes with files. Sonarr imported what Nodearr fetched.
