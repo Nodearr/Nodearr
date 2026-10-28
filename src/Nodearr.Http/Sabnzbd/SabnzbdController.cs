@@ -188,7 +188,9 @@ namespace Nodearr.Http.Sabnzbd
 
                 slots.Add(new JsonObject
                 {
-                    ["status"] = job.State == TransferState.Downloading ? "Downloading" : "Queued",
+                    // Waiting its turn at the other node is queued too, as far as the Arr app is
+                    // concerned: nothing is arriving, and nothing is wrong.
+                    ["status"] = job.State == TransferState.Downloading && !job.IsWaitingForPeer ? "Downloading" : "Queued",
                     ["index"] = index++,
                     ["timeleft"] = TimeLeft(job, left),
                     ["mb"] = Megabytes(job.Size),

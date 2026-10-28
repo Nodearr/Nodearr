@@ -46,6 +46,10 @@ namespace NzbDrone.Core.Nodes.Settings
         // The most downloads that run at once. The rest wait their turn, queued. Zero is no limit.
         public int MaxDownloads { get; set; }
 
+        // The most uploads that run at once. Further requests wait their turn, and a receiver new
+        // enough to be told is told where it stands. Zero is no limit.
+        public int MaxUploads { get; set; }
+
         // Minutes between asking each trusted node what changed in its catalog, like Sonarr's RSS
         // Sync Interval: 10 to 120, or 0 to ask only when told or asked by hand.
         public int CatalogSyncInterval { get; set; }
@@ -63,6 +67,10 @@ namespace NzbDrone.Core.Nodes.Settings
         // What Nodearr ran at once before it could be set (ADR 0016).
         public const int MaxDownloads = 3;
         public const int MaxMaxDownloads = 100;
+
+        // So that friends' apps grabbing at the same moment share the link in turn (#75).
+        public const int MaxUploads = 3;
+        public const int MaxMaxUploads = 100;
 
         // Sonarr's default for its RSS Sync Interval, and its limits.
         public const int CatalogSyncInterval = 15;

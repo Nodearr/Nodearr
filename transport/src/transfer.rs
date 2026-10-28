@@ -10,7 +10,7 @@
 //! (ADR 0011).
 
 use std::{
-    collections::HashMap,
+    collections::{HashMap, VecDeque},
     path::{Path, PathBuf},
     sync::{
         atomic::{AtomicU64, Ordering},
@@ -45,8 +45,12 @@ const CODE_RELAYED_MEDIA: u32 = 6;
 const CODE_REVOKED: u32 = 7;
 const CODE_NOT_FOUND: u32 = 8;
 
-/// How long the receiver waits for the header. The sender may have to hash a large file first.
+/// How long the receiver waits for the header, or for word that it is still queued. The sender
+/// may have to hash a large file first.
 const HEADER_TIMEOUT: Duration = Duration::from_secs(30 * 60);
+
+/// How often a sender tells a queued receiver where it stands, even when nothing changed.
+const QUEUED_EVERY: Duration = Duration::from_secs(15);
 
 #[derive(Serialize, Deserialize)]
 struct FileRequest {
@@ -58,6 +62,10 @@ struct FileRequest {
     /// The receiving node's transfer id, used to keep retries in one upload history row.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     transfer: Option<String>,
+    /// The receiver understands `Queued` before the header. An older one does not: it would take
+    /// one for a broken header, so it is never sent one, and waits its turn without being told.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    accepts_queued: bool,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -66,6 +74,22 @@ struct FileHeader {
     blake3: String,
     /// Where the sender starts. Zero when it would not resume.
     offset: u64,
+}
+
+/// Sent instead of the header while the sender has no free upload slot, and again every
+/// `QUEUED_EVERY`, which also keeps the receiver from giving up on it.
+#[derive(Serialize, Deserialize)]
+struct Queued {
+    /// The receiver's place in line, counting from 1.
+    queued: u32,
+}
+
+/// What a receiver that accepts queueing reads where the header goes.
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum SenderFrame {
+    Queued(Queued),
+    Header(FileHeader),
 }
 
 #[derive(Serialize, Clone)]
@@ -77,12 +101,14 @@ pub struct Failure {
 #[derive(Serialize, Clone)]
 pub struct DownloadState {
     pub id: String,
-    /// connecting, receiving, completed or failed.
+    /// connecting, waiting (queued by the sender), receiving, completed or failed.
     pub state: &'static str,
     pub bytes_done: u64,
     pub size: u64,
     pub blake3: Option<String>,
     pub failure: Option<Failure>,
+    /// While waiting: the place in the sender's line, counting from 1.
+    pub queue_position: Option<u32>,
 }
 
 /// One file this node is sending, or has just sent, to another node.
@@ -94,7 +120,8 @@ pub struct UploadState {
     pub file: String,
     /// Where the file is on this machine.
     pub path: String,
-    /// preparing (working out the hash), sending, completed or failed.
+    /// waiting (for a free upload slot), preparing (working out the hash), sending, completed or
+    /// failed.
     pub state: &'static str,
     /// How much of the file the other node has, counting what it already held when it asked.
     pub bytes_sent: u64,
@@ -102,6 +129,8 @@ pub struct UploadState {
     pub failure: Option<Failure>,
     pub attempts: u32,
     pub last_failure: Option<Failure>,
+    /// While waiting: its place in line, counting from 1.
+    pub queue_position: Option<u32>,
     #[serde(skip)]
     transfer: Option<String>,
     #[serde(skip)]
@@ -142,6 +171,11 @@ pub struct Transfers {
     upload_booked: Mutex<Instant>,
     /// Bytes per second each download may take. Zero means no limit.
     download_limit: u64,
+    /// How many uploads may run at once. Zero means no limit.
+    max_uploads: usize,
+    upload_queue: Mutex<UploadQueue>,
+    /// Woken whenever a slot frees or the line moves.
+    upload_turn: tokio::sync::Notify,
     downloads: Mutex<HashMap<String, Download>>,
     uploads: Mutex<HashMap<u64, (EndpointId, Connection)>>,
     upload_states: Mutex<HashMap<u64, UploadState>>,
@@ -152,14 +186,53 @@ pub struct Transfers {
     hashing: Mutex<HashMap<PathBuf, Arc<tokio::sync::Mutex<()>>>>,
 }
 
+/// Uploads waiting for a slot, in the order they asked, and how many hold one.
+#[derive(Default)]
+struct UploadQueue {
+    waiting: VecDeque<u64>,
+    running: usize,
+}
+
+/// A slot an upload holds while it runs. Dropping it frees the slot for the next in line.
+struct UploadSlot<'a> {
+    transfers: &'a Transfers,
+}
+
+impl Drop for UploadSlot<'_> {
+    fn drop(&mut self) {
+        self.transfers.upload_queue.lock().unwrap().running -= 1;
+        self.transfers.upload_turn.notify_waiters();
+    }
+}
+
+/// An upload's place in line. Dropping it, however the wait ends, takes it out of the line.
+struct InLine<'a> {
+    transfers: &'a Transfers,
+    id: u64,
+}
+
+impl Drop for InLine<'_> {
+    fn drop(&mut self) {
+        let mut queue = self.transfers.upload_queue.lock().unwrap();
+        if let Some(at) = queue.waiting.iter().position(|w| *w == self.id) {
+            queue.waiting.remove(at);
+            drop(queue);
+            self.transfers.upload_turn.notify_waiters();
+        }
+    }
+}
+
 impl Transfers {
-    pub fn new(direct_timeout: Duration, upload_limit: u64, total_upload_limit: u64, download_limit: u64) -> Self {
+    pub fn new(direct_timeout: Duration, upload_limit: u64, total_upload_limit: u64, download_limit: u64, max_uploads: usize) -> Self {
         Self {
             direct_timeout,
             upload_limit,
             total_upload_limit,
             upload_booked: Mutex::new(Instant::now()),
             download_limit,
+            max_uploads,
+            upload_queue: Mutex::new(UploadQueue::default()),
+            upload_turn: tokio::sync::Notify::new(),
             downloads: Mutex::new(HashMap::new()),
             uploads: Mutex::new(HashMap::new()),
             upload_states: Mutex::new(HashMap::new()),
@@ -188,6 +261,26 @@ impl Transfers {
         }
 
         until
+    }
+
+    /// Takes a slot for upload `id` if it is first in line and one is free, joining the line if it
+    /// is not in it yet. Otherwise gives its place in line, counting from 1.
+    fn take_turn(&self, id: u64) -> std::result::Result<UploadSlot<'_>, u32> {
+        let mut queue = self.upload_queue.lock().unwrap();
+        if !queue.waiting.contains(&id) {
+            queue.waiting.push_back(id);
+        }
+        let place = queue.waiting.iter().position(|w| *w == id).expect("just joined the line");
+
+        if place == 0 && queue.running < self.max_uploads {
+            queue.waiting.pop_front();
+            queue.running += 1;
+            drop(queue);
+            // The next in line may fit in a slot that is still free.
+            self.upload_turn.notify_waiters();
+            return Ok(UploadSlot { transfers: self });
+        }
+        Err(place as u32 + 1)
     }
 
     pub fn list(&self) -> Vec<DownloadState> {
@@ -285,12 +378,7 @@ impl Transfers {
             return false;
         };
         let (code, name) = refusal(reason);
-        let message = match name {
-            "Revoked" => "trust in this node ended",
-            "NotFound" => "the file is no longer in the library",
-            _ => "this file is no longer shared with that node",
-        };
-        self.upload_failed(id, name, message);
+        self.upload_failed(id, name, refusal_message(name));
         conn.close(VarInt::from_u32(code), name.as_bytes());
         true
     }
@@ -523,6 +611,80 @@ fn refusal(reason: Option<&str>) -> (u32, &'static str) {
     }
 }
 
+/// What an upload refused for that reason shows on this node.
+fn refusal_message(name: &str) -> &'static str {
+    match name {
+        "Revoked" => "trust in this node ended",
+        "NotFound" => "the file is no longer in the library",
+        _ => "this file is no longer shared with that node",
+    }
+}
+
+/// Asks Nodearr whether this node may have this file right now. Refused, the connection is closed
+/// with the reason, and the reason's name is the error.
+async fn ask_nodearr(transfers: &Transfers, conn: &Connection, remote: EndpointId, file: &str, queue: &mpsc::Sender<Incoming>) -> std::result::Result<PathBuf, &'static str> {
+    let (reply, answer) = oneshot::channel();
+    if queue.send(Incoming { remote, kind: IncomingKind::Transfer { file: file.to_string() }, reply }).await.is_err() {
+        return Err("Stopped");
+    }
+
+    match tokio::time::timeout(Duration::from_secs(30), answer).await {
+        Ok(Ok(Reply::File(path, known))) => {
+            if let Some(known) = known {
+                transfers.remember(&path, known);
+            }
+            Ok(path)
+        }
+        Ok(Ok(Reply::Reject(reason))) => {
+            let (code, name) = refusal(reason.as_deref());
+            conn.close(VarInt::from_u32(code), name.as_bytes());
+            Err(name)
+        }
+        _ => {
+            conn.close(VarInt::from_u32(CODE_NOT_AUTHORIZED), b"NotAuthorized");
+            Err("NotAuthorized")
+        }
+    }
+}
+
+/// Waits for a free upload slot, in line behind those that asked first. A receiver it may `tell`
+/// hears where it stands whenever that changes and every `QUEUED_EVERY`. One it may not tell
+/// waits in silence, as it would for a large file being hashed, up to its own wait for the header.
+/// Ends early if the receiver goes away, or this node stops trusting it and closes the connection.
+async fn wait_for_turn<'a>(transfers: &'a Transfers, conn: &Connection, send: &mut SendStream, id: u64, tell: bool) -> Result<UploadSlot<'a>> {
+    let _in_line = InLine { transfers, id };
+    let mut told: Option<u32> = None;
+
+    loop {
+        // Made ready before the line is looked at, so a slot freed in between is not missed.
+        let turn = transfers.upload_turn.notified();
+        tokio::pin!(turn);
+        turn.as_mut().enable();
+
+        let place = match transfers.take_turn(id) {
+            Ok(slot) => return Ok(slot),
+            Err(place) => place,
+        };
+
+        if told != Some(place) {
+            transfers.upload_update(id, |u| {
+                u.state = "waiting";
+                u.queue_position = Some(place);
+            });
+            if tell {
+                write_json(send, &Queued { queued: place }).await?;
+            }
+            told = Some(place);
+        }
+
+        tokio::select! {
+            _ = &mut turn => {}
+            _ = tokio::time::sleep(QUEUED_EVERY) => told = None,
+            reason = conn.closed() => bail!("the connection closed while it waited its turn: {reason}"),
+        }
+    }
+}
+
 /// Names a failure from the code the other side closed the connection with.
 fn close_name(conn: &Connection) -> &'static str {
     match conn.close_reason() {
@@ -558,31 +720,7 @@ async fn send_file(transfers: &Transfers, conn: &Connection, remote: EndpointId,
     let mut paths = PathMonitor::spawn(conn);
     let (mut send, mut recv) = conn.accept_bi().await.map_err(|e| anyhow!("accept_bi: {e}"))?;
     let request: FileRequest = read_json(&mut recv).await?;
-
-    // Nodearr decides, on every request, whether this node may have this file right now.
-    let (reply, answer) = oneshot::channel();
-    queue
-        .send(Incoming { remote, kind: IncomingKind::Transfer { file: request.file.clone() }, reply })
-        .await
-        .map_err(|_| anyhow!("shutting down"))?;
-
-    let path = match tokio::time::timeout(Duration::from_secs(30), answer).await {
-        Ok(Ok(Reply::File(path, known))) => {
-            if let Some(known) = known {
-                transfers.remember(&path, known);
-            }
-            path
-        }
-        Ok(Ok(Reply::Reject(reason))) => {
-            let (code, name) = refusal(reason.as_deref());
-            conn.close(VarInt::from_u32(code), name.as_bytes());
-            bail!("refused: {name}");
-        }
-        _ => {
-            conn.close(VarInt::from_u32(CODE_NOT_AUTHORIZED), b"NotAuthorized");
-            bail!("Nodearr did not answer");
-        }
-    };
+    let path = ask_nodearr(transfers, conn, remote, &request.file, queue).await.map_err(|name| anyhow!("refused: {name}"))?;
 
     // From here on it is an upload worth showing. A request that was refused never was one.
     transfers.upload_states.lock().unwrap().insert(
@@ -601,8 +739,34 @@ async fn send_file(transfers: &Transfers, conn: &Connection, remote: EndpointId,
             transfer: request.transfer.clone(),
             blake3: None,
             finished: None,
+            queue_position: None,
         },
     );
+
+    // Held until this function returns, however it ends. Every request waits its turn, whatever
+    // the receiver says of itself: the limit is this node's, not the receiver's to opt out of. Only
+    // telling it where it stands depends on whether it understands.
+    let _slot = if transfers.max_uploads == 0 {
+        None
+    } else {
+        Some(wait_for_turn(transfers, conn, &mut send, *upload, request.accepts_queued).await?)
+    };
+
+    // A request that waited is asked about again: trust or sharing may have changed meanwhile.
+    let path = if transfers.upload_states.lock().unwrap().get(upload).is_some_and(|u| u.state == "waiting") {
+        let path = ask_nodearr(transfers, conn, remote, &request.file, queue).await.map_err(|name| {
+            transfers.upload_failed(*upload, name, format!("{} while it waited its turn", refusal_message(name)));
+            anyhow!("refused after waiting: {name}")
+        })?;
+        transfers.upload_update(*upload, |u| {
+            u.state = "preparing";
+            u.queue_position = None;
+            u.path = path.display().to_string();
+        });
+        path
+    } else {
+        path
+    };
 
     // The hash is fixed before any data moves. Usually it was worked out in the background already.
     let FileHash { size, blake3, .. } = match transfers.hash(&path).await {
@@ -740,7 +904,7 @@ pub fn start(transfers: &Arc<Transfers>, endpoint: Endpoint, request: DownloadRe
         }
     }
 
-    let state = Arc::new(Mutex::new(DownloadState { id: request.id.clone(), state: "connecting", bytes_done: 0, size: 0, blake3: None, failure: None }));
+    let state = Arc::new(Mutex::new(DownloadState { id: request.id.clone(), state: "connecting", bytes_done: 0, size: 0, blake3: None, failure: None, queue_position: None }));
     let task_state = state.clone();
     let id = request.id.clone();
     let limit = transfers.download_limit;
@@ -779,14 +943,22 @@ async fn receive_file(endpoint: &Endpoint, request: &DownloadRequest, state: &Mu
     };
 
     let (mut send, mut recv) = conn.open_bi().await.map_err(|err| failure(close_name(&conn), format!("open_bi: {err}")))?;
-    write_json(&mut send, &FileRequest { file: request.file.clone(), offset: held, if_hash: request.expected_hash.clone(), transfer: Some(request.id.clone()) })
-        .await
-        .map_err(|err| failure(close_name(&conn), format!("request: {err:#}")))?;
+    let file_request = FileRequest { file: request.file.clone(), offset: held, if_hash: request.expected_hash.clone(), transfer: Some(request.id.clone()), accepts_queued: true };
+    write_json(&mut send, &file_request).await.map_err(|err| failure(close_name(&conn), format!("request: {err:#}")))?;
 
-    let header: FileHeader = match tokio::time::timeout(HEADER_TIMEOUT, read_json(&mut recv)).await {
-        Ok(Ok(header)) => header,
-        Ok(Err(err)) => return Err(failure(close_name(&conn), format!("header: {err:#}"))),
-        Err(_) => return Err(failure("TransferFailed", "the node did not start sending")),
+    // A sender with no free slot says so, and again while the wait goes on. An older sender never
+    // does, and sends the header straight away as before.
+    let header = loop {
+        match tokio::time::timeout(HEADER_TIMEOUT, read_json::<SenderFrame>(&mut recv)).await {
+            Ok(Ok(SenderFrame::Header(header))) => break header,
+            Ok(Ok(SenderFrame::Queued(Queued { queued }))) => {
+                let mut state = state.lock().unwrap();
+                state.state = "waiting";
+                state.queue_position = Some(queued);
+            }
+            Ok(Err(err)) => return Err(failure(close_name(&conn), format!("header: {err:#}"))),
+            Err(_) => return Err(failure("TransferFailed", "the node did not start sending")),
+        }
     };
 
     if let Some(parent) = request.dest.parent() {
@@ -814,6 +986,7 @@ async fn receive_file(endpoint: &Endpoint, request: &DownloadRequest, state: &Mu
     {
         let mut state = state.lock().unwrap();
         state.state = "receiving";
+        state.queue_position = None;
         state.size = header.size;
         state.bytes_done = bytes;
         state.blake3 = Some(header.blake3.clone());
@@ -891,11 +1064,82 @@ mod tests {
             transfer: Some("download-a".into()),
             blake3: Some("hash-a".into()),
             finished: Some(Instant::now()),
+            queue_position: None,
         }
     }
 
     fn limits(upload: u64, total: u64) -> Transfers {
-        Transfers::new(Duration::from_secs(20), upload, total, 0)
+        Transfers::new(Duration::from_secs(20), upload, total, 0, 0)
+    }
+
+    fn slots(max_uploads: usize) -> Transfers {
+        Transfers::new(Duration::from_secs(20), 0, 0, 0, max_uploads)
+    }
+
+    #[test]
+    fn uploads_beyond_the_limit_wait_in_the_order_they_asked() {
+        let transfers = slots(2);
+        let first = transfers.take_turn(1).ok().unwrap();
+        let _second = transfers.take_turn(2).ok().unwrap();
+
+        assert_eq!(transfers.take_turn(3).err(), Some(1));
+        assert_eq!(transfers.take_turn(4).err(), Some(2));
+        // Asking again keeps the place it had.
+        assert_eq!(transfers.take_turn(3).err(), Some(1));
+
+        // The one behind cannot jump ahead when a slot frees.
+        drop(first);
+        assert_eq!(transfers.take_turn(4).err(), Some(2));
+        let _third = transfers.take_turn(3).ok().unwrap();
+        assert_eq!(transfers.take_turn(4).err(), Some(1));
+    }
+
+    #[test]
+    fn leaving_the_line_moves_those_behind_up() {
+        let transfers = slots(1);
+        let _running = transfers.take_turn(1).ok().unwrap();
+        assert_eq!(transfers.take_turn(2).err(), Some(1));
+        assert_eq!(transfers.take_turn(3).err(), Some(2));
+
+        drop(InLine { transfers: &transfers, id: 2 });
+
+        assert_eq!(transfers.take_turn(3).err(), Some(1));
+    }
+
+    #[tokio::test]
+    async fn a_freed_slot_wakes_the_one_waiting() {
+        let transfers = Arc::new(slots(1));
+        let running = transfers.take_turn(1).ok().unwrap();
+        assert!(transfers.take_turn(2).is_err());
+
+        let waiter = transfers.clone();
+        let woken = tokio::spawn(async move {
+            let turn = waiter.upload_turn.notified();
+            tokio::pin!(turn);
+            turn.as_mut().enable();
+            if waiter.take_turn(2).is_err() {
+                turn.await;
+            }
+            waiter.take_turn(2).is_ok()
+        });
+
+        tokio::task::yield_now().await;
+        drop(running);
+        assert!(tokio::time::timeout(Duration::from_secs(1), woken).await.unwrap().unwrap());
+    }
+
+    #[test]
+    fn a_queued_frame_and_a_header_are_told_apart_and_old_requests_still_read() {
+        assert!(matches!(serde_json::from_str::<SenderFrame>(r#"{"queued":3}"#).unwrap(), SenderFrame::Queued(Queued { queued: 3 })));
+        assert!(matches!(serde_json::from_str::<SenderFrame>(r#"{"size":10,"blake3":"h","offset":0}"#).unwrap(), SenderFrame::Header(FileHeader { size: 10, .. })));
+
+        // An older receiver says nothing about queueing, and is taken not to understand it.
+        let old: FileRequest = serde_json::from_str(r#"{"file":"movie.mkv","offset":0,"if_hash":null}"#).unwrap();
+        assert!(!old.accepts_queued);
+
+        // A request that does not accept it looks as it did before.
+        let quiet = FileRequest { file: "movie.mkv".into(), offset: 0, if_hash: None, transfer: None, accepts_queued: false };
+        assert!(serde_json::to_value(quiet).unwrap().get("accepts_queued").is_none());
     }
 
     #[test]
@@ -990,14 +1234,14 @@ mod tests {
         let old: FileRequest = serde_json::from_str(r#"{"file":"movie.mkv","offset":512,"if_hash":"hash-a"}"#).unwrap();
         assert!(old.transfer.is_none());
 
-        let new = FileRequest { file: "movie.mkv".into(), offset: 512, if_hash: Some("hash-a".into()), transfer: None };
+        let new = FileRequest { file: "movie.mkv".into(), offset: 512, if_hash: Some("hash-a".into()), transfer: None, accepts_queued: false };
         assert!(serde_json::to_value(new).unwrap().get("transfer").is_none());
     }
 
     #[test]
     fn retries_group_by_transfer_id_and_peer_and_legacy_retries_require_matching_resume_data() {
         let prior = prior_upload();
-        let same = FileRequest { file: "movie.mkv".into(), offset: 0, if_hash: None, transfer: Some("download-a".into()) };
+        let same = FileRequest { file: "movie.mkv".into(), offset: 0, if_hash: None, transfer: Some("download-a".into()), accepts_queued: true };
         assert!(is_retry_request(&prior, "peer-a", &same));
         assert!(!is_retry_request(&prior, "peer-b", &same));
 
@@ -1006,7 +1250,7 @@ mod tests {
 
         let mut legacy = prior;
         legacy.transfer = None;
-        let resumed = FileRequest { file: "movie.mkv".into(), offset: 512, if_hash: Some("hash-a".into()), transfer: None };
+        let resumed = FileRequest { file: "movie.mkv".into(), offset: 512, if_hash: Some("hash-a".into()), transfer: None, accepts_queued: false };
         assert!(is_retry_request(&legacy, "peer-a", &resumed));
         let wrong_hash = FileRequest { if_hash: Some("different".into()), ..resumed };
         assert!(!is_retry_request(&legacy, "peer-a", &wrong_hash));

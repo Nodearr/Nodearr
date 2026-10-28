@@ -229,6 +229,37 @@ namespace NzbDrone.Core.Test.Transfers
         }
 
         [Test]
+        public void a_download_the_other_node_has_queued_should_show_its_place_until_it_arrives()
+        {
+            var job = GivenDownloading();
+
+            _progress.Add(new FileTransferProgress { Id = job.DownloadId, State = FileTransferState.Waiting, QueuePosition = 2 });
+            Subject.Tick();
+
+            Stored(job).Should().Match<TransferJob>(j => j.State == TransferState.Downloading && j.WaitingPosition == 2 && j.IsWaitingForPeer && j.BytesDone == 0);
+
+            GivenTransport(job, FileTransferState.Receiving, 300);
+            Subject.Tick();
+
+            Stored(job).Should().Match<TransferJob>(j => j.WaitingPosition == null && !j.IsWaitingForPeer && j.BytesDone == 300);
+        }
+
+        [Test]
+        public void a_download_waiting_at_the_other_node_should_still_hold_its_slot()
+        {
+            _maxDownloads = 1;
+            var jobs = GivenWaiting(2);
+            Subject.Tick();
+
+            _progress.RemoveAll(p => p.Id == jobs[0].DownloadId);
+            _progress.Add(new FileTransferProgress { Id = jobs[0].DownloadId, State = FileTransferState.Waiting, QueuePosition = 1 });
+            Subject.Tick();
+
+            Stored(jobs[0]).IsWaitingForPeer.Should().BeTrue();
+            Stored(jobs[1]).State.Should().Be(TransferState.Queued);
+        }
+
+        [Test]
         public void transfers_should_wait_their_turn_in_the_order_they_were_asked_for()
         {
             _maxDownloads = 1;

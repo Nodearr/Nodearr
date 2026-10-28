@@ -462,6 +462,12 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("TransferMaxDownloads", value); }
         }
 
+        public int TransferMaxUploads
+        {
+            get { return GetValueInt("TransferMaxUploads", 3); }
+            set { SetValue("TransferMaxUploads", value); }
+        }
+
         // Minutes between asking each trusted node for what changed in its catalog, as Sonarr's
         // RSS Sync Interval is between asking each indexer. Zero turns it off.
         public int CatalogSyncInterval

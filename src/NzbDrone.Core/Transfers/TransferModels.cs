@@ -100,6 +100,12 @@ namespace NzbDrone.Core.Transfers
         public DateTime? Started { get; set; }
         public DateTime? Ended { get; set; }
 
+        // While downloading: the other node has no free upload slot, and this is the place in its
+        // line it gave, counting from 1. Null once it sends, and for a node too old to say.
+        public int? WaitingPosition { get; set; }
+
+        public bool IsWaitingForPeer => State == TransferState.Downloading && WaitingPosition.HasValue;
+
         public bool IsActive => State is TransferState.Queued or TransferState.Downloading;
 
         public bool HasParts => Parts.IsNotNullOrWhiteSpace();

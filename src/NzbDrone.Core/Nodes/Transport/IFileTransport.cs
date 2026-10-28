@@ -22,6 +22,9 @@ namespace NzbDrone.Core.Nodes.Transport
     public enum FileTransferState
     {
         Connecting,
+
+        // The other node has no free upload slot. It has said where this transfer is in its line.
+        Waiting,
         Receiving,
         Completed,
         Failed
@@ -40,6 +43,9 @@ namespace NzbDrone.Core.Nodes.Transport
         // Set when the transfer failed. The transport's own word for what went wrong.
         public string FailureKind { get; set; }
         public string FailureMessage { get; set; }
+
+        // While waiting: the place in the other node's line, counting from 1.
+        public int? QueuePosition { get; set; }
     }
 
     // One file this node is sending to another node, as the transport reports it.
@@ -59,6 +65,9 @@ namespace NzbDrone.Core.Nodes.Transport
         public string LastFailureMessage { get; set; }
         public string FailureKind { get; set; }
         public string FailureMessage { get; set; }
+
+        // While waiting for a free upload slot: its place in line, counting from 1.
+        public int? QueuePosition { get; set; }
     }
 
     // A file's BLAKE3 hash, and the version of the file it belongs to, as the transport saw it.

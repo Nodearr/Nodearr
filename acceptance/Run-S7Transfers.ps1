@@ -52,6 +52,14 @@
 
 .PARAMETER RadarrConsumerPort
     B's Radarr port. Defaults to 27878.
+
+.PARAMETER OlderTransportBin
+    A sidecar from an earlier release, for one node to run with -OlderNode. The transfer protocol
+    is the sidecar's, so that node speaks to the other as a node on that release would. Its upload
+    settings the earlier sidecar does not know are fixed at 0 in the environment.
+
+.PARAMETER OlderNode
+    A or B: the node that runs -OlderTransportBin. A is then an older sender, B an older receiver.
 #>
 [CmdletBinding()]
 param(
@@ -63,8 +71,13 @@ param(
     [string] $NodearrDll,
     [int] $FirstPort = 6633,
     [int] $SonarrConsumerPort = 28989,
-    [int] $RadarrConsumerPort = 27878
+    [int] $RadarrConsumerPort = 27878,
+    [string] $OlderTransportBin,
+    [ValidateSet('', 'A', 'B')]
+    [string] $OlderNode = ''
 )
+
+if ($OlderNode -and -not (Test-Path $OlderTransportBin)) { throw "-OlderNode $OlderNode needs -OlderTransportBin, the earlier release's sidecar" }
 
 $ErrorActionPreference = 'Stop'
 # Version 1 only: the APIs leave null properties out of their JSON, and reading one must give $null.
@@ -178,6 +191,13 @@ function Start-Node {
     $env:Nodearr__Auth__Method = 'External'
     $env:Nodearr__Log__AnalyticsEnabled = 'false'
     $env:Nodearr__Transport__BinaryPath = $TransportBin
+    Remove-Item Env:Nodearr__Transport__MaxUploads, Env:Nodearr__Transport__TotalUploadLimitKbps -ErrorAction SilentlyContinue
+    if ($Name -eq $OlderNode) {
+        # Left at 0, Nodearr does not pass the earlier sidecar the arguments it does not know.
+        $env:Nodearr__Transport__BinaryPath = $OlderTransportBin
+        $env:Nodearr__Transport__MaxUploads = 0
+        $env:Nodearr__Transport__TotalUploadLimitKbps = 0
+    }
     $env:Nodearr__Transport__Relay = 'disabled'
     $env:Nodearr__Transport__DisablePortMapping = 'true'
     $env:Nodearr__Transport__DownloadFolder = $node.Downloads
@@ -650,7 +670,10 @@ try {
     # --- 3b2. A total upload limit on the sending node ---------------------------------------------
 
     # A is set to send at most half its per-upload limit in all, and B fetches two episodes from it
-    # at once. Together they are held to the total, and each gets a fair part of it.
+    # at once. Together they are held to the total, and each gets a fair part of it. An older
+    # sender has no total limit to hold to.
+    if ($OlderNode -eq 'A') { Write-Host 'Skipped: a total upload limit, which the older sender on A does not have' -ForegroundColor Yellow }
+    else {
     $totalLimit = [math]::Max(64, [math]::Floor($UploadLimitKbps / 2))
     $settingsA = Invoke-Node A GET '/settings/node'
     $settingsA.totalUploadLimitKbps = $totalLimit
@@ -682,6 +705,7 @@ try {
     $settingsA = Invoke-Node A GET '/settings/node'
     $settingsA.totalUploadLimitKbps = 0
     Invoke-Node A PUT "/settings/node/$($settingsA.id)" $settingsA | Out-Null
+    }
 
     # --- 3c. A friend's PROPER replaces a copy that is not one -------------------------------------
 
@@ -802,6 +826,135 @@ try {
     $settingsB.maxDownloads = 3
     Invoke-Node B PUT "/settings/node/$($settingsB.id)" $settingsB | Out-Null
 
+    # --- 4a2. One upload at a time ----------------------------------------------------------------
+
+    # An older receiver cannot be told it waits, but it waits all the same: the limit is A's, and
+    # leaving out the word that it understands queueing does not get round it. Its download simply
+    # looks like one still connecting. An older sender has no line, and sends both at once.
+    if ($OlderNode) {
+        if ($OlderNode -eq 'B') {
+            $settingsA = Invoke-Node A GET '/settings/node'
+            $settingsA.maxUploads = 1
+            Invoke-Node A PUT "/settings/node/$($settingsA.id)" $settingsA | Out-Null
+            Wait-Until -What "A's transport to be running again" -TimeoutSec 60 -Condition { (Invoke-Node A GET '/settings/node').transportRunning } | Out-Null
+        }
+        foreach ($episode in $episodesB[0], $episodesB[1]) {
+            $fileId = (Invoke-Arr sonarrB GET "/episode/$($episode.id)").episodeFileId
+            Invoke-Arr sonarrB DELETE "/episodefile/$fileId" | Out-Null
+        }
+        $script:sawWaiting = $false
+        Invoke-Arr sonarrB POST '/command' @{ name = 'EpisodeSearch'; episodeIds = @($episodesB[0].id, $episodesB[1].id) } | Out-Null
+        # How many of the two are arriving at once: one for an older receiver behind A's limit,
+        # both from an older sender.
+        $expected = $OlderNode -eq 'B' ? 1 : 2
+        $together = Wait-Until -What "$expected download(s) arriving and the rest started" -TimeoutSec 90 -EverySec 0.5 -Condition {
+            $all = @(Get-Transfers)
+            if (@($all | Where-Object { $null -ne $_.waitingPosition }).Count) { $script:sawWaiting = $true }
+            $arriving = @($all | Where-Object { $_.state -eq 'downloading' -and $_.bytesDone -gt 0 })
+            if ($all.Count -eq 2 -and @($all | Where-Object state -eq 'downloading').Count -eq 2 -and $arriving.Count -eq $expected) { $arriving }
+        }
+        $sendingNow = @(Invoke-Node A GET '/transfers/uploads' | Where-Object { $_.state -in 'preparing', 'sending', 'waiting' })
+        $secondTurn = $null
+        if ($OlderNode -eq 'B') {
+            $first = $together[0].downloadId
+            $secondTurn = Wait-Until -What 'the quiet waiting download to start arriving' -TimeoutSec 180 -EverySec 0.5 -Condition {
+                $all = @(Get-Transfers)
+                if (@($all | Where-Object { $null -ne $_.waitingPosition }).Count) { $script:sawWaiting = $true }
+                $second = $all | Where-Object { $_.downloadId -ne $first -and $_.state -eq 'downloading' -and $_.bytesDone -gt 0 } | Select-Object -First 1
+                if ($second) { @{ FirstStillArriving = @($all | Where-Object { $_.downloadId -eq $first -and $_.state -eq 'downloading' }).Count -gt 0 } }
+            }
+        }
+        $bothMixed = Wait-Until -What "B's Sonarr to import both episodes again" -TimeoutSec 240 -EverySec 2 -Condition {
+            Invoke-Arr sonarrB POST '/command' @{ name = 'RefreshMonitoredDownloads' } | Out-Null
+            $all = @(Get-Transfers)
+            if (@($all | Where-Object { $null -ne $_.waitingPosition }).Count) { $script:sawWaiting = $true }
+            $back = @($episodesB[0], $episodesB[1] | ForEach-Object { Invoke-Arr sonarrB GET "/episode/$($_.id)" } | Where-Object hasFile)
+            if ($back.Count -eq 2) { $back }
+        }
+        $senderWaiting = @($sendingNow | Where-Object state -eq 'waiting')
+        $senderSending = @($sendingNow | Where-Object state -eq 'sending')
+        if ($OlderNode -eq 'B') {
+            Assert-That 'An older receiver cannot skip the line: with one upload at a time on A, its second request waits untold and is sent once the first is done' (
+                $together.Count -eq 1 -and $senderSending.Count -eq 1 -and $senderWaiting.Count -eq 1 -and $senderWaiting[0].queuePosition -eq 1 -and
+                -not $script:sawWaiting -and -not $secondTurn.FirstStillArriving -and $bothMixed.Count -eq 2
+            ) @{ arriving = @($together | ForEach-Object title); senderStates = @($sendingNow | ForEach-Object state); senderPosition = $senderWaiting[0].queuePosition; receiverToldOfWaiting = $script:sawWaiting; firstStillArriving = $secondTurn.FirstStillArriving; imported = @($bothMixed | ForEach-Object { "S$($_.seasonNumber)E$($_.episodeNumber)" }) }
+        }
+        else {
+            Assert-That 'A new receiver fetches from an older sender as before: both requests are sent at once and imported' (
+                $together.Count -eq 2 -and -not $script:sawWaiting -and $senderWaiting.Count -eq 0 -and $senderSending.Count -eq 2 -and $bothMixed.Count -eq 2
+            ) @{ arriving = @($together | ForEach-Object title); sawWaiting = $script:sawWaiting; senderStates = @($sendingNow | ForEach-Object state); imported = @($bothMixed | ForEach-Object { "S$($_.seasonNumber)E$($_.episodeNumber)" }) }
+        }
+
+        Wait-Until -What 'the downloads to be cleared' -TimeoutSec 60 -Condition { (Get-Transfers).Count -eq 0 } | Out-Null
+        if ($OlderNode -eq 'B') {
+            $settingsA = Invoke-Node A GET '/settings/node'
+            $settingsA.maxUploads = 3
+            Invoke-Node A PUT "/settings/node/$($settingsA.id)" $settingsA | Out-Null
+            Wait-Until -What "A's transport to be running again" -TimeoutSec 60 -Condition { (Invoke-Node A GET '/settings/node').transportRunning } | Out-Null
+        }
+    }
+    else {
+
+    # Now A sends one file at a time and B takes several. B's Sonarr loses the same two episodes
+    # and searches again. Both start on B, but A queues the second and tells B where it stands.
+    $settingsA = Invoke-Node A GET '/settings/node'
+    $settingsA.maxUploads = 1
+    $oneUpload = Invoke-Node A PUT "/settings/node/$($settingsA.id)" $settingsA
+    Wait-Until -What "A's transport to be running again" -TimeoutSec 60 -Condition { (Invoke-Node A GET '/settings/node').transportRunning } | Out-Null
+    foreach ($episode in $episodesB[0], $episodesB[1]) {
+        $fileId = (Invoke-Arr sonarrB GET "/episode/$($episode.id)").episodeFileId
+        Invoke-Arr sonarrB DELETE "/episodefile/$fileId" | Out-Null
+    }
+    Invoke-Arr sonarrB POST '/command' @{ name = 'EpisodeSearch'; episodeIds = @($episodesB[0].id, $episodesB[1].id) } | Out-Null
+    $atPeer = Wait-Until -What 'one download arriving and one waiting at A' -TimeoutSec 90 -EverySec 0.5 -Condition {
+        $all = @(Get-Transfers)
+        $waitingAtA = @($all | Where-Object { $_.state -eq 'downloading' -and $null -ne $_.waitingPosition })
+        $arriving = @($all | Where-Object { $_.state -eq 'downloading' -and $null -eq $_.waitingPosition -and $_.bytesDone -gt 0 })
+        if ($all.Count -eq 2 -and $waitingAtA.Count -eq 1 -and $arriving.Count -eq 1) { @{ Waiting = $waitingAtA[0]; Arriving = $arriving[0] } }
+    }
+    $waitingUpload = Wait-Until -What 'A to list the upload waiting its turn' -TimeoutSec 15 -EverySec 0.5 -Condition {
+        @(Invoke-Node A GET '/transfers/uploads') | Where-Object { $_.state -eq 'waiting' } | Select-Object -First 1
+    }
+    $atPeerSlot = (Invoke-Sab 'mode=queue&start=0&limit=0&category=tv').queue.slots | Where-Object nzo_id -eq $atPeer.Waiting.downloadId
+    # For a moment after it starts, before A's word that it is queued arrives, the download is
+    # reported as downloading. Sonarr's refresh runs in the background, so its queue can still show
+    # that for a while: what counts is what it settles on.
+    $atPeerInSonarr = $null
+    $settleBy = (Get-Date).AddSeconds(30)
+    while ((Get-Date) -lt $settleBy -and $atPeerInSonarr.status -ne 'queued') {
+        Invoke-Arr sonarrB POST '/command' @{ name = 'RefreshMonitoredDownloads' } | Out-Null
+        Start-Sleep -Seconds 1
+        $atPeerInSonarr = @((Invoke-Arr sonarrB GET '/queue?pageSize=50').records) | Where-Object { $_.downloadId -eq $atPeer.Waiting.downloadId } | Select-Object -First 1
+    }
+    Assert-That 'With one upload at a time, the second request waits at the sender, which tells the receiver its place in line' (
+        $oneUpload.maxUploads -eq 1 -and $oneUpload.transportRestarted -and $oneUpload.transportRunning -and
+        $atPeer.Waiting.waitingPosition -eq 1 -and $waitingUpload.queuePosition -eq 1 -and $waitingUpload.peerName -and
+        $atPeerSlot.status -eq 'Queued' -and $atPeerInSonarr.status -eq 'queued' -and $atPeerInSonarr.trackedDownloadStatus -eq 'ok'
+    ) @{ arriving = $atPeer.Arriving.title; waiting = $atPeer.Waiting.title; position = $atPeer.Waiting.waitingPosition; upload = @{ state = $waitingUpload.state; position = $waitingUpload.queuePosition }; sabStatus = $atPeerSlot.status; sonarrStatus = $atPeerInSonarr.status; sonarrTracked = $atPeerInSonarr.trackedDownloadStatus }
+
+    $sent = Wait-Until -What 'the waiting download to start arriving' -TimeoutSec 180 -EverySec 0.5 -Condition {
+        $all = @(Get-Transfers)
+        $second = $all | Where-Object downloadId -eq $atPeer.Waiting.downloadId | Select-Object -First 1
+        if ($second.state -eq 'downloading' -and $null -eq $second.waitingPosition -and $second.bytesDone -gt 0) {
+            @{ FirstStillArriving = @($all | Where-Object { $_.downloadId -eq $atPeer.Arriving.downloadId -and $_.state -eq 'downloading' }).Count -gt 0 }
+        }
+    }
+    $bothSent = Wait-Until -What "B's Sonarr to import both episodes again" -TimeoutSec 240 -EverySec 2 -Condition {
+        Invoke-Arr sonarrB POST '/command' @{ name = 'RefreshMonitoredDownloads' } | Out-Null
+        $back = @($episodesB[0], $episodesB[1] | ForEach-Object { Invoke-Arr sonarrB GET "/episode/$($_.id)" } | Where-Object hasFile)
+        if ($back.Count -eq 2) { $back }
+    }
+    Assert-That 'The waiting request is sent once the first upload is done, and Sonarr imports both' (
+        -not $sent.FirstStillArriving -and $bothSent.Count -eq 2
+    ) @{ firstStillArriving = $sent.FirstStillArriving; imported = @($bothSent | ForEach-Object { "S$($_.seasonNumber)E$($_.episodeNumber)" }) }
+
+    Wait-Until -What 'the downloads to be cleared' -TimeoutSec 60 -Condition { (Get-Transfers).Count -eq 0 } | Out-Null
+    $settingsA = Invoke-Node A GET '/settings/node'
+    $settingsA.maxUploads = 3
+    Invoke-Node A PUT "/settings/node/$($settingsA.id)" $settingsA | Out-Null
+    Wait-Until -What "A's transport to be running again" -TimeoutSec 60 -Condition { (Invoke-Node A GET '/settings/node').transportRunning } | Out-Null
+    }
+
     # --- 4b. The series is unshared in the middle ------------------------------------------------
 
     # A puts the series on its Hidden list while episode 3 is on its way. Trust stays.
@@ -856,7 +1009,14 @@ try {
     $sonarrFailure = Wait-Until -What 'Sonarr to record the failure' -TimeoutSec 90 -EverySec 2 -Condition {
         Invoke-Arr sonarrB POST '/command' @{ name = 'RefreshMonitoredDownloads' } | Out-Null
         $event = Get-History sonarrB "/history/series?seriesId=$($series.sonarrB.id)" | Where-Object { $_.eventType -eq 'downloadFailed' -and $_.downloadId -eq $doomed.downloadId } | Select-Object -First 1
-        if ($event) { @{ Message = $event.data.message; Blocklisted = @((Invoke-Arr sonarrB GET '/blocklist?pageSize=50').records).Count; EpisodeHasFile = (Invoke-Arr sonarrB GET "/episode/$($episodesB[2].id)").hasFile } }
+        if ($event) { @{ Message = $event.data.message; Blocklisted = 0; EpisodeHasFile = (Invoke-Arr sonarrB GET "/episode/$($episodesB[2].id)").hasFile } }
+    }
+    # Sonarr writes the history entry and the blocklist entry separately, in answer to the same
+    # failure, so the blocklist can be a moment behind.
+    $blocklistBy = (Get-Date).AddSeconds(15)
+    while ((Get-Date) -lt $blocklistBy -and $sonarrFailure.Blocklisted -lt 1) {
+        $sonarrFailure.Blocklisted = @((Invoke-Arr sonarrB GET '/blocklist?pageSize=50').records).Count
+        if ($sonarrFailure.Blocklisted -lt 1) { Start-Sleep -Seconds 1 }
     }
     Assert-That 'Sonarr records the failure with Nodearr''s reason, blocklists the release, and imports nothing' (
         $sonarrFailure.Message -match 'Revoked' -and $sonarrFailure.Blocklisted -ge 1 -and -not $sonarrFailure.EpisodeHasFile
@@ -867,7 +1027,7 @@ try {
     # The first episode was fetched by number, by day, and after it changed. The changed file took
     # two attempts, which should remain one completed upload row. Its PROPER, fetched one at a
     # time with the second episode, is a file of another name. The second episode was fetched
-    # after the restart and again one at a time.
+    # after the restart, one download at a time, and one upload at a time.
     $uploads = @(Invoke-Node A GET '/transfers/uploads')
     $ended = { param([string] $name, [string] $state, [string] $failure) @($uploads | Where-Object { $_.title -eq "$name.mkv" -and $_.state -eq $state -and (-not $failure -or $_.failure -eq $failure) }).Count }
     $completedAttempts = @($uploads | Where-Object { $_.title -eq "$($episodeNames[0]).mkv" -and $_.state -eq 'completed' -and $_.attempts -eq 2 -and $_.lastFailure -eq 'VerificationFailed' }).Count
@@ -879,7 +1039,7 @@ try {
     $wentAway = (& $ended $episodeNames[1] 'failed' 'Stopped') + (& $ended $episodeNames[1] 'failed' 'DirectPathLost')
     Assert-That 'Afterwards the sending node lists each upload and how it ended: sent, stopped by the other side, cut when unshared, or cut when trust ended' (
         (& $ended $episodeNames[0] 'completed') -eq 3 -and (& $ended $episodeNames[0] 'failed' 'VerificationFailed') -eq 0 -and $completedAttempts -eq 1 -and (& $ended $movieName 'completed') -eq 1 -and
-        (& $ended $episodeNames[1] 'completed') -eq 2 -and $resumedUpload -eq 1 -and $wentAway -ge 2 -and
+        (& $ended $episodeNames[1] 'completed') -eq 3 -and $resumedUpload -eq 1 -and $wentAway -ge 2 -and
         (& $ended $episodeNames[2] 'failed' 'NotAuthorized') -eq 1 -and
         (& $ended $episodeNames[2] 'failed' 'Revoked') -eq 1 -and @($uploads | Where-Object { $_.state -in 'sending', 'preparing' }).Count -eq 0
     ) @{ uploads = @($uploads | ForEach-Object { "$($_.title -replace '\.720p.*', '') -> $($_.state) attempts=$($_.attempts) previous=$($_.lastFailure) failure=$($_.failure) $($_.bytesSent)/$($_.size)" }) }

@@ -117,9 +117,22 @@ Requires PowerShell 7, a built Nodearr, Docker, ffmpeg and a built transport sid
 - A's Sonarr takes a PROPER of an episode B holds. B is offered it as a PROPER, shown it as an upgrade, and its Sonarr grabs it from A and imports it in place of its copy.
 - Node B is killed in the middle and started again. The transfer carries on from what had arrived.
 - With **Most Downloads at Once** set to 1 on node B, Sonarr grabs two episodes: the second waits as queued in Nodearr, in the SABnzbd queue and in Sonarr's queue, starts once the first is done, and both are imported.
+- With **Most Uploads at Once** set to 1 on node A, Sonarr on B grabs two episodes: A puts the second in line, both nodes show it waiting with its place, Sonarr's queue shows it as queued, and it is sent once the first is done. Both are imported.
 - Node A revokes trust in the middle. The transfer stops, and Sonarr records why and blocklists the release.
 - B's Sonarr is switched to call the series daily, while A's still calls it standard. It then asks by the day the episode aired, is answered with a title written by day, and imports the file.
 - Node A, the one sending, shows each upload while it leaves and lists how each ended: sent, stopped by the other side, or cut when trust ended.
+
+### Against an older node
+
+The transfer protocol is the sidecar's, so one node can run an earlier release's sidecar and speak to the other as a node on that release would. Build that release's sidecar, then pass it with the node to run it:
+
+```sh
+git archive v0.4.2 transport | tar -x -C /tmp/v042
+cargo build --release --locked --manifest-path /tmp/v042/transport/Cargo.toml
+pwsh acceptance/Run-S7Transfers.ps1 -OlderNode B -OlderTransportBin /tmp/v042/transport/target/release/nodearr-transport
+```
+
+`-OlderNode B` makes B an older receiver: with one upload at a time on A, its second request still waits its turn at A, B is never told so and shows nothing as waiting, it is sent once the first is done, and both are imported. `-OlderNode A` makes A an older sender: B fetches from it as before. The upload settings the earlier sidecar does not know are fixed at 0 on that node, and the total upload limit check is skipped when A is the older one. Every other check runs as usual.
 
 ### Trying it by hand
 

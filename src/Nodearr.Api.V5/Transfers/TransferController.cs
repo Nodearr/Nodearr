@@ -31,6 +31,9 @@ public class TransferResource : RestResource
     public DateTime Added { get; set; }
     public DateTime? Started { get; set; }
     public DateTime? Ended { get; set; }
+
+    // Downloading, and waiting its turn at the other node: the place in line it gave.
+    public int? WaitingPosition { get; set; }
 }
 
 public class UploadResource
@@ -46,6 +49,9 @@ public class UploadResource
     public int Attempts { get; set; }
     public string? LastFailure { get; set; }
     public string? LastFailureMessage { get; set; }
+
+    // Waiting for a free upload slot: its place in line.
+    public int? QueuePosition { get; set; }
     public DateTime Started { get; set; }
     public DateTime? Ended { get; set; }
 }
@@ -91,7 +97,8 @@ public class TransferController : Controller, IHandle<TransfersChangedEvent>
             OutputPath = job.OutputPath,
             Added = job.Added,
             Started = job.Started,
-            Ended = job.Ended
+            Ended = job.Ended,
+            WaitingPosition = job.IsWaitingForPeer ? job.WaitingPosition : null
         }));
     }
 
@@ -113,6 +120,7 @@ public class TransferController : Controller, IHandle<TransfersChangedEvent>
             Attempts = upload.Attempts,
             LastFailure = upload.LastFailure,
             LastFailureMessage = upload.LastFailureMessage,
+            QueuePosition = upload.QueuePosition,
             Started = upload.Started,
             Ended = upload.Ended
         }));

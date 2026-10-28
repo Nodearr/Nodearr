@@ -62,13 +62,15 @@ namespace Nodearr.Http.Test.Sabnzbd
             Mocker.GetMock<ITransferService>().Setup(t => t.All()).Returns(new List<TransferJob>
             {
                 new() { DownloadId = "SABnzbd_nzo_running", State = TransferState.Downloading, Category = "tv", Size = 1000, BytesDone = 500 },
-                new() { DownloadId = "SABnzbd_nzo_waiting", State = TransferState.Queued, Category = "tv", Size = 1000 }
+                new() { DownloadId = "SABnzbd_nzo_waiting", State = TransferState.Queued, Category = "tv", Size = 1000 },
+                new() { DownloadId = "SABnzbd_nzo_at_peer", State = TransferState.Downloading, Category = "tv", Size = 1000, WaitingPosition = 2 }
             });
 
             var result = (ContentResult)Subject.Api("queue", null, null, "key");
             var slots = JsonNode.Parse(result.Content)["queue"]["slots"].AsArray();
 
-            slots.Select(s => ((string)s["nzo_id"], (string)s["status"])).Should().Equal(("SABnzbd_nzo_running", "Downloading"), ("SABnzbd_nzo_waiting", "Queued"));
+            // Waiting at the other node is queued as well: nothing is arriving yet.
+            slots.Select(s => ((string)s["nzo_id"], (string)s["status"])).Should().Equal(("SABnzbd_nzo_running", "Downloading"), ("SABnzbd_nzo_waiting", "Queued"), ("SABnzbd_nzo_at_peer", "Queued"));
         }
     }
 }

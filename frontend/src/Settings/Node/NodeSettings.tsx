@@ -332,6 +332,24 @@ function NodeSettings() {
                   />
                 )}
               </FormGroup>
+
+              <FormGroup>
+                <FormLabel>{translate('NodeSettingsMaxUploads')}</FormLabel>
+
+                {isFixed('maxUploads') ? (
+                  <FixedSetting value={settings.maxUploads.value} />
+                ) : (
+                  <FormInputGroup
+                    type={inputTypes.NUMBER}
+                    name="maxUploads"
+                    min={0}
+                    max={100}
+                    helpText={translate('NodeSettingsMaxUploadsHelpText')}
+                    onChange={handleInputChange}
+                    {...settings.maxUploads}
+                  />
+                )}
+              </FormGroup>
             </FieldSet>
 
             <FieldSet legend={translate('Catalog')}>

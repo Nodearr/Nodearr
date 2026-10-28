@@ -73,6 +73,7 @@ const UPLOAD_KINDS: Record<
   UploadState,
   'default' | 'info' | 'success' | 'danger'
 > = {
+  waiting: 'default',
   preparing: 'default',
   sending: 'info',
   completed: 'success',
@@ -80,6 +81,7 @@ const UPLOAD_KINDS: Record<
 };
 
 const UPLOAD_LABELS: Record<UploadState, string> = {
+  waiting: 'UploadWaiting',
   preparing: 'UploadPreparing',
   sending: 'UploadSending',
   completed: 'UploadCompleted',
@@ -94,6 +96,14 @@ function UploadRow({ upload }: { upload: Upload }) {
     <TableRow>
       <TableRowCell className={styles.title}>
         {upload.title}
+
+        {state === 'waiting' && upload.queuePosition ? (
+          <div className={styles.muted}>
+            {translate('UploadWaitingInLine', {
+              position: upload.queuePosition,
+            })}
+          </div>
+        ) : null}
 
         {(state === 'preparing' || state === 'sending') &&
         upload.attempts > 1 &&
@@ -168,6 +178,18 @@ function TransferRow({ transfer, isBusy, onAction }: TransferRowProps) {
   // A queued transfer that has already been tried is waiting to be tried again.
   const isWaitingToRetry = state === 'queued' && transfer.attempts > 0;
 
+  // Downloading, but the friend's node has no free upload slot yet.
+  const isWaitingForPeer =
+    state === 'downloading' && typeof transfer.waitingPosition === 'number';
+
+  let label = STATE_LABELS[state];
+
+  if (isWaitingToRetry) {
+    label = 'TransferRetrying';
+  } else if (isWaitingForPeer) {
+    label = 'TransferWaiting';
+  }
+
   return (
     <TableRow>
       <TableRowCell className={styles.title}>
@@ -178,15 +200,22 @@ function TransferRow({ transfer, isBusy, onAction }: TransferRowProps) {
             {transfer.failureMessage}
           </div>
         ) : null}
+
+        {isWaitingForPeer ? (
+          <div className={styles.muted}>
+            {translate('TransferWaitingForPeer', {
+              peer: transfer.peerName ?? '',
+              position: transfer.waitingPosition ?? 1,
+            })}
+          </div>
+        ) : null}
       </TableRowCell>
 
       <TableRowCell>{transfer.peerName}</TableRowCell>
 
       <TableRowCell>
-        <Label kind={STATE_KINDS[state]}>
-          {translate(
-            isWaitingToRetry ? 'TransferRetrying' : STATE_LABELS[state]
-          )}
+        <Label kind={isWaitingForPeer ? 'default' : STATE_KINDS[state]}>
+          {translate(label)}
         </Label>
       </TableRowCell>
 
