@@ -45,7 +45,8 @@ function ErrorBoundaryError(props: ErrorBoundaryErrorProps) {
       <div className={styles.imageContainer}>
         <img
           className={styles.image}
-          src={`${window.Nodearr.urlBase}/Content/Images/error.png`}
+          src={`${window.Nodearr.urlBase}/Content/Images/logo.svg`}
+          alt=""
         />
       </div>
 

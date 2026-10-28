@@ -158,6 +158,8 @@ The catalog's Get it action is implemented in #54, connection-loss diagnosis and
 - Catalog availability uses shared colors in tables, posters and cards in both themes ([#96](https://github.com/Nodearr/Nodearr/issues/96)). Local episode lists start with missing hidden; peer lists show shared **Missing** offers by default, and tables and cards share a remembered choice per catalog ([#97](https://github.com/Nodearr/Nodearr/issues/97), the fourth and fifth slices of #98; ADR 0014). Branch `v1/s96-s97-catalog-availability`.
 - Received sends open the shared details card over Home from **Details** or their poster. A single episode opens directly; partial series sends mark their selected episodes. The sender's current cached offer resolves each request, and withdrawn offers show an explanation ([#105](https://github.com/Nodearr/Nodearr/issues/105), the sixth slice of #98; ADR 0021). Branch `v1/s105-received-details`.
 
+- Loading, error and missing-page screens use Nodearr's existing logo; loading text is plain and pinned tabs use teal. Unused inherited artwork was removed, and the remaining visible branding was audited ([#99](https://github.com/Nodearr/Nodearr/issues/99), part of #98). Branch `v1/s99-loading-branding`.
+
 ### Next, in order
 
 1. ~~**Posters, part 1: a friend's catalog with pictures** (S57).~~ Done (ADR 0022).

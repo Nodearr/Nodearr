@@ -83,6 +83,12 @@ In Docker, `localhost` in this setting means inside the container. If access fro
 
 ## Something else
 
+While the web UI starts, it shows Nodearr's logo and **Loading Nodearr…**. If a page cannot be found, check its address or return to **Home**. If a page reports an error loading its content, expand the details below the Nodearr logo and include them when reporting the problem.
+
+![Nodearr loading in the light theme](images/loading-light.png)
+
+![A page error in the dark theme](images/error-dark.png)
+
 - **System > Status** lists everything Nodearr has noticed.
 - **System > Events** lists what happened, newest first.
 - **System > Log Files** has the logs. Set **Log Level** to **Debug** or **Trace** under **Settings > General** for more detail, then restore the previous level.
