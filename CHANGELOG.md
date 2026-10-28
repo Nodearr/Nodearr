@@ -2,20 +2,23 @@
 
 What changed in each release, newest first. Each item links to the decision record that explains it, and the [V1 plan](docs/plans/v1-implementation-plan.md) has the whole story, slice by slice.
 
-## Unreleased
+## 0.5.0 (pre-release)
+
+Your Arr apps now fetch new files from friends by themselves. When a friend gets something you are missing, it arrives without anyone searching, and limits keep a node with many friends from being swamped ([#71](https://github.com/Nodearr/Nodearr/issues/71)).
 
 ### Added
 
-- Choose whether to automatically fetch new files from each friend under **Catalog > Sharing**. Searches and **Get it** still find their files ([#76](https://github.com/Nodearr/Nodearr/issues/76)).
+- **Fetch new files from friends automatically** and **Including upgrades** on each library app in **Settings > Apps**. Nodearr now sets the app's RSS switch for its indexer from them at every sync. A new app fetches automatically, with upgrades off, so it only takes what it is missing. An existing app keeps the RSS choice you had made in the Arr app. Prowlarr is unchanged ([#74](https://github.com/Nodearr/Nodearr/issues/74)).
+- Choose whether to automatically fetch new files from each friend under **Catalog > Sharing**, on by default. Searches and **Get it** still find their files ([#76](https://github.com/Nodearr/Nodearr/issues/76)).
 - A **Total Upload Limit** on **Settings > Node**, beside the upload limit: the most all uploads to friends may send together, shared evenly between them, 0 for none, or `Nodearr__Transport__TotalUploadLimitKbps` in the environment. Each upload still keeps to the per-upload limit ([#84](https://github.com/Nodearr/Nodearr/issues/84), part of [#75](https://github.com/Nodearr/Nodearr/issues/75)).
 - **Most Downloads at Once** on **Settings > Node**: how many downloads from friends run at the same time, 3 by default as before, 0 for no limit, or `Nodearr__Transport__MaxDownloads` in the environment. It applies at once. Grabs beyond it wait in order, shown as **Queued** in **Activity** and in the Arr app's queue ([#86](https://github.com/Nodearr/Nodearr/issues/86), part of [#75](https://github.com/Nodearr/Nodearr/issues/75)).
 - **Most Uploads at Once** on **Settings > Node**: how many files you send to friends at the same time, 3 by default, 0 for no limit, or `Nodearr__Transport__MaxUploads` in the environment. Further requests wait their turn instead of being refused, so the friend's Arr app does not blocklist the release. The friend's **Activity** shows **Waiting** with its place in line, and its Arr app shows the download as queued. A friend on an older version waits its turn too, without being told, so the limit holds for everyone ([#85](https://github.com/Nodearr/Nodearr/issues/85), part of [#75](https://github.com/Nodearr/Nodearr/issues/75)).
 
 ### Changed
 
-- Each library app has **Fetch new files from friends automatically** and **Including upgrades** in Nodearr. New connections fetch missing arrivals automatically, with upgrades off. Existing connections import their current RSS choice at the next successful sync; Nodearr then manages the RSS switch. Prowlarr stays unchanged ([#74](https://github.com/Nodearr/Nodearr/issues/74)).
-
-- Each connected library app has its own RSS feed, listing later arrivals it is missing or could upgrade from friends whose last connection check found a direct route, or who have not yet been checked. Pairing no longer exposes the initial shared library through that feed. Searches and the legacy feed used by Prowlarr remain unchanged. RSS stays off by default until the automatic-fetching settings land ([#73](https://github.com/Nodearr/Nodearr/issues/73), part of [#71](https://github.com/Nodearr/Nodearr/issues/71)).
+- Each library app has its own RSS feed from Nodearr, and it lists only what that app would want: files that arrived after pairing, that the app is missing (or could upgrade, when **Including upgrades** is on), from friends Nodearr can reach directly or has not checked yet. Pairing with a friend no longer offers their whole library to RSS, and friends reachable only through a relay are left out, since files never travel that way. Searches, and the shared feed Prowlarr uses, are unchanged. The apps are moved to their own feed at the next sync ([#73](https://github.com/Nodearr/Nodearr/issues/73)).
+- **Uploads to friends are now three at a time by default**, where there was no limit before. Requests beyond that wait their turn instead of being refused. Set **Most Uploads at Once** to 0 to go back to no limit ([#85](https://github.com/Nodearr/Nodearr/issues/85)).
+- Nodes on this release can make each other wait for an upload slot. A node on an earlier release still sends and receives as before. It is never told it is waiting, but it waits its turn all the same ([#85](https://github.com/Nodearr/Nodearr/issues/85), ADR 0016).
 
 ## 0.4.2 (pre-release)
 
