@@ -160,6 +160,8 @@ The catalog's Get it action is implemented in #54, connection-loss diagnosis and
 
 - Loading, error and missing-page screens use Nodearr's existing logo; loading text is plain and pinned tabs use teal. Unused inherited artwork was removed, and the remaining visible branding was audited ([#99](https://github.com/Nodearr/Nodearr/issues/99), part of #98). Branch `v1/s99-loading-branding`.
 
+- Transport stderr events are plain single lines with their original levels and targets. Nodearr maps them to NLog, preserving unknown output at Info; formatter and parser regressions cover the boundary ([#100](https://github.com/Nodearr/Nodearr/issues/100), part of #98; ADR 0013). Branch `v1/s100-transport-logging`.
+
 ### Next, in order
 
 1. ~~**Posters, part 1: a friend's catalog with pictures** (S57).~~ Done (ADR 0022).

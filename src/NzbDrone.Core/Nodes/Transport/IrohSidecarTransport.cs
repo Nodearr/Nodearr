@@ -516,7 +516,8 @@ namespace NzbDrone.Core.Nodes.Transport
             {
                 if (e.Data.IsNotNullOrWhiteSpace())
                 {
-                    _logger.Info("transport: {0}", e.Data);
+                    var entry = SidecarLogLine.Parse(e.Data);
+                    _logger.Log(entry.Level, "transport: {0}", entry.Message);
                 }
             };
             process.BeginErrorReadLine();
