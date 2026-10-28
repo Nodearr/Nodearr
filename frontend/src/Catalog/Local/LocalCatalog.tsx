@@ -30,7 +30,7 @@ import {
 } from 'typings/LocalCatalog';
 import formatDateTime from 'Utilities/Date/formatDateTime';
 import formatBytes from 'Utilities/Number/formatBytes';
-import titleWithYear from 'Utilities/String/titleWithYear';
+import titleWithYear, { yearOnItsOwn } from 'Utilities/String/titleWithYear';
 import translate from 'Utilities/String/translate';
 import CatalogKindButton from '../CatalogKindButton';
 import { getAvailableCatalogKinds } from '../catalogKinds';
@@ -257,10 +257,12 @@ function fileItems(file: LocalCatalogFile): ShareKey[] {
 }
 
 function TitleTile({ title }: { title: LocalCatalogTitle }) {
-  const name = titleWithYear(
-    title.artist ? `${title.artist} - ${title.title}` : title.title,
-    title.year
-  );
+  const heading = title.artist
+    ? `${title.artist} - ${title.title}`
+    : title.title;
+  const name = titleWithYear(heading, title.year);
+  const year = yearOnItsOwn(heading, title.year);
+  const shown = year ? heading : name;
   const detailsPath = titleDetailsPath(title);
 
   return (
@@ -306,12 +308,13 @@ function TitleTile({ title }: { title: LocalCatalogTitle }) {
       <div className={catalogStyles.tileTitle} title={name}>
         {detailsPath ? (
           <CatalogDetailsButton path={detailsPath} label={name} variant="title">
-            {name}
+            {shown}
           </CatalogDetailsButton>
         ) : (
-          name
+          shown
         )}
       </div>
+      {year ? <div className={catalogStyles.tileDetails}>{year}</div> : null}
 
       <div className={catalogStyles.tileDetails}>
         {title.files === 1

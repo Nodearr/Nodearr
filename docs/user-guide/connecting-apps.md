@@ -224,11 +224,11 @@ In **Posters**, the selected kind shows one tile per title with how many files i
 
 Select a series, episode, movie, Whisparr film or scene poster or title to open its details card. The card shows what the connected Arr app last reported, including its description and the resolution of a file when available. If one file contains several episodes, choose the episode in the card. Use the arrow beside a series or season to expand its rows; **Send** stays a separate action. Lidarr details cards are planned separately.
 
-![The Series Posters view of Alex's own catalog: Cowboy Bebop and its file count](images/local-catalog-posters.png)
+![The Series Posters view of Alex's own catalog: Out of the Inkwell and its file count](images/local-catalog-posters.png)
 
 Choose **Movies** to see movie posters on their own:
 
-![The Movies Posters view of Alex's own catalog: Back to the Future and Spirited Away](images/local-catalog-movies-posters.png)
+![The Movies Posters view of Alex's own catalog: The Little Shop of Horrors, Night of the Living Dead, Nosferatu and Steamboat Willie](images/local-catalog-movies-posters.png)
 
 To refresh all libraries now, go to **Catalog > Local** and select **Refresh Catalog**. Files an app no longer reports are marked missing, then removed from Nodearr's catalog after 7 days. Select **Purge Missing** to remove those catalog entries immediately.
 

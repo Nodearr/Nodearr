@@ -19,11 +19,11 @@ Select **Posters** to switch from the file list to a grid for the selected kind.
 
 Select a series, episode, movie, Whisparr film or scene poster or title to open its details card. For a file with several episodes, choose the episode in the card. The details are what that friend shared from their Arr app, including the resolution they reported; your Nodearr does not connect to the friend's Arr app. The arrow beside a series or season expands its rows, and **Get it** remains a separate action. Lidarr details cards are planned separately.
 
-![The Series Posters view of Sam's catalog: tiles for Cowboy Bebop and Frieren](images/peer-catalog-posters.png)
+![The Series Posters view of Sam's catalog: tiles for Felix the Cat and Out of the Inkwell](images/peer-catalog-posters.png)
 
 Choose **Movies** to see movie posters on their own:
 
-![The Movies Posters view of Sam's catalog: Spirited Away](images/peer-catalog-movies-posters.png)
+![The Movies Posters view of Sam's catalog: Aladdin and His Wonderful Lamp, Metropolis and The Little Shop of Horrors](images/peer-catalog-movies-posters.png)
 
 Posters come from your friends' Arr apps. Nodearr caches each image for 30 days before requesting it again; it does not contact an external image service ([ADR 0022](../adr/0022-posters-from-friends-arr-apps.md)).
 
@@ -95,7 +95,7 @@ When an Arr app grabs a Nodearr result, it sends the request to Nodearr's downlo
 
 The number beside **Activity** counts downloads that are queued, downloading, waiting to retry, or failed and still need attention. Completed downloads and uploads do not count. The badge disappears at zero and turns red while any failed download remains. It updates as transfers change.
 
-![Activity sidebar badge showing one unfinished download while a Frieren episode comes from Sam, with completed Cowboy Bebop uploads below](images/transfers.png)
+![Activity sidebar badge showing one unfinished download while a Felix the Cat short comes from Sam, with completed Out of the Inkwell uploads below](images/transfers.png)
 
 - **Queued**: waiting its turn. Three downloads run at once unless **Most Downloads at Once** on **Settings > Node** says otherwise, and the rest start in the order your Arr apps asked for them. Your Arr app's queue shows it as queued too.
 - **Downloading**: arriving from your friend, with its progress. Your Arr app's queue shows the same.

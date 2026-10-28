@@ -14,9 +14,11 @@
         stop               stop everything, and keep it to start again with "up"
         down               stop everything and remove what this script made
 
-    Library A is Back to the Future and three episodes of Cowboy Bebop. Library B is Spirited Away
-    and three episodes of Frieren: Beyond Journey's End. The videos are test patterns made with ffmpeg, named
-    as releases are, so Sonarr and Radarr import them as those titles.
+    Every title is in the public domain. Library A is Night of the Living Dead, Nosferatu, Steamboat
+    Willie and the first three Out of the Inkwell shorts. Library B is The Little Shop of Horrors,
+    Metropolis, Aladdin and His Wonderful Lamp and the first three Felix the Cat shorts. The videos
+    are test patterns made with ffmpeg, named as releases are, so Sonarr and Radarr import them as
+    those titles.
 
     Sonarr, Radarr and ffmpeg are downloaded from their GitHub releases and checked against the
     SHA-256 each release publishes. Nothing is installed. Everything lives in ~\nodearr-ui-test,
@@ -71,15 +73,27 @@ $ProgressPreference = 'SilentlyContinue'
 # What each set-up holds and where it listens. B's ports differ from A's, so both can run on one
 # machine, and neither clashes with an installed Nodearr, Sonarr or Radarr on their usual ports.
 $Sides = @{
+    # Every title is in the public domain in the United States, so the guide's screenshots of them
+    # show nobody's copyright work. tools/screenshot-posters has posters for them that are too.
     A = @{
         NodearrPort = 26633; SonarrPort = 28989; RadarrPort = 27878
-        Movie       = @{ TmdbId = 105; Title = 'Back to the Future'; Release = 'Back.to.the.Future.1985.720p.WEB-DL.AAC2.0.H.264-NODEARR' }
-        Series      = @{ TvdbId = 76885; Title = 'Cowboy Bebop'; Release = 'Cowboy.Bebop.S01E0{0}.720p.WEB-DL.AAC2.0.H.264-NODEARR' }
+        Movies      = @(
+            @{ TmdbId = 10331; Title = 'Night of the Living Dead'; Release = 'Night.of.the.Living.Dead.1968.720p.WEB-DL.AAC2.0.H.264-NODEARR' }
+            @{ TmdbId = 653; Title = 'Nosferatu'; Release = 'Nosferatu.1922.720p.WEB-DL.AAC2.0.H.264-NODEARR' }
+            @{ TmdbId = 53565; Title = 'Steamboat Willie'; Release = 'Steamboat.Willie.1928.720p.WEB-DL.AAC2.0.H.264-NODEARR' }
+        )
+        # Max Fleischer's first three, from 1919.
+        Series      = @{ TvdbId = 275201; Title = 'Out of the Inkwell'; Episodes = 'S01E01 to S01E03'; Release = 'Out.of.the.Inkwell.S01E0{0}.720p.WEB-DL.AAC2.0.H.264-NODEARR' }
     }
     B = @{
         NodearrPort = 26643; SonarrPort = 28990; RadarrPort = 27879
-        Movie       = @{ TmdbId = 129; Title = 'Spirited Away'; Release = 'Spirited.Away.2001.720p.WEB-DL.AAC2.0.H.264-NODEARR' }
-        Series      = @{ TvdbId = 424536; Title = "Frieren: Beyond Journey's End"; Release = 'Frieren.Beyond.Journeys.End.S01E0{0}.720p.WEB-DL.AAC2.0.H.264-NODEARR' }
+        Movies      = @(
+            @{ TmdbId = 24452; Title = 'The Little Shop of Horrors'; Release = 'The.Little.Shop.of.Horrors.1960.720p.WEB-DL.AAC2.0.H.264-NODEARR' }
+            @{ TmdbId = 19; Title = 'Metropolis'; Release = 'Metropolis.1927.720p.WEB-DL.AAC2.0.H.264-NODEARR' }
+            @{ TmdbId = 145756; Title = 'Aladdin and His Wonderful Lamp'; Release = 'Aladdin.and.His.Wonderful.Lamp.1939.720p.WEB-DL.AAC2.0.H.264-NODEARR' }
+        )
+        # TheTVDB numbers Felix's seasons by year. The first three shorts, from 1919.
+        Series      = @{ TvdbId = 72820; Title = 'Felix the Cat'; Episodes = 'S1919E01 to S1919E03'; Release = 'Felix.the.Cat.S1919E0{0}.720p.WEB-DL.AAC2.0.H.264-NODEARR' }
     }
 }
 
@@ -97,7 +111,8 @@ $FfmpegPackage = @{
 }
 
 # A video shorter than these is taken for a sample and not imported. Sonarr wants at least five
-# minutes of an episode of a series whose episodes run 10 to 30 minutes, as both series here do.
+# minutes of an episode of a series whose episodes run 10 to 30 minutes, and less of a shorter one,
+# as both series here are.
 $MovieSeconds = 660
 $EpisodeSeconds = 330
 
@@ -533,21 +548,28 @@ function Initialize-Library($State) {
     $movies = Join-Path $State.folder 'movies'
     $tv = Join-Path $State.folder 'tv'
 
-    Step "Set-up $($State.side): the test library, $($side.Movie.Title) and three episodes of $($side.Series.Title)"
+    $filmTitles = ($side.Movies | ForEach-Object { $_.Title }) -join ', '
+    Step "Set-up $($State.side): the test library, $filmTitles, and three episodes of $($side.Series.Title)"
 
     if (-not (@(Radarr $State GET '/rootfolder') | Where-Object { $_.path.TrimEnd('\') -eq $movies })) { Radarr $State POST '/rootfolder' @{ path = $movies } | Out-Null }
     if (-not (@(Sonarr $State GET '/rootfolder') | Where-Object { $_.path.TrimEnd('\') -eq $tv })) { Sonarr $State POST '/rootfolder' @{ path = $tv } | Out-Null }
 
-    # The film, from TMDb by Radarr's own lookup.
-    $movie = @(Radarr $State GET '/movie') | Where-Object { $_.tmdbId -eq $side.Movie.TmdbId } | Select-Object -First 1
-    if (-not $movie) {
-        $found = Wait-Until "Radarr $($State.side) to look the film up" { Radarr $State GET "/movie/lookup/tmdb?tmdbId=$($side.Movie.TmdbId)" } -Timeout 90 -Every 5
-        $found | Add-Member -Force qualityProfileId 1
-        $found | Add-Member -Force rootFolderPath $movies
-        $found | Add-Member -Force monitored $true
-        $found | Add-Member -Force minimumAvailability 'released'
-        $found | Add-Member -Force addOptions @{ searchForMovie = $false }
-        $movie = Radarr $State POST '/movie' $found
+    # The films, from TMDb by Radarr's own lookup.
+    foreach ($film in $side.Movies) {
+        $movie = @(Radarr $State GET '/movie') | Where-Object { $_.tmdbId -eq $film.TmdbId } | Select-Object -First 1
+        if (-not $movie) {
+            $found = Wait-Until "Radarr $($State.side) to look up $($film.Title)" { Radarr $State GET "/movie/lookup/tmdb?tmdbId=$($film.TmdbId)" } -Timeout 90 -Every 5
+            $found | Add-Member -Force qualityProfileId 1
+            $found | Add-Member -Force rootFolderPath $movies
+            $found | Add-Member -Force monitored $true
+            $found | Add-Member -Force minimumAvailability 'released'
+            $found | Add-Member -Force addOptions @{ searchForMovie = $false }
+            $movie = Radarr $State POST '/movie' $found
+        }
+
+        if (-not (Radarr $State GET "/movie/$($movie.id)").hasFile) {
+            Import-Release $State ${function:Radarr} 'DownloadedMoviesScan' (Get-TestVideo 'movie') $film.Release
+        }
     }
 
     # The series, from TheTVDB by Sonarr's own lookup, every season monitored as Sonarr's default.
@@ -564,24 +586,20 @@ function Initialize-Library($State) {
 
     Wait-Until "Sonarr $($State.side) to read the episodes" { @(Sonarr $State GET "/episode?seriesId=$($series.id)").Count -gt 3 } -Timeout 180 -Every 3 | Out-Null
 
-    if (-not (Radarr $State GET "/movie/$($movie.id)").hasFile) {
-        Import-Release $State ${function:Radarr} 'DownloadedMoviesScan' (Get-TestVideo 'movie') $side.Movie.Release
-    }
-
     foreach ($episode in 1..3) {
         Import-Release $State ${function:Sonarr} 'DownloadedEpisodesScan' (Get-TestVideo 'episode') ($side.Series.Release -f $episode)
     }
 
     $films = @(Radarr $State GET '/movie' | Where-Object { $_.hasFile }).Count
     $episodes = @(Sonarr $State GET "/episodefile?seriesId=$($series.id)").Count
-    if ($films -lt 1 -or $episodes -lt 3) {
-        Stop-Test "The test library was not imported: $films film and $episodes episodes. Sonarr's and Radarr's logs are under $($State.folder)."
+    if ($films -lt $side.Movies.Count -or $episodes -lt 3) {
+        Stop-Test "The test library was not imported: $films films and $episodes episodes. Sonarr's and Radarr's logs are under $($State.folder)."
     }
 
     Remove-Item (Join-Path $State.folder 'seed') -Recurse -Force -ErrorAction SilentlyContinue
     $State.library_done = $true
     Save-State $State
-    Say "  Radarr has $($side.Movie.Title), and Sonarr three episodes of $($side.Series.Title)."
+    Say "  Radarr has $filmTitles, and Sonarr three episodes of $($side.Series.Title)."
 }
 
 # --- What to tell the person testing ---------------------------------------------------------
@@ -599,7 +617,7 @@ function Get-Card($State) {
         "  Nodearr  http://$($address):$($State.nodearr_port)",
         "  Sonarr   http://localhost:$($State.sonarr_port)   API key $($State.sonarr_key)",
         "  Radarr   http://localhost:$($State.radarr_port)   API key $($State.radarr_key)",
-        "  Library  $($side.Movie.Title), and $($side.Series.Title) S01E01 to S01E03",
+        "  Library  $(($side.Movies | ForEach-Object { $_.Title }) -join ', '), and $($side.Series.Title) $($side.Series.Episodes)",
         "  Nodearr's UDP port, for another machine: $($State.nodearr_port)"
     )
 }

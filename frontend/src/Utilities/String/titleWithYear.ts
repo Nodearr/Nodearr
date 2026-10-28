@@ -12,3 +12,12 @@ export default function titleWithYear(
 
   return `${name} (${year})`;
 }
+
+// The year to show on a line of its own under the title, where a poster tile has no room for both:
+// none when there is no year, or the title already says it.
+export function yearOnItsOwn(
+  title: string | null | undefined,
+  year?: number | null
+) {
+  return year && !(title ?? '').endsWith(`(${year})`) ? `${year}` : null;
+}

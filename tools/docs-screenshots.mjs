@@ -9,13 +9,14 @@
 //
 // "prepare" does through the API what the walkthrough in docs/guides/ui-test.md does by hand: it
 // sets up signing in, names the nodes Alex (A) and Sam (B), connects their Sonarr and Radarr,
-// makes them friends, and has each send the other something it then gets: Alex sends Sam Cowboy
-// Bebop, and Sam sends Alex Spirited Away. Each step it finds done already is skipped.
+// makes them friends, and has each send the other something it then gets: Alex sends Sam Out of
+// the Inkwell, and Sam sends Alex The Little Shop of Horrors. Each step it finds done already is
+// skipped.
 //
 // With no arguments, the capture command takes every screenshot. Pass screenshot names to capture
-// only those pages. The "send" screenshot changes the test data: Sam sends Alex an episode of
-// Frieren from its table row and Alex sends Sam Back to the Future from its poster. Recreate the
-// kit before capturing "send" a second time.
+// only those pages. The "send" screenshot changes the test data: Sam sends Alex a Felix the Cat
+// short from its table row and Alex sends Sam Night of the Living Dead from its poster. Recreate
+// the kit before capturing "send" a second time.
 //
 // The help texts in the shots come from the server, so run the kit on a package built from the
 // branch being documented (build/Build-Release.ps1, then up -Solo -NodearrZip PATH), not on a
@@ -37,6 +38,11 @@
 // What a screenshot would give away about the machine it was taken on is replaced first: the
 // folder the kit lives in, the machine's public and local addresses, and its disk's free space. The guide's
 // screenshots show example values, not anyone's.
+//
+// The kit's titles are all in the public domain, but the posters Sonarr and Radarr fetch for them
+// are often modern artwork. Every poster the pages ask Nodearr for is answered instead from
+// tools/screenshot-posters, which holds public-domain images and where each came from. A title
+// with no file there gets a plain placeholder, never the fetched poster.
 
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -199,8 +205,8 @@ async function prepare() {
   }
   console.log('Alex and Sam are friends');
 
-  await sendAndGet(alex, sam, 'Cowboy Bebop');
-  await sendAndGet(sam, alex, 'Spirited Away');
+  await sendAndGet(alex, sam, 'Out of the Inkwell');
+  await sendAndGet(sam, alex, 'The Little Shop of Horrors');
 }
 
 if (process.argv[2] === 'prepare') {
@@ -208,12 +214,60 @@ if (process.argv[2] === 'prepare') {
   process.exit(0);
 }
 
+// --- Posters ---------------------------------------------------------------------------------
+
+const posters = path.join(root, 'tools', 'screenshot-posters');
+const placeholder =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600"><rect width="400" height="600" fill="#2a2f36"/></svg>';
+
+// A file in tools/screenshot-posters is named after its title: "The Little Shop of Horrors" is
+// the-little-shop-of-horrors.jpg.
+function posterFile(title) {
+  const slug = (title ?? '').toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  try {
+    return readFileSync(path.join(posters, `${slug}.jpg`));
+  } catch {
+    return null;
+  }
+}
+
+// Answers the page's poster requests on one node. Nodearr names a poster by the title's place in
+// its own library, or by a friend's catalog item, so the node is asked which title that is.
+async function swapPosters(context, node) {
+  const missing = new Set();
+
+  await context.route('**/api/v5/catalog/posters/**', async (route) => {
+    const parts = new URL(route.request().url()).pathname.split('/');
+    const at = parts.indexOf('posters');
+    let title = null;
+
+    if (parts[at + 1] === 'local') {
+      const [applicationId, subject, arrId] = parts.slice(at + 2, at + 5);
+      const kind = { series: 'tv', movie: 'movie', album: 'music' }[subject.toLowerCase()];
+      const titles = await node.api('GET', '/sharing/titles');
+      title = titles.find((t) => `${t.applicationId}` === applicationId && `${t.arrId}` === arrId && t.mediaKind === kind)?.title;
+    } else if (parts[at + 1] === 'peer') {
+      const items = await node.api('GET', '/catalog/peers/items?page=1&pageSize=1000');
+      title = items.records.find((i) => `${i.id}` === parts[at + 2])?.title;
+    }
+
+    const image = posterFile(title);
+    if (!image) {
+      if (!missing.has(title)) console.warn(`${node.name}: no public-domain poster for ${title ?? route.request().url()}; a placeholder is shown`);
+      missing.add(title);
+      return route.fulfill({ status: 200, contentType: 'image/svg+xml', body: placeholder });
+    }
+
+    return route.fulfill({ status: 200, contentType: 'image/jpeg', body: image });
+  });
+}
+
 // Runs in the page: every text and form value with something of this machine's in it is replaced
 // by an example.
 function mask(kitFolder) {
   const kitPattern = kitFolder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const rules = [
-    // The kit's folders: ...\nodearr-ui-test\a\tv\Cowboy Bebop becomes D:\Media\TV\Cowboy Bebop.
+    // The kit's folders: ...\nodearr-ui-test\a\tv\Out of the Inkwell becomes D:\Media\TV\Out of the Inkwell.
     [new RegExp(`${kitPattern}[\\\\/][ab][\\\\/]tv`, 'gi'), 'D:\\Media\\TV'],
     [new RegExp(`${kitPattern}[\\\\/][ab][\\\\/]movies`, 'gi'), 'D:\\Media\\Movies'],
     [new RegExp(`${kitPattern}[\\\\/][ab][\\\\/]nodearr-data`, 'gi'), 'C:\\ProgramData\\Nodearr'],
@@ -299,7 +353,8 @@ async function expandFirstSeries(page) {
   }
 
   await season.click();
-  await page.getByText(/ - S01E01/).first().waitFor();
+  // Felix the Cat's seasons are numbered by year, as TheTVDB has them.
+  await page.getByText(/ - S\d+E01/).first().waitFor();
 }
 
 async function expectTitle(page, title, expected) {
@@ -436,7 +491,7 @@ const shots = {
     await shoot(a, 'sharing');
     const hidden = a.locator('fieldset', { has: a.locator('legend', { hasText: /^Hidden$/ }) }).first();
     await hidden.scrollIntoViewIfNeeded();
-    await hidden.getByPlaceholder('Filter').fill('Back');
+    await hidden.getByPlaceholder('Filter').fill('Night');
     await a.waitForTimeout(300);
     await shoot(hidden, 'sharing-hidden');
     await hidden.getByPlaceholder('Filter').fill('');
@@ -445,12 +500,12 @@ const shots = {
   async catalog({ a }) {
     await open(a, A, '/catalog/peers');
     await a.getByRole('button', { name: 'Series', exact: true }).click();
-    await a.getByText('Cowboy Bebop (1998)', { exact: true }).waitFor();
+    await a.getByText('Out of the Inkwell (1919)', { exact: true }).waitFor();
     await a.getByRole('button', { name: 'Movies', exact: true }).click();
-    await a.getByText('Spirited Away (2001)', { exact: true }).waitFor();
-    await expectTitle(a, 'Cowboy Bebop (1998)', false);
+    await a.getByText('The Little Shop of Horrors (1960)', { exact: true }).waitFor();
+    await expectTitle(a, 'Out of the Inkwell (1919)', false);
     await a.getByRole('button', { name: 'Series', exact: true }).click();
-    await a.getByText('Cowboy Bebop (1998)', { exact: true }).waitFor();
+    await a.getByText('Out of the Inkwell (1919)', { exact: true }).waitFor();
     await expandFirstSeries(a);
     await shoot(a, 'peer-catalog');
     await a.getByRole('button', { name: 'Get it', exact: true }).last().click();
@@ -459,35 +514,35 @@ const shots = {
     await shoot(a, 'peer-catalog-get-it', { chrome: true });
     await a.keyboard.press('Escape');
     await a.getByText('Posters', { exact: true }).click();
-    await a.getByText('Cowboy Bebop (1998)', { exact: true }).waitFor();
+    await a.getByText('Out of the Inkwell', { exact: true }).waitFor();
     await a.waitForTimeout(1200);
     await shoot(a, 'peer-catalog-posters');
     await a.getByRole('button', { name: 'Movies', exact: true }).click();
     await a.waitForLoadState('networkidle');
     await a.waitForTimeout(1200);
-    await expectTitle(a, 'Spirited Away (2001)', true);
-    await expectTitle(a, 'Cowboy Bebop (1998)', false);
+    await expectTitle(a, 'The Little Shop of Horrors', true);
+    await expectTitle(a, 'Out of the Inkwell', false);
     await shoot(a, 'peer-catalog-movies-posters');
     await a.getByText('Table', { exact: true }).click();
     await open(a, A, '/catalog/local');
     await a.getByRole('button', { name: 'Series', exact: true }).click();
-    await a.getByText('Cowboy Bebop (1998)', { exact: true }).waitFor();
+    await a.getByText('Out of the Inkwell (1919)', { exact: true }).waitFor();
     await a.getByRole('button', { name: 'Movies', exact: true }).click();
-    await a.getByText('Back to the Future (1985)', { exact: true }).waitFor();
-    await expectTitle(a, 'Cowboy Bebop (1998)', false);
+    await a.getByText('Night of the Living Dead (1968)', { exact: true }).waitFor();
+    await expectTitle(a, 'Out of the Inkwell (1919)', false);
     await a.getByRole('button', { name: 'Series', exact: true }).click();
-    await a.getByText('Cowboy Bebop (1998)', { exact: true }).waitFor();
+    await a.getByText('Out of the Inkwell (1919)', { exact: true }).waitFor();
     await expandFirstSeries(a);
     await shoot(a, 'local-catalog');
     await a.getByText('Posters', { exact: true }).click();
-    await a.getByText('Cowboy Bebop (1998)', { exact: true }).waitFor();
+    await a.getByText('Out of the Inkwell', { exact: true }).waitFor();
     await a.waitForTimeout(1200);
     await shoot(a, 'local-catalog-posters');
     await a.getByRole('button', { name: 'Movies', exact: true }).click();
     await a.waitForLoadState('networkidle');
     await a.waitForTimeout(1200);
-    await expectTitle(a, 'Back to the Future (1985)', true);
-    await expectTitle(a, 'Cowboy Bebop (1998)', false);
+    await expectTitle(a, 'Night of the Living Dead', true);
+    await expectTitle(a, 'Out of the Inkwell', false);
     await shoot(a, 'local-catalog-movies-posters');
     await a.getByText('Table', { exact: true }).click();
   },
@@ -499,35 +554,35 @@ const shots = {
     await shoot(a, 'backup');
   },
 
-  // B sends A Frieren. A's Home shows it, with Get it. B's uploads are slowed for a moment, so the
+  // B sends A a Felix the Cat short. A's Home shows it, with Get it. B's uploads are slowed for a moment, so the
   // transfer that Get it starts is still running when Activity is taken. It also checks the show,
   // season, file and poster actions preselect their intended share scope.
   async send({ a, b }) {
     await open(b, B, '/catalog/local');
     await selectCatalogKind(b, 'Series');
-    await b.getByText(/Frieren: Beyond Journey's End/).first().waitFor();
+    await b.getByText(/Felix the Cat/i).first().waitFor();
 
-    const showRow = b.getByRole('row').filter({ hasText: /Frieren: Beyond Journey's End/ }).first();
+    const showRow = b.getByRole('row').filter({ hasText: /Felix the Cat/i }).first();
     let dialog = await openCatalogSend(b, showRow);
     const wholeSeries = await selectedCheckboxLabels(dialog);
-    if (wholeSeries.length !== 1 || !wholeSeries[0].includes("Frieren: Beyond Journey's End")) {
+    if (wholeSeries.length !== 1 || !/Felix the Cat/i.test(wholeSeries[0])) {
       throw new Error(`The show action did not select the whole series: ${wholeSeries.join(', ')}`);
     }
     await b.keyboard.press('Escape');
     await dialog.waitFor({ state: 'detached' });
 
-    await b.getByRole('button', { name: /^Expand .*Frieren: Beyond Journey's End/ }).click();
-    const seasonRow = b.getByRole('row').filter({ hasText: /Season 1/ }).first();
+    await b.getByRole('button', { name: /^Expand .*Felix the Cat/i }).click();
+    const seasonRow = b.getByRole('row').filter({ hasText: /Season 1919/ }).first();
     dialog = await openCatalogSend(b, seasonRow);
     const selectedSeason = await dialog.locator('input[type="checkbox"]:checked').first().evaluate((input) => input.closest('label')?.innerText.trim() ?? '');
-    if (!/Season 1/.test(selectedSeason)) {
-      throw new Error(`The season action did not select Season 1: ${selectedSeason}`);
+    if (!/Season 1919/.test(selectedSeason)) {
+      throw new Error(`The season action did not select Season 1919: ${selectedSeason}`);
     }
     await b.keyboard.press('Escape');
     await dialog.waitFor({ state: 'detached' });
 
-    await b.getByRole('button', { name: /^Expand Season 1/ }).click();
-    const episodeRow = b.getByRole('row').filter({ hasText: /Frieren: Beyond Journey's End - S01E01/ }).first();
+    await b.getByRole('button', { name: /^Expand Season 1919/ }).click();
+    const episodeRow = b.getByRole('row').filter({ hasText: /Felix the Cat - S1919E01/i }).first();
     dialog = await openCatalogSend(b, episodeRow);
     const selectedEpisode = await selectedCheckboxLabels(dialog);
     if (selectedEpisode.length !== 1 || !/^1\./.test(selectedEpisode[0])) {
@@ -544,18 +599,18 @@ const shots = {
     }
 
     await open(a, A, '/');
-    await a.getByText(/Sam sent you Frieren/).waitFor({ timeout: 60000 });
+    await a.getByText(/Sam sent you Felix/i).waitFor({ timeout: 60000 });
     await a.waitForTimeout(800);
     await shoot(a, 'received');
 
     // A reused kit may already have this title. Keep the Home card in the shot, and only start a
     // transfer when this node does not already have the title.
-    if (!(await hasLocalShareableTitle(a, "Frieren: Beyond Journey's End"))) {
-      const frierenCard = a
-        .getByText(/Sam sent you Frieren/)
+    if (!(await hasLocalShareableTitle(a, 'Felix the Cat'))) {
+      const felixCard = a
+        .getByText(/Sam sent you Felix/i)
         .locator('xpath=../../..');
       await slowedTransfer(a, b, () =>
-        frierenCard.getByRole('button', { name: 'Get it', exact: true }).click()
+        felixCard.getByRole('button', { name: 'Get it', exact: true }).click()
       );
       await open(a, A, '/');
       await a.getByLabel(/\d+ unfinished downloads?/).first().waitFor({
@@ -570,12 +625,14 @@ const shots = {
     if (!(await posters.isDisabled())) {
       await posters.click();
     }
-    await a.getByText('Back to the Future (1985)', { exact: true }).waitFor();
-    await a.getByTitle('Send Back to the Future (1985) to a friend').click();
+    await a.getByText('Night of the Living Dead', { exact: true }).waitFor();
+    await a.getByTitle('Send Night of the Living Dead (1968) to a friend').click();
     dialog = a.getByRole('dialog');
     await dialog.waitFor();
+    // Its selection arrives with the send form's titles, a moment after the dialog opens.
+    await dialog.locator('input[type="checkbox"]:checked').first().waitFor();
     const selectedMovie = await selectedCheckboxLabels(dialog);
-    if (selectedMovie.length !== 1 || !selectedMovie[0].includes('Back to the Future')) {
+    if (selectedMovie.length !== 1 || !selectedMovie[0].includes('Night of the Living Dead')) {
       throw new Error(`The poster action did not select the whole movie: ${selectedMovie.join(', ')}`);
     }
     await dialog.locator('select[name="recipient"]').selectOption({ label: 'Sam' });
@@ -587,7 +644,7 @@ const shots = {
     }
 
     await open(b, B, '/');
-    await b.getByText(/Alex sent you Back to the Future/).waitFor({ timeout: 60000 });
+    await b.getByText(/Alex sent you Night of the Living Dead/).waitFor({ timeout: 60000 });
   },
 
   // A node started for the first time, with an empty data folder, at NODEARR_NEW: the
@@ -649,7 +706,8 @@ async function hasLocalShareableTitle(page, title) {
       headers: { 'X-Api-Key': window.Nodearr.apiKey },
     });
     const titles = await response.json();
-    return titles.some((item) => item.title === expectedTitle && item.files > 0);
+    // TheTVDB writes some titles with other capitals, as "Felix The Cat".
+    return titles.some((item) => item.title.toLowerCase() === expectedTitle.toLowerCase() && item.files > 0);
   }, title);
 }
 
@@ -684,8 +742,12 @@ const wanted = process.argv.slice(2);
 const browser = await chromium.launch({ executablePath: process.env.NODEARR_SCREENSHOT_BROWSER });
 // Twice the pixels, so text stays sharp when the guide shows a screenshot smaller than it was.
 const options = { viewport: { width: 1280, height: 800 }, deviceScaleFactor: 2, colorScheme: 'dark' };
-const a = await signIn(await browser.newContext(options), A);
-const b = await signIn(await browser.newContext(options), B);
+const contextA = await browser.newContext(options);
+const contextB = await browser.newContext(options);
+await swapPosters(contextA, setUp('a', A, 'Alex'));
+await swapPosters(contextB, setUp('b', B, 'Sam'));
+const a = await signIn(contextA, A);
+const b = await signIn(contextB, B);
 
 try {
   for (const [name, take] of Object.entries(shots)) {
