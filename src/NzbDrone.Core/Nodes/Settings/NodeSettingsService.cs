@@ -145,6 +145,11 @@ namespace NzbDrone.Core.Nodes.Settings
                     ? $"Use 0 for no limit, or at least {MinUploadLimit} KB/s"
                     : null);
 
+            Check(nameof(NodeSettings.TotalUploadLimitKbps), () =>
+                settings.TotalUploadLimitKbps != 0 && settings.TotalUploadLimitKbps < MinUploadLimit
+                    ? $"Use 0 for no limit, or at least {MinUploadLimit} KB/s"
+                    : null);
+
             Check(nameof(NodeSettings.DownloadLimitKbps), () =>
                 settings.DownloadLimitKbps != 0 && settings.DownloadLimitKbps < MinDownloadLimit
                     ? $"Use 0 for no limit, or at least {MinDownloadLimit} KB/s"
@@ -193,6 +198,7 @@ namespace NzbDrone.Core.Nodes.Settings
             Write(nameof(NodeSettings.DirectTimeoutSeconds), before.DirectTimeoutSeconds, settings.DirectTimeoutSeconds, v => _configService.TransferDirectTimeout = v);
             Write(nameof(NodeSettings.DownloadFolder), before.DownloadFolder ?? string.Empty, (settings.DownloadFolder ?? string.Empty).Trim(), v => _configService.TransferDownloadFolder = v);
             Write(nameof(NodeSettings.UploadLimitKbps), before.UploadLimitKbps, settings.UploadLimitKbps, v => _configService.TransferUploadLimit = v);
+            Write(nameof(NodeSettings.TotalUploadLimitKbps), before.TotalUploadLimitKbps, settings.TotalUploadLimitKbps, v => _configService.TransferTotalUploadLimit = v);
             Write(nameof(NodeSettings.DownloadLimitKbps), before.DownloadLimitKbps, settings.DownloadLimitKbps, v => _configService.TransferDownloadLimit = v);
             Write(nameof(NodeSettings.CatalogSyncInterval), before.CatalogSyncInterval, settings.CatalogSyncInterval, v => _configService.CatalogSyncInterval = v);
 
@@ -215,6 +221,7 @@ namespace NzbDrone.Core.Nodes.Settings
                                    before.PortMapping != after.PortMapping ||
                                    before.DirectTimeoutSeconds != after.DirectTimeoutSeconds ||
                                    before.UploadLimitKbps != after.UploadLimitKbps ||
+                                   before.TotalUploadLimitKbps != after.TotalUploadLimitKbps ||
                                    before.DownloadLimitKbps != after.DownloadLimitKbps;
 
             if (transportChanged && _transport.IsRunning)

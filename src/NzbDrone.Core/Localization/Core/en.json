@@ -2368,6 +2368,8 @@
   "NodeSettingsDownloadLimit": "Download Limit",
   "NodeSettingsDownloadLimitHelpText": "The most each download from another node may use. 0 is no limit.",
   "NodeSettingsUploadLimit": "Upload Limit",
+  "NodeSettingsTotalUploadLimit": "Total Upload Limit",
+  "NodeSettingsTotalUploadLimitHelpText": "The most all uploads to other nodes may use together, shared evenly between them. 0 is no limit.",
   "NodeSettingsCatalogSyncInterval": "Catalog Sync Interval",
   "NodeSettingsCatalogSyncIntervalHelpText": "Minutes between scheduled catalog refreshes. Set 0 to disable them. Pairing, a send, a removal notice or Sync Peer Catalogs can still trigger a refresh. Unshared files cannot be downloaded even if an old offer remains until the next successful sync.",
   "NodeSettingsUploadLimitHelpText": "The most each upload to another node may use. 0 is no limit.",

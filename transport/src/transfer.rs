@@ -136,6 +136,10 @@ pub struct Transfers {
     direct_timeout: Duration,
     /// Bytes per second each upload may send. Zero means no limit.
     upload_limit: u64,
+    /// Bytes per second all uploads together may send. Zero means no limit.
+    total_upload_limit: u64,
+    /// When the time the total upload limit allows is booked until: see `book_upload`.
+    upload_booked: Mutex<Instant>,
     /// Bytes per second each download may take. Zero means no limit.
     download_limit: u64,
     downloads: Mutex<HashMap<String, Download>>,
@@ -149,10 +153,12 @@ pub struct Transfers {
 }
 
 impl Transfers {
-    pub fn new(direct_timeout: Duration, upload_limit: u64, download_limit: u64) -> Self {
+    pub fn new(direct_timeout: Duration, upload_limit: u64, total_upload_limit: u64, download_limit: u64) -> Self {
         Self {
             direct_timeout,
             upload_limit,
+            total_upload_limit,
+            upload_booked: Mutex::new(Instant::now()),
             download_limit,
             downloads: Mutex::new(HashMap::new()),
             uploads: Mutex::new(HashMap::new()),
@@ -162,6 +168,26 @@ impl Transfers {
             hashes: Mutex::new(HashMap::new()),
             hashing: Mutex::new(HashMap::new()),
         }
+    }
+
+    /// When an upload that has just sent `bytes` may send again. Each chunk books the time it
+    /// takes at the per-upload limit, and at the total limit after what other uploads have booked,
+    /// so uploads running at once take turns and share the total evenly. Time no upload used is
+    /// not saved up for a burst later.
+    fn book_upload(&self, bytes: u64, now: Instant) -> Instant {
+        let mut until = now;
+
+        if self.upload_limit > 0 {
+            until = now + Duration::from_secs_f64(bytes as f64 / self.upload_limit as f64);
+        }
+
+        if self.total_upload_limit > 0 {
+            let mut booked = self.upload_booked.lock().unwrap();
+            *booked = (*booked).max(now) + Duration::from_secs_f64(bytes as f64 / self.total_upload_limit as f64);
+            until = until.max(*booked);
+        }
+
+        until
     }
 
     pub fn list(&self) -> Vec<DownloadState> {
@@ -663,8 +689,10 @@ async fn send_file(transfers: &Transfers, conn: &Connection, remote: EndpointId,
         sent += read as u64;
         transfers.upload_update(*upload, |u| u.bytes_sent = offset + sent);
 
-        if transfers.upload_limit > 0 {
-            tokio::time::sleep(Duration::from_secs_f64(read as f64 / transfers.upload_limit as f64)).await;
+        let now = Instant::now();
+        let until = transfers.book_upload(read as u64, now);
+        if until > now {
+            tokio::time::sleep_until(until.into()).await;
         }
     }
 
@@ -864,6 +892,55 @@ mod tests {
             blake3: Some("hash-a".into()),
             finished: Some(Instant::now()),
         }
+    }
+
+    fn limits(upload: u64, total: u64) -> Transfers {
+        Transfers::new(Duration::from_secs(20), upload, total, 0)
+    }
+
+    #[test]
+    fn without_limits_uploads_send_again_at_once() {
+        let transfers = limits(0, 0);
+        let now = Instant::now();
+        assert_eq!(transfers.book_upload(CHUNK as u64, now), now);
+    }
+
+    #[test]
+    fn uploads_running_at_once_take_turns_within_the_total_limit() {
+        let transfers = limits(0, 1000);
+        let now = Instant::now();
+
+        // Three uploads each send 500 bytes at the same moment: between them they may send 1000
+        // a second, so each goes after the one before.
+        assert_eq!(transfers.book_upload(500, now), now + Duration::from_millis(500));
+        assert_eq!(transfers.book_upload(500, now), now + Duration::from_millis(1000));
+        assert_eq!(transfers.book_upload(500, now), now + Duration::from_millis(1500));
+
+        // The first comes round again after the others, not before them.
+        assert_eq!(transfers.book_upload(500, now + Duration::from_millis(500)), now + Duration::from_millis(2000));
+    }
+
+    #[test]
+    fn time_no_upload_used_is_not_saved_up() {
+        let transfers = limits(0, 1000);
+        let now = Instant::now();
+        transfers.book_upload(500, now);
+
+        let later = now + Duration::from_secs(60);
+        assert_eq!(transfers.book_upload(500, later), later + Duration::from_millis(500));
+    }
+
+    #[test]
+    fn each_upload_goes_no_faster_than_the_lower_of_the_two_limits() {
+        // The per-upload limit is the lower: an upload on its own is held to it.
+        let transfers = limits(500, 1000);
+        let now = Instant::now();
+        assert_eq!(transfers.book_upload(500, now), now + Duration::from_millis(1000));
+
+        // The total is the lower.
+        let transfers = limits(1000, 500);
+        let now = Instant::now();
+        assert_eq!(transfers.book_upload(500, now), now + Duration::from_millis(1000));
     }
 
     #[test]

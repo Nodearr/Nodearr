@@ -278,6 +278,26 @@ function NodeSettings() {
               </FormGroup>
 
               <FormGroup>
+                <FormLabel>
+                  {translate('NodeSettingsTotalUploadLimit')}
+                </FormLabel>
+
+                {isFixed('totalUploadLimitKbps') ? (
+                  <FixedSetting value={settings.totalUploadLimitKbps.value} />
+                ) : (
+                  <FormInputGroup
+                    type={inputTypes.NUMBER}
+                    name="totalUploadLimitKbps"
+                    min={0}
+                    unit="KB/s"
+                    helpText={translate('NodeSettingsTotalUploadLimitHelpText')}
+                    onChange={handleInputChange}
+                    {...settings.totalUploadLimitKbps}
+                  />
+                )}
+              </FormGroup>
+
+              <FormGroup>
                 <FormLabel>{translate('NodeSettingsDownloadLimit')}</FormLabel>
 
                 {isFixed('downloadLimitKbps') ? (

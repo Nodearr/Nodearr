@@ -444,6 +444,12 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("TransferUploadLimit", value); }
         }
 
+        public int TransferTotalUploadLimit
+        {
+            get { return GetValueInt("TransferTotalUploadLimit", 0); }
+            set { SetValue("TransferTotalUploadLimit", value); }
+        }
+
         public int TransferDownloadLimit
         {
             get { return GetValueInt("TransferDownloadLimit", 0); }

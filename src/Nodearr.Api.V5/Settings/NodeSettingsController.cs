@@ -22,6 +22,7 @@ public class NodeSettingsResource : RestResource
     public int UploadLimitKbps { get; set; }
 
     // Left out by a client that does not know them, which keeps what is set.
+    public int? TotalUploadLimitKbps { get; set; }
     public int? DownloadLimitKbps { get; set; }
     public int? CatalogSyncInterval { get; set; }
 
@@ -50,6 +51,7 @@ public class NodeSettingsResource : RestResource
             DirectTimeoutSeconds = DirectTimeoutSeconds,
             DownloadFolder = DownloadFolder,
             UploadLimitKbps = UploadLimitKbps,
+            TotalUploadLimitKbps = TotalUploadLimitKbps ?? current.TotalUploadLimitKbps,
             DownloadLimitKbps = DownloadLimitKbps ?? current.DownloadLimitKbps,
             CatalogSyncInterval = CatalogSyncInterval ?? current.CatalogSyncInterval
         };
@@ -113,6 +115,7 @@ public class NodeSettingsController : RestController<NodeSettingsResource>
             DirectTimeoutSeconds = settings.DirectTimeoutSeconds,
             DownloadFolder = settings.DownloadFolder ?? string.Empty,
             UploadLimitKbps = settings.UploadLimitKbps,
+            TotalUploadLimitKbps = settings.TotalUploadLimitKbps,
             DownloadLimitKbps = settings.DownloadLimitKbps,
             CatalogSyncInterval = settings.CatalogSyncInterval,
             FixedByEnvironment = _provider.FixedByEnvironment().OrderBy(n => n).ToList(),

@@ -12,6 +12,7 @@ export interface NodeSettingsModel {
   directTimeoutSeconds: number;
   downloadFolder: string;
   uploadLimitKbps: number;
+  totalUploadLimitKbps: number;
   downloadLimitKbps: number;
   catalogSyncInterval: number;
 
