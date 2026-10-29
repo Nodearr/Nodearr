@@ -8,6 +8,10 @@ What changed in each release, newest first. Each item links to the decision reco
 
 - Question-mark help links open the relevant user guide for each page, with focused help beside settings sections and in invite, app connection, path mapping, fetch and send flows ([#120](https://github.com/Nodearr/Nodearr/issues/120)).
 
+### Changed
+
+- A node keeps one connection open to a friend while they are talking, instead of opening a new one for every message. Browsing a friend's library with posters makes one connection, not one per poster, so hole punching and the relay's part in it happen once. A connection closes after 3 minutes with nothing sent. Blocking a node now closes every connection to it at once, including transfers it started, and revoking or deleting a friend closes the connection kept to them. Friends on older versions work with this unchanged ([#123](https://github.com/Nodearr/Nodearr/issues/123), [ADR 0011](docs/adr/0011-direct-only-media-over-iroh-with-relay-for-coordination.md#amendment-2026-10-29-control-connections-stay-open-while-nodes-are-talking)).
+
 ## 0.7.0 (pre-release)
 
 Connections between updated friends now use a post-quantum key exchange, helping protect messages and files recorded today from decryption by a future quantum computer. This release also fixes the layout of received titles on Home and how interrupted uploads are labelled when trust ends.

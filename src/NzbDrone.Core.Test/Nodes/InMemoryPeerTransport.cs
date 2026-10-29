@@ -111,6 +111,14 @@ namespace NzbDrone.Core.Test.Nodes
             _blocked = nodeIds.ToHashSet();
         }
 
+        // The nodes this one was asked to close its kept connection to, in order.
+        public List<string> Closed { get; } = new();
+
+        public void CloseConnection(string nodeId)
+        {
+            Closed.Add(nodeId);
+        }
+
         public void SetHandler(IncomingMessageHandler handler)
         {
             _handler = handler;

@@ -94,6 +94,23 @@ Strict mode gives the stronger guarantee and cannot meet the goal of working wit
 - Measure relayed bytes when the direct path is blocked mid-transfer. Still open: the sidecar resets the stream when the path stops being direct, and run 3 below shows a connection surviving a rule change, but nobody has counted relay bytes in that case.
 - ~~S8: a settings page for the port-mapping switch (risk 3).~~ Done: **Settings > Node** (ADR 0019).
 
+## Amendment, 2026-10-29: control connections stay open while nodes are talking
+
+Decided in [#123](https://github.com/Nodearr/Nodearr/issues/123).
+
+Until 0.7.0 every control message (a ping, a catalog request, a poster, a title sent to a friend) opened a new connection to the other node and closed it after one answer. Each one paid for a handshake and hole punching, about 18 KB through the relay by the measurements above. Opening a friend's library is a catalog request and one poster request per title, so it could put hundreds of KB through n0's relay before anything else happened, and the relay saw a new connection for each.
+
+Now the sidecar keeps one control connection open to each node it is asked to reach, and sends each message on a new stream on it:
+
+1. **Only connections this node opens are kept.** Incoming connections are served as before. The receiving side already took many messages on one connection, so the wire protocol did not change, and nodes on older versions work with this unchanged.
+2. **A connection nobody has used for 3 minutes is closed.** A quiet friend has no open connection, so the relay does not see two nodes connected for hours for nothing. The next message opens a new one.
+3. **Trust is still decided per message.** Every message goes to Nodearr, which looks up the other node's current state. Nothing is trusted because the connection was.
+4. **Blocking a node closes everything open to it at once**, control and file connections, whichever side opened them. Before, a block was checked only when a connection was accepted, which a long-lived connection would have got round. Revoking or deleting a node closes the connection kept to it.
+5. **A kept connection that has died is replaced.** One that has closed is replaced before the message is sent. One that turns out to be dead while the message is on it, because the other node restarted or went quiet, is replaced and the message is sent once more. A refusal (`Blocked`, `NotAuthorized`) is not tried again.
+6. **The connection check opens a connection of its own**, so it sees the route as a new connection would, and a kept connection that still works cannot hide a change such as a new firewall rule.
+
+Two nodes that open connections to each other at the same moment each keep their own, until each is idle.
+
 ## Runs between two machines
 
 ### 2026-10-12: a home network and a cloud machine

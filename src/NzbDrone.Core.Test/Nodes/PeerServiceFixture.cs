@@ -504,6 +504,31 @@ namespace NzbDrone.Core.Test.Nodes
             _alice.PeerFor(_bob).State.Should().Be(PeerState.Revoked);
         }
 
+        // The transport keeps a connection open to a friend while they talk. Trust ending closes it
+        // on both sides, rather than leaving it open until it has been idle a while.
+        [Test]
+        public void revoking_should_close_the_kept_connection_on_both_sides()
+        {
+            GivenPaired(_alice, _bob);
+
+            _alice.Service.Revoke(_alice.PeerFor(_bob).Id);
+
+            _alice.Transport.Closed.Should().Equal(_bob.NodeId);
+            _bob.Transport.Closed.Should().Equal(_alice.NodeId);
+        }
+
+        [Test]
+        public void deleting_should_close_the_kept_connection()
+        {
+            GivenPaired(_alice, _bob);
+            _bob.Service.Revoke(_bob.PeerFor(_alice).Id);
+            _alice.Transport.Closed.Clear();
+
+            _alice.Service.Delete(_alice.PeerFor(_bob).Id);
+
+            _alice.Transport.Closed.Should().Equal(_bob.NodeId);
+        }
+
         [Test]
         public void a_blocked_node_should_not_be_deletable()
         {

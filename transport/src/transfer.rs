@@ -32,7 +32,7 @@ use tokio::{
     task::AbortHandle,
 };
 
-use crate::{Incoming, IncomingKind, Reply, CODE_BLOCKED, CODE_DONE, CODE_NOT_AUTHORIZED};
+use crate::{connections::Live, Incoming, IncomingKind, Reply, CODE_BLOCKED, CODE_DONE, CODE_NOT_AUTHORIZED};
 
 pub const TRANSFER_ALPN: &[u8] = b"nodearr/transfer/1";
 
@@ -912,7 +912,7 @@ pub struct DownloadRequest {
     pub expected_hash: Option<String>,
 }
 
-pub fn start(transfers: &Arc<Transfers>, endpoint: Endpoint, request: DownloadRequest) {
+pub fn start(transfers: &Arc<Transfers>, endpoint: Endpoint, live: Arc<Live>, request: DownloadRequest) {
     let mut downloads = transfers.downloads.lock().unwrap();
 
     if let Some(existing) = downloads.get(&request.id) {
@@ -928,7 +928,7 @@ pub fn start(transfers: &Arc<Transfers>, endpoint: Endpoint, request: DownloadRe
     let limit = transfers.download_limit;
 
     let task = tokio::spawn(async move {
-        if let Err(failure) = receive_file(&endpoint, &request, &task_state, limit).await {
+        if let Err(failure) = receive_file(&endpoint, &live, &request, &task_state, limit).await {
             tracing::info!(transfer = %request.id, kind = failure.kind, message = %failure.message, "download stream ended");
             let mut state = task_state.lock().unwrap();
             state.state = "failed";
@@ -944,7 +944,7 @@ fn failure(kind: &'static str, message: impl Into<String>) -> Failure {
 }
 
 /// `limit` is the most bytes per second it may take, zero for no limit.
-async fn receive_file(endpoint: &Endpoint, request: &DownloadRequest, state: &Mutex<DownloadState>, limit: u64) -> std::result::Result<(), Failure> {
+async fn receive_file(endpoint: &Endpoint, live: &Arc<Live>, request: &DownloadRequest, state: &Mutex<DownloadState>, limit: u64) -> std::result::Result<(), Failure> {
     let disk = |err: std::io::Error| failure("DiskError", err.to_string());
 
     let conn = match tokio::time::timeout(Duration::from_secs(30), endpoint.connect(request.target.clone(), TRANSFER_ALPN)).await {
@@ -952,6 +952,8 @@ async fn receive_file(endpoint: &Endpoint, request: &DownloadRequest, state: &Mu
         Ok(Err(err)) => return Err(failure("NoRoute", format!("{err:#}"))),
         Err(_) => return Err(failure("NoRoute", "timed out connecting")),
     };
+    // Listed so that blocking the node closes it.
+    live.track(&conn);
     let paths = PathMonitor::spawn(&conn);
 
     // What a previous attempt left is only worth keeping if its hash is known.

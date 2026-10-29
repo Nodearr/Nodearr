@@ -338,6 +338,11 @@ namespace NzbDrone.Core.Nodes.Transport
             Send(client => client.PostAsJsonAsync("/v1/disconnect", new DisconnectBody { NodeId = nodeId }, JsonOptions));
         }
 
+        public void CloseConnection(string nodeId)
+        {
+            Send(client => client.PostAsJsonAsync("/v1/close", new DisconnectBody { NodeId = nodeId }, JsonOptions));
+        }
+
         private void Send(Func<HttpClient, System.Threading.Tasks.Task<HttpResponseMessage>> send, bool allowNotFound = false)
         {
             var client = RequireClient();

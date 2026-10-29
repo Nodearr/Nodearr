@@ -103,7 +103,13 @@ namespace NzbDrone.Core.Nodes.Transport
         // Connects to a node and waits up to that long for a direct path to it to appear.
         ConnectionProbe Probe(NodeAddress peer, TimeSpan waitForDirect);
         NetworkStatus GetNetworkStatus();
+
+        // Applies the block list, and closes whatever is already open to a node on it.
         void SetBlocked(IEnumerable<string> nodeIds);
+
+        // Closes the connection the transport keeps open to a node while they are talking. Used
+        // when trust ends, so nothing stays open to it until it would have closed for being idle.
+        void CloseConnection(string nodeId);
         void SetHandler(IncomingMessageHandler handler);
     }
 }

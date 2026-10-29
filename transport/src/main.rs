@@ -8,10 +8,12 @@
 //!
 //! What the messages mean, and who is trusted, is decided in Nodearr. The one policy the
 //! sidecar enforces is the block list, because a blocked node must be turned away when its
-//! connection is accepted, before it can send anything.
+//! connection is accepted, before it can send anything, and what is already open to it closed.
 //!
+//! Control connections this node opens stay open while they are in use, in `connections.rs`.
 //! Files move on a second protocol, in `transfer.rs`. Nodearr still decides who may have what.
 
+mod connections;
 mod logging;
 mod transfer;
 
@@ -49,8 +51,10 @@ use tokio::{
     sync::{mpsc, oneshot},
 };
 
+use connections::{ControlConnections, Live};
+
 /// Control messages between nodes: pairing, liveness, and later catalog exchange.
-const CONTROL_ALPN: &[u8] = b"nodearr/control/1";
+pub(crate) const CONTROL_ALPN: &[u8] = b"nodearr/control/1";
 const KEY_FILE: &str = "node.key";
 const TOKEN_ENV: &str = "NODEARR_TRANSPORT_TOKEN";
 const TOKEN_HEADER: &str = "x-nodearr-token";
@@ -84,6 +88,9 @@ struct Args {
     /// How long a transfer waits for a direct path before it gives up.
     #[arg(long, default_value_t = 20)]
     direct_timeout_secs: u64,
+    /// How long a control connection this node opened stays open once nothing is using it.
+    #[arg(long, default_value_t = 180)]
+    control_idle_secs: u64,
     /// The most each upload may send, in kilobytes per second. Zero means no limit.
     #[arg(long, default_value_t = 0)]
     upload_limit_kbps: u64,
@@ -132,11 +139,33 @@ pub(crate) enum Reply {
 struct App {
     endpoint: Endpoint,
     transfers: Arc<transfer::Transfers>,
+    live: Arc<Live>,
+    control: ControlConnections,
     token: String,
     blocked: RwLock<HashSet<EndpointId>>,
     incoming: tokio::sync::Mutex<mpsc::Receiver<Incoming>>,
     awaiting_reply: Mutex<HashMap<u64, oneshot::Sender<Reply>>>,
     next_id: AtomicU64,
+}
+
+impl App {
+    /// The sidecar's state, and where the peer side puts what other nodes send.
+    fn new(endpoint: Endpoint, transfers: transfer::Transfers, token: String, control_idle: Duration) -> (Arc<Self>, mpsc::Sender<Incoming>) {
+        let (incoming_tx, incoming_rx) = mpsc::channel(64);
+        let live = Arc::new(Live::default());
+        let app = Arc::new(Self {
+            control: ControlConnections::new(endpoint.clone(), live.clone(), control_idle),
+            endpoint,
+            transfers: Arc::new(transfers),
+            live,
+            token,
+            blocked: RwLock::new(HashSet::new()),
+            incoming: tokio::sync::Mutex::new(incoming_rx),
+            awaiting_reply: Mutex::new(HashMap::new()),
+            next_id: AtomicU64::new(1),
+        });
+        (app, incoming_tx)
+    }
 }
 
 #[tokio::main]
@@ -158,16 +187,8 @@ async fn main() -> Result<()> {
     }
 
     let endpoint = bind(&args).await?;
-    let (incoming_tx, incoming_rx) = mpsc::channel(64);
-    let app = Arc::new(App {
-        endpoint: endpoint.clone(),
-        transfers: Arc::new(transfer::Transfers::new(Duration::from_secs(args.direct_timeout_secs), args.upload_limit_kbps * 1024, args.total_upload_limit_kbps * 1024, args.download_limit_kbps * 1024, args.max_uploads)),
-        token,
-        blocked: RwLock::new(HashSet::new()),
-        incoming: tokio::sync::Mutex::new(incoming_rx),
-        awaiting_reply: Mutex::new(HashMap::new()),
-        next_id: AtomicU64::new(1),
-    });
+    let transfers = transfer::Transfers::new(Duration::from_secs(args.direct_timeout_secs), args.upload_limit_kbps * 1024, args.total_upload_limit_kbps * 1024, args.download_limit_kbps * 1024, args.max_uploads);
+    let (app, incoming_tx) = App::new(endpoint.clone(), transfers, token, Duration::from_secs(args.control_idle_secs));
 
     tokio::spawn(accept_loop(app.clone(), incoming_tx));
 
@@ -177,6 +198,7 @@ async fn main() -> Result<()> {
         .route("/v1/probe", post(probe))
         .route("/v1/blocked", put(set_blocked))
         .route("/v1/request", post(send_request))
+        .route("/v1/close", post(close_control))
         .route("/v1/incoming", get(next_incoming))
         .route("/v1/incoming/{id}", post(answer_incoming))
         .route("/v1/transfers", get(list_transfers).post(start_transfer))
@@ -285,13 +307,20 @@ async fn accept_loop(app: Arc<App>, queue: mpsc::Sender<Incoming>) {
                 conn.close(VarInt::from_u32(CODE_BLOCKED), b"Blocked");
                 return;
             }
+            // Listed so that blocking the node later closes it.
+            app.live.track(&conn);
 
             if conn.alpn() == transfer::TRANSFER_ALPN {
                 transfer::serve(app.transfers.clone(), conn, queue).await;
                 return;
             }
 
+            // The other node may keep this connection open and send many messages on it.
             while let Ok((send, recv)) = conn.accept_bi().await {
+                if app.blocked.read().unwrap().contains(&remote) {
+                    conn.close(VarInt::from_u32(CODE_BLOCKED), b"Blocked");
+                    break;
+                }
                 if serve_stream(&conn, remote, send, recv, &queue).await.is_err() {
                     break;
                 }
@@ -319,7 +348,7 @@ async fn serve_stream(conn: &Connection, remote: EndpointId, mut send: SendStrea
     }
 }
 
-async fn read_frame(recv: &mut RecvStream) -> Result<Vec<u8>> {
+pub(crate) async fn read_frame(recv: &mut RecvStream) -> Result<Vec<u8>> {
     let len = recv.read_u32().await? as usize;
     if len > MAX_MESSAGE {
         bail!("message of {len} bytes is over the limit");
@@ -329,43 +358,10 @@ async fn read_frame(recv: &mut RecvStream) -> Result<Vec<u8>> {
     Ok(body)
 }
 
-async fn write_frame(send: &mut SendStream, body: &[u8]) -> Result<()> {
+pub(crate) async fn write_frame(send: &mut SendStream, body: &[u8]) -> Result<()> {
     send.write_u32(body.len() as u32).await?;
     send.write_all(body).await?;
     Ok(())
-}
-
-/// Sends one message to a peer and waits for its answer.
-async fn exchange(endpoint: &Endpoint, target: EndpointAddr, body: &[u8], timeout: Duration) -> std::result::Result<Vec<u8>, (&'static str, String)> {
-    let conn = match tokio::time::timeout(timeout, endpoint.connect(target, CONTROL_ALPN)).await {
-        Ok(Ok(conn)) => conn,
-        Ok(Err(err)) => return Err(("NoRoute", format!("{err:#}"))),
-        Err(_) => return Err(("NoRoute", "timed out connecting".into())),
-    };
-
-    let result = tokio::time::timeout(timeout, async {
-        let (mut send, mut recv) = conn.open_bi().await.map_err(|e| anyhow!("{e}"))?;
-        write_frame(&mut send, body).await?;
-        send.finish().map_err(|e| anyhow!("{e}"))?;
-        read_frame(&mut recv).await
-    })
-    .await;
-
-    let outcome = match result {
-        Ok(Ok(body)) => Ok(body),
-        Ok(Err(err)) => Err(match conn.close_reason() {
-            Some(ConnectionError::ApplicationClosed(close)) => match close.error_code.into_inner() as u32 {
-                CODE_BLOCKED => ("Blocked", "the peer has blocked this node".to_string()),
-                CODE_NOT_AUTHORIZED => ("NotAuthorized", "the peer refused the message".to_string()),
-                _ => ("Failed", format!("{err:#}")),
-            },
-            _ => ("Failed", format!("{err:#}")),
-        }),
-        Err(_) => Err(("Timeout", "the peer did not answer in time".to_string())),
-    };
-
-    conn.close(VarInt::from_u32(CODE_DONE), b"done");
-    outcome
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -418,7 +414,9 @@ struct ProbeBody {
 }
 
 /// Connects to a peer and says what path the connection settled on. Files only ever move over a
-/// direct path, so this answers "would a transfer work" without moving one.
+/// direct path, so this answers "would a transfer work" without moving one. It always opens a
+/// connection of its own, so that it sees the route as a new connection would, and a kept
+/// control connection that still works cannot hide a change such as a new firewall rule.
 async fn probe(State(app): State<Arc<App>>, Json(body): Json<ProbeBody>) -> Json<serde_json::Value> {
     let failed = |kind: &str, message: String| Json(json!({ "error": { "kind": kind, "message": message } }));
 
@@ -427,10 +425,9 @@ async fn probe(State(app): State<Arc<App>>, Json(body): Json<ProbeBody>) -> Json
         Err(message) => return failed("BadRequest", message),
     };
 
-    let conn = match tokio::time::timeout(Duration::from_secs(20), app.endpoint.connect(target, CONTROL_ALPN)).await {
-        Ok(Ok(conn)) => conn,
-        Ok(Err(err)) => return failed("NoRoute", format!("{err:#}")),
-        Err(_) => return failed("NoRoute", "timed out connecting".into()),
+    let conn = match connections::connect_once(&app.endpoint, &app.live, target, Duration::from_secs(20)).await {
+        Ok(conn) => conn,
+        Err(err) => return failed("NoRoute", format!("{err:#}")),
     };
 
     let started = std::time::Instant::now();
@@ -468,7 +465,16 @@ async fn set_blocked(State(app): State<Arc<App>>, Json(body): Json<BlockedBody>)
             Err(_) => return (StatusCode::BAD_REQUEST, format!("bad node id {id}")).into_response(),
         }
     }
-    *app.blocked.write().unwrap() = parsed;
+    *app.blocked.write().unwrap() = parsed.clone();
+
+    // Whatever is already open to a blocked node closes now, whichever side opened it and whether
+    // it carries messages or files. Otherwise a kept connection would let it go on sending.
+    for node in parsed {
+        let closed = app.live.close(node, CODE_BLOCKED, b"Blocked");
+        if closed > 0 {
+            tracing::info!(remote = %node, closed, "closed connections to a blocked node");
+        }
+    }
     StatusCode::NO_CONTENT.into_response()
 }
 
@@ -524,9 +530,23 @@ async fn send_request(State(app): State<Arc<App>>, Json(request): Json<RequestBo
     };
 
     let timeout = Duration::from_millis(request.timeout_ms.unwrap_or(20_000));
-    match exchange(&app.endpoint, target, &body, timeout).await {
+    match app.control.exchange(target, &body, timeout).await {
         Ok(body) => Json(RequestResult::Ok { body: BASE64.encode(body) }),
         Err((kind, message)) => failed(kind, message),
+    }
+}
+
+#[derive(Deserialize)]
+struct CloseBody {
+    node_id: String,
+}
+
+/// Closes the control connection kept open to a node. Nodearr calls this when trust in the node
+/// ends, so that nothing stays open to it until the idle timeout.
+async fn close_control(State(app): State<Arc<App>>, Json(body): Json<CloseBody>) -> Response {
+    match EndpointId::from_str(&body.node_id) {
+        Ok(node) => Json(json!({ "closed": app.control.close(node).await })).into_response(),
+        Err(_) => (StatusCode::BAD_REQUEST, "bad node id").into_response(),
     }
 }
 
@@ -612,7 +632,7 @@ async fn start_transfer(State(app): State<Arc<App>>, Json(body): Json<StartTrans
         dest: PathBuf::from(body.dest),
         expected_hash: body.expected_hash.filter(|h| !h.is_empty()),
     };
-    transfer::start(&app.transfers, app.endpoint.clone(), request);
+    transfer::start(&app.transfers, app.endpoint.clone(), app.live.clone(), request);
     StatusCode::ACCEPTED.into_response()
 }
 
@@ -682,6 +702,162 @@ async fn disconnect(State(app): State<Arc<App>>, Json(body): Json<DisconnectBody
 #[cfg(test)]
 mod tests {
     use rustls::NamedGroup;
+
+    use super::*;
+
+    /// A node on loopback with no relay, and a stand-in for Nodearr that answers every message
+    /// with its own body and leaves every file request waiting.
+    async fn node(control_idle: Duration) -> Arc<App> {
+        node_with_key(SecretKey::generate(), control_idle).await
+    }
+
+    async fn node_with_key(key: SecretKey, control_idle: Duration) -> Arc<App> {
+        let endpoint = Endpoint::builder(presets::Minimal)
+            .secret_key(key)
+            .alpns(vec![CONTROL_ALPN.to_vec(), transfer::TRANSFER_ALPN.to_vec()])
+            .relay_mode(RelayMode::Disabled)
+            .clear_ip_transports()
+            .bind_addr("127.0.0.1:0")
+            .unwrap()
+            .bind()
+            .await
+            .unwrap();
+        let (app, queue) = App::new(endpoint, transfer::Transfers::new(Duration::from_secs(5), 0, 0, 0, 0), "t".repeat(16), control_idle);
+        tokio::spawn(accept_loop(app.clone(), queue));
+
+        let nodearr = app.clone();
+        tokio::spawn(async move {
+            let mut waiting = Vec::new();
+            while let Some(incoming) = nodearr.incoming.lock().await.recv().await {
+                match incoming.kind {
+                    IncomingKind::Message(body) => {
+                        let _ = incoming.reply.send(Reply::Body(body));
+                    }
+                    IncomingKind::Transfer { .. } => waiting.push(incoming.reply),
+                }
+            }
+        });
+        app
+    }
+
+    fn id(app: &App) -> EndpointId {
+        app.endpoint.id()
+    }
+
+    async fn ask(from: &App, to: &App, body: &str) -> std::result::Result<String, connections::Failure> {
+        let answer = from.control.exchange(to.endpoint.addr(), body.as_bytes(), Duration::from_secs(5)).await?;
+        Ok(String::from_utf8(answer).unwrap())
+    }
+
+    /// Waits up to five seconds for something that happens a moment after its cause.
+    async fn eventually(what: &str, check: impl Fn() -> bool) {
+        let deadline = std::time::Instant::now() + Duration::from_secs(5);
+        while !check() {
+            assert!(std::time::Instant::now() < deadline, "timed out waiting until {what}");
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    }
+
+    async fn block(app: &Arc<App>, node: EndpointId) {
+        set_blocked(State(app.clone()), Json(BlockedBody { node_ids: vec![node.to_string()] })).await;
+    }
+
+    #[tokio::test]
+    async fn several_exchanges_to_one_friend_use_one_connection() {
+        let a = node(Duration::from_secs(60)).await;
+        let b = node(Duration::from_secs(60)).await;
+
+        assert_eq!(ask(&a, &b, "ping").await.unwrap(), "ping");
+        assert_eq!(ask(&a, &b, "catalog").await.unwrap(), "catalog");
+
+        // A library's posters, asked for all at once, wait for the one connection between them.
+        let posters: Vec<_> = (0..8).map(|n| {
+            let (a, b) = (a.clone(), b.clone());
+            tokio::spawn(async move { ask(&a, &b, &format!("poster {n}")).await })
+        }).collect();
+        for (n, poster) in posters.into_iter().enumerate() {
+            assert_eq!(poster.await.unwrap().unwrap(), format!("poster {n}"));
+        }
+
+        assert_eq!(b.live.count(id(&a)), 1);
+        assert!(a.control.is_open(id(&b)).await);
+    }
+
+    #[tokio::test]
+    async fn a_kept_connection_closes_after_the_idle_timeout() {
+        let a = node(Duration::from_millis(300)).await;
+        let b = node(Duration::from_secs(60)).await;
+
+        ask(&a, &b, "ping").await.unwrap();
+        assert_eq!(b.live.count(id(&a)), 1);
+
+        eventually("the other node sees the connection close", || b.live.count(id(&a)) == 0).await;
+        assert!(!a.control.is_open(id(&b)).await);
+
+        // The next message opens a new one.
+        assert_eq!(ask(&a, &b, "ping").await.unwrap(), "ping");
+        assert_eq!(b.live.count(id(&a)), 1);
+    }
+
+    #[tokio::test]
+    async fn a_dead_connection_is_replaced_on_the_next_exchange() {
+        let a = node(Duration::from_secs(60)).await;
+        let b = node(Duration::from_secs(60)).await;
+        ask(&a, &b, "ping").await.unwrap();
+
+        // The other side drops it, as a node that restarts or slept does. Asked again at once, the
+        // message goes on a new connection, whether or not the close has arrived yet.
+        assert_eq!(b.live.close(id(&a), CODE_DONE, b"gone"), 1);
+        assert_eq!(ask(&a, &b, "again").await.unwrap(), "again");
+        eventually("only the new connection is open", || b.live.count(id(&a)) == 1).await;
+
+        // The other node's sidecar restarts with the same key on a new port.
+        let key = b.endpoint.secret_key().clone();
+        b.endpoint.close().await;
+        let restarted = node_with_key(key, Duration::from_secs(60)).await;
+        assert_eq!(ask(&a, &restarted, "after restart").await.unwrap(), "after restart");
+    }
+
+    #[tokio::test]
+    async fn blocking_a_node_closes_its_control_and_transfer_connections_from_either_side() {
+        let a = node(Duration::from_secs(60)).await;
+        let b = node(Duration::from_secs(60)).await;
+
+        // Control connections opened by each side.
+        ask(&a, &b, "ping").await.unwrap();
+        ask(&b, &a, "ping").await.unwrap();
+
+        // A file B asked A for, and one A asked B for. Each waits on the sending node's Nodearr.
+        let request = |dest: &str| transfer::DownloadRequest { id: dest.into(), target: EndpointAddr::new(EndpointId::from_bytes(&[0; 32]).unwrap()), file: "movie.mkv".into(), dest: std::env::temp_dir().join(dest), expected_hash: None };
+        transfer::start(&b.transfers, b.endpoint.clone(), b.live.clone(), transfer::DownloadRequest { target: a.endpoint.addr(), ..request("nodearr-test-b") });
+        transfer::start(&a.transfers, a.endpoint.clone(), a.live.clone(), transfer::DownloadRequest { target: b.endpoint.addr(), ..request("nodearr-test-a") });
+        eventually("both transfers are connected", || a.live.count(id(&b)) == 4 && b.live.count(id(&a)) == 4).await;
+
+        block(&a, id(&b)).await;
+
+        assert_eq!(a.live.count(id(&b)), 0, "closed on the blocking side at once");
+        eventually("the blocked node sees every connection closed", || b.live.count(id(&a)) == 0).await;
+        assert!(!a.control.is_open(id(&b)).await);
+        assert!(!b.control.is_open(id(&a)).await);
+
+        // The blocked node cannot come back on a new connection either.
+        assert_eq!(ask(&b, &a, "ping").await.unwrap_err().0, "Blocked");
+    }
+
+    #[tokio::test]
+    async fn ending_trust_closes_the_kept_connection() {
+        let a = node(Duration::from_secs(60)).await;
+        let b = node(Duration::from_secs(60)).await;
+        ask(&a, &b, "ping").await.unwrap();
+
+        let closed = close_control(State(a.clone()), Json(CloseBody { node_id: id(&b).to_string() })).await;
+        assert_eq!(closed.status(), StatusCode::OK);
+
+        assert!(!a.control.is_open(id(&b)).await);
+        eventually("the other node sees it close", || b.live.count(id(&a)) == 0).await;
+        // Nothing was kept, so there is nothing to close a second time.
+        assert!(!a.control.close(id(&b)).await);
+    }
 
     /// Connections between nodes offer the post-quantum hybrid first (issue #24). This fails to
     /// build without the aws-lc-rs provider, and fails if prefer-post-quantum is dropped.

@@ -416,6 +416,9 @@ namespace NzbDrone.Core.Nodes
                 _logger.Debug(ex, "Unable to tell {0} that it was revoked", peer.Name);
             }
 
+            // Closed after the courtesy, which went on it.
+            CloseConnection(peer);
+
             return peer;
         }
 
@@ -434,6 +437,7 @@ namespace NzbDrone.Core.Nodes
             }
 
             _peers.Delete(id);
+            CloseConnection(peer);
             _eventAggregator.PublishEvent(new PeerDeletedEvent(id));
         }
 
@@ -489,6 +493,7 @@ namespace NzbDrone.Core.Nodes
 
                 case PeerMessageTypes.Revoke when peer is { State: PeerState.Trusted }:
                     ChangeState(peer, PeerState.Revoked, "Revoked by the other node");
+                    CloseConnection(peer);
 
                     return new PeerReply { Ok = true }.ToBytes();
 
@@ -576,6 +581,21 @@ namespace NzbDrone.Core.Nodes
         private PeerReply Send(Peer peer, PeerMessage message)
         {
             return PeerReply.FromBytes(_transport.Request(peer.ToAddress(), message.ToBytes(), RequestTimeout));
+        }
+
+        // The transport keeps a connection open to a node while they are talking. Once trust has
+        // ended it closes now, not when it has been idle a while. Nothing relies on it being closed:
+        // every message is checked against the node's state when it arrives.
+        private void CloseConnection(Peer peer)
+        {
+            try
+            {
+                _transport.CloseConnection(peer.NodeId);
+            }
+            catch (TransportException ex)
+            {
+                _logger.Debug(ex, "Unable to close the connection to {0}", peer.Name);
+            }
         }
 
         private Peer ChangeState(Peer peer, PeerState state, string reason)
