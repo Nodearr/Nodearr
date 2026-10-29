@@ -114,7 +114,7 @@ To also lint, type-check and build the web UI before the tests, first install th
 ## Branches and commits
 
 - Branch from `main`, named for the slice: `v1/s48-docs`.
-- Commit messages start with a type and a scope, as `feat(sharing): …`, `fix(ui): …` or `docs: …`, then say in plain words what is now true. The body says why, and what was checked.
+- Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/): a type and a scope, as `feat(sharing): …`, `fix(ui): …` or `docs: …`, then in plain words what is now true. The body says why, and what was checked.
 - Commits are signed.
 - One pull request per slice, into `main`.
 
