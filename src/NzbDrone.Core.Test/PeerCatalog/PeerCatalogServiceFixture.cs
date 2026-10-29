@@ -414,6 +414,24 @@ namespace NzbDrone.Core.Test.PeerCatalog
             StoredPeer.Should().Match<Peer>(p => p.CatalogError == "no route" && p.CatalogVersion == "v1");
         }
 
+        // A catalog moves only over a direct path. Without one, what is known is kept, and the friend
+        // says what is missing rather than looking broken.
+        [Test]
+        public void should_keep_what_it_has_and_say_a_direct_connection_is_needed_when_there_is_none()
+        {
+            Subject.Sync(_alice.Id);
+
+            Mocker.GetMock<IPeerService>()
+                  .Setup(s => s.Ask(It.IsAny<Peer>(), It.IsAny<PeerMessage>()))
+                  .Throws(new TransportException(TransportFailure.NoDirectRoute, "no direct path within 20s"));
+
+            Subject.Sync(_alice.Id);
+
+            Stored.Should().HaveCount(3);
+            StoredPeer.Should().Match<Peer>(p => p.CatalogVersion == "v1" && p.CatalogError == TransportException.NoDirectRouteReason);
+            StoredPeer.CatalogError.Should().StartWith("NoDirectRoute").And.Contain("older Nodearr").And.Contain("relay");
+        }
+
         // A node that is not genuine can claim a catalog of any size. What this node already holds
         // is kept, nothing of the claimed one is, and it stops after the first page.
         [TestCase(401, 0)]

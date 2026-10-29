@@ -216,6 +216,10 @@ function Get-RelayBytes {
     return (& $value 'relayserver_bytes_sent_total') + (& $value 'relayserver_bytes_recv_total')
 }
 
+# How long a node's log is now, and the lines it gained since, to see what its transport did.
+function Get-LogMark { param([string] $Name) return @(docker exec $nodes[$Name].Container sh -c 'cat /config/logs/nodearr.txt').Count }
+function Get-LogSince { param([string] $Name, [int] $Mark) return @(docker exec $nodes[$Name].Container sh -c 'cat /config/logs/nodearr.txt' | Select-Object -Skip $Mark) }
+
 function Get-FilesUnder {
     param([string] $Container, [string] $Path)
     return @(docker exec $Container sh -c "find '$Path' -type f 2>/dev/null")
@@ -545,6 +549,23 @@ try {
     ) @{ sawMismatch = $sawMismatch; attempts = $lastSeen.attempts; hashMatchesChangedFile = ($landedChanged -eq $changedHash); failedInSonarr = $failedInSonarr }
     Wait-Until -What 'the finished download to be cleared' -TimeoutSec 60 -Condition { (Get-Transfers).Count -eq 0 } | Out-Null
 
+    # --- 5b. Friends that keep talking keep one connection (#123) --------------------------------
+
+    # Ten catalog syncs in a row, each a message and its answer. Each used to open a connection of
+    # its own; now they share the one kept open between the two nodes.
+    $logMark = Get-LogMark B
+    $relayBeforeBurst = Get-RelayBytes
+    $burstStarted = Get-Date
+    1..10 | ForEach-Object { Invoke-NodeCommand B @{ name = 'PeerCatalogSync' } }
+    $relayForBurst = (Get-RelayBytes) - $relayBeforeBurst
+    $burstLog = Get-LogSince B $logMark
+    $openedForBurst = @($burstLog | Where-Object { $_ -match 'control connection opened' }).Count
+    # The catalog summary is where a sync's outcome shows.
+    $afterBurst = Invoke-Node B GET '/catalog/peers' | Select-Object -First 1
+    Assert-That 'Ten catalog syncs in a row open at most one connection between the nodes, and put next to nothing through the relay' (
+        $openedForBurst -le 1 -and -not $afterBurst.catalogError -and ([datetime]$afterBurst.catalogSyncedAt).ToUniversalTime() -gt $burstStarted.ToUniversalTime() -and $relayForBurst -lt 64KB
+    ) @{ syncs = 10; connectionsOpened = $openedForBurst; bytesThroughRelay = $relayForBurst; catalogError = $afterBurst.catalogError; lastSynced = $afterBurst.catalogSyncedAt }
+
     # --- 6. The direct route goes away, and only the relay is left -------------------------------
 
     $relayBefore = Get-RelayBytes
@@ -560,6 +581,34 @@ try {
     }
 
     $askedAt = [datetime]$relayOnly.connectionChecked
+
+    # What a library holds does not cross the relay either (#122). Measured as the S2 spike did,
+    # with the relay's own byte counters. A quiet spell first gives what the relay carries anyway,
+    # for keeping the path and looking for a direct one. Asking for A's catalog must add nothing
+    # to that: B holds the request back, and A never answers it.
+    $quietSeconds = 20
+    $relayBeforeQuiet = Get-RelayBytes
+    Start-Sleep -Seconds $quietSeconds
+    $relayWhileQuiet = (Get-RelayBytes) - $relayBeforeQuiet
+
+    $logMarkB = Get-LogMark B
+    $logMarkA = Get-LogMark A
+    $relayBeforeCatalog = Get-RelayBytes
+    $catalogStarted = Get-Date
+    Invoke-NodeCommand B @{ name = 'PeerCatalogSync' }
+    $catalogSeconds = ((Get-Date) - $catalogStarted).TotalSeconds
+    $relayForCatalog = (Get-RelayBytes) - $relayBeforeCatalog
+    $heldBack = @(Get-LogSince B $logMarkB | Where-Object { $_ -match 'held a message back' }).Count
+    $answeredOnA = @(Get-LogSince A $logMarkA | Where-Object { $_ -match 'held an answer back|refused a message that came through a relay' }).Count
+    $catalogOnB = Invoke-Node B GET '/catalog/peers' | Select-Object -First 1
+    $itemsKept = (Invoke-Node B GET '/catalog/peers/items?pageSize=50').totalRecords
+    # The quiet spell's rate, over as long as the sync took, with room for the spells not lining up.
+    $allowed = [math]::Max(2 * $relayWhileQuiet * $catalogSeconds / $quietSeconds, 4KB)
+    Assert-That 'With only a relay between the nodes a catalog sync is held back and puts no more through the relay than a quiet spell, and the friend says a direct connection is needed' (
+        $heldBack -ge 1 -and $answeredOnA -eq 0 -and $relayForCatalog -le $allowed -and $itemsKept -eq 7 -and
+        $catalogOnB.catalogError -match '^NoDirectRoute: Needs a direct connection' -and $relayOnly.connectionPath -eq 'relay' -and -not $relayOnly.lastError
+    ) @{ quietSeconds = $quietSeconds; bytesThroughRelayWhileQuiet = $relayWhileQuiet; syncSeconds = [math]::Round($catalogSeconds, 1); bytesThroughRelayForSync = $relayForCatalog; allowed = [long]$allowed
+         heldBackOnB = $heldBack; seenOnA = $answeredOnA; itemsKept = $itemsKept; catalogError = $catalogOnB.catalogError; connectionCheckSaid = $relayOnly.connectionPath }
 
     Search-Episode 4
     $unroutable = Wait-Failed $null 180

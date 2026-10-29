@@ -17,6 +17,15 @@ namespace NzbDrone.Core.Nodes
 
         // The poster of the title an offered item belongs to. An older node refuses it too.
         public const string Poster = "poster";
+
+        // What a library holds may not cross a relay, as files may not: a relay would see how much
+        // two nodes exchange, and when. These messages and their answers wait for a direct path.
+        // Pairing, pings and revoking may cross one: finding a path, and saying there is none,
+        // needs them (ADR 0011).
+        public static bool NeedsDirect(string type)
+        {
+            return type is Catalog or CatalogChanged or Poster or Sent;
+        }
     }
 
     // What one node says to another on the control channel. The transport has already verified

@@ -4,9 +4,9 @@ Start with **System > Status** for health warnings. **Home** also summarizes pro
 
 ## Relay only
 
-**Nodes > Trusted Nodes** shows a friend's connection as **Relay only**, or a transfer fails with `NoDirectRoute` or keeps failing with `DirectPathLost`.
+**Nodes > Trusted Nodes** shows a friend's connection as **Relay only**, a friend's catalog says `NoDirectRoute: Needs a direct connection`, or a transfer fails with `NoDirectRoute` or keeps failing with `DirectPathLost`.
 
-The two nodes can talk through the relay, but files never go that way, so nothing can be fetched until they reach each other directly. Most home networks establish a direct route automatically. If yours does not, check the following:
+The two nodes can pair, check the connection and end trust through the relay, but nothing of what a library holds goes that way: no catalog, no poster, no title sent to a friend, and no file. So a relay-only friend's library cannot be browsed, and nothing can be fetched, until the two nodes reach each other directly. What was already in their catalog stays, and is brought up to date once they do. A friend on Nodearr 0.7.0 or earlier answers without waiting for a direct path, so their catalog can show this reason while the connection is still finding one. Ask them to update. Most home networks establish a direct route automatically. If yours does not, check the following:
 
 1. **A firewall on either machine is dropping incoming UDP.**
    - Windows: the installer allows `nodearr-transport.exe` in. From the zip, Windows asks the first time Nodearr runs; if that was answered no, or nobody saw it, allow `nodearr-transport.exe` for UDP in Windows Defender Firewall, Allow an app.

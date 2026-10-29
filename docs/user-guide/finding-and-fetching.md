@@ -83,7 +83,7 @@ Only trusted friends' current offers can be requested. **Have** has no action. *
 
 Both nodes must be running, and your friend must share at least one file you want.
 
-1. In Nodearr, go to **Nodes > Trusted Nodes** and select **Check connection** for your friend. **Direct** means files can move. **Relay only** allows messages but no media transfers; if it stays that way, see [Relay only](troubleshooting.md#relay-only).
+1. In Nodearr, go to **Nodes > Trusted Nodes** and select **Check connection** for your friend. **Direct** means files can move. **Relay only** allows pairing and connection checks, but no catalog, poster or media; if it stays that way, see [Relay only](troubleshooting.md#relay-only).
 2. Open **Catalog > Peer Catalog** and select **Sync Peer Catalogs**. Find a file your friend shares. If their catalog is empty, ask them to check their app choices and **Hidden** on **Catalog > Sharing**.
 3. Select **Get it** beside the file or on its card, or use the download icon over its poster, check the choices, then select **Get it** in the dialog. You can also add it in your Arr app and run an interactive search there. If the app rejects a result, read its reason; your quality profile or other rules may exclude it.
 4. In Nodearr, open **Activity > Transfers** and wait for **Completed**. The file has then passed verification. Your Arr app imports it at its next download-client check, usually within a minute, then removes the completed download from Nodearr.
@@ -153,7 +153,7 @@ A transfer gets up to three attempts per source, with 15 seconds between retries
 
 | Reason | What it means | What to do |
 | --- | --- | --- |
-| `NoDirectRoute` | The two nodes could only reach each other through a relay, and files never go that way. | See [Relay only](troubleshooting.md#relay-only). |
+| `NoDirectRoute` | The two nodes could only reach each other through a relay, and files, catalogs and posters never go that way. | See [Relay only](troubleshooting.md#relay-only). |
 | `DirectPathLost` | The direct connection was lost during the transfer. | Let Nodearr retry. If failures continue, see [Relay only](troubleshooting.md#relay-only). |
 | `ConnectionLost` | The connection to the other node was lost. | Let Nodearr retry. If attempts are exhausted, check that the friend is online before trying again. |
 | `PeerUnreachable` | The other node could not be reached. It may be offline. | Wait until it is back, then search again. |

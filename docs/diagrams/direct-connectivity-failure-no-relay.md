@@ -1,6 +1,6 @@
 # When there is no direct path
 
-If two nodes cannot reach each other directly, they can still talk through the relay, but no file moves: the transfer fails and says why. See [ADR 0011](../adr/0011-direct-only-media-over-iroh-with-relay-for-coordination.md) and [ADR 0016](../adr/0016-transfers-and-the-download-client.md).
+If two nodes cannot reach each other directly, they can still pair and check the connection through the relay, but nothing of what a library holds moves: no catalog, poster or sent title, and no file. The transfer fails and says why, and so does the friend's catalog. See [ADR 0011](../adr/0011-direct-only-media-over-iroh-with-relay-for-coordination.md) and [ADR 0016](../adr/0016-transfers-and-the-download-client.md).
 
 ## No direct path from the start
 

@@ -307,6 +307,13 @@ namespace NzbDrone.Core.PeerCatalog
                 peer.CatalogVersion = null;
                 peer.CatalogError = $"{ex.Failure}: {ex.Message}";
             }
+            catch (TransportException ex) when (ex.Failure == TransportFailure.NoDirectRoute)
+            {
+                // A catalog moves only over a direct path. What is known is kept, as it is for a
+                // friend who is away, and the reason says what is missing.
+                _logger.Debug(ex, "Catalog from {0} needs a direct connection", peer.Name);
+                peer.CatalogError = TransportException.NoDirectRouteReason;
+            }
             catch (Exception ex) when (ex is TransportException or PeerException)
             {
                 // Unreachable for now. Keep what is known and say so.

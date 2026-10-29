@@ -187,8 +187,9 @@ namespace NzbDrone.Core.Posters
                 }
                 catch (Exception ex) when (ex is TransportException or PeerException)
                 {
-                    // An older Nodearr refuses the question, and one that is away does not answer.
-                    _logger.Debug(ex, "Unable to get a poster from {0}", peer.Name);
+                    // An older Nodearr refuses the question, one that is away does not answer, and
+                    // one reached only through a relay cannot send a poster at all.
+                    _logger.Debug(ex, "Unable to get a poster from {0}: {1}", peer.Name, ex is TransportException { Failure: TransportFailure.NoDirectRoute } ? TransportException.NoDirectRouteReason : ex.Message);
                     _cache.PutNone(key, UnreachableFor);
 
                     return null;

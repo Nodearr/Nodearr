@@ -20,7 +20,7 @@ sequenceDiagram
     Relay->>B: Forwarded, still encrypted
     B-->>Relay: Handshake reply
     Relay-->>A: Forwarded
-    Note over A,B: Each proves it holds the key for its node ID. Small messages can already flow, through the relay.
+    Note over A,B: Each proves it holds the key for its node ID. Pairing and connection checks can already flow, through the relay. Catalogs, posters and sent titles wait for a direct path.
     A->>Relay: My addresses: public and local
     Relay->>B: Forwarded
     B->>Relay: Mine
@@ -32,12 +32,12 @@ sequenceDiagram
     end
     alt Each router lets the other's packets in, as replies
         A-->>B: Direct path selected
-        Note over A,B: Messages and files go directly from now on
+        Note over A,B: Catalogs, posters, sent titles and files go directly from now on
     else No direct path
-        Note over A,B: Messages keep going through the relay. A file is never sent.
+        Note over A,B: Pairing and checks keep going through the relay. Catalogs, posters, sent titles and files are never sent.
     end
 ```
 
-- The relay sees two node IDs, their addresses, and when they talk. It cannot read what passes through it.
+- The relay sees two node IDs, their addresses, and when they talk. It cannot read what passes through it, and nothing of what a library holds passes through it ([ADR 0011, amendment of 2026-10-29](../adr/0011-direct-only-media-over-iroh-with-relay-for-coordination.md#amendment-2026-10-29-what-may-cross-a-relay)).
 - A sidecar also asks the router to open its port (UPnP, NAT-PMP or PCP) unless that is turned off, which makes a direct path likelier.
 - With no relay (**Settings > Node**), nodes can only use addresses they already know for each other, such as on the same network or a forwarded port.

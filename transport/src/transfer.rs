@@ -32,16 +32,14 @@ use tokio::{
     task::AbortHandle,
 };
 
-use crate::{connections::Live, Incoming, IncomingKind, Reply, CODE_BLOCKED, CODE_DONE, CODE_NOT_AUTHORIZED};
+use crate::{connections::Live, Incoming, IncomingKind, Reply, CODE_BLOCKED, CODE_DONE, CODE_NOT_AUTHORIZED, CODE_NO_DIRECT_ROUTE, CODE_RELAYED};
 
 pub const TRANSFER_ALPN: &[u8] = b"nodearr/transfer/1";
 
 const CHUNK: usize = 256 * 1024;
 const MAX_FRAME: usize = 64 * 1024;
 
-const CODE_NO_DIRECT_ROUTE: u32 = 3;
 const CODE_DIRECT_PATH_LOST: u32 = 4;
-const CODE_RELAYED_MEDIA: u32 = 6;
 const CODE_REVOKED: u32 = 7;
 const CODE_NOT_FOUND: u32 = 8;
 
@@ -515,6 +513,8 @@ fn is_retry_request(old: &UploadState, remote: &str, request: &FileRequest) -> b
 }
 
 /// Follows a connection's selected path and keeps route types distinct during path changes.
+/// Clones follow the same connection, so that messages running at once can each wait on it.
+#[derive(Clone)]
 pub(crate) struct PathMonitor {
     selected: watch::Receiver<SelectedPath>,
 }
@@ -539,12 +539,17 @@ impl PathMonitor {
         Self { selected: rx }
     }
 
-    fn is_direct(&self) -> bool {
+    pub(crate) fn is_direct(&self) -> bool {
         self.selected.borrow().is_direct()
     }
 
     fn selected(&self) -> SelectedPath {
         self.selected.borrow().clone()
+    }
+
+    /// The selected path, as the log shows it.
+    pub(crate) fn describe(&self) -> String {
+        self.selected.borrow().description()
     }
 
     pub(crate) async fn wait_direct(&mut self, timeout: Duration) -> bool {
@@ -607,13 +612,99 @@ pub(crate) fn selected_path(conn: &Connection) -> Option<(bool, String)> {
     })
 }
 
+/// QUIC stream frames a connection has received and sent other than on a direct path that is
+/// still open.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct NotDirect {
+    pub received: u64,
+    pub sent: u64,
+}
+
+/// Counts the stream frames a connection has received and sent other than on a direct path.
+/// Messages and their answers travel only in stream frames, which is also what the S2 spike
+/// counted to show that no file data crossed a relay.
+///
+/// The connection's totals include paths that have since closed, so frames that came through a
+/// relay path that is gone still count. Frames on a direct path that is gone count too, which errs
+/// on the side of refusing. The direct paths are read before the totals: both only grow, so a
+/// frame that arrives in between can make the count too high, never too low.
+pub(crate) fn stream_frames_not_direct(conn: &Connection) -> NotDirect {
+    let (direct_received, direct_sent) = conn.paths().iter().filter(|p| p.is_ip()).fold((0, 0), |(received, sent), path| {
+        let stats = path.stats();
+        (received + stats.frame_rx.stream, sent + stats.frame_tx.stream)
+    });
+    let total = conn.stats();
+    NotDirect { received: total.frame_rx.stream.saturating_sub(direct_received), sent: total.frame_tx.stream.saturating_sub(direct_sent) }
+}
+
+/// Sends one message and finishes the stream, only while the connection's selected path is
+/// direct, waiting up to `wait` for one first. Until the other node has acknowledged every byte,
+/// QUIC may still send or resend some of it, so the path is watched until then. If it stops being
+/// direct, the stream is reset, which stops QUIC sending or resending what is left, as for file
+/// data (ADR 0011, point 4). As for file data, what QUIC put on another path in the moment before
+/// the reset is not ruled out (ADR 0011, risk 2). The other node refuses it if any arrived.
+pub(crate) async fn send_direct(send: &mut SendStream, body: &[u8], paths: &mut PathMonitor, wait: Duration) -> std::result::Result<(), NotSent> {
+    if !paths.is_direct() && !paths.wait_direct(wait).await {
+        let _ = send.reset(VarInt::from_u32(CODE_NO_DIRECT_ROUTE));
+        return Err(NotSent::NoDirectPath(format!("no direct path within {}s (the selected path is {}), so nothing was sent", wait.as_secs(), paths.describe())));
+    }
+
+    let mut frame = Vec::with_capacity(4 + body.len());
+    frame.extend_from_slice(&(body.len() as u32).to_be_bytes());
+    frame.extend_from_slice(body);
+
+    let sent = {
+        let sending = async {
+            send.write_all(&frame).await.map_err(|e| NotSent::Failed(anyhow!("write: {e}")))?;
+            send.finish().map_err(|e| NotSent::Failed(anyhow!("finish: {e}")))?;
+            // Resolves once every byte is acknowledged, or the other node stops reading.
+            send.stopped().await.map_err(|e| NotSent::Failed(anyhow!("{e}")))?;
+            Ok::<(), NotSent>(())
+        };
+        tokio::pin!(sending);
+        loop {
+            tokio::select! {
+                sent = &mut sending => break Some(sent),
+                changed = paths.changed() => {
+                    if !changed {
+                        break None;
+                    }
+                    match paths.selected() {
+                        SelectedPath::Direct { .. } => continue,
+                        SelectedPath::None if paths.wait_direct_after_loss(wait).await => continue,
+                        SelectedPath::None | SelectedPath::Relay { .. } => break None,
+                    }
+                }
+            }
+        }
+    };
+
+    match sent {
+        Some(sent) => sent,
+        None => {
+            let _ = send.reset(VarInt::from_u32(CODE_NO_DIRECT_ROUTE));
+            Err(NotSent::NoDirectPath(format!("the selected path stopped being direct ({}) before all of it was acknowledged, so the rest was not sent", paths.describe())))
+        }
+    }
+}
+
+/// Why `send_direct` did not send a message, or not all of it.
+#[derive(Debug)]
+pub(crate) enum NotSent {
+    /// There was no direct path, or it went. Waiting for one may also end because the connection
+    /// closed, so whoever asked looks at that first.
+    NoDirectPath(String),
+    /// The stream or the connection failed, for a reason of its own.
+    Failed(anyhow::Error),
+}
+
 fn code_name(code: u64) -> &'static str {
     match code as u32 {
         CODE_NO_DIRECT_ROUTE => "NoDirectRoute",
         CODE_NOT_AUTHORIZED => "NotAuthorized",
         CODE_DIRECT_PATH_LOST => "DirectPathLost",
         CODE_BLOCKED => "Blocked",
-        CODE_RELAYED_MEDIA => "RelayedMediaRefused",
+        CODE_RELAYED => "RelayedMediaRefused",
         CODE_REVOKED => "Revoked",
         CODE_NOT_FOUND => "NotFound",
         _ => "TransferFailed",
@@ -1018,8 +1109,8 @@ async fn receive_file(endpoint: &Endpoint, live: &Arc<Live>, request: &DownloadR
             Ok(Some(read)) => {
                 if !paths.is_direct() {
                     // The sender should never let this happen. Refuse the data if it does.
-                    let _ = recv.stop(VarInt::from_u32(CODE_RELAYED_MEDIA));
-                    conn.close(VarInt::from_u32(CODE_RELAYED_MEDIA), b"RelayedMedia");
+                    let _ = recv.stop(VarInt::from_u32(CODE_RELAYED));
+                    conn.close(VarInt::from_u32(CODE_RELAYED), b"RelayedMedia");
                     return Err(failure("RelayedMediaRefused", "file data arrived while the selected path was a relay"));
                 }
                 hasher.update(&buffer[..read]);
@@ -1247,6 +1338,88 @@ mod tests {
         let (_tx, rx) = watch::channel(SelectedPath::Relay { local: "relay".into(), remote: "relay".into() });
         let mut monitor = PathMonitor { selected: rx };
         assert!(!monitor.wait_direct_after_loss(Duration::from_secs(1)).await);
+    }
+
+    /// Two endpoints on loopback, with no relay, for one test protocol.
+    async fn loopback_pair() -> (Endpoint, Endpoint) {
+        let bind = || async {
+            Endpoint::builder(iroh::endpoint::presets::Minimal)
+                .secret_key(iroh::SecretKey::generate())
+                .alpns(vec![b"test".to_vec()])
+                .relay_mode(iroh::RelayMode::Disabled)
+                .clear_ip_transports()
+                .bind_addr("127.0.0.1:0")
+                .unwrap()
+                .bind()
+                .await
+                .unwrap()
+        };
+        (bind().await, bind().await)
+    }
+
+    // The receiver does not read, so flow control holds most of the message back on the sender.
+    // The path then stops being direct part way, and what is left must not be sent at all.
+    #[tokio::test]
+    async fn a_message_is_cut_off_when_the_path_stops_being_direct_while_it_is_sent() {
+        let (a, b) = loopback_pair().await;
+        let addr = b.addr();
+        let (read_now, may_read) = oneshot::channel::<()>();
+        let receiver = tokio::spawn(async move {
+            let conn = b.accept().await.unwrap().await.unwrap();
+            let (_send, mut recv) = conn.accept_bi().await.unwrap();
+            may_read.await.unwrap();
+            let read = recv.read_to_end(64 * 1024 * 1024).await;
+            drop(b);
+            read
+        });
+
+        let conn = a.connect(addr, b"test").await.unwrap();
+        let (mut send, _recv) = conn.open_bi().await.unwrap();
+        let (path, selected) = watch::channel(SelectedPath::Direct { local: "127.0.0.1:1".into(), remote: "127.0.0.1:2".into() });
+        let mut paths = PathMonitor { selected };
+        tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_millis(200)).await;
+            path.send(SelectedPath::Relay { local: "relay".into(), remote: "relay".into() }).unwrap();
+            // Kept open, so the change is the last word.
+            tokio::time::sleep(Duration::from_secs(30)).await;
+        });
+
+        // Bounded, so that a sender that ignores the change fails here rather than waiting for ever.
+        let body = vec![7u8; 32 * 1024 * 1024];
+        let sending = send_direct(&mut send, &body, &mut paths, Duration::from_secs(1));
+        let not_sent = tokio::time::timeout(Duration::from_secs(15), sending).await.expect("the change to stop the sending").unwrap_err();
+        assert!(matches!(&not_sent, NotSent::NoDirectPath(message) if message.contains("stopped being direct")), "{not_sent:?}");
+
+        read_now.send(()).unwrap();
+        match receiver.await.unwrap() {
+            Err(iroh::endpoint::ReadToEndError::Read(ReadError::Reset(code))) => assert_eq!(code.into_inner(), CODE_NO_DIRECT_ROUTE as u64),
+            other => panic!("the receiver should see the stream reset, not {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn a_message_with_no_direct_path_is_not_sent_at_all() {
+        let (a, b) = loopback_pair().await;
+        let addr = b.addr();
+        let receiver = tokio::spawn(async move {
+            let conn = b.accept().await.unwrap().await.unwrap();
+            let (_send, mut recv) = conn.accept_bi().await.unwrap();
+            let read = recv.read_to_end(1024).await;
+            drop(b);
+            read
+        });
+
+        let conn = a.connect(addr, b"test").await.unwrap();
+        let (mut send, _recv) = conn.open_bi().await.unwrap();
+        let (_path, selected) = watch::channel(SelectedPath::Relay { local: "relay".into(), remote: "relay".into() });
+        let mut paths = PathMonitor { selected };
+
+        let not_sent = send_direct(&mut send, b"content", &mut paths, Duration::from_millis(100)).await.unwrap_err();
+        assert!(matches!(&not_sent, NotSent::NoDirectPath(message) if message.contains("nothing was sent")), "{not_sent:?}");
+        match receiver.await.unwrap() {
+            Err(iroh::endpoint::ReadToEndError::Read(ReadError::Reset(code))) => assert_eq!(code.into_inner(), CODE_NO_DIRECT_ROUTE as u64),
+            other => panic!("the receiver should see the stream reset with nothing in it, not {other:?}"),
+        }
     }
 
     #[test]
