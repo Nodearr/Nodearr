@@ -196,6 +196,22 @@ namespace NzbDrone.Core.Test.Posters
             Mocker.GetMock<IPeerService>().Verify(s => s.Ask(It.IsAny<Peer>(), It.IsAny<PeerMessage>()), Times.Once());
         }
 
+        // A poster moves only over a direct path. Without one there is no poster for now, and the
+        // friend is asked again once a path may have appeared, not a day later.
+        [Test]
+        public void a_friend_with_no_direct_path_should_mean_no_poster_for_now()
+        {
+            Mocker.GetMock<IPeerService>().Setup(s => s.Ask(It.IsAny<Peer>(), It.IsAny<PeerMessage>())).Throws(new TransportException(TransportFailure.NoDirectRoute, "no direct path within 20s"));
+
+            Subject.Get(10).Should().BeNull();
+            Subject.Get(10).Should().BeNull();
+
+            Mocker.GetMock<IPeerService>().Verify(s => s.Ask(It.IsAny<Peer>(), It.Is<PeerMessage>(m => m.Type == PeerMessageTypes.Poster)), Times.Once());
+
+            var askAgainAt = DateTime.Parse(File.ReadAllText(Directory.GetFiles(TempFolder, "*.none", SearchOption.AllDirectories).Should().ContainSingle().Subject), null, System.Globalization.DateTimeStyles.RoundtripKind);
+            askAgainAt.Should().BeCloseTo(DateTime.UtcNow + PeerPosters.UnreachableFor, TimeSpan.FromMinutes(1));
+        }
+
         [Test]
         public void a_friend_no_longer_trusted_should_not_be_asked()
         {

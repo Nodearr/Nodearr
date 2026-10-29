@@ -62,7 +62,7 @@ namespace NzbDrone.Core.Test.Nodes
             return new NodeAddress { NodeId = _nodeId, RelayUrl = "memory://relay", IpAddresses = new List<string> { "127.0.0.1:1" } };
         }
 
-        public byte[] Request(NodeAddress peer, byte[] body, TimeSpan timeout)
+        public byte[] Request(NodeAddress peer, byte[] body, TimeSpan timeout, bool direct = false)
         {
             var target = _network.Find(peer.NodeId);
 
@@ -76,9 +76,24 @@ namespace NzbDrone.Core.Test.Nodes
                 throw new TransportException(TransportFailure.Blocked, "blocked");
             }
 
+            // Either side being reachable only through the relay leaves no direct path between them.
+            var relayOnly = PathToOthers == ConnectionPath.Relay || target.PathToOthers == ConnectionPath.Relay;
+
+            if (direct && relayOnly)
+            {
+                throw new TransportException(TransportFailure.NoDirectRoute, "no direct path, so nothing was sent");
+            }
+
             target.Delivered++;
 
-            return target._handler?.Invoke(_nodeId, body) ?? throw new TransportException(TransportFailure.NotAuthorized, "refused");
+            var answer = target._handler?.Invoke(_nodeId, body, !relayOnly);
+
+            if (answer is { NoDirectRoute: true } || (answer is { Direct: true } && relayOnly))
+            {
+                throw new TransportException(TransportFailure.NoDirectRoute, "the other node had no direct path to answer on");
+            }
+
+            return answer?.Body ?? throw new TransportException(TransportFailure.NotAuthorized, "refused");
         }
 
         // Every route on this network is a direct one, unless a test says otherwise.
@@ -109,6 +124,14 @@ namespace NzbDrone.Core.Test.Nodes
         public void SetBlocked(IEnumerable<string> nodeIds)
         {
             _blocked = nodeIds.ToHashSet();
+        }
+
+        // The nodes this one was asked to close its kept connection to, in order.
+        public List<string> Closed { get; } = new();
+
+        public void CloseConnection(string nodeId)
+        {
+            Closed.Add(nodeId);
         }
 
         public void SetHandler(IncomingMessageHandler handler)

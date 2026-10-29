@@ -101,7 +101,7 @@ namespace NzbDrone.Core.Nodes.Transport
             return _localAddress;
         }
 
-        public byte[] Request(NodeAddress peer, byte[] body, TimeSpan timeout)
+        public byte[] Request(NodeAddress peer, byte[] body, TimeSpan timeout, bool direct = false)
         {
             var client = RequireClient();
             var request = new RequestBody
@@ -110,7 +110,8 @@ namespace NzbDrone.Core.Nodes.Transport
                 RelayUrl = peer.RelayUrl,
                 IpAddrs = peer.IpAddresses ?? new List<string>(),
                 Body = Convert.ToBase64String(body),
-                TimeoutMs = (long)timeout.TotalMilliseconds
+                TimeoutMs = (long)timeout.TotalMilliseconds,
+                Direct = direct
             };
 
             RequestResponse response;
@@ -336,6 +337,11 @@ namespace NzbDrone.Core.Nodes.Transport
         public void Disconnect(string nodeId)
         {
             Send(client => client.PostAsJsonAsync("/v1/disconnect", new DisconnectBody { NodeId = nodeId }, JsonOptions));
+        }
+
+        public void CloseConnection(string nodeId)
+        {
+            Send(client => client.PostAsJsonAsync("/v1/close", new DisconnectBody { NodeId = nodeId }, JsonOptions));
         }
 
         private void Send(Func<HttpClient, System.Threading.Tasks.Task<HttpResponseMessage>> send, bool allowNotFound = false)
@@ -582,11 +588,15 @@ namespace NzbDrone.Core.Nodes.Transport
                 }
                 else
                 {
-                    var reply = _handler?.Invoke(incoming.RemoteNodeId, Convert.FromBase64String(incoming.Body));
+                    var reply = _handler?.Invoke(incoming.RemoteNodeId, Convert.FromBase64String(incoming.Body), incoming.Direct);
 
-                    if (reply != null)
+                    if (reply is { NoDirectRoute: true })
                     {
-                        answer = new AnswerBody { Body = Convert.ToBase64String(reply) };
+                        answer = new AnswerBody { Reject = true, Reason = "NoDirectRoute" };
+                    }
+                    else if (reply?.Body != null)
+                    {
+                        answer = new AnswerBody { Body = Convert.ToBase64String(reply.Body), Direct = reply.Direct };
                     }
                 }
             }
@@ -688,6 +698,9 @@ namespace NzbDrone.Core.Nodes.Transport
             public List<string> IpAddrs { get; set; }
             public string Body { get; set; }
             public long TimeoutMs { get; set; }
+
+            // Neither the message nor its answer may cross a relay.
+            public bool Direct { get; set; }
         }
 
         private class ProbeBody
@@ -736,6 +749,9 @@ namespace NzbDrone.Core.Nodes.Transport
             public string Kind { get; set; }
             public string Body { get; set; }
             public string File { get; set; }
+
+            // Nothing on the connection the message came on, the message included, came through a relay.
+            public bool Direct { get; set; }
         }
 
         private class AnswerBody
@@ -748,6 +764,9 @@ namespace NzbDrone.Core.Nodes.Transport
 
             [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
             public HashedFile Hash { get; set; }
+
+            // The answer to a message waits for a direct path.
+            public bool Direct { get; set; }
             public bool Reject { get; set; }
 
             [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

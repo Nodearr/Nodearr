@@ -94,6 +94,65 @@ Strict mode gives the stronger guarantee and cannot meet the goal of working wit
 - Measure relayed bytes when the direct path is blocked mid-transfer. Still open: the sidecar resets the stream when the path stops being direct, and run 3 below shows a connection surviving a rule change, but nobody has counted relay bytes in that case.
 - ~~S8: a settings page for the port-mapping switch (risk 3).~~ Done: **Settings > Node** (ADR 0019).
 
+## Amendment, 2026-10-29: control connections stay open while nodes are talking
+
+Decided in [#123](https://github.com/Nodearr/Nodearr/issues/123).
+
+Until 0.7.0 every control message (a ping, a catalog request, a poster, a title sent to a friend) opened a new connection to the other node and closed it after one answer. Each one paid for a handshake and hole punching, about 18 KB through the relay by the measurements above. Opening a friend's library is a catalog request and one poster request per title, so it could put hundreds of KB through n0's relay before anything else happened, and the relay saw a new connection for each.
+
+Now the sidecar keeps one control connection open to each node it is asked to reach, and sends each message on a new stream on it:
+
+1. **Only connections this node opens are kept.** Incoming connections are served as before. The receiving side already took many messages on one connection, so the wire protocol did not change, and nodes on older versions work with this unchanged.
+2. **A connection nobody has used for 3 minutes is closed.** A quiet friend has no open connection, so the relay does not see two nodes connected for hours for nothing. The next message opens a new one.
+3. **Trust is still decided per message.** Every message goes to Nodearr, which looks up the other node's current state. Nothing is trusted because the connection was.
+4. **Blocking a node closes everything open to it at once**, control and file connections, whichever side opened them. Before, a block was checked only when a connection was accepted, which a long-lived connection would have got round. Revoking or deleting a node closes the connection kept to it.
+5. **A kept connection that has died is replaced.** One that has closed is replaced before the message is sent. One that turns out to be dead while the message is on it, because the other node restarted or went quiet, is replaced and the message is sent once more. A refusal (`Blocked`, `NotAuthorized`) is not tried again.
+6. **The connection check opens a connection of its own**, so it sees the route as a new connection would, and a kept connection that still works cannot hide a change such as a new firewall rule.
+
+Two nodes that open connections to each other at the same moment each keep their own, until each is idle.
+
+## Amendment, 2026-10-29: what may cross a relay
+
+Decided in [#122](https://github.com/Nodearr/Nodearr/issues/122), together with the amendment above.
+
+Point 2 let the relay carry the handshake, the transfer request and the file header. In practice, until 0.7.0 the control channel (`nodearr/control/1`) sent on whatever path iroh had selected, so catalogs, catalog changes, posters and "sent to a friend" could cross a relay. The relay could not read them, but it saw who talked to whom, when, and how many bytes, and catalog sizes and how often they sync hint at the size of a library. The V1 plan (decision 8) said relays were for coordination only, and the design overview disagreed with it.
+
+The relay now carries what is needed to find a path, and to say why there is none. What a library holds waits for a direct path, as file data does:
+
+| May cross a relay | Waits for a direct path |
+| --- | --- |
+| Pair, Ping and Revoke, and their answers. Hole punching and the **Relay only** status need them, so a relay-only friend can still pair and shows as **Relay only**. | Catalog, CatalogChanged, Poster and Sent, and their answers. Without a direct path within the direct-route wait (**Settings > Node**, 20 s by default), the exchange fails as `NoDirectRoute` and nothing of it is sent. |
+
+1. **The check is on whoever sends content, per message, for as long as it is being sent.** A catalog request goes from A to B, but the catalog comes back from B to A, so B waits for a direct path before it writes its answer, not only A before it asks. With connections kept open, a connection can be direct for hours and then fall back to the relay, so when it opened says nothing. Checking once before writing is not enough either: until the other node has acknowledged every byte, QUIC may still send or resend some of it on whatever path is selected by then. So the sender watches the path until then, and resets the stream as soon as it stops being direct, which stops QUIC sending or resending the rest, as point 4 does for file data. What QUIC put on the relay in the moment before the reset is not ruled out, as it is not for file data (risk 2), and the receiver refuses it.
+2. **The receiver checks too**, as point 5 does for file data, by counting the QUIC stream frames that arrived other than on a direct path, as the S2 spike did. It uses the connection's totals, which include paths that have closed, so frames that came through a relay path that has since gone still count. A message is taken to have arrived direct only if nothing on its connection, over the connection's whole life, arrived any other way. Counting around each message is not enough: frames of streams not yet accepted may already be in when one is accepted, and a first version that counted that way took relayed messages for direct (found in review, and reproduced in a test with 32 messages sent at once through a relay). An answer is checked over the time since its stream was opened, which none of its frames can come before.
+3. **A node of this version does not make the other node refuse its content.** A kept connection that has sent anything other than directly, such as a ping before hole punching found the direct path, is not used for a message that may not cross a relay: a new connection is opened for it once the direct path is there. Waiting first means no handshake goes through the relay while there is no direct path to use. If the other node still refuses the message as relayed, it is tried once more on a new connection. A connection replaced this way is left to close when idle, since other exchanges may still be on it, but revoking or deleting the node closes it along with the kept one (found in a second review, which saw it stay open after a revoke).
+4. **The sidecar still does not know what a message means.** Nodearr says, per request (`direct` on `/v1/request`) and per answer (`direct` on the answer to `/v1/incoming`), whether it needs a direct path, and the sidecar tells Nodearr whether each incoming message arrived direct. The sidecar enforces it. A held-back message or answer resets only its own stream, with `NoDirectRoute`, and one refused for coming through a relay with code 6, as for file data, so the connection stays open for pings.
+5. **Friends on 0.7.0 or earlier** do not wait before answering, so their catalog may arrive through a relay and be refused. The friend shows that as its own reason: "Needs a direct connection. This friend's node is on an older Nodearr, or reachable only through a relay". What was already in their catalog is kept. No protocol changed, so an older friend still pairs, pings and transfers files as before.
+6. **The Relay only warning** on **System > Status** and in the troubleshooting guide says that a relay-only friend's library cannot be browsed either.
+
+See [what crosses the relay with connections kept open](#2026-10-29-what-crosses-the-relay-with-connections-kept-open) for the run against a self-hosted relay.
+
+## 2026-10-29: what crosses the relay with connections kept open
+
+Measured for both amendments together, on the branch that carries #123 and #122, with the review fixes to the second amendment's points 1 to 3 in. `acceptance/Run-S8Docker.ps1` runs two Nodearr images in Docker on networks of their own, joined by a direct network that the script can take away and by a self-hosted `iroh-relay` 1.3.0 (`acceptance/relay.Dockerfile`). The direct-route wait was 5 seconds. All 22 of the suite's checks passed.
+
+The figures are the relay server's `relayserver_bytes_recv_total` plus `relayserver_bytes_sent_total`. A byte the relay forwards is counted once as it comes in and once as it goes out, so each figure is about twice what it forwarded. The S2 spike above counted `relayserver_bytes_sent_total` only.
+
+| Window | What the nodes did | Relay counters, in plus out | What else showed |
+| --- | --- | --- | --- |
+| Direct route present | Ten catalog syncs in a row, B asking A | 30,028 bytes | One `control connection opened` in B's log for all ten. Every sync succeeded. |
+| Relay only, quiet | Nothing asked of either node for 20 s, after a connection check that went through the relay | 1,058 bytes | The connection check answered, as **Relay only**. |
+| Relay only | One catalog sync, B asking A, 5.1 s | 266 bytes | B's sidecar logged that it held the message back. A's sidecar logged no answer held back and no message refused, one of which it would have logged had the request reached it. B kept A's 7 items, and A's catalog on B said `NoDirectRoute: Needs a direct connection`. |
+| Relay only | A grab of a 22 MB episode, three attempts, with the connection checks they ask for | 226,530 bytes, for the whole relay-only phase | `NoDirectRoute`, 0 bytes of the file moved. |
+
+What this shows:
+
+- **Nothing of a catalog crossed the relay.** With only a relay between the nodes, the sync put less through it in 5 seconds than the relay carries anyway in 20. The request was never sent, so A had nothing to answer.
+- **Pings still cross it**, so a relay-only friend still shows as **Relay only**, and pairing, which needs no catalog, is unaffected.
+- **The relay's share of a connection is paid once, not once per message.** The ten syncs opened one connection between them. Its handshake and hole-punching coordination went through the relay before the direct path was found, about 15 KB forwarded, in line with S2's 18 KB per connection. The syncs themselves went on the direct path. Before #123 each of the ten would have opened its own connection; that was not run here, so ten times as much is an estimate, not a measurement.
+
+Two earlier runs the same day, on the build before the review fixes, gave the same figures within a few hundred bytes. In the first of them one check failed because the script read the catalog's error from `/nodes/peers`, which does not carry it, not because of anything it measured.
+
 ## Runs between two machines
 
 ### 2026-10-12: a home network and a cloud machine

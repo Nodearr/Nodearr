@@ -44,7 +44,7 @@ If it fails:
 **Nodes > Trusted Nodes** lists the nodes you have paired with. For each node, it shows:
 
 - **Status**: **Pending**, **Trusted**, **Revoked** or **Blocked**. A pending node has not completed pairing.
-- **Connection**: **Direct** allows file transfers. **Relay only** allows messages but no media transfers; see [Relay only](troubleshooting.md#relay-only).
+- **Connection**: **Direct** allows file transfers. **Relay only** allows pairing and connection checks, but the friend's library cannot be browsed and no media moves; see [Relay only](troubleshooting.md#relay-only).
 - A summary of what you share with that friend.
 - **Last seen**, the most recent contact with that node.
 

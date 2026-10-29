@@ -24,4 +24,4 @@ The screenshots show two test nodes, Alex and Sam, each beside its own Sonarr an
 - **Arr app:** a library manager such as Sonarr, Radarr, Whisparr or Lidarr. Nodearr also connects to Prowlarr, which manages indexers rather than a library.
 - **Offer:** a catalog of files one friend shares with your node. Each friend's offer includes only what they allow you to access.
 - **Transfer:** a file being fetched from a friend after one of your Arr apps grabbed it.
-- **Relay:** a server that helps two nodes find each other and can pass encrypted messages, catalogs and posters. It never carries the media your Arr apps download.
+- **Relay:** a server that helps two nodes find each other. It can pass encrypted pairing messages and connection checks, but never catalogs, posters or the media your Arr apps download.

@@ -23,7 +23,7 @@ Revoking or blocking a friend ends all of it at once, including anything being s
 
 ## What the relay sees
 
-By default, Nodearr uses public relays operated by [n0](https://n0.computer), the makers of [iroh](https://www.iroh.computer/). A relay can see which node IDs communicate, their IP addresses and when they connect. It may carry encrypted control messages, catalogs, posters and transfer headers, but cannot read their contents. Downloaded media travels directly between the two nodes.
+By default, Nodearr uses public relays operated by [n0](https://n0.computer), the makers of [iroh](https://www.iroh.computer/). A relay can see which node IDs communicate, their IP addresses and when they connect. It carries what two nodes need to find a path to each other: pairing, connection checks, ending trust, and the request and header that start a transfer, all encrypted, so it cannot read them. What your library holds does not cross it: catalogs, posters, titles sent to a friend and downloaded media travel only directly between the two nodes. A friend reached only through a relay can pair with you, but cannot browse your library.
 
 To use your own relay, follow [iroh's relay setup guide](https://docs.iroh.computer/add-a-relay). Then select **A relay of your own** under **Settings > Node** and enter its **Relay Address**. You can also select **No relay** if both nodes have addresses the other can reach directly. The direct-only rule for media applies with any relay.
 

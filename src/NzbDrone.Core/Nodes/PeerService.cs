@@ -416,6 +416,9 @@ namespace NzbDrone.Core.Nodes
                 _logger.Debug(ex, "Unable to tell {0} that it was revoked", peer.Name);
             }
 
+            // Closed after the courtesy, which went on it.
+            CloseConnection(peer);
+
             return peer;
         }
 
@@ -434,11 +437,14 @@ namespace NzbDrone.Core.Nodes
             }
 
             _peers.Delete(id);
+            CloseConnection(peer);
             _eventAggregator.PublishEvent(new PeerDeletedEvent(id));
         }
 
-        // Every message from another node arrives here. Returning null refuses it.
-        public byte[] HandleIncoming(string remoteNodeId, byte[] body)
+        // Every message from another node arrives here. Returning null refuses it. arrivedDirect is
+        // false when anything on the connection it came on has come through a relay, so that the
+        // message itself may have.
+        public IncomingAnswer HandleIncoming(string remoteNodeId, byte[] body, bool arrivedDirect = true)
         {
             var peer = _peers.FindByNodeId(remoteNodeId);
 
@@ -455,6 +461,24 @@ namespace NzbDrone.Core.Nodes
                 return null;
             }
 
+            var direct = PeerMessageTypes.NeedsDirect(message.Type);
+
+            // What may not cross a relay is refused if it did, as a file's data is. A friend's node
+            // on an older Nodearr sends it without waiting for a direct path.
+            if (direct && !arrivedDirect && peer is { State: PeerState.Trusted })
+            {
+                _logger.Debug("Refused {0} from {1}: it came through a relay", message.Type, peer.Name);
+
+                return new IncomingAnswer { NoDirectRoute = true };
+            }
+
+            var reply = Answer(remoteNodeId, peer, message);
+
+            return reply == null ? null : new IncomingAnswer { Body = reply, Direct = direct };
+        }
+
+        private byte[] Answer(string remoteNodeId, Peer peer, PeerMessage message)
+        {
             switch (message.Type)
             {
                 case PeerMessageTypes.Pair:
@@ -489,6 +513,7 @@ namespace NzbDrone.Core.Nodes
 
                 case PeerMessageTypes.Revoke when peer is { State: PeerState.Trusted }:
                     ChangeState(peer, PeerState.Revoked, "Revoked by the other node");
+                    CloseConnection(peer);
 
                     return new PeerReply { Ok = true }.ToBytes();
 
@@ -575,7 +600,22 @@ namespace NzbDrone.Core.Nodes
 
         private PeerReply Send(Peer peer, PeerMessage message)
         {
-            return PeerReply.FromBytes(_transport.Request(peer.ToAddress(), message.ToBytes(), RequestTimeout));
+            return PeerReply.FromBytes(_transport.Request(peer.ToAddress(), message.ToBytes(), RequestTimeout, PeerMessageTypes.NeedsDirect(message.Type)));
+        }
+
+        // The transport keeps a connection open to a node while they are talking. Once trust has
+        // ended it closes now, not when it has been idle a while. Nothing relies on it being closed:
+        // every message is checked against the node's state when it arrives.
+        private void CloseConnection(Peer peer)
+        {
+            try
+            {
+                _transport.CloseConnection(peer.NodeId);
+            }
+            catch (TransportException ex)
+            {
+                _logger.Debug(ex, "Unable to close the connection to {0}", peer.Name);
+            }
         }
 
         private Peer ChangeState(Peer peer, PeerState state, string reason)

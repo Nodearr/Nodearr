@@ -381,6 +381,72 @@ namespace NzbDrone.Core.Test.Nodes
             peer.Should().Match<Peer>(p => p.LastError == null && p.ConnectionPath == ConnectionPath.Relay && p.ConnectionAddress == "memory://relay");
         }
 
+        // Pairing and pings may cross a relay: finding a path, and saying there is none, needs them.
+        [Test]
+        public void a_friend_reached_only_through_a_relay_should_still_pair_and_answer_a_check()
+        {
+            _bob.Transport.PathToOthers = ConnectionPath.Relay;
+
+            GivenPaired(_alice, _bob);
+            var peer = _bob.Service.Ping(_bob.PeerFor(_alice).Id);
+
+            _alice.PeerFor(_bob).State.Should().Be(PeerState.Trusted);
+            peer.Should().Match<Peer>(p => p.State == PeerState.Trusted && p.LastError == null && p.ConnectionPath == ConnectionPath.Relay);
+        }
+
+        [Test]
+        public void what_a_library_holds_should_not_be_sent_to_a_friend_reached_only_through_a_relay()
+        {
+            GivenPaired(_alice, _bob);
+            _bob.Transport.PathToOthers = ConnectionPath.Relay;
+            var delivered = _alice.Transport.Delivered;
+
+            var ex = Assert.Throws<TransportException>(() => _bob.Service.Ask(_bob.PeerFor(_alice), new PeerMessage { Type = PeerMessageTypes.CatalogChanged }));
+
+            ex.Failure.Should().Be(TransportFailure.NoDirectRoute);
+            _alice.Transport.Delivered.Should().Be(delivered);
+        }
+
+        [TestCase(PeerMessageTypes.Catalog)]
+        [TestCase(PeerMessageTypes.CatalogChanged)]
+        [TestCase(PeerMessageTypes.Poster)]
+        [TestCase(PeerMessageTypes.Sent)]
+        public void what_a_library_holds_should_be_refused_when_it_came_through_a_relay(string type)
+        {
+            GivenPaired(_alice, _bob);
+
+            var answer = _alice.Service.HandleIncoming(_bob.NodeId, new PeerMessage { Type = type }.ToBytes(), arrivedDirect: false);
+
+            answer.Should().Match<IncomingAnswer>(a => a.NoDirectRoute && a.Body == null);
+        }
+
+        [Test]
+        public void a_ping_should_be_answered_however_it_came_and_its_answer_may_cross_a_relay()
+        {
+            GivenPaired(_alice, _bob);
+
+            var answer = _alice.Service.HandleIncoming(_bob.NodeId, new PeerMessage { Type = PeerMessageTypes.Ping }.ToBytes(), arrivedDirect: false);
+
+            answer.Should().Match<IncomingAnswer>(a => !a.NoDirectRoute && a.Body != null && !a.Direct);
+        }
+
+        [Test]
+        public void an_answer_about_what_a_library_holds_should_wait_for_a_direct_path()
+        {
+            GivenPaired(_alice, _bob);
+
+            var answer = _alice.Service.HandleIncoming(_bob.NodeId, new PeerMessage { Type = PeerMessageTypes.CatalogChanged }.ToBytes());
+
+            answer.Should().Match<IncomingAnswer>(a => a.Body != null && a.Direct);
+        }
+
+        // A stranger is refused as it always was, not told that a direct path would have helped.
+        [Test]
+        public void a_stranger_sending_what_needs_a_direct_path_through_a_relay_should_simply_be_refused()
+        {
+            _alice.Service.HandleIncoming(_carol.NodeId, new PeerMessage { Type = PeerMessageTypes.Catalog }.ToBytes(), arrivedDirect: false).Should().BeNull();
+        }
+
         [Test]
         public void a_connection_check_that_fails_should_forget_the_path_it_knew()
         {
@@ -502,6 +568,31 @@ namespace NzbDrone.Core.Test.Nodes
             _alice.Service.Revoke(_alice.PeerFor(_bob).Id);
 
             _alice.PeerFor(_bob).State.Should().Be(PeerState.Revoked);
+        }
+
+        // The transport keeps a connection open to a friend while they talk. Trust ending closes it
+        // on both sides, rather than leaving it open until it has been idle a while.
+        [Test]
+        public void revoking_should_close_the_kept_connection_on_both_sides()
+        {
+            GivenPaired(_alice, _bob);
+
+            _alice.Service.Revoke(_alice.PeerFor(_bob).Id);
+
+            _alice.Transport.Closed.Should().Equal(_bob.NodeId);
+            _bob.Transport.Closed.Should().Equal(_alice.NodeId);
+        }
+
+        [Test]
+        public void deleting_should_close_the_kept_connection()
+        {
+            GivenPaired(_alice, _bob);
+            _bob.Service.Revoke(_bob.PeerFor(_alice).Id);
+            _alice.Transport.Closed.Clear();
+
+            _alice.Service.Delete(_alice.PeerFor(_bob).Id);
+
+            _alice.Transport.Closed.Should().Equal(_bob.NodeId);
         }
 
         [Test]

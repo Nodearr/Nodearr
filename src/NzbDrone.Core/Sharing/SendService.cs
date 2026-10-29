@@ -301,7 +301,12 @@ namespace NzbDrone.Core.Sharing
                 }
                 catch (TransportException ex)
                 {
-                    sent.LastError = ex.Failure == TransportFailure.NotAuthorized ? NotTaken : ex.Message;
+                    sent.LastError = ex.Failure switch
+                    {
+                        TransportFailure.NotAuthorized => NotTaken,
+                        TransportFailure.NoDirectRoute => TransportException.NoDirectRouteReason,
+                        _ => ex.Message
+                    };
                     _logger.Debug(ex, "Unable to tell {0} about {1} yet", peer.Name, sent.Title);
                 }
                 catch (PeerException ex)

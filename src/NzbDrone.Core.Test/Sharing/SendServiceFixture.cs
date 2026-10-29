@@ -244,6 +244,19 @@ namespace NzbDrone.Core.Test.Sharing
         }
 
         [Test]
+        public void a_note_with_no_direct_path_should_say_a_direct_connection_is_needed_and_be_kept()
+        {
+            Mocker.GetMock<IPeerService>()
+                  .Setup(s => s.Ask(It.IsAny<Peer>(), It.IsAny<PeerMessage>()))
+                  .Throws(new TransportException(TransportFailure.NoDirectRoute, "no direct path within 20s"));
+
+            var sent = SendAndDeliver(_bob, Pingu);
+
+            sent.DeliveredAt.Should().BeNull();
+            sent.LastError.Should().Be(TransportException.NoDirectRouteReason);
+        }
+
+        [Test]
         public void a_note_not_taken_should_be_kept_and_tried_again_at_the_next_connection_check()
         {
             Mocker.GetMock<IPeerService>()

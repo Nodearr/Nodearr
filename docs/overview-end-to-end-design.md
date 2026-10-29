@@ -38,7 +38,7 @@ Nodearr is not a shared drive, a media server, a public indexer or a library man
 
 - **Nodearr** is the application: a [.NET](https://dotnet.microsoft.com/) service with a web UI, derived from [Sonarr](https://sonarr.tv/) ([ADR 0004](adr/0004-technology-stack.md), [NOTICE](../NOTICE.md)). It talks to the Arr apps, keeps the catalogs, applies the sharing rules, answers searches and runs transfers.
 - **`nodearr-transport`** is a small [Rust](https://www.rust-lang.org/) program Nodearr starts beside itself. It holds the node's key and does all the networking between nodes, with [iroh](https://www.iroh.computer): encrypted QUIC connections, NAT traversal, and the file transfer protocol ([ADR 0009](adr/0009-iroh-behind-transfer-abstraction.md), [ADR 0012](adr/0012-custom-transfer-protocol-instead-of-iroh-blobs.md)). Nodearr talks to it over a loopback port with a token only the two of them know ([ADR 0013](adr/0013-node-identity-pairing-and-trust.md)).
-- **The relay** helps two nodes find a path to each other. By default it is one of n0's public relays. A person can run their own, or turn relays off. It may carry encrypted control messages, catalogs and posters, but no media downloaded by the Arr apps ([ADR 0011](adr/0011-direct-only-media-over-iroh-with-relay-for-coordination.md)).
+- **The relay** helps two nodes find a path to each other. By default it is one of n0's public relays. A person can run their own, or turn relays off. It may carry pairing, connection checks and ending trust, encrypted, but nothing of what a library holds: no catalog, poster, sent title or downloaded media ([ADR 0011](adr/0011-direct-only-media-over-iroh-with-relay-for-coordination.md)).
 
 ## The apps it works with
 
@@ -126,15 +126,16 @@ Most home machines are behind a router that does not let connections in. iroh ge
 
 1. Each sidecar keeps a connection open to its relay, and learns its public address from it.
 2. To reach a friend, it asks the relay to pass a message to the friend's node, then both try to reach each other at the addresses they learned. Both having sent first is what gets through most routers ("hole punching"). The sidecar can also ask the router for a port mapping (UPnP, NAT-PMP or PCP).
-3. Small messages, such as pairing and catalog requests, may go through the relay while this happens, encrypted end to end. The relay cannot read them.
-4. **File data moves only over a direct path.** The sender waits up to 20 seconds for one, and gives up with `NoDirectRoute` if none appears. If a direct path is lost part way, it stops with `DirectPathLost` rather than carry on through the relay.
+3. Pairing, connection checks and ending trust may go through the relay while this happens, encrypted end to end. The relay cannot read them. Catalogs, catalog changes, posters and titles sent to a friend, and their answers, wait for the direct path, up to the same 20 seconds, and fail as `NoDirectRoute` without it. The node that sends checks the path as it sends, and the node that receives refuses any that came through a relay ([ADR 0011, amendment of 2026-10-29](adr/0011-direct-only-media-over-iroh-with-relay-for-coordination.md#amendment-2026-10-29-what-may-cross-a-relay)).
+4. The connection stays open while the two nodes are talking, and closes once nothing has been sent on it for 3 minutes. Browsing a friend's library is one connection, not one for each poster, so hole punching and the relay's part in it happen once ([ADR 0011, amendment of 2026-10-29](adr/0011-direct-only-media-over-iroh-with-relay-for-coordination.md#amendment-2026-10-29-control-connections-stay-open-while-nodes-are-talking)). Blocking a node closes everything open to it at once.
+5. **File data moves only over a direct path.** The sender waits up to 20 seconds for one, and gives up with `NoDirectRoute` if none appears. If a direct path is lost part way, it stops with `DirectPathLost` rather than carry on through the relay.
 
 This has worked between two home networks with no port forwarded, and between a home and a cloud machine. A node in [Docker](https://docs.docker.com/) Desktop on Windows or macOS is the known hard case: Docker Desktop gives it a different public port for every destination, so it needs the UDP port forwarded. See [when there is no direct path](diagrams/direct-connectivity-failure-no-relay.md).
 
 ## Privacy
 
 - **What a friend sees** is the offer built for them: what is shared with them, described as above. Not what is hidden, not what is shared only with others, and not where anything is stored.
-- **What the relay sees** is that two node IDs are talking, and the encrypted messages that pass through it before a direct path forms. Never a file.
+- **What the relay sees** is that two node IDs are talking, when, and the encrypted pairing and connection checks that pass through it before a direct path forms. Never a catalog, a poster or a file, so not how large a library is.
 - **What is recorded today stays secret later.** Two updated nodes agree on keys with a post-quantum key exchange, X25519MLKEM768, which a future quantum computer cannot undo. With an older node they fall back to X25519 ([ADR 0023](adr/0023-post-quantum-key-exchange-between-nodes.md)).
 - **What anyone else sees** is nothing. Nodearr makes no calls home: no update checks, no error reporting, no analytics. The code it was derived from did, and all of it was taken out ([ADR 0018](adr/0018-diagnostics-and-no-calls-home.md)).
 - The web UI and the API ask for a sign-in or an API key, as Sonarr's do. That is separate from trust between nodes: an API key is not a node's identity.
