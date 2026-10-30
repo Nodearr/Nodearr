@@ -180,6 +180,8 @@ The catalog's Get it action is implemented in #54, connection-loss diagnosis and
 
 - 0.7.0 release notes prepared from every commit after `v0.6.0`: post-quantum key exchange (#24, ADR 0023), upload status when trust ends (#118), and received-card layout on Home (#116). The source-build prerequisites and older-node compatibility are included. Branch `release/0.7.0`, based on the Home fix. This prepares the changelog; the release has not been published.
 
+- Network address changes settle for three seconds before the sidecar notifies Nodearr. Nodearr pings trusted friends with its current address; both nodes check their routes again and refresh open pages. A receiver update missed by the first hotspot build is fixed. Periodic checks retry offline friends ([#124](https://github.com/Nodearr/Nodearr/issues/124), ADR 0013). Branch `124-network-address-updates`. The owner's Wi-Fi-to-hotspot retest remains below.
+
 ### Next, in order
 
 1. ~~**Posters, part 1: a friend's catalog with pictures** (S57).~~ Done (ADR 0022).
@@ -192,6 +194,8 @@ The catalog's Get it action is implemented in #54, connection-loss diagnosis and
 These open items have no slice numbers yet. The earlier proposed S58 to S60 numbers were used for the UI test kit, sharing by app and screenshots above.
 
 ### Needs the owner, a second machine or a Mac
+
+- **A network switch while Nodearr stays running (#124).** Switch a laptop from Wi-Fi to a phone hotspot and check that its friend's stored address and **Last seen** update within about ten seconds, and that the connection route is checked again. Settling and trusted-friend selection are covered by tests; the real network switch is not.
 
 - ~~**A release.**~~ 0.1.0 was released on 2026-10-17, the first since the repository went public. Still to do: pull the image back from GHCR and start it.
 - **Sonarr between two machines.** Every run between two machines used Radarr and one film. What Sonarr adds, sharing by episode, scene numbers and daily shows, is Nodearr's own logic and has been checked against a real Sonarr on one machine.

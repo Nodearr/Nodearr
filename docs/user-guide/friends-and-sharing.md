@@ -48,6 +48,8 @@ If it fails:
 - A summary of what you share with that friend.
 - **Last seen**, the most recent contact with that node.
 
+Nodearr checks trusted friends every 15 minutes. When your node changes network, it tells them its new address after three seconds without another address change. Both nodes check the connection again and update the route shown here automatically. Friends that are offline are tried again at the next regular check.
+
 What you can do depends on where trust stands:
 
 | Status | What you can do |

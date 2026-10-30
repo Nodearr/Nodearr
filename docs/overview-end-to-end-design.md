@@ -122,6 +122,8 @@ Three transfers run at once. A file gets up to three attempts per source node, w
 
 ## How two nodes reach each other
 
+Nodes learn each other's addresses from invites and pings. A node pings every trusted friend when its transport starts, when its network address has settled for three seconds after a change, and during its connection check every 15 minutes. Each ping sends the current IP addresses and home relay, and checks the route shown on **Nodes > Trusted Nodes** again. When a ping carries a changed address, the receiver also checks that friend's route and refreshes its open page. The periodic check retries friends that were offline. There is no address lookup service: two nodes that change networks together with relays off may lose track of each other ([ADR 0013](adr/0013-node-identity-pairing-and-trust.md#2026-10-29-tell-friends-when-the-network-address-changes-124)).
+
 Most home machines are behind a router that does not let connections in. iroh gets two of them talking anyway ([ADR 0011](adr/0011-direct-only-media-over-iroh-with-relay-for-coordination.md)):
 
 1. Each sidecar keeps a connection open to its relay, and learns its public address from it.

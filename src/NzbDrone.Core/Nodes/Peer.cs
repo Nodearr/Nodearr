@@ -116,6 +116,17 @@ namespace NzbDrone.Core.Nodes
         public PeerState PreviousState { get; }
     }
 
+    // A trusted friend announced new addresses. Its displayed route needs checking again.
+    public class PeerAddressChangedEvent : IEvent
+    {
+        public PeerAddressChangedEvent(int peerId)
+        {
+            PeerId = peerId;
+        }
+
+        public int PeerId { get; }
+    }
+
     // Raised after a connection check, whatever it found.
     public class PeerConnectionCheckedEvent : IEvent
     {

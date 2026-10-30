@@ -70,7 +70,7 @@ namespace NzbDrone.Core.Nodes
         void Delete(int id);
     }
 
-    public class PeerService : IPeerService, IHandle<ApplicationStartedEvent>, IHandleAsync<PeerTransportStateChangedEvent>
+    public class PeerService : IPeerService, IHandle<ApplicationStartedEvent>, IHandleAsync<PeerTransportStateChangedEvent>, IHandleAsync<PeerTransportAddressChangedEvent>
     {
         private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(20);
 
@@ -122,6 +122,16 @@ namespace NzbDrone.Core.Nodes
         // A node's direct addresses change when its transport restarts. Telling trusted peers right
         // away keeps them able to reach it, and shows which of them are reachable.
         public void HandleAsync(PeerTransportStateChangedEvent message)
+        {
+            AnnounceAddress();
+        }
+
+        public void HandleAsync(PeerTransportAddressChangedEvent message)
+        {
+            AnnounceAddress();
+        }
+
+        private void AnnounceAddress()
         {
             if (!_transport.IsRunning)
             {
@@ -486,9 +496,18 @@ namespace NzbDrone.Core.Nodes
 
                 // Everything except pairing needs trust that already exists.
                 case PeerMessageTypes.Ping when peer is { State: PeerState.Trusted }:
+                    var previousAddress = peer.ToAddress();
                     peer.SetAddress(message.SenderRelayUrl, message.SenderIpAddresses);
                     peer.LastSeen = DateTime.UtcNow;
                     SaveContact(peer);
+
+                    // Check the receiver's displayed route too, without holding up this answer.
+                    // Only a changed address asks for a check, so return pings cannot loop.
+                    if (previousAddress.RelayUrl != peer.RelayUrl ||
+                        !previousAddress.IpAddresses.ToHashSet(StringComparer.Ordinal).SetEquals(peer.ToAddress().IpAddresses))
+                    {
+                        _eventAggregator.PublishEvent(new PeerAddressChangedEvent(peer.Id));
+                    }
 
                     return new PeerReply { Ok = true, Name = LocalName }.ToBytes();
 

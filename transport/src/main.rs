@@ -13,6 +13,7 @@
 //! Control connections this node opens stay open while they are in use, in `connections.rs`.
 //! Files move on a second protocol, in `transfer.rs`. Nodearr still decides who may have what.
 
+mod address;
 mod connections;
 mod logging;
 mod transfer;
@@ -152,6 +153,7 @@ struct App {
     token: String,
     blocked: RwLock<HashSet<EndpointId>>,
     incoming: tokio::sync::Mutex<mpsc::Receiver<Incoming>>,
+    address_changes: tokio::sync::Mutex<tokio::sync::watch::Receiver<Option<EndpointAddr>>>,
     awaiting_reply: Mutex<HashMap<u64, oneshot::Sender<Reply>>>,
     next_id: AtomicU64,
 }
@@ -162,6 +164,7 @@ impl App {
         let (incoming_tx, incoming_rx) = mpsc::channel(64);
         let live = Arc::new(Live::default());
         let app = Arc::new(Self {
+            address_changes: tokio::sync::Mutex::new(address::watch(&endpoint)),
             control: ControlConnections::new(endpoint.clone(), live.clone(), control_idle, direct_timeout),
             direct_timeout,
             endpoint,
@@ -606,13 +609,22 @@ struct WaitQuery {
     wait_ms: Option<u64>,
 }
 
-/// Long poll: answers with the next message a peer sent, or 204 when none arrived in time.
+/// Long poll: peer requests need an answer; local address notifications do not.
 async fn next_incoming(State(app): State<Arc<App>>, Query(query): Query<WaitQuery>) -> Response {
     let wait = Duration::from_millis(query.wait_ms.unwrap_or(25_000).min(60_000));
     let mut queue = app.incoming.lock().await;
+    let mut addresses = app.address_changes.lock().await;
 
-    match tokio::time::timeout(wait, queue.recv()).await {
-        Ok(Some(incoming)) => {
+    tokio::select! {
+        Ok(()) = addresses.changed() => {
+            let address = addresses.borrow_and_update().clone().expect("a settled address");
+            Json(json!({
+                "kind": "address",
+                "relay_url": address.relay_urls().next().map(|url| url.to_string()),
+                "ip_addrs": address.ip_addrs().map(|ip| ip.to_string()).collect::<Vec<_>>(),
+            })).into_response()
+        }
+        Some(incoming) = queue.recv() => {
             let id = app.next_id.fetch_add(1, Ordering::Relaxed);
             app.awaiting_reply.lock().unwrap().insert(id, incoming.reply);
             let remote = incoming.remote.to_string();
@@ -621,7 +633,7 @@ async fn next_incoming(State(app): State<Arc<App>>, Query(query): Query<WaitQuer
                 IncomingKind::Transfer { file } => Json(json!({ "id": id, "remote_node_id": remote, "kind": "transfer", "file": file })).into_response(),
             }
         }
-        _ => StatusCode::NO_CONTENT.into_response(),
+        _ = tokio::time::sleep(wait) => StatusCode::NO_CONTENT.into_response(),
     }
 }
 
@@ -760,6 +772,37 @@ mod tests {
     use rustls::NamedGroup;
 
     use super::*;
+
+    #[tokio::test]
+    async fn address_notifications_need_no_reply_and_leave_peer_requests_working() {
+        let node = node(Duration::from_secs(60)).await;
+        let (app, requests) = App::new(node.endpoint.clone(), transfer::Transfers::new(Duration::from_secs(5), 0, 0, 0, 0), "t".repeat(16), Duration::from_secs(60), DIRECT_WAIT);
+        let (updates, changes) = tokio::sync::watch::channel(None);
+        *app.address_changes.lock().await = changes;
+        let address = EndpointAddr::new(node.endpoint.id()).with_addrs([
+            TransportAddr::Ip("192.0.2.1:6633".parse().unwrap()),
+            TransportAddr::Relay("https://relay.example.com".parse().unwrap()),
+        ]);
+        updates.send(Some(address)).unwrap();
+
+        let response = next_incoming(State(app.clone()), Query(WaitQuery { wait_ms: Some(100) })).await;
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = axum::body::to_bytes(response.into_body(), 4096).await.unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(body, json!({ "kind": "address", "relay_url": "https://relay.example.com/", "ip_addrs": ["192.0.2.1:6633"] }));
+        assert!(app.awaiting_reply.lock().unwrap().is_empty());
+
+        let (reply, mut answer) = oneshot::channel();
+        requests.send(Incoming { remote: node.endpoint.id(), kind: IncomingKind::Message { body: b"ping".to_vec(), direct: false }, reply }).await.unwrap();
+        let response = next_incoming(State(app.clone()), Query(WaitQuery { wait_ms: Some(100) })).await;
+        let body = axum::body::to_bytes(response.into_body(), 4096).await.unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(body["kind"], "message");
+        assert_eq!(body["body"], BASE64.encode(b"ping"));
+        assert_eq!(app.awaiting_reply.lock().unwrap().len(), 1);
+        assert!(matches!(answer.try_recv(), Err(oneshot::error::TryRecvError::Empty)));
+        node.endpoint.close().await;
+    }
 
     /// A test node: the sidecar, and what its stand-in for Nodearr was sent. Each message is kept
     /// with whether all of it came on a direct path.

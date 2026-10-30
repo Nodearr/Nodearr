@@ -570,6 +570,12 @@ namespace NzbDrone.Core.Nodes.Transport
 
                 var incoming = response.Content.ReadFromJsonAsync<IncomingMessage>(JsonOptions).GetAwaiter().GetResult();
 
+                if (incoming.Kind == "address")
+                {
+                    _eventAggregator.PublishEvent(new PeerTransportAddressChangedEvent());
+                    continue;
+                }
+
                 ThreadPool.QueueUserWorkItem(_ => Answer(client, incoming));
             }
         }
@@ -745,7 +751,7 @@ namespace NzbDrone.Core.Nodes.Transport
             public long Id { get; set; }
             public string RemoteNodeId { get; set; }
 
-            // "message" or "transfer".
+            // "message", "transfer" or "address" (a notification, without an answer).
             public string Kind { get; set; }
             public string Body { get; set; }
             public string File { get; set; }

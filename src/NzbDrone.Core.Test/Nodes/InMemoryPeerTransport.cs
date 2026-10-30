@@ -52,6 +52,9 @@ namespace NzbDrone.Core.Test.Nodes
         // from "let in and refused".
         public int Delivered { get; private set; }
 
+        public string RelayUrl { get; set; } = "memory://relay";
+        public List<string> IpAddresses { get; set; } = new() { "127.0.0.1:1" };
+
         public NodeAddress GetLocalAddress()
         {
             if (!IsRunning)
@@ -59,7 +62,7 @@ namespace NzbDrone.Core.Test.Nodes
                 throw new TransportException(TransportFailure.Unavailable, "not running");
             }
 
-            return new NodeAddress { NodeId = _nodeId, RelayUrl = "memory://relay", IpAddresses = new List<string> { "127.0.0.1:1" } };
+            return new NodeAddress { NodeId = _nodeId, RelayUrl = RelayUrl, IpAddresses = IpAddresses.ToList() };
         }
 
         public byte[] Request(NodeAddress peer, byte[] body, TimeSpan timeout, bool direct = false)
@@ -113,7 +116,7 @@ namespace NzbDrone.Core.Test.Nodes
                 throw new TransportException(TransportFailure.Blocked, "blocked");
             }
 
-            return new ConnectionProbe { Path = PathToOthers, RemoteAddress = PathToOthers == ConnectionPath.Direct ? "127.0.0.1:1" : "memory://relay" };
+            return new ConnectionProbe { Path = PathToOthers, RemoteAddress = PathToOthers == ConnectionPath.Direct ? target.IpAddresses.FirstOrDefault() : target.RelayUrl };
         }
 
         public NetworkStatus GetNetworkStatus()

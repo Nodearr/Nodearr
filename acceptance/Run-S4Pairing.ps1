@@ -211,6 +211,10 @@ try {
 
     # --- 4. Restart ------------------------------------------------------------------------------
 
+    # Let the re-pairing checks finish, so they cannot mask a missed address announcement.
+    Start-Sleep -Seconds 4
+    $routeBeforeRestart = Invoke-Api B POST "/nodes/peers/$((Get-Peer B $idA.nodeId).id)/ping"
+    $restartedAt = [DateTime]::UtcNow
     Stop-Node A
     Start-Sleep -Seconds 2
     $orphans = @(Get-CimInstance Win32_Process -Filter "Name like 'nodearr-transport%'" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -like "*$($nodes.A.Data)*" })
@@ -218,10 +222,16 @@ try {
 
     $idA2 = Invoke-Api A GET '/nodes/identity'
     # A's addresses changed with the restart. It tells its trusted peers when its transport comes up.
-    $reachable = Wait-Until -What 'B to reach A after the restart' -TimeoutSec 30 -Condition {
-        $ping = Invoke-Api B POST "/nodes/peers/$((Get-Peer B $idA.nodeId).id)/ping"
-        if (-not $ping.lastError) { $ping }
+    $reachable = Wait-Until -What 'B to automatically check the new route to A after its announcement' -TimeoutSec 30 -Condition {
+        $peer = Get-Peer B $idA.nodeId
+        if (-not $peer.lastError -and $peer.connectionPath -eq 'direct' -and
+            $peer.connectionChecked -and ([DateTime]$peer.connectionChecked).ToUniversalTime() -ge $restartedAt -and
+            $peer.connectionAddress -ne $routeBeforeRestart.connectionAddress -and
+            $idA2.ipAddresses -contains $peer.connectionAddress) { $peer }
     }
+    Assert-That 'Receiving a changed address refreshes the displayed route without a manual connection check' (
+        $reachable.connectionAddress -ne $routeBeforeRestart.connectionAddress
+    ) @{ routeChanged = $true; manualCheckAfterRestart = $false }
     $health = @(Invoke-Api A GET '/health' | Where-Object source -eq 'PeerTransportCheck')
     Assert-That 'A restart keeps the identity and the trust, stops the old sidecar, and peers find the node again' (
         $idA2.nodeId -eq $idA.nodeId -and (Get-Peer A $idB.nodeId).state -eq 'trusted' -and $orphans.Count -eq 0 -and $reachable.lastSeen -and $health.Count -eq 0

@@ -57,6 +57,7 @@ namespace NzbDrone.Core.Test.Nodes
             Subject.Execute(new CheckPeerConnectionsCommand());
             Subject.HandleAsync(new PeerStateChangedEvent(_alice, PeerState.Pending));
             Subject.HandleAsync(new TransferAttemptEndedEvent(_alice.Id, TransferFailure.NoDirectRoute));
+            Subject.HandleAsync(new PeerAddressChangedEvent(_alice.Id));
 
             ShouldHaveChecked(_alice, Times.Never());
         }
@@ -70,6 +71,48 @@ namespace NzbDrone.Core.Test.Nodes
 
             ShouldHaveChecked(_bob, Times.Once());
             ExceptionVerification.IgnoreWarns();
+        }
+
+        [Test]
+        public void a_new_address_should_be_checked_even_when_the_last_check_just_finished()
+        {
+            _alice.ConnectionChecked = DateTime.UtcNow;
+
+            Subject.HandleAsync(new PeerAddressChangedEvent(_alice.Id));
+
+            ShouldHaveChecked(_alice, Times.Once());
+        }
+
+        [TestCase(PeerState.Pending)]
+        [TestCase(PeerState.Revoked)]
+        [TestCase(PeerState.Blocked)]
+        public void an_address_event_should_not_contact_a_node_without_trust(PeerState state)
+        {
+            _alice.State = state;
+
+            Subject.HandleAsync(new PeerAddressChangedEvent(_alice.Id));
+            Subject.HandleAsync(new PeerAddressChangedEvent(999));
+
+            ShouldHaveChecked(_alice, Times.Never());
+            Mocker.GetMock<IPeerService>().Verify(s => s.Ping(999), Times.Never());
+        }
+
+        [Test]
+        public void changes_during_an_existing_check_should_coalesce_into_one_more_check()
+        {
+            var checks = 0;
+            Mocker.GetMock<IPeerService>().Setup(s => s.Ping(_alice.Id)).Callback(() =>
+            {
+                if (++checks == 1)
+                {
+                    Subject.HandleAsync(new PeerAddressChangedEvent(_alice.Id));
+                    Subject.HandleAsync(new PeerAddressChangedEvent(_alice.Id));
+                }
+            });
+
+            Subject.HandleAsync(new PeerAddressChangedEvent(_alice.Id));
+
+            ShouldHaveChecked(_alice, Times.Exactly(2));
         }
 
         [Test]
