@@ -4,9 +4,15 @@ What changed in each release, newest first. Each item links to the decision reco
 
 ## Unreleased
 
+## 0.8.1 (pre-release)
+
+Downloads recover when either node changes network address, keeping their progress and the download the Arr app is already following.
+
 ### Fixed
 
-- Downloads reopen from their saved bytes when this node or the sending friend's address changes, instead of remaining stuck on an old file connection after a network switch. The download keeps its ID so the Arr app can follow the retry ([#128](https://github.com/Nodearr/Nodearr/issues/128), [ADR 0016](docs/adr/0016-transfers-and-the-download-client.md#2026-10-29-reopen-active-downloads-when-network-addresses-change-128)).
+- A download could stay in **Downloading** without making progress after switching networks, even when the nodes found each other again. Affected downloads now wait 15 seconds and reopen from their saved bytes using the current address. They keep their download IDs, do not use up a failure attempt, and do not need to be removed or grabbed again in the Arr app ([#128](https://github.com/Nodearr/Nodearr/issues/128), [ADR 0016](docs/adr/0016-transfers-and-the-download-client.md#2026-10-29-reopen-active-downloads-when-network-addresses-change-128)).
+
+## 0.8.0 (pre-release)
 
 ### Added
 
