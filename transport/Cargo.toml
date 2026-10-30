@@ -37,6 +37,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [dev-dependencies]
+tokio = { version = "1", features = ["test-util"] }
 # An in-process iroh relay for tests of what may and may not cross one. Tests only: the sidecar
 # itself is built without it.
 iroh = { version = "=1.3.0", default-features = false, features = ["tls-aws-lc-rs", "test-utils"] }

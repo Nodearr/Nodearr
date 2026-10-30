@@ -92,6 +92,11 @@ namespace NzbDrone.Core.Nodes.Transport
     {
     }
 
+    // Raised after a network change settles, without the transport restarting.
+    public class PeerTransportAddressChangedEvent : IEvent
+    {
+    }
+
     // Receives a message from a node whose identity the transport has verified. arrivedDirect is
     // false when anything on the connection it came on has come through a relay, which includes
     // any of the message itself. Returning null refuses the message.

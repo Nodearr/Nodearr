@@ -39,6 +39,124 @@ namespace NzbDrone.Core.Test.Nodes
         }
 
         [Test]
+        public void an_address_change_should_ping_every_trusted_friend_with_the_new_address_and_check_the_route()
+        {
+            GivenPaired(_alice, _bob);
+            GivenPaired(_alice, _carol);
+            var bobDelivered = _bob.Transport.Delivered;
+            var carolDelivered = _carol.Transport.Delivered;
+            _alice.Transport.RelayUrl = "memory://new-relay";
+            _alice.Transport.IpAddresses = new List<string> { "192.0.2.1:6633" };
+            _alice.Transport.PathToOthers = ConnectionPath.Relay;
+            var changedAt = DateTime.UtcNow;
+
+            _alice.Service.HandleAsync(new PeerTransportAddressChangedEvent());
+
+            _bob.Transport.Delivered.Should().Be(bobDelivered + 1);
+            _carol.Transport.Delivered.Should().Be(carolDelivered + 1);
+            foreach (var friend in new[] { _bob, _carol })
+            {
+                friend.PeerFor(_alice).RelayUrl.Should().Be("memory://new-relay");
+                friend.PeerFor(_alice).ToAddress().IpAddresses.Should().Equal("192.0.2.1:6633");
+                friend.PeerFor(_alice).LastSeen.Should().BeOnOrAfter(changedAt);
+                _alice.PeerFor(friend).ConnectionPath.Should().Be(ConnectionPath.Relay);
+                _alice.PeerFor(friend).ConnectionChecked.Should().NotBeNull();
+                _alice.Events.Verify(e => e.PublishEvent(It.Is<PeerConnectionCheckedEvent>(c => c.Peer.NodeId == friend.NodeId)), Times.Once());
+            }
+        }
+
+        [Test]
+        public void receiving_a_new_address_should_refresh_the_receivers_displayed_route_and_tell_its_page()
+        {
+            GivenPaired(_alice, _bob);
+            _bob.Service.Ping(_bob.PeerFor(_alice).Id);
+            _bob.PeerFor(_alice).ConnectionAddress.Should().Be("127.0.0.1:1");
+            _bob.Events.Invocations.Clear();
+            _bob.Events.Setup(e => e.PublishEvent(It.IsAny<PeerAddressChangedEvent>()))
+                .Callback<PeerAddressChangedEvent>(_bob.Upkeep.HandleAsync);
+            _alice.Events.Setup(e => e.PublishEvent(It.IsAny<PeerAddressChangedEvent>()))
+                .Callback<PeerAddressChangedEvent>(_alice.Upkeep.HandleAsync);
+            var aliceDelivered = _alice.Transport.Delivered;
+            var bobDelivered = _bob.Transport.Delivered;
+            _alice.Transport.IpAddresses = new List<string> { "192.0.2.1:6633" };
+            var changedAt = DateTime.UtcNow;
+
+            _alice.Service.HandleAsync(new PeerTransportAddressChangedEvent());
+
+            _bob.PeerFor(_alice).ConnectionAddress.Should().Be("192.0.2.1:6633");
+            _bob.PeerFor(_alice).ConnectionChecked.Should().BeOnOrAfter(changedAt);
+            _bob.Events.Verify(e => e.PublishEvent(It.Is<PeerConnectionCheckedEvent>(c => c.Peer.NodeId == _alice.NodeId)), Times.Once());
+            _alice.Transport.Delivered.Should().Be(aliceDelivered + 1);
+            _bob.Transport.Delivered.Should().Be(bobDelivered + 1);
+        }
+
+        [Test]
+        public void receiving_the_same_addresses_in_another_order_should_not_start_another_check()
+        {
+            GivenPaired(_alice, _bob);
+            _alice.Transport.IpAddresses = new List<string> { "192.0.2.1:6633", "192.0.2.2:6633" };
+            _alice.Service.Ping(_alice.PeerFor(_bob).Id);
+            _bob.Events.Invocations.Clear();
+            _alice.Transport.IpAddresses.Reverse();
+
+            _alice.Service.Ping(_alice.PeerFor(_bob).Id);
+
+            _bob.Events.Verify(e => e.PublishEvent(It.IsAny<PeerAddressChangedEvent>()), Times.Never());
+        }
+
+        [Test]
+        public void receiving_a_new_relay_should_request_a_route_check_even_when_ip_addresses_stay_the_same()
+        {
+            GivenPaired(_alice, _bob);
+            _alice.Transport.RelayUrl = "memory://new-relay";
+
+            _alice.Service.Ping(_alice.PeerFor(_bob).Id);
+
+            _bob.Events.Verify(e => e.PublishEvent(It.Is<PeerAddressChangedEvent>(c => c.PeerId == _bob.PeerFor(_alice).Id)), Times.Once());
+        }
+
+        [TestCase(PeerState.Pending)]
+        [TestCase(PeerState.Blocked)]
+        [TestCase(PeerState.Revoked)]
+        public void an_address_change_should_not_contact_a_friend_without_trust(PeerState state)
+        {
+            GivenPaired(_alice, _bob);
+            _alice.PeerFor(_bob).State = state;
+            var delivered = _bob.Transport.Delivered;
+
+            _alice.Service.HandleAsync(new PeerTransportAddressChangedEvent());
+
+            _bob.Transport.Delivered.Should().Be(delivered);
+            _alice.Events.Verify(e => e.PublishEvent(It.IsAny<PeerConnectionCheckedEvent>()), Times.Never());
+        }
+
+        [Test]
+        public void an_offline_friend_should_not_prevent_announcing_to_other_friends()
+        {
+            GivenPaired(_alice, _bob);
+            GivenPaired(_alice, _carol);
+            _bob.Transport.IsRunning = false;
+            _alice.Transport.IpAddresses = new List<string> { "192.0.2.1:6633" };
+
+            _alice.Service.HandleAsync(new PeerTransportAddressChangedEvent());
+
+            _alice.PeerFor(_bob).LastError.Should().StartWith("NoRoute");
+            _carol.PeerFor(_alice).ToAddress().IpAddresses.Should().Equal("192.0.2.1:6633");
+        }
+
+        [Test]
+        public void an_address_change_after_the_transport_stops_should_not_ping()
+        {
+            GivenPaired(_alice, _bob);
+            var delivered = _bob.Transport.Delivered;
+            _alice.Transport.IsRunning = false;
+
+            _alice.Service.HandleAsync(new PeerTransportAddressChangedEvent());
+
+            _bob.Transport.Delivered.Should().Be(delivered);
+        }
+
+        [Test]
         public void pairing_should_make_both_nodes_trust_each_other()
         {
             GivenPaired(_alice, _bob);
@@ -656,6 +774,7 @@ namespace NzbDrone.Core.Test.Nodes
 
                 peers.Setup(r => r.All()).Returns(() => Peers.ToList());
                 peers.Setup(r => r.Get(It.IsAny<int>())).Returns<int>(id => Peers.Single(p => p.Id == id));
+                peers.Setup(r => r.Find(It.IsAny<int>())).Returns<int>(id => Peers.SingleOrDefault(p => p.Id == id));
                 peers.Setup(r => r.FindByNodeId(It.IsAny<string>())).Returns<string>(id => Peers.SingleOrDefault(p => p.NodeId == id));
                 peers.Setup(r => r.Update(It.IsAny<Peer>())).Returns<Peer>(p => p);
                 peers.Setup(r => r.Delete(It.IsAny<int>())).Callback<int>(id => Peers.RemoveAll(p => p.Id == id));
@@ -703,12 +822,14 @@ namespace NzbDrone.Core.Test.Nodes
                 ShareDefaults.Setup(d => d.NotSharedWithNewFriends()).Returns(() => NotSharedWithNewFriends.ToList());
 
                 Service = new NamedPeerService(name, peers.Object, invites.Object, Transport, Offers.Object, Events.Object, logger, ShareDefaults.Object);
+                Upkeep = new PeerConnectionUpkeep(Service, peers.Object, Transport, logger);
                 Service.Handle(new ApplicationStartedEvent());
             }
 
             public string NodeId { get; }
             public InMemoryPeerTransport Transport { get; }
             public PeerService Service { get; }
+            public PeerConnectionUpkeep Upkeep { get; }
             public List<Peer> Peers { get; } = new();
             public List<PeerInvite> Invites { get; } = new();
             public Mock<IEventAggregator> Events { get; } = new();

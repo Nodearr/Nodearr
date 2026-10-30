@@ -21,6 +21,7 @@ namespace NzbDrone.Core.Nodes
     // just shown that the route is not what the last check said.
     public class PeerConnectionUpkeep : IExecute<CheckPeerConnectionsCommand>,
                                         IHandleAsync<PeerStateChangedEvent>,
+                                        IHandleAsync<PeerAddressChangedEvent>,
                                         IHandleAsync<TransferAttemptEndedEvent>
     {
         // A transfer that keeps failing asks for a check each time. One is enough for a while.
@@ -31,6 +32,7 @@ namespace NzbDrone.Core.Nodes
         private readonly IPeerTransport _transport;
         private readonly Logger _logger;
         private readonly HashSet<int> _checking = new();
+        private readonly HashSet<int> _addressChangedWhileChecking = new();
 
         public PeerConnectionUpkeep(IPeerService peerService, IPeerRepository peers, IPeerTransport transport, Logger logger)
         {
@@ -104,35 +106,62 @@ namespace NzbDrone.Core.Nodes
             Check(peer.Id);
         }
 
-        private void Check(int peerId)
+        public void HandleAsync(PeerAddressChangedEvent message)
+        {
+            var peer = _peers.Find(message.PeerId);
+
+            if (peer is not { State: PeerState.Trusted } || !_transport.IsRunning)
+            {
+                return;
+            }
+
+            _logger.Info("Checking the connection to {0} again, after its address changed", peer.Name);
+            Check(peer.Id, addressChanged: true);
+        }
+
+        private void Check(int peerId, bool addressChanged = false)
         {
             lock (_checking)
             {
                 if (!_checking.Add(peerId))
                 {
+                    if (addressChanged)
+                    {
+                        _addressChangedWhileChecking.Add(peerId);
+                    }
+
                     return;
                 }
             }
 
-            try
+            bool checkAgain;
+            do
             {
-                _peerService.Ping(peerId);
-            }
-            catch (PeerException)
-            {
-                // No longer trusted. There is nothing to check.
-            }
-            catch (Exception ex)
-            {
-                _logger.Warn(ex, "Unable to check the connection to node {0}", peerId);
-            }
-            finally
-            {
-                lock (_checking)
+                try
                 {
-                    _checking.Remove(peerId);
+                    _peerService.Ping(peerId);
+                }
+                catch (PeerException)
+                {
+                    // No longer trusted. There is nothing to check.
+                }
+                catch (Exception ex)
+                {
+                    _logger.Warn(ex, "Unable to check the connection to node {0}", peerId);
+                }
+                finally
+                {
+                    lock (_checking)
+                    {
+                        checkAgain = _addressChangedWhileChecking.Remove(peerId);
+                        if (!checkAgain)
+                        {
+                            _checking.Remove(peerId);
+                        }
+                    }
                 }
             }
+            while (checkAgain);
         }
     }
 }

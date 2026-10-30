@@ -101,6 +101,20 @@ There is no lookup service. Nodes learn each other's relay URL and addresses fro
 
 ## Amendments
 
+### 2026-10-29: tell friends when the network address changes (#124)
+
+The sidecar watches `Endpoint::watch_addr()` for changes to its IP addresses or home relay. It waits for three seconds without another change, then compares the address with the last one announced. A burst produces one notification; returning to the previous address produces none. Address sets are compared without regard to order.
+
+The `/v1/incoming` long poll carries a third kind, `address`, with `relay_url` and `ip_addrs`. It has no request ID and needs no answer. Only the latest settled address is kept while Nodearr is busy. Nodearr raises `PeerTransportAddressChangedEvent`, separately from the event that means the transport started or stopped, and pings every trusted friend. Each ping carries the current address and checks the connection route again for **Nodes > Trusted Nodes**.
+
+Nodes also announce themselves when the transport starts and during the connection check every 15 minutes. That check retries friends that were offline for an announcement. Peer messages are unchanged, so older friends can receive the ping. An older sidecar keeps the startup and periodic checks without immediate address notifications.
+
+The first Windows hotspot test exposed a missing receiver update: the address shown under **Connection** stayed at the previous check until the owner selected **Check connection**. The receiving ping saved the advertised address without checking that route again. Receiving a trusted friend's changed address now raises `PeerAddressChangedEvent`. Connection upkeep checks that friend asynchronously, which saves its route and notifies the open page. Address order alone does not trigger a check, and return pings carrying unchanged addresses do not loop. If a check is already running, address changes request one more check afterward.
+
+If both nodes change network together with relays off, neither may know a reachable address for the other. This change does not provide address lookup. Switching a laptop from Wi-Fi to a phone hotspot and checking the friend's stored address within about ten seconds still needs the owner's two-machine test.
+
+Checked on Windows: the solution builds with no warnings or errors, all 203 node tests pass, and `Run-S4Pairing.ps1` passes all 13 checks with the real sidecars. After restarting one node, the suite reads the receiving node's route until it changes to a current address, without making a manual connection check. The unchanged sidecar passed all 36 Rust tests in the first build. Tests cover settling, notifications without replies, every trusted friend, skipping nodes without trust, continuing past an offline friend, refreshing the receiver's displayed route and notifying its page, unchanged address order, and coalescing changes received during a check. No older release was tested; the receiver fix still needs the owner's hotspot retest.
+
 ### 2026-10-28: preserve transport diagnostic levels (#100)
 
 The sidecar's stderr uses plain tracing text with a level prefix and its target, without terminal colors or its own timestamp. A formatter escapes line breaks and control characters after rendering the complete event, including fields and spans. An upstream Debug implementation that writes several lines therefore remains one event in Nodearr's logs.
