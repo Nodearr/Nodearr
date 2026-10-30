@@ -182,6 +182,8 @@ The catalog's Get it action is implemented in #54, connection-loss diagnosis and
 
 - Network address changes settle for three seconds before the sidecar notifies Nodearr. Nodearr pings trusted friends with its current address; both nodes check their routes again and refresh open pages. A receiver update missed by the first hotspot build is fixed. Periodic checks retry offline friends ([#124](https://github.com/Nodearr/Nodearr/issues/124), ADR 0013). Branch `124-network-address-updates`. The owner's Wi-Fi-to-hotspot retest remains below.
 
+- Active downloads reopen with their saved bytes and hash after this node or their friend's address changes, without spending a failure attempt or replacing the Arr download ID ([#128](https://github.com/Nodearr/Nodearr/issues/128), ADR 0016). Branch `128-recover-stalled-transfers`. The owner's mid-transfer hotspot retest remains below.
+
 ### Next, in order
 
 1. ~~**Posters, part 1: a friend's catalog with pictures** (S57).~~ Done (ADR 0022).
@@ -194,6 +196,8 @@ The catalog's Get it action is implemented in #54, connection-loss diagnosis and
 These open items have no slice numbers yet. The earlier proposed S58 to S60 numbers were used for the UI test kit, sharing by app and screenshots above.
 
 ### Needs the owner, a second machine or a Mac
+
+- **Switch networks during a download (#128).** Switch the receiving Windows laptop from Wi-Fi to a hotspot part way through a file, then back. Confirm the same download resumes from its partial file and reaches import without removing it or making a fresh grab.
 
 - **A network switch while Nodearr stays running (#124).** Switch a laptop from Wi-Fi to a phone hotspot and check that its friend's stored address and **Last seen** update within about ten seconds, and that the connection route is checked again. Settling and trusted-friend selection are covered by tests; the real network switch is not.
 

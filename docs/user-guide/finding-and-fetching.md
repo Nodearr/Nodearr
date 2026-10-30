@@ -145,6 +145,8 @@ Nodearr writes incoming files under `incomplete` in its download folder. After v
 
 If Nodearr restarts, it resumes unfinished transfers. If the sender goes offline, Nodearr retries while attempts remain. Once the attempts are exhausted, wait for the friend to return, then search again in your Arr app or select **Retry** in Nodearr.
 
+When either node changes network address, affected downloads wait 15 seconds and reopen from the downloaded portion using the new address. They keep their download IDs and do not need to be removed or grabbed again. Moving networks does not use up a failure attempt.
+
 A retry resumes from the downloaded portion if the file has not changed. Nodearr can switch to another friend offering an identical file, identified by its hash and size. Album transfers stay with their original sender.
 
 ## When a transfer fails
