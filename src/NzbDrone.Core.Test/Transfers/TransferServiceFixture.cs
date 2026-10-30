@@ -398,6 +398,147 @@ namespace NzbDrone.Core.Test.Transfers
             Directory.Exists(Path.Combine(TempFolder, "complete")).Should().BeFalse();
         }
 
+        [Test]
+        public void a_local_address_change_should_reopen_a_stalled_transfer_from_its_saved_bytes()
+        {
+            var job = GivenDownloading();
+            GivenTransport(job, FileTransferState.Receiving, 620);
+
+            Subject.HandleAsync(new PeerTransportAddressChangedEvent());
+
+            var waiting = Stored(job);
+            waiting.State.Should().Be(TransferState.Queued);
+            waiting.BytesDone.Should().Be(620);
+            waiting.Hash.Should().Be("hash-1");
+            waiting.DownloadId.Should().Be(job.DownloadId);
+            waiting.Attempts.Should().Be(0);
+            waiting.NextAttempt.Should().BeAfter(DateTime.UtcNow);
+            File.Exists(_folders.IncompleteFile(job)).Should().BeTrue();
+            Mocker.GetMock<IFileTransport>().Verify(t => t.Cancel(job.TransportId), Times.Once());
+
+            // Another announcement while queued neither spends an attempt nor postpones it.
+            Subject.HandleAsync(new PeerTransportAddressChangedEvent());
+            Stored(job).NextAttempt.Should().Be(waiting.NextAttempt);
+            Mocker.GetMock<IFileTransport>().Verify(t => t.Cancel(job.TransportId), Times.Once());
+
+            waiting.NextAttempt = DateTime.UtcNow.AddSeconds(-1);
+            Db.Update(waiting);
+            _progress.Clear();
+            Subject.Tick();
+
+            _started.Should().HaveCount(2);
+            _started[1].ExpectedHash.Should().Be("hash-1");
+            _started[1].Destination.Should().Be(_started[0].Destination);
+            _started[1].Id.Should().Be(_started[0].Id);
+            Stored(job).Attempts.Should().Be(1);
+        }
+
+        [Test]
+        public void a_friends_address_change_should_reopen_only_that_friends_active_downloads()
+        {
+            var job = GivenDownloading();
+            GivenTransport(job, FileTransferState.Receiving, 620);
+            var peers = Mocker.Resolve<IPeerRepository>();
+            var alice = peers.Find(_alice.Id);
+            alice.IpAddresses = "192.0.2.2:5000";
+            peers.Update(alice);
+
+            Subject.HandleAsync(new PeerAddressChangedEvent(_alice.Id + 100));
+            Stored(job).State.Should().Be(TransferState.Downloading);
+            Mocker.GetMock<IFileTransport>().Verify(t => t.Cancel(It.IsAny<string>()), Times.Never());
+
+            Subject.HandleAsync(new PeerAddressChangedEvent(_alice.Id));
+            var waiting = Stored(job);
+            waiting.State.Should().Be(TransferState.Queued);
+            waiting.NextAttempt = DateTime.UtcNow.AddSeconds(-1);
+            Db.Update(waiting);
+            _progress.Clear();
+            Subject.Tick();
+
+            _started[1].Peer.IpAddresses.Should().Equal("192.0.2.2:5000");
+            _started[1].ExpectedHash.Should().Be("hash-1");
+        }
+
+        [Test]
+        public void a_local_address_change_should_reopen_every_running_download_and_leave_queued_work_alone()
+        {
+            var first = GivenDownloading();
+            GivenTransport(first, FileTransferState.Receiving, 620);
+            GivenCandidate("candidate-2", "file-2", "Second.File");
+            var second = Subject.Add("candidate-2", "tv");
+            Subject.Tick();
+            GivenTransport(second, FileTransferState.Receiving, 300);
+            GivenCandidate("candidate-3", "file-3", "Third.File");
+            var queued = Subject.Add("candidate-3", "tv");
+
+            Subject.HandleAsync(new PeerTransportAddressChangedEvent());
+
+            foreach (var job in new[] { first, second })
+            {
+                Stored(job).State.Should().Be(TransferState.Queued);
+                Stored(job).Attempts.Should().Be(0);
+                Mocker.GetMock<IFileTransport>().Verify(t => t.Cancel(job.TransportId), Times.Once());
+            }
+
+            Stored(queued).NextAttempt.Should().BeNull();
+            Mocker.GetMock<IFileTransport>().Verify(t => t.Cancel(queued.TransportId), Times.Never());
+        }
+
+        [Test]
+        public void a_network_change_with_unavailable_progress_should_keep_the_last_known_hash_and_partial_file()
+        {
+            var job = GivenDownloading();
+            GivenTransport(job, FileTransferState.Receiving, 620);
+            Subject.Tick();
+            Mocker.GetMock<IFileTransport>().Setup(t => t.List()).Throws(new TransportException(TransportFailure.Unavailable, "not responding"));
+
+            Subject.HandleAsync(new PeerTransportAddressChangedEvent());
+
+            Stored(job).State.Should().Be(TransferState.Queued);
+            Stored(job).Hash.Should().Be("hash-1");
+            Stored(job).BytesDone.Should().Be(620);
+            File.Exists(_folders.IncompleteFile(job)).Should().BeTrue();
+        }
+
+        [Test]
+        public void a_network_change_should_not_reopen_a_transfer_that_has_already_completed()
+        {
+            var job = GivenDownloading();
+            GivenTransport(job, FileTransferState.Completed, 1000);
+
+            Subject.HandleAsync(new PeerTransportAddressChangedEvent());
+
+            Stored(job).State.Should().Be(TransferState.Completed);
+            _started.Should().HaveCount(1);
+            Directory.Exists(Stored(job).OutputPath).Should().BeTrue();
+        }
+
+        [Test]
+        public void a_network_change_should_keep_the_normal_failure_policy_for_an_already_failed_attempt()
+        {
+            var job = GivenDownloading();
+            GivenTransport(job, FileTransferState.Failed, 620, "NotAuthorized");
+
+            Subject.HandleAsync(new PeerTransportAddressChangedEvent());
+
+            Stored(job).State.Should().Be(TransferState.Failed);
+            Stored(job).Failure.Should().Be(TransferFailure.NotAuthorized);
+        }
+
+        [TestCase(FileTransferState.Connecting)]
+        [TestCase(FileTransferState.Waiting)]
+        public void a_network_change_should_reopen_an_attempt_waiting_on_the_old_connection(FileTransferState state)
+        {
+            var job = GivenDownloading();
+            GivenTransport(job, state, 0);
+
+            Subject.HandleAsync(new PeerTransportAddressChangedEvent());
+
+            Stored(job).State.Should().Be(TransferState.Queued);
+            Stored(job).WaitingPosition.Should().BeNull();
+            Stored(job).Attempts.Should().Be(0);
+        }
+
         [TestCase("NoRoute", TransferFailure.PeerUnreachable)]
         [TestCase("DirectPathLost", TransferFailure.DirectPathLost)]
         [TestCase("NoDirectRoute", TransferFailure.NoDirectRoute)]

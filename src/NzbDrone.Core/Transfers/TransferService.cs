@@ -47,7 +47,8 @@ namespace NzbDrone.Core.Transfers
     // An album is one transfer of several parts, its tracks. They arrive one after another into
     // the same folder, each verified as a single file is, and each with its own attempts. The
     // folder moves into place only once the last one is verified (ADR 0020).
-    public class TransferService : ITransferService, IHandle<PeerStateChangedEvent>, IHandle<PeerDeletedEvent>
+    public class TransferService : ITransferService, IHandle<PeerStateChangedEvent>, IHandle<PeerDeletedEvent>,
+                                   IHandleAsync<PeerTransportAddressChangedEvent>, IHandleAsync<PeerAddressChangedEvent>
     {
         public const int MaxAttempts = 3;
 
@@ -300,6 +301,65 @@ namespace NzbDrone.Core.Transfers
         public void Handle(PeerDeletedEvent message)
         {
             EndTrust(message.PeerId, null, TransferFailure.Revoked);
+        }
+
+        public void HandleAsync(PeerTransportAddressChangedEvent message)
+        {
+            ReopenAfterAddressChange(null);
+        }
+
+        public void HandleAsync(PeerAddressChangedEvent message)
+        {
+            ReopenAfterAddressChange(message.PeerId);
+        }
+
+        private void ReopenAfterAddressChange(int? peerId)
+        {
+            lock (_sync)
+            {
+                var affected = _jobs.Active().Where(j => j.State == TransferState.Downloading && (!peerId.HasValue || j.PeerId == peerId.Value)).ToList();
+                if (affected.Count == 0)
+                {
+                    return;
+                }
+
+                var progress = new Dictionary<string, FileTransferProgress>();
+                try
+                {
+                    progress = _transport.List().ToDictionary(p => p.Id);
+                }
+                catch (TransportException ex)
+                {
+                    _logger.Debug(ex, "Unable to read transfer progress after the network address changed");
+                }
+
+                foreach (var job in affected)
+                {
+                    // Keep the latest hash and offset, and let an already completed or failed
+                    // attempt follow its usual path instead of reopening it.
+                    if (progress.TryGetValue(job.TransportId, out var current))
+                    {
+                        Follow(job, current);
+                        if (job.State != TransferState.Downloading)
+                        {
+                            continue;
+                        }
+                    }
+
+                    Forget(job);
+                    job.State = TransferState.Queued;
+                    job.WaitingPosition = null;
+                    job.NextAttempt = DateTime.UtcNow.Add(RetryDelay);
+
+                    // Moving networks is a voluntary reconnect, not a failed attempt. Repeated
+                    // announcements while queued do not spend the retry budget or delay it again.
+                    job.Attempts = Math.Max(0, job.Attempts - 1);
+                    _jobs.Update(job);
+                    _logger.Info("Reopening transfer {0} from its saved bytes after a network address change", job.DownloadId);
+                }
+
+                Changed();
+            }
         }
 
         private void EndTrust(int peerId, string nodeId, TransferFailure failure)

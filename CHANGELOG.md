@@ -4,6 +4,10 @@ What changed in each release, newest first. Each item links to the decision reco
 
 ## Unreleased
 
+### Fixed
+
+- Downloads reopen from their saved bytes when this node or the sending friend's address changes, instead of remaining stuck on an old file connection after a network switch. The download keeps its ID so the Arr app can follow the retry ([#128](https://github.com/Nodearr/Nodearr/issues/128), [ADR 0016](docs/adr/0016-transfers-and-the-download-client.md#2026-10-29-reopen-active-downloads-when-network-addresses-change-128)).
+
 ### Added
 
 - Question-mark help links open the relevant user guide for each page, with focused help beside settings sections and in invite, app connection, path mapping, fetch and send flows ([#120](https://github.com/Nodearr/Nodearr/issues/120)).
