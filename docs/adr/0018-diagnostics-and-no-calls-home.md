@@ -50,6 +50,8 @@ What Nodearr contacts now: the Arr apps it is given, the nodes its owner trusts,
 
 Two inherited paths remain that only run when someone uses the feature behind them: series lookups in the inherited TV pages, and the proxy test when a proxy is configured.
 
+ADR 0024 (2026-11-04) allows two hosts on nodearr.com, for update checks and usage reports, each with its own setting and one switch for both. See the amendments.
+
 ## Evidence
 
 - Unit tests for what a connection check records, the three health checks, and where an Arr app is asked to look.
@@ -111,3 +113,5 @@ Two inherited paths remain that only run when someone uses the feature behind th
   - Checked by the full test suite, a production build of the UI, and a node started from the build: it served the UI, answered its API and wrote its log, with no errors.
 
 - 2026-10-16 (ADR 0022): **posters contact nothing new.** A friend's posters come from that friend's own Arr apps, over the peer connection, and this node's from its own. No image service is asked for one.
+
+- 2026-11-04 ([ADR 0024](0024-update-checks-and-usage-reports-on-nodearr-com.md), [#131](https://github.com/Nodearr/Nodearr/issues/131)): **two hosts on nodearr.com may be contacted.** `updates.nodearr.com`, for a signed update manifest, and `usage.nodearr.com`, for an anonymous usage report. Both run every 6 hours, as in Sonarr and Radarr, and both are on by default. Each has its own setting, and one switch turns both off. What is sent never identifies a node or its owner. The rest of this decision stands: no error reporting, no tracking script, no time or notification checks. Until #133 and #134 build them, nothing on nodearr.com is contacted.

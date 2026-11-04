@@ -66,7 +66,7 @@ From the zip, `ServiceInstall.exe` and `ServiceUninstall.exe`, run as administra
 
 - **FreeBSD.** Sonarr and Radarr release for it with a .NET runtime the community builds, from a package source of their own. Nodearr's sidecar is built on [iroh](https://www.iroh.computer/), and iroh on FreeBSD has not been tried. Until both have been, there is no FreeBSD package.
 - **A macOS app bundle** (`Nodearr.app`). Sonarr has one. Nodearr has the plain archive for now.
-- **An updater.** Nodearr does not update itself (ADR 0018). A new version is installed over the old one, or pulled as a new image.
+- **An updater.** Nodearr does not update itself yet. A new version is installed over the old one, or pulled as a new image. ADR 0024 allows an update check against a signed manifest on `updates.nodearr.com`, and [#134](https://github.com/Nodearr/Nodearr/issues/134) builds it.
 
 ### Licences
 
