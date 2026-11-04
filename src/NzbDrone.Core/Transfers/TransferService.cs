@@ -474,6 +474,13 @@ namespace NzbDrone.Core.Transfers
 
             job.Hash = progress.Hash ?? job.Hash;
 
+            // An attempt that ended adds what moved in it. Each way on from here saves the job.
+            if (progress.State is FileTransferState.Completed or FileTransferState.Failed)
+            {
+                job.BytesMoved += Math.Max(0, progress.BytesDone - progress.Offset);
+                job.MovingMilliseconds += Math.Max(0, progress.MovingMilliseconds ?? 0);
+            }
+
             switch (progress.State)
             {
                 case FileTransferState.Completed when job.HasParts && job.PartIndex < job.GetParts().Count - 1:
@@ -595,6 +602,7 @@ namespace NzbDrone.Core.Transfers
             job.Ended = DateTime.UtcNow;
             _jobs.Update(job);
             _logger.Info("Transfer {0} completed: {1}", job.DownloadId, job.Title);
+            _eventAggregator.PublishEvent(new TransferEndedEvent(job));
         }
 
         // A folder already there is another download's, until its Arr app has imported it: two
@@ -739,6 +747,7 @@ namespace NzbDrone.Core.Transfers
             job.Ended = DateTime.UtcNow;
             _jobs.Update(job);
             _logger.Warn("Transfer {0} failed: {1}", job.DownloadId, job.FailureMessage);
+            _eventAggregator.PublishEvent(new TransferEndedEvent(job));
         }
 
         // A transfer that failed for want of a direct route also says what is known about the

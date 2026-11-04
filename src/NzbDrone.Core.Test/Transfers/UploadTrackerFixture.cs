@@ -1,6 +1,8 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using FluentAssertions;
+using Moq;
 using NUnit.Framework;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Nodes;
@@ -254,6 +256,134 @@ namespace NzbDrone.Core.Test.Transfers
             Subject.Tick();
 
             read.BytesSent.Should().Be(400);
+        }
+
+        private List<TEvent> Published<TEvent>()
+        {
+            return Mocker.GetMock<IEventAggregator>().Invocations
+                .Where(i => i.Arguments.Count > 0 && i.Arguments[0] is TEvent)
+                .Select(i => (TEvent)i.Arguments[0])
+                .ToList();
+        }
+
+        [Test]
+        public void a_request_should_be_told_once_with_the_file_it_asked_for()
+        {
+            GivenUpload("1", UploadState.Preparing, 0);
+            Subject.Tick();
+            GivenUpload("1", UploadState.Sending, 100);
+            Subject.Tick();
+
+            Published<UploadRequestedEvent>().Should().ContainSingle().Which.Upload.Should().Match<Upload>(u => u.File == "e-1-501" && u.PeerNodeId == "bob");
+        }
+
+        [Test]
+        public void an_upload_that_waited_its_turn_should_say_so_once_it_leaves_the_line()
+        {
+            GivenUpload("1", UploadState.Waiting, 0).QueuePosition = 1;
+            Subject.Tick();
+            Subject.Tick();
+            Published<UploadWaitEndedEvent>().Should().BeEmpty();
+
+            GivenUpload("1", UploadState.Sending, 100);
+            Subject.Tick();
+            Subject.Tick();
+
+            Published<UploadWaitEndedEvent>().Should().ContainSingle().Which.Waited.Should().BeGreaterOrEqualTo(TimeSpan.Zero);
+        }
+
+        [Test]
+        public void an_upload_that_ends_while_waiting_has_stopped_waiting_too()
+        {
+            GivenUpload("1", UploadState.Waiting, 0).QueuePosition = 1;
+            Subject.Tick();
+            GivenUpload("1", UploadState.Failed, 0, failure: "Revoked");
+            Subject.Tick();
+
+            Published<UploadWaitEndedEvent>().Should().ContainSingle();
+            Published<UploadAttemptEndedEvent>().Should().ContainSingle().Which.Upload.Failure.Should().Be("Revoked");
+        }
+
+        [Test]
+        public void an_upload_that_never_waited_should_say_nothing_of_waiting()
+        {
+            GivenUpload("1", UploadState.Sending, 100);
+            Subject.Tick();
+            GivenUpload("1", UploadState.Completed, 1000);
+            Subject.Tick();
+
+            Published<UploadWaitEndedEvent>().Should().BeEmpty();
+        }
+
+        [Test]
+        public void an_attempt_that_ended_should_count_only_what_left_in_it_and_be_told_once()
+        {
+            var sending = GivenUpload("1", UploadState.Sending, 400);
+            sending.Offset = 300;
+            Subject.Tick();
+
+            var completed = GivenUpload("1", UploadState.Completed, 1000);
+            completed.Offset = 300;
+            completed.MovingMilliseconds = 2000;
+            Subject.Tick();
+            Subject.Tick();
+
+            Published<UploadAttemptEndedEvent>().Should().ContainSingle().Which.Should().Match<UploadAttemptEndedEvent>(e =>
+                e.Bytes == 700 && e.Moving == TimeSpan.FromSeconds(2) && e.Upload.State == UploadState.Completed);
+        }
+
+        [Test]
+        public void an_upload_seen_only_once_it_had_ended_should_still_be_counted()
+        {
+            GivenUpload("1", UploadState.Completed, 1000).MovingMilliseconds = 100;
+            Subject.Tick();
+
+            Published<UploadAttemptEndedEvent>().Should().ContainSingle().Which.Bytes.Should().Be(1000);
+        }
+
+        [Test]
+        public void a_failed_upload_asked_for_again_should_be_told_with_the_failure_it_takes_back()
+        {
+            GivenUpload("1", UploadState.Sending, 400);
+            Subject.Tick();
+            GivenUpload("1", UploadState.Failed, 400, failure: "DirectPathLost");
+            Subject.Tick();
+
+            var reopened = GivenUpload("1", UploadState.Preparing, 400, attempts: 2, lastFailure: "DirectPathLost");
+            reopened.Offset = 400;
+            Subject.Tick();
+
+            Published<UploadReopenedEvent>().Should().ContainSingle().Which.PreviousFailure.Should().Be("DirectPathLost");
+
+            var done = GivenUpload("1", UploadState.Completed, 1000, attempts: 2, lastFailure: "DirectPathLost");
+            done.Offset = 400;
+            Subject.Tick();
+
+            Published<UploadAttemptEndedEvent>().Select(e => (e.Upload.State, e.Bytes)).Should().Equal((UploadState.Failed, 400L), (UploadState.Completed, 600L));
+        }
+
+        [Test]
+        public void a_failed_upload_that_failed_again_between_looks_should_count_both_attempts()
+        {
+            GivenUpload("1", UploadState.Failed, 400, failure: "DirectPathLost", attempts: 1);
+            Subject.Tick();
+            GivenUpload("1", UploadState.Failed, 500, failure: "Stopped", attempts: 2, lastFailure: "DirectPathLost");
+            Subject.Tick();
+
+            Published<UploadReopenedEvent>().Should().ContainSingle();
+            Published<UploadAttemptEndedEvent>().Select(e => e.Upload.Failure).Should().Equal("DirectPathLost", "Stopped");
+        }
+
+        [Test]
+        public void an_upload_the_transport_forgot_should_end_as_stopped()
+        {
+            GivenUpload("1", UploadState.Sending, 400);
+            Subject.Tick();
+            _reported.Clear();
+            Subject.Tick();
+
+            Published<UploadAttemptEndedEvent>().Should().ContainSingle().Which.Upload.Should().Match<Upload>(u => u.State == UploadState.Failed && u.Failure == "Stopped");
+            Mocker.GetMock<IEventAggregator>().Verify(e => e.PublishEvent(It.IsAny<UploadAttemptEndedEvent>()), Times.Once());
         }
     }
 }

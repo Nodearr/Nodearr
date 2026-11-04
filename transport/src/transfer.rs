@@ -107,6 +107,37 @@ pub struct DownloadState {
     pub failure: Option<Failure>,
     /// While waiting: the place in the sender's line, counting from 1.
     pub queue_position: Option<u32>,
+    /// Where this attempt started: what was already here when it asked. What arrived in this
+    /// attempt is bytes_done less this.
+    pub offset: u64,
+    /// How long data has been arriving in this attempt, in milliseconds. Set by `list`.
+    pub moving_ms: u64,
+    #[serde(skip)]
+    moving: Moving,
+}
+
+/// When data started and stopped moving in one attempt. Connecting, waiting in the sender's line
+/// and working out the hash do not count, so Nodearr can tell how fast the data itself moved.
+#[derive(Clone, Default)]
+struct Moving {
+    since: Option<Instant>,
+    until: Option<Instant>,
+}
+
+impl Moving {
+    fn start(&mut self) {
+        *self = Moving { since: Some(Instant::now()), until: None };
+    }
+
+    fn stop(&mut self) {
+        if self.since.is_some() && self.until.is_none() {
+            self.until = Some(Instant::now());
+        }
+    }
+
+    fn millis(&self) -> u64 {
+        self.since.map_or(0, |since| self.until.unwrap_or_else(Instant::now).saturating_duration_since(since).as_millis() as u64)
+    }
 }
 
 /// One file this node is sending, or has just sent, to another node.
@@ -129,6 +160,13 @@ pub struct UploadState {
     pub last_failure: Option<Failure>,
     /// While waiting: its place in line, counting from 1.
     pub queue_position: Option<u32>,
+    /// Where this attempt started: what the other node already held when it asked. What was sent
+    /// in this attempt is bytes_sent less this.
+    pub offset: u64,
+    /// How long data has been leaving in this attempt, in milliseconds. Set by `list_uploads`.
+    pub moving_ms: u64,
+    #[serde(skip)]
+    moving: Moving,
     #[serde(skip)]
     transfer: Option<String>,
     #[serde(skip)]
@@ -286,7 +324,16 @@ impl Transfers {
     }
 
     pub fn list(&self) -> Vec<DownloadState> {
-        self.downloads.lock().unwrap().values().map(|d| d.state.lock().unwrap().clone()).collect()
+        self.downloads
+            .lock()
+            .unwrap()
+            .values()
+            .map(|d| {
+                let mut state = d.state.lock().unwrap().clone();
+                state.moving_ms = state.moving.millis();
+                state
+            })
+            .collect()
     }
 
     /// Stops a download and forgets it. What it wrote stays on disk for Nodearr to resume or remove.
@@ -306,6 +353,9 @@ impl Transfers {
         states.retain(|_, upload| upload.finished.map(|at| at.elapsed() < UPLOAD_HISTORY).unwrap_or(true));
 
         let mut list: Vec<UploadState> = states.values().cloned().collect();
+        for upload in list.iter_mut() {
+            upload.moving_ms = upload.moving.millis();
+        }
         list.sort_by(|a, b| a.id.cmp(&b.id));
         list
     }
@@ -315,6 +365,7 @@ impl Transfers {
             change(upload);
             if matches!(upload.state, "completed" | "failed") && upload.finished.is_none() {
                 upload.finished = Some(Instant::now());
+                upload.moving.stop();
             }
         }
     }
@@ -350,6 +401,8 @@ impl Transfers {
             previous.blake3 = Some(blake3.to_string());
             previous.transfer = request.transfer.clone().or_else(|| previous.transfer.clone());
             previous.finished = None;
+            previous.offset = request.offset;
+            previous.moving = Moving::default();
             return previous_id;
         }
 
@@ -849,6 +902,9 @@ async fn send_file(transfers: &Transfers, conn: &Connection, remote: EndpointId,
             blake3: None,
             finished: None,
             queue_position: None,
+            offset: request.offset,
+            moving_ms: 0,
+            moving: Moving::default(),
         },
     );
 
@@ -903,6 +959,8 @@ async fn send_file(transfers: &Transfers, conn: &Connection, remote: EndpointId,
         u.state = "sending";
         u.size = size;
         u.bytes_sent = offset;
+        u.offset = offset;
+        u.moving.start();
     });
 
     let mut source = tokio::fs::File::open(&path).await?;
@@ -1013,7 +1071,18 @@ pub fn start(transfers: &Arc<Transfers>, endpoint: Endpoint, live: Arc<Live>, re
         }
     }
 
-    let state = Arc::new(Mutex::new(DownloadState { id: request.id.clone(), state: "connecting", bytes_done: 0, size: 0, blake3: None, failure: None, queue_position: None }));
+    let state = Arc::new(Mutex::new(DownloadState {
+        id: request.id.clone(),
+        state: "connecting",
+        bytes_done: 0,
+        size: 0,
+        blake3: None,
+        failure: None,
+        queue_position: None,
+        offset: 0,
+        moving_ms: 0,
+        moving: Moving::default(),
+    }));
     let task_state = state.clone();
     let id = request.id.clone();
     let limit = transfers.download_limit;
@@ -1024,6 +1093,7 @@ pub fn start(transfers: &Arc<Transfers>, endpoint: Endpoint, live: Arc<Live>, re
             let mut state = task_state.lock().unwrap();
             state.state = "failed";
             state.failure = Some(failure);
+            state.moving.stop();
         }
     });
 
@@ -1101,6 +1171,8 @@ async fn receive_file(endpoint: &Endpoint, live: &Arc<Live>, request: &DownloadR
         state.size = header.size;
         state.bytes_done = bytes;
         state.blake3 = Some(header.blake3.clone());
+        state.offset = header.offset;
+        state.moving.start();
     }
 
     let mut buffer = vec![0u8; CHUNK];
@@ -1152,7 +1224,11 @@ async fn receive_file(endpoint: &Endpoint, live: &Arc<Live>, request: &DownloadR
         return Err(failure("VerificationFailed", format!("received {bytes} of {} bytes and the BLAKE3 hash did not match", header.size)));
     }
 
-    state.lock().unwrap().state = "completed";
+    {
+        let mut state = state.lock().unwrap();
+        state.state = "completed";
+        state.moving.stop();
+    }
     Ok(())
 }
 
@@ -1176,6 +1252,9 @@ mod tests {
             blake3: Some("hash-a".into()),
             finished: Some(Instant::now()),
             queue_position: None,
+            offset: 0,
+            moving_ms: 0,
+            moving: Moving::default(),
         }
     }
 
@@ -1251,6 +1330,40 @@ mod tests {
         // A request that does not accept it looks as it did before.
         let quiet = FileRequest { file: "movie.mkv".into(), offset: 0, if_hash: None, transfer: None, accepts_queued: false };
         assert!(serde_json::to_value(quiet).unwrap().get("accepts_queued").is_none());
+    }
+
+    #[test]
+    fn moving_time_counts_only_while_data_moves() {
+        let mut moving = Moving::default();
+        assert_eq!(moving.millis(), 0, "nothing has moved before the header");
+
+        moving.since = Some(Instant::now() - Duration::from_millis(1500));
+        moving.stop();
+        let stopped = moving.millis();
+        assert!((1500..1600).contains(&stopped), "counted {stopped} ms");
+
+        std::thread::sleep(Duration::from_millis(20));
+        assert_eq!(moving.millis(), stopped, "the time after it stopped does not count");
+
+        moving.stop();
+        assert_eq!(moving.millis(), stopped, "stopping twice keeps the first end");
+
+        moving.start();
+        assert!(moving.millis() < 100, "a new attempt starts again from nothing");
+    }
+
+    #[test]
+    fn uploads_list_what_each_attempt_started_from_and_how_long_it_moved() {
+        let transfers = slots(0);
+        transfers.upload_states.lock().unwrap().insert(
+            1,
+            UploadState { offset: 256, moving: Moving { since: Some(Instant::now() - Duration::from_secs(2)), until: None }, ..prior_upload() },
+        );
+
+        let listed = serde_json::to_value(&transfers.list_uploads()[0]).unwrap();
+        assert_eq!(listed["offset"], 256);
+        assert!(listed["moving_ms"].as_u64().unwrap() >= 2000);
+        assert!(listed.get("moving").is_none());
     }
 
     #[test]

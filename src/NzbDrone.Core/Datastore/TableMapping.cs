@@ -42,6 +42,7 @@ using NzbDrone.Core.Qualities;
 using NzbDrone.Core.RemotePathMappings;
 using NzbDrone.Core.RootFolders;
 using NzbDrone.Core.Sharing;
+using NzbDrone.Core.Statistics;
 using NzbDrone.Core.Tags;
 using NzbDrone.Core.ThingiProvider;
 using NzbDrone.Core.Transfers;
@@ -144,6 +145,10 @@ namespace NzbDrone.Core.Datastore
             Mapper.Entity<OfferRecord>("OfferRecords").RegisterModel();
             Mapper.Entity<TransferJob>("Transfers").RegisterModel();
             Mapper.Entity<FileHash>("FileHashes").RegisterModel();
+            Mapper.Entity<TransferStatistic>("TransferStatistics").RegisterModel();
+            Mapper.Entity<ConnectionStatistic>("ConnectionStatistics").RegisterModel();
+            Mapper.Entity<PeerRoute>("PeerRoutes").RegisterModel();
+            Mapper.Entity<FetchedTitle>("FetchedTitles").RegisterModel();
 
             Mapper.Entity<SceneMapping>("SceneMappings").RegisterModel();
 

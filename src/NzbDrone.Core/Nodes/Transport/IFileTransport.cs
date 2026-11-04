@@ -46,6 +46,13 @@ namespace NzbDrone.Core.Nodes.Transport
 
         // While waiting: the place in the other node's line, counting from 1.
         public int? QueuePosition { get; set; }
+
+        // Where this attempt started: what was already here when it asked. What arrived in this
+        // attempt is BytesDone less this.
+        public long Offset { get; set; }
+
+        // How long data has been arriving in this attempt. Null from a transport too old to say.
+        public long? MovingMilliseconds { get; set; }
     }
 
     // One file this node is sending to another node, as the transport reports it.
@@ -68,6 +75,13 @@ namespace NzbDrone.Core.Nodes.Transport
 
         // While waiting for a free upload slot: its place in line, counting from 1.
         public int? QueuePosition { get; set; }
+
+        // Where this attempt started: what the other node already held when it asked. What was
+        // sent in this attempt is BytesSent less this.
+        public long Offset { get; set; }
+
+        // How long data has been leaving in this attempt. Null from a transport too old to say.
+        public long? MovingMilliseconds { get; set; }
     }
 
     // A file's BLAKE3 hash, and the version of the file it belongs to, as the transport saw it.

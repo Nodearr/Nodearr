@@ -257,7 +257,9 @@ namespace NzbDrone.Core.Nodes.Transport
                     Hash = s.Blake3,
                     FailureKind = s.Failure?.Kind,
                     FailureMessage = s.Failure?.Message,
-                    QueuePosition = s.QueuePosition
+                    QueuePosition = s.QueuePosition,
+                    Offset = s.Offset,
+                    MovingMilliseconds = s.MovingMs
                 });
             }
             catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
@@ -288,7 +290,9 @@ namespace NzbDrone.Core.Nodes.Transport
                     LastFailureMessage = s.LastFailure?.Message,
                     FailureKind = s.Failure?.Kind,
                     FailureMessage = s.Failure?.Message,
-                    QueuePosition = s.QueuePosition
+                    QueuePosition = s.QueuePosition,
+                    Offset = s.Offset,
+                    MovingMilliseconds = s.MovingMs
                 });
             }
             catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
@@ -799,6 +803,10 @@ namespace NzbDrone.Core.Nodes.Transport
             public string Blake3 { get; set; }
             public TransferFailureBody Failure { get; set; }
             public int? QueuePosition { get; set; }
+            public long Offset { get; set; }
+
+            // Null from a transport too old to say.
+            public long? MovingMs { get; set; }
         }
 
         private class UploadStateBody
@@ -814,6 +822,10 @@ namespace NzbDrone.Core.Nodes.Transport
             public TransferFailureBody LastFailure { get; set; }
             public TransferFailureBody Failure { get; set; }
             public int? QueuePosition { get; set; }
+            public long Offset { get; set; }
+
+            // Null from a transport too old to say.
+            public long? MovingMs { get; set; }
         }
 
         private class TransferFailureBody

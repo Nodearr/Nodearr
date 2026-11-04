@@ -99,6 +99,10 @@ const LINKS: SidebarItem[] = [
         title: () => translate('Transfers'),
         to: '/activity/transfers',
       },
+      {
+        title: () => translate('Statistics'),
+        to: '/activity/statistics',
+      },
     ],
   },
   {

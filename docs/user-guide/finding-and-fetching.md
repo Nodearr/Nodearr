@@ -167,3 +167,20 @@ A transfer gets up to three attempts per source, with 15 seconds between retries
 | `DiskError` | The file could not be written here. | Check the download folder has room and can be written to. **System > Status** says if it cannot. |
 
 On **Activity > Transfers**, select **Retry** to create a new attempt for a failed transfer. **Remove** deletes the transfer and its downloaded files, including any partial download.
+
+## Statistics
+
+**Activity > Statistics** shows what your node has done over time: how much it sent to friends and fetched from them, how fast, and why transfers failed. Choose **7 days**, **30 days** or **12 months** at the top. Days follow your browser's time zone.
+
+![Activity > Statistics on Alex's node after a few transfers with Sam, split by friend](images/statistics.png)
+
+Each node sees only its own statistics. Your friends do not see yours, and nothing on this page leaves your node.
+
+- **Fetched** and **Sent**: the data moved, the transfers that finished and failed, the **Average speed** and the **Fastest transfer**. The average is the data moved divided by the time it was moving; connecting and waiting in a queue do not count. The fastest transfer is the highest average of a single finished transfer.
+- **Data per day**: a chart for each direction. Select **By friend** or **By app** to split the bars. Over 12 months the bars are months. Select **Show as table** to see the same numbers as a table.
+- **Failed transfers**: how many failed for each reason, what the reason means, and a **Troubleshooting** link. A download that failed is counted once, when it fails for good. An upload that failed and that the friend's node then asked for again is not counted as failed.
+- **Friends**: the data sent to and fetched from each friend, their finished and failed transfers, how many connection checks found a direct route, the route the last check found, and when it last changed. While a friend is **Relay only**, neither of you can fetch from the other. See [Relay only](troubleshooting.md#relay-only).
+- **Upload queue**: how many requests friends made, how many had to wait for a free upload slot, and the average and longest wait. If many of them waited, the page says that **Most Uploads at Once** on **Settings > Node** may be too low.
+- **Catalog**: how many titles each app shares with at least one trusted friend now, and how many different titles friends fetched from you in the range. A title is a series, a movie or an album.
+
+Statistics are kept for 13 months. Downloads that ended before you updated to the version with this page are counted from their records. Uploads and connection checks are counted from the update on.
