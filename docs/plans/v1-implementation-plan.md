@@ -184,6 +184,8 @@ The catalog's Get it action is implemented in #54, connection-loss diagnosis and
 
 - Active downloads reopen with their saved bytes and hash after this node or their friend's address changes, without spending a failure attempt or replacing the Arr download ID ([#128](https://github.com/Nodearr/Nodearr/issues/128), ADR 0016). Branch `128-recover-stalled-transfers`. The owner's mid-transfer hotspot retest remains below.
 
+- ADR 0024: Nodearr may contact `updates.nodearr.com` for a signed update manifest and `usage.nodearr.com` for an anonymous usage report, both every 6 hours and on by default as in Sonarr and Radarr, each with its own setting and one switch for both. The website stays on GitHub Pages and gains `/privacy` and `/stats`. A decision only; nothing is contacted until it is built ([#131](https://github.com/Nodearr/Nodearr/issues/131); ADR 0018 amended). Branch `131-decide-what-nodearr-may-contact-on-nodearr-com`.
+
 ### Next, in order
 
 1. ~~**Posters, part 1: a friend's catalog with pictures** (S57).~~ Done (ADR 0022).
@@ -211,6 +213,12 @@ These open items have no slice numbers yet. The earlier proposed S58 to S60 numb
 - **The systemd unit** in the user guide, modelled on Sonarr's, has not been run. It needs a Linux machine with systemd.
 - **Release packages not yet started:** macOS on Intel and Apple silicon (needs a Mac), linux-musl-arm64 and 32-bit ARM on a real board.
 
+### Decided, not built
+
+- Update checks and automatic updates from a signed manifest on `updates.nodearr.com` ([#134](https://github.com/Nodearr/Nodearr/issues/134), ADR 0024). Whichever of this and #133 comes first adds the switch that turns off both hosts, and the S8 check with it on and off.
+- Anonymous usage reports to `usage.nodearr.com`, with the public totals at `nodearr.com/stats` ([#133](https://github.com/Nodearr/Nodearr/issues/133), ADR 0024).
+- `nodearr.com/privacy` in the site repository, listing what each host receives. It can say that nothing is sent until #133 or #134 ships.
+
 ### Waiting on others
 
 - `iroh-blobs`, looked at again once it is production quality on iroh 1.x (ADR 0012). Its production release, 0.35, is built on iroh 0.35, from before 1.0, and the owner decided on 2026-10-16 not to take Nodearr's iroh back to it.
@@ -218,4 +226,4 @@ These open items have no slice numbers yet. The earlier proposed S58 to S60 numb
 ### Not planned
 
 - Custom formats in Nodearr's marks. Upgrades follow the quality profile's qualities, and the Arr apps judge custom formats themselves when they search (decision 2).
-- A FreeBSD package and a macOS app bundle (`docs/guides/releases.md`). No updater, by design (ADR 0018).
+- A FreeBSD package and a macOS app bundle (`docs/guides/releases.md`).
