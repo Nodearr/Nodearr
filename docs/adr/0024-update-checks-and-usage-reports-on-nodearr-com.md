@@ -50,7 +50,7 @@ One setting, with an environment key (`Nodearr__Network__ContactNodearr=false` o
 - **Nothing that identifies a node or its owner.** No title, path, file name, node ID, friend's ID or name, IP address, host name, user name, API key or Arr URL, and no exact count that could single a node out.
 - **Not over the peer transport.** It's an ordinary HTTPS request from Nodearr's backend, through the configured proxy if there is one. It never goes through a relay.
 - **A failure is quiet.** Nodearr logs it at debug level and tries again at the next scheduled time. It raises no health warning, because it isn't the owner's problem to fix.
-- **`nodearr.com/privacy` lists exactly what each host receives**, what is kept and for how long. A change to what is sent changes that page in the same pull request.
+- **`nodearr.com/privacy` lists exactly what each host receives**, what is kept and for how long. The address redirects to **What anyone else sees** in the user guide's privacy page (`docs/user-guide/privacy-and-security.md`), so the description lives beside the code: a change to what is sent changes that section in the same pull request.
 - **No DNS until it's needed.** `updates.` and `usage.` are set up when #134 and #133 are built. A host that doesn't answer is harmless, because a failure is quiet.
 
 ## Consequences

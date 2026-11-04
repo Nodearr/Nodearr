@@ -217,7 +217,7 @@ These open items have no slice numbers yet. The earlier proposed S58 to S60 numb
 
 - Update checks and automatic updates from a signed manifest on `updates.nodearr.com` ([#134](https://github.com/Nodearr/Nodearr/issues/134), ADR 0024). Whichever of this and #133 comes first adds the switch that turns off both hosts, and the S8 check with it on and off.
 - Anonymous usage reports to `usage.nodearr.com`, with the public totals at `nodearr.com/stats` ([#133](https://github.com/Nodearr/Nodearr/issues/133), ADR 0024).
-- `nodearr.com/privacy` in the site repository, listing what each host receives. It can say that nothing is sent until #133 or #134 ships.
+- `nodearr.com/privacy` redirects to **What anyone else sees** in the user guide's privacy page (Nodearr/nodearr.github.io, branch `site/privacy`). #133 and #134 list there what each host receives.
 
 ### Waiting on others
 
