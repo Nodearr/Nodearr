@@ -4,6 +4,14 @@ What changed in each release, newest first. Each item links to the decision reco
 
 ## Unreleased
 
+### Added
+
+- **Activity > Statistics** shows what your node sent to friends and fetched from them over 7 days, 30 days or 12 months: data per day by friend or by app, transfers finished and failed with each failure's reason and a troubleshooting link, average and fastest speed, how often each friend's connection was direct, how long uploads waited for a free slot, and how many titles each app shares and friends fetched. Speeds count only the time data was moving. Statistics stay on your node and are kept for 13 months. Downloads that ended before the update are counted from their records; uploads and connection checks are counted from the update on ([#132](https://github.com/Nodearr/Nodearr/issues/132), [Statistics](docs/user-guide/finding-and-fetching.md#statistics)).
+
+### Fixed
+
+- The third-party notices in each package listed the sidecar's crates from before 0.7.0, including `ring`, which the post-quantum key exchange replaced with `aws-lc-rs`. They now list the crates the sidecar is built with ([#132](https://github.com/Nodearr/Nodearr/issues/132)).
+
 ## 0.8.1 (pre-release)
 
 Downloads recover when either node changes network address, keeping their progress and the download the Arr app is already following.

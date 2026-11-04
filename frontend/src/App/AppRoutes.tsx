@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { Navigate, Route } from 'react-router-dom';
 import Transfers from 'Activity/Transfers/Transfers';
 import LocalCatalog from 'Catalog/Local/LocalCatalog';
 import PeerCatalog from 'Catalog/Peer/PeerCatalog';
 import Sharing from 'Catalog/Sharing/Sharing';
+import LoadingIndicator from 'Components/Loading/LoadingIndicator';
 import NotFound from 'Components/NotFound';
 import Home from 'Home/Home';
 import NodeInvites from 'Nodes/Invites/NodeInvites';
@@ -17,6 +18,9 @@ import Tasks from 'System/Tasks/Tasks';
 import ApplicationSettings from '../Settings/Applications/ApplicationSettings';
 import GeneralSettings from '../Settings/General/GeneralSettings';
 import NodeSettings from '../Settings/Node/NodeSettings';
+
+// Loaded only when opened, so the charting library stays out of every other page.
+const Statistics = lazy(() => import('Activity/Statistics/Statistics'));
 
 export function appRouteElements() {
   return (
@@ -60,6 +64,15 @@ export function appRouteElements() {
       */}
 
       <Route path="/activity/transfers" element={<Transfers />} />
+
+      <Route
+        path="/activity/statistics"
+        element={
+          <Suspense fallback={<LoadingIndicator />}>
+            <Statistics />
+          </Suspense>
+        }
+      />
 
       {/*
         Settings

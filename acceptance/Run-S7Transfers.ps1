@@ -1050,6 +1050,46 @@ try {
         (& $ended $episodeNames[2] 'failed' 'NotAuthorized') -eq 1 -and
         (& $ended $episodeNames[2] 'failed' 'Revoked') -eq 1 -and @($uploads | Where-Object { $_.state -in 'sending', 'preparing' }).Count -eq 0
     ) @{ uploads = @($uploads | ForEach-Object { "$($_.title -replace '\.720p.*', '') -> $($_.state) attempts=$($_.attempts) previous=$($_.lastFailure) failure=$($_.failure) $($_.bytesSent)/$($_.size)" }) }
+
+    # --- 7. Statistics on each node --------------------------------------------------------------
+
+    # Each node counts what it did itself. A counts each upload once, however many attempts it
+    # took, as the list above shows it. B counts each download that ended for good; those the
+    # Arr app deleted from its queue part way never ended, so they are not counted.
+    $statsA = Invoke-Node A GET '/statistics?timeZone=UTC'
+    $statsB = Invoke-Node B GET '/statistics?timeZone=UTC'
+    $sentA = $statsA.totals | Where-Object direction -eq 'sent'
+    $fetchedB = $statsB.totals | Where-Object direction -eq 'fetched'
+    $failuresA = @($statsA.failures | Where-Object direction -eq 'sent')
+    $failuresB = @($statsB.failures | Where-Object direction -eq 'fetched')
+    $countOf = { param($failures, [string] $reason) [int](@($failures | Where-Object reason -eq $reason | ForEach-Object count) | Measure-Object -Sum).Sum }
+    $completedUploads = @($uploads | Where-Object state -eq 'completed').Count
+    $failedUploads = @($uploads | Where-Object state -eq 'failed').Count
+    $bOnAStats = $statsA.friends | Where-Object name -eq $bOnA.name | Select-Object -First 1
+    $aOnBStats = $statsB.friends | Where-Object name -eq $aOnB.name | Select-Object -First 1
+    $statsEvidence = @{
+        sentA = $sentA; fetchedB = $fetchedB
+        failuresA = @($failuresA | ForEach-Object { "$($_.reason)=$($_.count)" }); failuresB = @($failuresB | ForEach-Object { "$($_.reason)=$($_.count)" })
+        uploadsListed = @{ completed = $completedUploads; failed = $failedUploads }
+        friendBOnA = $bOnAStats; friendAOnB = $aOnBStats
+        queueA = $statsA.uploadQueue
+        appsA = @($statsA.applications | ForEach-Object { "$($_.applicationId):$($_.name) shared=$($_.sharedTitles) fetched=$($_.fetchedTitles)" })
+        sentWithoutAppA = @($statsA.daily | Where-Object { $_.direction -eq 'sent' -and $_.applicationId -eq 0 }).Count
+        fetchedWithoutAppB = @($statsB.daily | Where-Object { $_.direction -eq 'fetched' -and $_.applicationId -eq 0 }).Count
+    }
+    Assert-That 'The sending node''s statistics count each upload it listed, the bytes it sent and why uploads failed' (
+        $sentA.finished -eq $completedUploads -and $sentA.failed -eq $failedUploads -and $sentA.bytes -gt 0 -and $sentA.averageBytesPerSecond -gt 0 -and $sentA.peakBytesPerSecond -gt 0 -and
+        (& $countOf $failuresA 'NotAuthorized') -eq 1 -and (& $countOf $failuresA 'Revoked') -eq 1 -and (& $countOf $failuresA 'VerificationFailed') -eq 0 -and
+        $bOnAStats.sent -eq $sentA.bytes -and $bOnAStats.checks -ge 1 -and $bOnAStats.directChecks -ge 1 -and
+        $statsA.uploadQueue.requests -ge $completedUploads -and ($OlderNode -or $statsA.uploadQueue.waited -ge 1) -and
+        $statsEvidence.sentWithoutAppA -eq 0 -and ([int](@($statsA.applications | ForEach-Object fetchedTitles) | Measure-Object -Sum).Sum) -ge 2
+    ) $statsEvidence
+    Assert-That 'The fetching node''s statistics count the downloads that ended, the bytes they brought and why the failed ones failed' (
+        $fetchedB.finished -ge 6 -and $fetchedB.bytes -gt 0 -and $fetchedB.averageBytesPerSecond -gt 0 -and $fetchedB.peakBytesPerSecond -gt 0 -and
+        (& $countOf $failuresB 'NotAuthorized') -eq 1 -and (& $countOf $failuresB 'Revoked') -eq 1 -and $fetchedB.failed -eq ($failuresB | Measure-Object -Property count -Sum).Sum -and
+        $aOnBStats.fetched -eq $fetchedB.bytes -and $aOnBStats.checks -ge 1 -and $aOnBStats.directChecks -ge 1 -and
+        $statsEvidence.fetchedWithoutAppB -eq 0
+    ) $statsEvidence
 }
 catch {
     Write-Host "Stopped: $_" -ForegroundColor Red

@@ -1,0 +1,88 @@
+.controls {
+  margin: 15px 0 20px;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+
+  margin-bottom: 15px;
+}
+
+.directions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 0 20px;
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px 30px;
+
+  margin-bottom: 10px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+}
+
+.statValue {
+  font-weight: bold;
+  font-size: 20px;
+}
+
+.statLabel {
+  color: var(--helpTextColor);
+  font-size: 13px;
+}
+
+.muted {
+  margin-bottom: 20px;
+  color: var(--helpTextColor);
+  font-size: 13px;
+}
+
+.charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+/* A canvas that may not shrink would widen its grid cell each time it is resized. */
+.chart {
+  margin: 0;
+  min-width: 0;
+}
+
+.chartTitle {
+  margin-bottom: 8px;
+  font-weight: bold;
+}
+
+.chartCanvas {
+  position: relative;
+  height: 280px;
+}
+
+.chartTable {
+  overflow-x: auto;
+  min-width: 0;
+}
+
+.reason {
+  composes: cell from '~Components/Table/Cells/TableRowCell.css';
+
+  white-space: nowrap;
+
+  font-family: $monoSpaceFontFamily;
+}
+
+.explanation {
+  composes: cell from '~Components/Table/Cells/TableRowCell.css';
+
+  min-width: 280px;
+  white-space: normal;
+}

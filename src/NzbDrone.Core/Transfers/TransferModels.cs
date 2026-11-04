@@ -104,6 +104,12 @@ namespace NzbDrone.Core.Transfers
         // line it gave, counting from 1. Null once it sends, and for a node too old to say.
         public int? WaitingPosition { get; set; }
 
+        // What arrived over every attempt that ended, and how long data was arriving. What was
+        // already here when an attempt started, and time spent connecting or waiting at the other
+        // node, do not count. These make the statistics (StatisticsRecorder).
+        public long BytesMoved { get; set; }
+        public long MovingMilliseconds { get; set; }
+
         public bool IsWaitingForPeer => State == TransferState.Downloading && WaitingPosition.HasValue;
 
         public bool IsActive => State is TransferState.Queued or TransferState.Downloading;
@@ -146,6 +152,17 @@ namespace NzbDrone.Core.Transfers
     {
     }
 
+    // Raised once a transfer has ended for good: completed, or failed with no attempt left.
+    public class TransferEndedEvent : IEvent
+    {
+        public TransferEndedEvent(TransferJob job)
+        {
+            Job = job;
+        }
+
+        public TransferJob Job { get; }
+    }
+
     // Raised each time an attempt to fetch a file ends, however it ended. A failure of None means
     // the file arrived, which it can only have done over a direct route.
     public class TransferAttemptEndedEvent : IEvent
@@ -176,10 +193,16 @@ namespace NzbDrone.Core.Transfers
             { TransferFailure.DiskError, "The file could not be written here." }
         };
 
+        // The explanation alone, without any detail.
+        public static string Explain(TransferFailure failure)
+        {
+            return Explanations.TryGetValue(failure, out var explanation) ? explanation : "The transfer did not finish.";
+        }
+
         // Written for someone reading the Arr app's history, who may never have opened Nodearr.
         public static string For(TransferFailure failure, string detail)
         {
-            var text = Explanations.TryGetValue(failure, out var explanation) ? explanation : "The transfer did not finish.";
+            var text = Explain(failure);
 
             // For a route that failed the detail is what Nodearr knows about the route. See RouteDiagnosis.
             if (failure is TransferFailure.DiskError or TransferFailure.Failed or TransferFailure.NoDirectRoute or TransferFailure.DirectPathLost && !string.IsNullOrWhiteSpace(detail))

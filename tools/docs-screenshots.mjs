@@ -1353,6 +1353,24 @@ const shots = {
   async transfers({ a, b }) {
     await slowedTransfer(a, b, async () => {});
   },
+
+  // What Alex fetched from Sam and sent to Sam, from the sends that prepare had each of them
+  // get. The kit is new, so 7 days shows its one day as more than a sliver.
+  // The page is taller than the others, so the shot is too: the totals and both charts.
+  async statistics({ a }) {
+    const view = a.viewportSize();
+    await a.setViewportSize({ width: view.width, height: 1000 });
+    try {
+      await open(a, A, '/activity/statistics');
+      await a.getByRole('button', { name: '7 days', exact: true }).click();
+      await a.locator('canvas').first().waitFor();
+      await a.waitForLoadState('networkidle');
+      await a.waitForTimeout(600);
+      await shoot(a, 'statistics', { chrome: true });
+    } finally {
+      await a.setViewportSize(view);
+    }
+  },
 };
 
 async function selectCatalogKind(page, kind) {

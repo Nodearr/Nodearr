@@ -30,6 +30,18 @@ module.exports = {
   catalogHaveColor: '#5cce88',
   catalogMissingColor: '#ff8585',
   catalogUpgradeColor: '#80b8ff',
+
+  // Chart series, in this order. Checked against pageBackground for readers with color vision deficiency.
+  chartColor1: '#3987e5',
+  chartColor2: '#d95926',
+  chartColor3: '#199e70',
+  chartColor4: '#c98500',
+  chartColor5: '#d55181',
+  chartColor6: '#008300',
+  chartColor7: '#9085e9',
+  chartColor8: '#e66767',
+  chartOtherColor: '#8a8f94',
+
   purple,
   pink,
   nodearrTeal,

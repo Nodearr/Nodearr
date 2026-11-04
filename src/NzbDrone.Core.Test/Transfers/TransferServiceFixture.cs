@@ -572,6 +572,32 @@ namespace NzbDrone.Core.Test.Transfers
         }
 
         [Test]
+        public void a_transfer_that_carried_on_should_count_only_what_moved_and_say_once_that_it_ended()
+        {
+            var job = GivenDownloading();
+
+            GivenTransport(job, FileTransferState.Failed, 400, "DirectPathLost");
+            _progress.Single().MovingMilliseconds = 2000;
+            Subject.Tick();
+
+            var waiting = Stored(job);
+            waiting.NextAttempt = DateTime.UtcNow.AddSeconds(-1);
+            Db.Update(waiting);
+            _progress.Clear();
+            Subject.Tick();
+
+            // The second attempt starts from what the first one left.
+            GivenTransport(job, FileTransferState.Completed, 1000);
+            _progress.Single().Offset = 400;
+            _progress.Single().MovingMilliseconds = 3000;
+            Subject.Tick();
+            Subject.Tick();
+
+            Stored(job).Should().Match<TransferJob>(j => j.State == TransferState.Completed && j.BytesMoved == 1000 && j.MovingMilliseconds == 5000);
+            Mocker.GetMock<IEventAggregator>().Verify(e => e.PublishEvent(It.Is<TransferEndedEvent>(m => m.Job.DownloadId == job.DownloadId)), Times.Once());
+        }
+
+        [Test]
         public void a_failure_that_keeps_happening_should_end_the_transfer()
         {
             var job = GivenDownloading();

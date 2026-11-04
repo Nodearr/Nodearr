@@ -65,6 +65,23 @@ Check, in order:
 5. Check the indexer categories. Whisparr v2 and v3 need XXX categories; [Lidarr](https://lidarr.audio/) needs Audio categories. [Sonarr](https://sonarr.tv/)'s and [Radarr](https://radarr.video/)'s default categories exclude both.
 6. **Through Prowlarr?** The copies [Prowlarr](https://prowlarr.com/) makes of Nodearr's indexer are switched off on purpose. The app has to be added to Nodearr directly. See [Prowlarr](connecting-apps.md#prowlarr).
 
+## Transfers fail
+
+**Activity > Statistics** counts failed transfers by reason, with a link here or to the section for that reason.
+
+For downloads from a friend, each reason and what to do is in [When a transfer fails](finding-and-fetching.md#when-a-transfer-fails).
+
+For files you send, the friend's node decides whether to try again, and an upload it asks for again is no longer counted as failed. These are the reasons your node gives:
+
+| Reason | What it means | What to do |
+| --- | --- | --- |
+| `Stopped` | The friend's node went away or cancelled, or your node's transport restarted while sending. | Usually nothing: their node tries again. If it keeps happening with one friend, see [A friend cannot be reached](#a-friend-cannot-be-reached). |
+| `NoDirectRoute`, `DirectPathLost` | There was no direct route to the friend's node, or it was lost while sending. | See [Relay only](#relay-only). |
+| `NotAuthorized` | You stopped sharing the file with that friend while it was waiting or being sent. | Nothing, if you meant to. Otherwise see [A friend sees nothing of yours](#a-friend-sees-nothing-of-yours). |
+| `Revoked` | Trust between your node and the friend's node ended. | Pair again, if you both want to. |
+| `NotFound` | Your node could not read the file. | See [Friends are refused your files](#friends-are-refused-your-files). |
+| `VerificationFailed` | The friend's node said what arrived did not match the file's hash. Your node works the hash out again, and their node tries again. | Usually nothing. If it keeps happening for one file, check that nothing changes the file while it is being sent. |
+
 ## Pairing keeps being turned away
 
 "The other node has turned away too many invites from this node lately": your node tried five codes in 15 minutes that did not work. Wait 15 minutes, then try a fresh code once.

@@ -38,6 +38,10 @@ export const documentation = {
     path: '/guide/finding-and-fetching/#what-happens-to-a-grab',
     label: 'Transfers',
   },
+  statistics: {
+    path: '/guide/finding-and-fetching/#statistics',
+    label: 'Statistics',
+  },
   getIt: {
     path: '/guide/finding-and-fetching/#get-it-from-the-catalog',
     label: 'GetIt',
@@ -70,6 +74,7 @@ const pageTopics: Record<string, DocumentationTopic> = {
   '/nodes/trusted': 'friends',
   '/nodes/invites': 'invites',
   '/activity/transfers': 'transfers',
+  '/activity/statistics': 'statistics',
   '/settings': 'settings',
   '/settings/apps': 'apps',
   '/settings/node': 'node',
