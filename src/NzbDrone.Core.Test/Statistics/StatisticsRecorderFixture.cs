@@ -159,8 +159,18 @@ namespace NzbDrone.Core.Test.Statistics
             Subject.Handle(new UploadReopenedEvent(Upload(UploadState.Preparing, sent: 400), "DirectPathLost", Afternoon));
             Subject.Handle(new UploadAttemptEndedEvent(Upload(UploadState.Completed), 600, TimeSpan.FromSeconds(3)));
 
-            Rows.Single(s => s.Failure == "DirectPathLost").Should().Match<TransferStatistic>(s => s.Transfers == 0 && s.Bytes == 400);
-            Rows.Single(s => s.IsFinished).Transfers.Should().Be(1);
+            Rows.Single(s => s.Failure == "DirectPathLost").Should().Match<TransferStatistic>(s => s.Counted == 0 && s.Bytes == 400);
+            Rows.Single(s => s.IsFinished).Counted.Should().Be(1);
+        }
+
+        // A total that goes down reads in Prometheus as a restart (/metrics).
+        [Test]
+        public void taking_back_a_failure_should_not_lower_the_count()
+        {
+            Subject.Handle(new UploadAttemptEndedEvent(Upload(UploadState.Failed, "DirectPathLost", 400), 400, TimeSpan.FromSeconds(2)));
+            Subject.Handle(new UploadReopenedEvent(Upload(UploadState.Preparing, sent: 400), "DirectPathLost", Afternoon));
+
+            Rows.Single().Should().Match<TransferStatistic>(s => s.Transfers == 1 && s.Reopened == 1);
         }
 
         [Test]

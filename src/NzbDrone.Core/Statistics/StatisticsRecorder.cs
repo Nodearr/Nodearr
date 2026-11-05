@@ -108,7 +108,8 @@ namespace NzbDrone.Core.Statistics
 
         // An upload that failed is counted as failed at once. If the other node asks for it
         // again, that is taken back (UploadReopenedEvent), so one file is one transfer however
-        // many attempts it took, as it is on the fetching side.
+        // many attempts it took, as it is on the fetching side. The take-back is kept beside
+        // the count rather than lowering it, so the count only goes up.
         public void Handle(UploadAttemptEndedEvent message)
         {
             var upload = message.Upload;
@@ -147,7 +148,7 @@ namespace NzbDrone.Core.Statistics
         {
             var upload = message.Upload;
 
-            Add(StatisticsHours.HourOf(message.PreviousEnded), upload.PeerNodeId, ApplicationOf(upload), TransferDirection.Sent, message.PreviousFailure, s => s.Transfers = Math.Max(0, s.Transfers - 1));
+            Add(StatisticsHours.HourOf(message.PreviousEnded), upload.PeerNodeId, ApplicationOf(upload), TransferDirection.Sent, message.PreviousFailure, s => s.Reopened++);
         }
 
         public void Handle(PeerConnectionCheckedEvent message)

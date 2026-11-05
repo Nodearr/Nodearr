@@ -176,7 +176,7 @@ namespace NzbDrone.Core.Statistics
                 {
                     Direction = g.Key.Direction,
                     Reason = g.Key.Failure,
-                    Count = g.Sum(r => r.Transfers),
+                    Count = g.Sum(r => r.Counted),
                     Explanation = FailureGuide.Explain(g.Key.Direction, g.Key.Failure),
                     GuideUrl = FailureGuide.GuideUrl(g.Key.Direction, g.Key.Failure)
                 })
@@ -201,8 +201,8 @@ namespace NzbDrone.Core.Statistics
             {
                 Direction = direction,
                 Bytes = bytes,
-                Finished = rows.Where(r => r.IsFinished).Sum(r => r.Transfers),
-                Failed = rows.Where(r => !r.IsFinished).Sum(r => r.Transfers),
+                Finished = rows.Where(r => r.IsFinished).Sum(r => r.Counted),
+                Failed = rows.Where(r => !r.IsFinished).Sum(r => r.Counted),
                 AverageBytesPerSecond = seconds > 0 ? bytes / seconds : 0,
                 PeakBytesPerSecond = rows.Select(r => r.PeakBytesPerSecond).DefaultIfEmpty(0).Max()
             };
@@ -233,8 +233,8 @@ namespace NzbDrone.Core.Statistics
                         Name = names.GetValueOrDefault(nodeId),
                         Sent = theirs.Where(r => r.Direction == TransferDirection.Sent).Sum(r => r.Bytes),
                         Fetched = theirs.Where(r => r.Direction == TransferDirection.Fetched).Sum(r => r.Bytes),
-                        Finished = theirs.Where(r => r.IsFinished).Sum(r => r.Transfers),
-                        Failed = theirs.Where(r => !r.IsFinished).Sum(r => r.Transfers),
+                        Finished = theirs.Where(r => r.IsFinished).Sum(r => r.Counted),
+                        Failed = theirs.Where(r => !r.IsFinished).Sum(r => r.Counted),
                         Checks = theirChecks.Sum(c => c.Direct + c.RelayOnly + c.None),
                         DirectChecks = theirChecks.Sum(c => c.Direct),
                         Route = route?.Path ?? ConnectionPath.Unknown,

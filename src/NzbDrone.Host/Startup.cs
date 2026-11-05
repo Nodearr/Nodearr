@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using DryIoc;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
@@ -30,7 +29,6 @@ using NzbDrone.Core.Instrumentation;
 using NzbDrone.Core.Lifecycle;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Host.AccessControl;
-using NzbDrone.Http.Authentication;
 using NzbDrone.SignalR;
 using StackExchange.Profiling;
 using LogLevel = Microsoft.Extensions.Logging.LogLevel;
@@ -195,23 +193,7 @@ namespace NzbDrone.Host
             services.AddDataProtection()
                 .PersistKeysToFileSystem(new DirectoryInfo(Configuration["dataProtectionFolder"]));
 
-            services.AddSingleton<IAuthorizationPolicyProvider, UiAuthorizationPolicyProvider>();
-            services.AddSingleton<IAuthorizationHandler, UiAuthorizationHandler>();
-
-            services.AddAuthorization(options =>
-            {
-                options.AddPolicy("SignalR", policy =>
-                {
-                    policy.AuthenticationSchemes.Add("SignalR");
-                    policy.RequireAuthenticatedUser();
-                });
-
-                // Require auth on everything except those marked [AllowAnonymous]
-                options.FallbackPolicy = new AuthorizationPolicyBuilder("API")
-                .RequireAuthenticatedUser()
-                .Build();
-            });
-
+            services.AddAppAuthorization();
             services.AddAppAuthentication();
 
             services.AddOptions<MiniProfilerOptions>()

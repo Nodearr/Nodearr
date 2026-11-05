@@ -1090,6 +1090,79 @@ try {
         $aOnBStats.fetched -eq $fetchedB.bytes -and $aOnBStats.checks -ge 1 -and $aOnBStats.directChecks -ge 1 -and
         $statsEvidence.fetchedWithoutAppB -eq 0
     ) $statsEvidence
+
+    # --- 8. /metrics on each node ----------------------------------------------------------------
+
+    # What Prometheus scrapes: the same numbers, as totals since the start. A failed upload that B
+    # asked for again still counts as a failure there, so A's failures can be more than the
+    # page's; what finished and the bytes match it. An older node has no /metrics.
+    $scrape = {
+        param([string] $Name, [hashtable] $Headers = @{})
+        Invoke-WebRequest "http://127.0.0.1:$($nodes[$Name].Port)/metrics" -Headers $Headers -SkipHttpErrorCheck
+    }
+    # Read as UTF-8 whatever the type: PowerShell may not take application/openmetrics-text as text.
+    $bodyOf = { param($Response) [System.Text.Encoding]::UTF8.GetString($Response.RawContentStream.ToArray()) }
+    $samplesOf = {
+        param([string] $Text)
+        foreach ($line in $Text -split "`n") {
+            if ($line -match '^(?<name>[a-zA-Z_:][a-zA-Z0-9_:]*)(\{(?<labels>.*)\})? (?<value>\S+)$') {
+                $labels = @{}
+                foreach ($label in [regex]::Matches($Matches.labels ?? '', '(\w+)="((?:[^"\\]|\\.)*)"')) {
+                    $labels[$label.Groups[1].Value] = $label.Groups[2].Value -replace '\\n', "`n" -replace '\\"', '"' -replace '\\\\', '\'
+                }
+                [pscustomobject]@{ name = $Matches.name; labels = $labels; value = [double]$Matches.value }
+            }
+        }
+    }
+    $sumOf = {
+        param($Samples, [string] $Name, [hashtable] $Where)
+        [double](@($Samples | Where-Object { $s = $_; $s.name -eq $Name -and @($Where.Keys | Where-Object { $s.labels[$_] -ne $Where[$_] }).Count -eq 0 } | ForEach-Object value) | Measure-Object -Sum).Sum
+    }
+
+    foreach ($side in @(
+        @{ Node = 'A'; Friend = $bOnA; Direction = 'sent'; Totals = $sentA; Failures = $failuresA; FriendStats = $bOnAStats; ExactFailures = $false },
+        @{ Node = 'B'; Friend = $aOnB; Direction = 'fetched'; Totals = $fetchedB; Failures = $failuresB; FriendStats = $aOnBStats; ExactFailures = $true }
+    )) {
+        if ($OlderNode -eq $side.Node) { continue }
+
+        $node = $side.Node
+        $refused = & $scrape $node
+        $wrongKey = & $scrape $node @{ 'X-Api-Key' = 'not-the-key' }
+        $openMetrics = & $scrape $node @{ 'X-Api-Key' = $nodes[$node].Key; Accept = 'application/openmetrics-text;version=1.0.0,text/plain;version=0.0.4;q=0.5' }
+        $text = & $scrape $node @{ 'X-Api-Key' = $nodes[$node].Key }
+        $byQuery = Invoke-WebRequest "http://127.0.0.1:$($nodes[$node].Port)/metrics?apikey=$($nodes[$node].Key)" -SkipHttpErrorCheck
+        $body = & $bodyOf $text
+        $samples = @(& $samplesOf $body)
+        $friendName = $side.Friend.name
+        $where = @{ direction = $side.Direction; friend = $friendName }
+        $failed = { param([string] $Reason) & $sumOf $samples 'nodearr_transfers_total' ($where + @{ result = 'failed'; reason = $Reason }) }
+        $metricsEvidence = [ordered]@{
+            withoutKey = [int]$refused.StatusCode; wrongKey = [int]$wrongKey.StatusCode; byQuery = [int]$byQuery.StatusCode
+            contentType = "$($text.Headers['Content-Type'])"; openMetricsType = "$($openMetrics.Headers['Content-Type'])"
+            bytes = & $sumOf $samples 'nodearr_transfer_bytes_total' $where; statisticsBytes = $side.Totals.bytes
+            finished = & $sumOf $samples 'nodearr_transfers_total' ($where + @{ result = 'finished' }); statisticsFinished = $side.Totals.finished
+            failed = @($samples | Where-Object { $_.name -eq 'nodearr_transfers_total' -and $_.labels.result -eq 'failed' } | ForEach-Object { "$($_.labels.reason)=$($_.value)" })
+            directChecks = & $sumOf $samples 'nodearr_connection_checks_total' @{ friend = $friendName; route = 'direct' }
+            route = @($samples | Where-Object { $_.name -eq 'nodearr_peer_route' -and $_.value -eq 1 } | ForEach-Object { "$($_.labels.friend)=$($_.labels.route)" })
+            info = @($samples | Where-Object name -eq 'nodearr_info' | ForEach-Object { "$($_.labels.version) $($_.labels.branch)" })
+        }
+        $reasonsMatch = @($side.Failures | Where-Object {
+            $inMetrics = & $failed $_.reason
+            $side.ExactFailures ? ($inMetrics -ne $_.count) : ($inMetrics -lt $_.count)
+        }).Count -eq 0
+
+        Assert-That "Node $node refuses /metrics without its API key, and gives it with the key as a header or in the query" (
+            $metricsEvidence.withoutKey -eq 401 -and $metricsEvidence.wrongKey -eq 401 -and (& $bodyOf $refused) -notmatch 'nodearr_' -and
+            [int]$text.StatusCode -eq 200 -and $metricsEvidence.byQuery -eq 200 -and
+            $metricsEvidence.contentType -like 'text/plain; version=0.0.4*' -and $metricsEvidence.openMetricsType -like 'application/openmetrics-text*' -and (& $bodyOf $openMetrics).EndsWith("# EOF`n")
+        ) $metricsEvidence
+        Assert-That "Node $node's /metrics shows the bytes and failures the transfers caused, by friend name and never by node ID" (
+            $metricsEvidence.bytes -eq $side.Totals.bytes -and $metricsEvidence.bytes -gt 0 -and $metricsEvidence.finished -eq $side.Totals.finished -and
+            (& $failed 'NotAuthorized') -ge 1 -and (& $failed 'Revoked') -ge 1 -and $reasonsMatch -and
+            $metricsEvidence.directChecks -ge 1 -and $metricsEvidence.info.Count -eq 1 -and
+            $body -notmatch [regex]::Escape($bOnA.nodeId) -and $body -notmatch [regex]::Escape($aOnB.nodeId)
+        ) $metricsEvidence
+    }
 }
 catch {
     Write-Host "Stopped: $_" -ForegroundColor Red

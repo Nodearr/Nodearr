@@ -33,8 +33,13 @@ namespace NzbDrone.Core.Statistics
         // Bytes that moved, not counting what the other side already held when an attempt began.
         public long Bytes { get; set; }
 
-        // Transfers that ended this way in this hour.
+        // Transfers that ended this way in this hour. Only ever goes up, so it can be read as a
+        // running total (/metrics).
         public int Transfers { get; set; }
+
+        // Of those that failed, how many the other node asked for again afterwards, so that the
+        // failure did not end the transfer after all. The page leaves them out (Counted).
+        public int Reopened { get; set; }
 
         // How long the data was moving. Connecting and waiting do not count.
         public double Seconds { get; set; }
@@ -50,6 +55,9 @@ namespace NzbDrone.Core.Statistics
         public double LongestWaitSeconds { get; set; }
 
         public bool IsFinished => string.IsNullOrEmpty(Failure);
+
+        // Transfers that ended this way for good.
+        public int Counted => Math.Max(0, Transfers - Reopened);
     }
 
     // What the connection checks to one friend found in one hour, UTC.
@@ -90,6 +98,11 @@ namespace NzbDrone.Core.Statistics
     {
         // How long the hourly rows are kept.
         public const int MonthsKept = 13;
+
+        // Where the hours older than that are added up once they are trimmed, one row for each
+        // friend, Arr app, direction and ending, so the totals since the start never go down
+        // (/metrics). No range the page asks for reaches back this far.
+        public static readonly DateTime Carried = new(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
         public static DateTime HourOf(DateTime time)
         {

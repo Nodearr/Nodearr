@@ -183,4 +183,69 @@ Each node sees only its own statistics. Your friends do not see yours, and nothi
 - **Upload queue**: how many requests friends made, how many had to wait for a free upload slot, and the average and longest wait. If many of them waited, the page says that **Most Uploads at Once** on **Settings > Node** may be too low.
 - **Catalog**: how many titles each app shares with at least one trusted friend now, and how many different titles friends fetched from you in the range. A title is a series, a movie or an album.
 
-Statistics are kept for 13 months. Downloads that ended before you updated to the version with this page are counted from their records. Uploads and connection checks are counted from the update on.
+Statistics are kept for 13 months. After that, each hour is added to a running total, which [Prometheus](#prometheus-and-grafana) reads. Downloads that ended before you updated to the version with this page are counted from their records. Uploads and connection checks are counted from the update on.
+
+## Prometheus and Grafana
+
+If you already run [Prometheus](https://prometheus.io/) and [Grafana](https://grafana.com/) for your Arr apps, Prometheus can collect your node's numbers from `/metrics` and Grafana can show them beside the others. `/metrics` is always there and needs no setting. It does nothing until it is asked, and nothing in it leaves your node unless your Prometheus asks for it.
+
+It needs your node's **API Key**, from **Settings > General**. Signing in to the web UI is not needed, so a scrape works whatever **Authentication** is set to.
+
+### What it gives
+
+Totals since your node started counting statistics, which only go up, so Prometheus's `rate()` and `increase()` work on them:
+
+- `nodearr_transfer_bytes_total{direction, friend, app}`: data sent (`sent`) and fetched (`fetched`), attempts that failed included.
+- `nodearr_transfers_total{direction, friend, result, reason}`: transfers that `finished` or `failed`, and why they failed. An upload that failed and that the friend's node asked for again still counts as failed here, though **Activity > Statistics** takes it back.
+- `nodearr_connection_checks_total{friend, route}`: connection checks, by the route found: `direct`, `relay` or `none`.
+- `nodearr_upload_queue_wait_seconds_total` and `nodearr_upload_queue_waits_total`: how long requests waited for a free upload slot, and how many waited.
+
+What is true now:
+
+- `nodearr_transfers_active{direction}`, `nodearr_upload_queue_length` and `nodearr_download_queue_length`.
+- `nodearr_peer_route{friend, route}`: `1` for the route the last connection check found to each trusted friend, `0` for the others.
+- `nodearr_peer_last_seen_timestamp_seconds{friend}`: when each trusted friend was last heard from.
+- `nodearr_catalog_titles{app}`: the series, movies and albums in each app's library.
+- `nodearr_health_issues{type}`: what **System > Status** shows, by `notice`, `warning` and `error`.
+- `nodearr_info{version, branch}`: always `1`.
+
+A friend is labelled by their display name, never by their node ID, and an app by its name in Nodearr. Renaming a friend or an app starts a new series in Prometheus. Friends and apps you removed are left out. Files no app could be found for have no `app` label.
+
+### Add your node to Prometheus
+
+1. Copy the **API Key** from **Settings > General**.
+2. Save it in a file that Prometheus can read, for example `nodearr-api-key`, with nothing else in it.
+3. Add a scrape job to `prometheus.yml`, under `scrape_configs`. Set the target to where Prometheus finds Nodearr:
+
+   ```yaml
+   scrape_configs:
+     - job_name: nodearr
+       authorization:
+         credentials_file: nodearr-api-key
+       static_configs:
+         - targets: ["localhost:6633"]
+   ```
+
+   - **Prometheus on the same machine as a native install**: `localhost:6633`.
+   - **Prometheus in Docker, Nodearr in the same Compose file with bridge networking**: `nodearr:6633`, the service's name.
+   - **Prometheus in Docker, Nodearr with `network_mode: host`**: `host.docker.internal:6633`. On Linux, also give the Prometheus service `extra_hosts: ["host.docker.internal:host-gateway"]`.
+   - **Another machine**: its address and port, `192.168.1.20:6633` for example.
+
+   If you set a **URL Base** on **Settings > General**, add `metrics_path: /<url base>/metrics` to the job.
+
+   Prometheus can send the key in the query instead, as `params: { apikey: ["<API key>"] }`. The key then appears in Prometheus's list of targets, so the file is safer.
+4. Reload Prometheus, or restart it.
+5. In Prometheus, go to **Status > Target health**. The `nodearr` job shows **UP** once a scrape has worked. **401 Unauthorized** means the key is wrong.
+
+If you reset the API key, update the file. Prometheus reads it again on each scrape.
+
+### Import the dashboard
+
+[`docs/grafana/nodearr.json`](https://github.com/Nodearr/Nodearr/blob/main/docs/grafana/nodearr.json) is a Grafana dashboard built on these metrics: data each way over time, by friend and by app, transfers and why they failed, the route to each friend, the queues, and the catalog.
+
+1. Download `nodearr.json`.
+2. In Grafana, go to **Dashboards**, select **New > Import**, and upload the file.
+3. Select **Import**.
+4. At the top of the dashboard, choose your Prometheus data source under **Data source**. If Prometheus scrapes more than one node, choose which one to show under **Node**.
+
+Rates need two scrapes inside their window, so a new dashboard fills in after a few minutes.
