@@ -311,6 +311,33 @@ namespace NzbDrone.Core.Datastore
             DeleteMany(models.Select(m => m.Id));
         }
 
+        // Deletes what matches and writes the models in one transaction, so that either all of it
+        // happens or none of it does. No events are published.
+        protected void DeleteAndUpsert(Expression<Func<TModel, bool>> delete, IList<TModel> models)
+        {
+            var sql = Builder().Where<TModel>(delete).AddDeleteTemplate(typeof(TModel));
+            var inserts = models.Where(m => m.Id == 0).ToList();
+            var updates = models.Where(m => m.Id != 0).ToList();
+
+            using (var conn = _database.OpenConnection())
+            using (var tran = conn.BeginTransaction(IsolationLevel.ReadCommitted))
+            {
+                conn.Execute(sql.RawSql, sql.Parameters, tran);
+
+                foreach (var model in inserts)
+                {
+                    Insert(conn, tran, model);
+                }
+
+                if (updates.Any())
+                {
+                    UpdateFields(conn, tran, updates, _properties);
+                }
+
+                tran.Commit();
+            }
+        }
+
         public TModel Upsert(TModel model)
         {
             if (model.Id == 0)

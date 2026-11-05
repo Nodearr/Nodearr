@@ -3,11 +3,13 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Net.Http.Headers;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Authentication;
 using NzbDrone.Core.Configuration;
+using NzbDrone.Http.Authentication;
 
 namespace Nodearr.Http.Authentication
 {
@@ -64,6 +66,28 @@ namespace Nodearr.Http.Authentication
                     options.HeaderName = "X-Api-Key";
                     options.QueryName = "access_token";
                 });
+        }
+
+        // Everything not marked [AllowAnonymous] or given another policy needs the API key: the
+        // native API, and /metrics, which Prometheus scrapes with no session to sign in with.
+        // The UI's pages and what they load take the "UI" policy (UiAuthorizationPolicyProvider).
+        public static IServiceCollection AddAppAuthorization(this IServiceCollection services)
+        {
+            services.AddSingleton<IAuthorizationPolicyProvider, UiAuthorizationPolicyProvider>();
+            services.AddSingleton<IAuthorizationHandler, UiAuthorizationHandler>();
+
+            return services.AddAuthorization(options =>
+            {
+                options.AddPolicy("SignalR", policy =>
+                {
+                    policy.AuthenticationSchemes.Add("SignalR");
+                    policy.RequireAuthenticatedUser();
+                });
+
+                options.FallbackPolicy = new AuthorizationPolicyBuilder("API")
+                    .RequireAuthenticatedUser()
+                    .Build();
+            });
         }
 
         private static Task EventOnRedirectCookiesLogin(RedirectContext<CookieAuthenticationOptions> context, int statusCode)
