@@ -111,6 +111,7 @@ namespace NzbDrone.Host
                     services.Configure<TransportOptions>(config.GetSection("Nodearr:Transport"));
                     services.Configure<LogOptions>(config.GetSection("Nodearr:Log"));
                     services.Configure<UpdateOptions>(config.GetSection("Nodearr:Update"));
+                    services.Configure<NetworkOptions>(config.GetSection("Nodearr:Network"));
                 })
                 .Build();
         }
@@ -189,6 +190,7 @@ namespace NzbDrone.Host
                     services.Configure<TransportOptions>(config.GetSection("Nodearr:Transport"));
                     services.Configure<LogOptions>(config.GetSection("Nodearr:Log"));
                     services.Configure<UpdateOptions>(config.GetSection("Nodearr:Update"));
+                    services.Configure<NetworkOptions>(config.GetSection("Nodearr:Network"));
                 })
                 .ConfigureWebHost(builder =>
                 {

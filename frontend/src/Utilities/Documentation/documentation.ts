@@ -53,6 +53,8 @@ export const documentation = {
   security: { path: '/guide/settings/#security', label: 'Security' },
   logging: { path: '/guide/settings/#logging', label: 'Logging' },
   backups: { path: '/guide/backups/', label: 'Backups' },
+  updates: { path: '/guide/updating/', label: 'Updates' },
+  updateSettings: { path: '/guide/settings/#updates', label: 'Updates' },
   apps: { path: '/guide/connecting-apps/', label: 'Applications' },
   paths: {
     path: '/guide/connecting-apps/#the-two-folders-that-have-to-line-up',
@@ -81,6 +83,7 @@ const pageTopics: Record<string, DocumentationTopic> = {
   '/settings/general': 'general',
   '/system/status': 'troubleshooting',
   '/system/tasks': 'troubleshooting',
+  '/system/updates': 'updates',
   '/system/backup': 'backups',
   '/system/events': 'troubleshooting',
 };

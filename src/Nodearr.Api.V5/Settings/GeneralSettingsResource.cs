@@ -33,6 +33,8 @@ public class GeneralSettingsResource : RestResource
     public string? InstanceName { get; set; }
     public string? ApplicationUrl { get; set; }
     public bool UpdateAutomatically { get; set; }
+    public bool UpdateCheck { get; set; }
+    public bool ContactNodearr { get; set; }
     public UpdateMechanism UpdateMechanism { get; set; }
     public string? UpdateScriptPath { get; set; }
     public bool ProxyEnabled { get; set; }
@@ -79,6 +81,8 @@ public static class GeneralSettingsResourceMapper
             TrustedNetworks = model.TrustedNetworks,
             InstanceName = model.InstanceName,
             UpdateAutomatically = model.UpdateAutomatically,
+            UpdateCheck = model.UpdateCheck,
+            ContactNodearr = model.ContactNodearr,
             UpdateMechanism = model.UpdateMechanism,
             UpdateScriptPath = model.UpdateScriptPath,
             ProxyEnabled = configService.ProxyEnabled,

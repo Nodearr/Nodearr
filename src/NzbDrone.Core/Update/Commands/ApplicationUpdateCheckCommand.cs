@@ -7,7 +7,5 @@ namespace NzbDrone.Core.Update.Commands
         public override bool SendUpdatesToClient => true;
 
         public override string CompletionMessage => null;
-
-        public bool InstallMajorUpdate { get; set; }
     }
 }

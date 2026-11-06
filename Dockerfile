@@ -65,7 +65,7 @@ COPY Logo ./Logo
 COPY src ./src
 RUN --mount=type=cache,target=/root/.nuget/packages \
     dotnet build src/Nodearr.sln --configuration Release -p:Platform=Posix --nologo --verbosity minimal \
-      ${VERSION:+-p:AssemblyVersion=${VERSION%%-*}.0}
+      ${VERSION:+-p:AssemblyVersion=${VERSION%%-*}.0} ${VERSION:+-p:NodearrVersion=$VERSION}
 
 # --- What runs --------------------------------------------------------------------------------
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
@@ -81,6 +81,10 @@ COPY --from=transport /nodearr-transport /app/bin/nodearr-transport
 COPY LICENSE NOTICE.md THIRD-PARTY-NOTICES.md /app/
 COPY docker/entrypoint.sh /usr/local/bin/nodearr-entrypoint
 RUN chmod 0755 /usr/local/bin/nodearr-entrypoint /app/bin/nodearr-transport
+
+# A container never updates itself: the new image is pulled. Nodearr reads this beside its bin folder,
+# as Sonarr's images do, and System > Updates shows the docker pull command (ADR 0024).
+RUN printf 'UpdateMethod=Docker\n' > /app/package_info
 
 # /config holds the database and the node's key. Losing it loses the node's identity and every
 # trust it has. /downloads is where transfers land, and must be the same folder Sonarr and

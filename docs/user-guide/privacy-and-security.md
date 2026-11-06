@@ -29,7 +29,18 @@ To use your own relay, follow [iroh's relay setup guide](https://docs.iroh.compu
 
 ## What anyone else sees
 
-Nodearr sends no update checks, error reports, analytics, news requests or time-service requests to the Nodearr project. These inherited calls were removed ([ADR 0018](../adr/0018-diagnostics-and-no-calls-home.md)). This does not hide your network traffic: friends and relay operators can see the connection metadata described above.
+Nodearr contacts the Nodearr project in one way: it checks `updates.nodearr.com` for a new version every 6 hours ([ADR 0024](../adr/0024-update-checks-and-usage-reports-on-nodearr-com.md)). It sends no error reports, analytics, news requests or time-service requests. Those inherited calls were removed ([ADR 0018](../adr/0018-diagnostics-and-no-calls-home.md)).
+
+What the update check sends and receives:
+
+- **Two requests for files, and nothing else:** `GET https://updates.nodearr.com/v1/main.json` and `GET https://updates.nodearr.com/v1/main.json.sig`. They carry no identifier, no query string and no cookies. The `User-Agent` header says `Nodearr` and the first two numbers of the version, such as `Nodearr/0.10`.
+- **Who sees them:** the host of `updates.nodearr.com`, which is [GitHub Pages](https://pages.github.com/). Like any web server it sees the address the requests come from, so it can tell that an address runs Nodearr. Nothing in the requests links one check to the next. The Nodearr project receives no logs of them.
+- **What it gets back:** a list of the newest release's packages, signed by the maintainer. Nodearr checks the signature with a key built into it, and uses nothing from a list that isn't signed.
+- **When it installs an update:** it downloads the package for your platform from GitHub Releases, with the same `User-Agent` and no cookies.
+
+To stop the check, turn off **Check for Updates**, or **Contact nodearr.com** to stop everything on nodearr.com, under **Settings > General** ([Settings](settings.md#updates)). With **Contact nodearr.com** off, Nodearr contacts only the Arr apps you connect, the friends you trust and the relay you choose.
+
+This doesn't hide your network traffic: friends and relay operators can see the connection metadata described above.
 
 Your router also receives port-mapping requests unless you turn off **Ask the Router to Open the Port** under **Settings > Node**.
 

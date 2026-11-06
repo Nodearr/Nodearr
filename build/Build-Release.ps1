@@ -77,6 +77,7 @@ if (-not $SkipPublish) {
         -p:RuntimeIdentifiers=$Runtime `
         -p:EnableWindowsTargeting=true `
         -p:AssemblyVersion=$assemblyVersion `
+        -p:NodearrVersion=$Version `
         -p:NodearrRootDir=$($RootDir.TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar) `
         -t:PublishAllRids `
         -v:minimal -nologo | Out-Host
@@ -92,14 +93,22 @@ New-Item -ItemType Directory -Force $folder | Out-Null
 
 Copy-Item (Join-Path $output "$framework/$Runtime/publish/*") $folder -Recurse
 
+# The updater, which replaces this folder with a newer release's (ADR 0024). As in Sonarr's packages
+# it is a folder of its own, given the platform's disk access below.
+$updater = Join-Path $output "Nodearr.Update/$framework/$Runtime/publish"
+if (-not (Test-Path (Join-Path $updater "Nodearr.Update$($forWindows ? '.exe' : '')"))) { throw "No updater at $updater" }
+Copy-Item $updater (Join-Path $folder 'Nodearr.Update') -Recurse
+
 if ($forWindows) {
     # The tray application, Nodearr.exe, is built for Windows on its own.
     Copy-Item (Join-Path $output "$framework-windows/$Runtime/publish/*") $folder -Recurse -Force
 
     Get-ChildItem $folder -File | Where-Object { $_.Name -like 'Nodearr.Mono.*' -or $_.Name -like 'Mono.Posix.NETStandard.*' -or $_.Name -like 'libMonoPosixHelper.*' } | Remove-Item -Force
+    Get-ChildItem $folder -File -Filter 'Nodearr.Windows.*' | Copy-Item -Destination (Join-Path $folder 'Nodearr.Update')
 }
 else {
     Get-ChildItem $folder -File | Where-Object { $_.Name -like 'ServiceInstall.*' -or $_.Name -like 'ServiceUninstall.*' -or $_.Name -like 'Nodearr.Windows.*' } | Remove-Item -Force
+    Get-ChildItem $folder -File | Where-Object { $_.Name -like 'Nodearr.Mono.*' -or $_.Name -like 'Mono.Posix.NETStandard.*' -or $_.Name -like 'libMonoPosixHelper.*' } | Copy-Item -Destination (Join-Path $folder 'Nodearr.Update')
 }
 
 Copy-Item $UiFolder (Join-Path $folder 'UI') -Recurse
@@ -132,7 +141,7 @@ else {
         Write-Warning 'tar on Windows cannot set the executable bit. This archive needs chmod +x after unpacking. Build it on Linux or macOS for a release.'
     }
     else {
-        chmod a+x (Join-Path $folder 'Nodearr') (Join-Path $folder 'nodearr-transport')
+        chmod a+x (Join-Path $folder 'Nodearr') (Join-Path $folder 'nodearr-transport') (Join-Path $folder 'Nodearr.Update/Nodearr.Update')
         Get-ChildItem $folder -Recurse -File -Filter 'ffprobe' | ForEach-Object { chmod a+x $_.FullName }
     }
 

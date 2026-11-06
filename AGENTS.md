@@ -30,7 +30,7 @@ These come from the ADRs. Read the ADR before changing the area it covers. A cha
 
 - **The Arr apps are the source of truth** for the library (ADR 0006). Nodearr mirrors how Sonarr and Radarr model things, such as per-episode files and their quality and release conventions. It doesn't invent its own model alongside theirs.
 - **Content moves only over a direct path** (ADR 0011). File data, catalogs, catalog changes, posters and sent titles all wait for a direct path and are never sent over a relay. Pairing, pings and revoking may cross a relay. If a direct path can't be made, the action fails clearly; it never falls back to a relay.
-- **No calls home except two** (ADR 0018, ADR 0024). Nodearr contacts what its owner configured, plus `updates.nodearr.com` (update manifest) and `usage.nodearr.com` (anonymous usage report), each with its own setting and one switch that turns both off. Don't add any other outbound call, error reporting or UI tracking. What goes to those hosts never identifies a node or its owner, and a change to it updates **What anyone else sees** in `docs/user-guide/privacy-and-security.md`, where `nodearr.com/privacy` points.
+- **No calls home except two** (ADR 0018, ADR 0024). Nodearr contacts what its owner configured, plus `updates.nodearr.com` (update manifest) and `usage.nodearr.com` (anonymous usage report), each with its own setting and one switch that turns both off (**Contact nodearr.com**, `Nodearr__Network__ContactNodearr`). Packages are downloaded from GitHub Releases, which the signed manifest names. Don't add any other outbound call, error reporting or UI tracking. What goes to those hosts never identifies a node or its owner, and a change to it updates **What anyone else sees** in `docs/user-guide/privacy-and-security.md`, where `nodearr.com/privacy` points.
 - **A sender enforces its own limits.** Upload limits, the upload queue and sharing rules are enforced by the node that holds the files, never trusted to the receiver. An older or modified friend must fail safely, never get around a limit.
 - **Older friends keep working.** A wire change must either stay compatible with nodes from earlier releases or fail safely with them. S7 tests this with `-OlderNode A|B -OlderTransportBin <path>` (see [acceptance/README.md](acceptance/README.md)). Say which older release was tested.
 - **Settings** are saved in the UI and can be fixed by the environment (`Nodearr__Section__Key`) (ADR 0019).
@@ -61,7 +61,7 @@ Acceptance scripts, `pwsh acceptance/Run-<name>.ps1`: run the ones for the area 
 - `S6Indexer`: the Newznab indexer and matching
 - `S7Transfers`: transfers, limits, the upload queue, revoking, older nodes
 - `S8Docker`: the image deployed twice, with a self-hosted relay
-- `CatalogGetIt`, `IdenticalCopies`, `NodeSettings`, `GeneralSettings`: the features they're named after
+- `CatalogGetIt`, `IdenticalCopies`, `NodeSettings`, `GeneralSettings`, `Updates`: the features they're named after
 
 These scripts take minutes. Run them in the background and follow their output to the end. They need Docker and fixed ports: S7 uses 28989 and 27878 for its consumer Arr apps, which the UI kit also uses. If the kit is running, pass `-SonarrConsumerPort 38989 -RadarrConsumerPort 37878`. Test data goes under `acceptance/.run/` and is safe to delete.
 

@@ -17,77 +17,90 @@ using NzbDrone.Core.Test.Framework;
 using NzbDrone.Core.Update;
 using NzbDrone.Core.Update.Commands;
 using NzbDrone.Test.Common;
-using NzbDrone.Test.Common.Categories;
 
 namespace NzbDrone.Core.Test.UpdateTests
 {
     [TestFixture]
     public class UpdateServiceFixture : CoreTest<InstallUpdateService>
     {
-        private string _sandboxFolder;
+        private static readonly DateTime Now = new DateTime(2026, 11, 6, 12, 0, 0, DateTimeKind.Utc);
 
+        private string _sandboxFolder;
         private UpdatePackage _updatePackage;
+        private Dictionary<string, string> _config;
 
         [SetUp]
         public void Setup()
         {
-            if (OsInfo.IsLinux)
+            var fileName = OsInfo.IsWindows ? "Nodearr.10.1.0.win-x64.zip" : "Nodearr.10.1.0.linux-x64.tar.gz";
+
+            _updatePackage = new UpdatePackage
             {
-                _updatePackage = new UpdatePackage
-                {
-                    FileName = "NzbDrone.develop.2.0.0.0.tar.gz",
-                    Url = "http://download.nodearr.com/v2/develop/mono/NzbDrone.develop.tar.gz",
-                    Version = new Version("2.0.0.0")
-                };
-            }
-            else
-            {
-                _updatePackage = new UpdatePackage
-                {
-                    FileName = "NzbDrone.develop.2.0.0.0.zip",
-                    Url = "http://download.nodearr.com/v2/develop/windows/NzbDrone.develop.zip",
-                    Version = new Version("2.0.0.0")
-                };
-            }
+                FileName = fileName,
+                Url = "https://github.com/Nodearr/Nodearr/releases/download/v10.1.0/" + fileName,
+                Version = new Version(10, 1, 0, 0),
+                SemanticVersion = SemanticVersion.Parse("10.1.0"),
+                Size = 1,
+                Hash = new string('a', 64)
+            };
 
             Mocker.GetMock<IAppFolderInfo>().SetupGet(c => c.TempFolder).Returns(TempFolder);
-            Mocker.GetMock<IAppFolderInfo>().SetupGet(c => c.StartUpFolder).Returns(@"C:\Nodearr".AsOsAgnostic);
+            Mocker.GetMock<IAppFolderInfo>().SetupGet(c => c.StartUpFolder).Returns(@"C:\ProgramData\Nodearr\bin".AsOsAgnostic);
             Mocker.GetMock<IAppFolderInfo>().SetupGet(c => c.AppDataFolder).Returns(@"C:\ProgramData\Nodearr".AsOsAgnostic);
 
             Mocker.GetMock<ICheckUpdateService>().Setup(c => c.AvailableUpdate()).Returns(_updatePackage);
             Mocker.GetMock<IVerifyUpdates>().Setup(c => c.Verify(It.IsAny<UpdatePackage>(), It.IsAny<string>())).Returns(true);
+            Mocker.GetMock<IUpdateInstallability>().Setup(c => c.Kind(It.IsAny<UpdatePackage>())).Returns(UpdateInstallKind.BuiltIn);
 
             Mocker.GetMock<IProcessProvider>().Setup(c => c.GetCurrentProcess()).Returns(new ProcessInfo { Id = 12 });
             Mocker.GetMock<IRuntimeInfo>().Setup(c => c.ExecutingApplication).Returns(@"C:\Test\Nodearr.exe");
 
-            Mocker.GetMock<IConfigFileProvider>()
-                  .SetupGet(s => s.UpdateAutomatically)
-                  .Returns(true);
+            Mocker.GetMock<IConfigFileProvider>().SetupGet(s => s.UpdateAutomatically).Returns(true);
 
-            Mocker.GetMock<IDiskProvider>()
-                  .Setup(c => c.FolderWritable(It.IsAny<string>()))
-                  .Returns(true);
-
+            Mocker.GetMock<IDiskProvider>().Setup(c => c.FolderWritable(It.IsAny<string>())).Returns(true);
             Mocker.GetMock<IDiskProvider>()
                   .Setup(v => v.FileExists(It.Is<string>(s => s.EndsWith("Nodearr.Update".ProcessNameToExe()))))
                   .Returns(true);
 
+            _config = new Dictionary<string, string>();
+            Mocker.GetMock<IConfigRepository>().Setup(c => c.Get(It.IsAny<string>()))
+                  .Returns<string>(k => _config.TryGetValue(k, out var v) ? new Config { Key = k, Value = v } : null);
+            Mocker.GetMock<IConfigRepository>().Setup(c => c.Upsert(It.IsAny<string>(), It.IsAny<string>()))
+                  .Callback<string, string>((k, v) => _config[k] = v);
+
             _sandboxFolder = Mocker.GetMock<IAppFolderInfo>().Object.GetUpdateSandboxFolder();
+
+            // The package is downloaded into the sandbox for real, from a mocked response.
+            Directory.CreateDirectory(_sandboxFolder);
+
+            Subject.Now = () => Now;
+        }
+
+        private static ApplicationUpdateCommand Manual() => new ApplicationUpdateCommand { Trigger = CommandTrigger.Manual };
+
+        private static ApplicationUpdateCommand Scheduled() => new ApplicationUpdateCommand { Trigger = CommandTrigger.Scheduled };
+
+        private void GivenBusy()
+        {
+            Mocker.GetMock<IUpdateQuietMoment>().Setup(c => c.Busy()).Returns("1 transfer(s) queued or under way");
+        }
+
+        private void VerifyUpdaterStarted(Times times)
+        {
+            Mocker.GetMock<IProcessProvider>()
+                .Verify(c => c.Start(It.IsAny<string>(), It.Is<string>(s => s.StartsWith("12")), null, null, null), times);
+        }
+
+        private void VerifyDownloaded(Times times)
+        {
+            Mocker.GetMock<IHttpClient>().Verify(c => c.Get(It.Is<HttpRequest>(r => r.Url.FullUri == _updatePackage.Url)), times);
         }
 
         private void GivenInstallScript(string path)
         {
-            Mocker.GetMock<IConfigFileProvider>()
-                  .SetupGet(s => s.UpdateMechanism)
-                  .Returns(UpdateMechanism.Script);
-
-            Mocker.GetMock<IConfigFileProvider>()
-                  .SetupGet(s => s.UpdateScriptPath)
-                  .Returns(path);
-
-            Mocker.GetMock<IDiskProvider>()
-                  .Setup(s => s.FileExists(path, StringComparison.Ordinal))
-                  .Returns(true);
+            Mocker.GetMock<IConfigFileProvider>().SetupGet(s => s.UpdateMechanism).Returns(UpdateMechanism.Script);
+            Mocker.GetMock<IConfigFileProvider>().SetupGet(s => s.UpdateScriptPath).Returns(path);
+            Mocker.GetMock<IDiskProvider>().Setup(s => s.FileExists(path, StringComparison.Ordinal)).Returns(true);
         }
 
         [Test]
@@ -95,47 +108,37 @@ namespace NzbDrone.Core.Test.UpdateTests
         {
             Mocker.GetMock<IDiskProvider>().Setup(c => c.FolderExists(_sandboxFolder)).Returns(true);
 
-            Subject.Execute(new ApplicationUpdateCommand());
+            Subject.Execute(Manual());
 
             Mocker.GetMock<IDiskProvider>().Verify(c => c.DeleteFolder(_sandboxFolder, true));
         }
 
         [Test]
-        public void should_not_delete_sandbox_before_update_if_folder_doesnt_exists()
+        public void should_download_the_package_with_the_plain_user_agent_and_no_cookies()
         {
-            Mocker.GetMock<IDiskProvider>().Setup(c => c.FolderExists(_sandboxFolder)).Returns(false);
+            Subject.Execute(Manual());
 
-            Subject.Execute(new ApplicationUpdateCommand());
+            var url = _updatePackage.Url;
 
-            Mocker.GetMock<IDiskProvider>().Verify(c => c.DeleteFolder(_sandboxFolder, true), Times.Never());
+            Mocker.GetMock<IHttpClient>().Verify(c => c.Get(It.Is<HttpRequest>(r => r.Url.FullUri == url && r.UseSimplifiedUserAgent && !r.StoreRequestCookie && !r.StoreResponseCookie)), Times.Once());
         }
 
         [Test]
-        public void Should_download_update_package()
+        public void should_extract_update_package()
         {
             var updateArchive = Path.Combine(_sandboxFolder, _updatePackage.FileName);
 
-            Subject.Execute(new ApplicationUpdateCommand());
-
-            Mocker.GetMock<IHttpClient>().Verify(c => c.DownloadFile(_updatePackage.Url, updateArchive));
-        }
-
-        [Test]
-        public void Should_extract_update_package()
-        {
-            var updateArchive = Path.Combine(_sandboxFolder, _updatePackage.FileName);
-
-            Subject.Execute(new ApplicationUpdateCommand());
+            Subject.Execute(Manual());
 
             Mocker.GetMock<IArchiveService>().Verify(c => c.Extract(updateArchive, _sandboxFolder));
         }
 
         [Test]
-        public void Should_copy_update_client_to_root_of_sandbox()
+        public void should_copy_update_client_to_root_of_sandbox()
         {
             var updateClientFolder = Mocker.GetMock<IAppFolderInfo>().Object.GetUpdateClientFolder();
 
-            Subject.Execute(new ApplicationUpdateCommand());
+            Subject.Execute(Manual());
 
             Mocker.GetMock<IDiskTransferService>()
                   .Verify(c => c.TransferFolder(updateClientFolder, _sandboxFolder, TransferMode.Move));
@@ -144,25 +147,22 @@ namespace NzbDrone.Core.Test.UpdateTests
         [Test]
         public void should_start_update_client_if_updater_exists()
         {
-            Subject.Execute(new ApplicationUpdateCommand());
+            Subject.Execute(Manual());
 
-            Mocker.GetMock<IProcessProvider>()
-                .Verify(c => c.Start(It.IsAny<string>(), It.Is<string>(s => s.StartsWith("12")), null, null, null), Times.Once());
+            VerifyUpdaterStarted(Times.Once());
         }
 
         [Test]
-        public void should_return_with_warning_if_updater_doesnt_exists()
+        public void should_fail_if_the_package_has_no_updater()
         {
             Mocker.GetMock<IDiskProvider>()
                   .Setup(v => v.FileExists(It.Is<string>(s => s.EndsWith("Nodearr.Update".ProcessNameToExe()))))
                   .Returns(false);
 
-            Subject.Execute(new ApplicationUpdateCommand());
+            Assert.Throws<CommandFailedException>(() => Subject.Execute(Manual()));
 
-            Mocker.GetMock<IProcessProvider>()
-                .Verify(c => c.Start(It.IsAny<string>(), It.IsAny<string>(), null, null, null), Times.Never());
-
-            ExceptionVerification.ExpectedWarns(1);
+            VerifyUpdaterStarted(Times.Never());
+            ExceptionVerification.ExpectedErrors(1);
         }
 
         [Test]
@@ -170,8 +170,9 @@ namespace NzbDrone.Core.Test.UpdateTests
         {
             Mocker.GetMock<ICheckUpdateService>().Setup(c => c.AvailableUpdate()).Returns<UpdatePackage>(null);
 
-            Subject.Execute(new ApplicationUpdateCommand());
+            Subject.Execute(Manual());
 
+            VerifyDownloaded(Times.Never());
             ExceptionVerification.AssertNoUnexpectedLogs();
         }
 
@@ -180,9 +181,10 @@ namespace NzbDrone.Core.Test.UpdateTests
         {
             Mocker.GetMock<IVerifyUpdates>().Setup(c => c.Verify(It.IsAny<UpdatePackage>(), It.IsAny<string>())).Returns(false);
 
-            Assert.Throws<CommandFailedException>(() => Subject.Execute(new ApplicationUpdateCommand()));
+            Assert.Throws<CommandFailedException>(() => Subject.Execute(Manual()));
 
             Mocker.GetMock<IArchiveService>().Verify(v => v.Extract(It.IsAny<string>(), It.IsAny<string>()), Times.Never());
+            VerifyUpdaterStarted(Times.Never());
         }
 
         [Test]
@@ -193,7 +195,7 @@ namespace NzbDrone.Core.Test.UpdateTests
 
             GivenInstallScript(scriptPath);
 
-            Subject.Execute(new ApplicationUpdateCommand());
+            Subject.Execute(Manual());
 
             Mocker.GetMock<IProcessProvider>().Verify(v => v.Start(scriptPath, It.IsAny<string>(), null, null, null), Times.Once());
         }
@@ -202,69 +204,11 @@ namespace NzbDrone.Core.Test.UpdateTests
         [Platform(Exclude = "Win")]
         public void should_throw_if_script_is_not_set()
         {
-            const string scriptPath = "/tmp/nzbdrone/update.sh";
-
             GivenInstallScript("");
 
-            Assert.Throws<CommandFailedException>(() => Subject.Execute(new ApplicationUpdateCommand()));
+            Assert.Throws<CommandFailedException>(() => Subject.Execute(Manual()));
 
             ExceptionVerification.ExpectedErrors(1);
-            Mocker.GetMock<IProcessProvider>().Verify(v => v.Start(scriptPath, It.IsAny<string>(), null, null, null), Times.Never());
-        }
-
-        [Test]
-        [Platform(Exclude = "Win")]
-        public void should_throw_if_script_is_null()
-        {
-            const string scriptPath = "/tmp/nzbdrone/update.sh";
-
-            GivenInstallScript(null);
-
-            Assert.Throws<CommandFailedException>(() => Subject.Execute(new ApplicationUpdateCommand()));
-
-            ExceptionVerification.ExpectedErrors(1);
-            Mocker.GetMock<IProcessProvider>().Verify(v => v.Start(scriptPath, It.IsAny<string>(), null, null, null), Times.Never());
-        }
-
-        [Test]
-        [Platform(Exclude = "Win")]
-        public void should_throw_if_script_path_does_not_exist()
-        {
-            const string scriptPath = "/tmp/nzbdrone/update.sh";
-
-            GivenInstallScript(scriptPath);
-
-            Mocker.GetMock<IDiskProvider>()
-                  .Setup(s => s.FileExists(scriptPath, StringComparison.Ordinal))
-                  .Returns(false);
-
-            Assert.Throws<CommandFailedException>(() => Subject.Execute(new ApplicationUpdateCommand()));
-
-            ExceptionVerification.ExpectedErrors(1);
-            Mocker.GetMock<IProcessProvider>().Verify(v => v.Start(scriptPath, It.IsAny<string>(), null, null, null), Times.Never());
-        }
-
-        [Ignore("TODO fix")]
-        [Test]
-        [IntegrationTest]
-        public void Should_download_and_extract_to_temp_folder()
-        {
-            UseRealHttp();
-
-            var updateSubFolder = new DirectoryInfo(Mocker.GetMock<IAppFolderInfo>().Object.GetUpdateSandboxFolder());
-
-            updateSubFolder.Exists.Should().BeFalse();
-
-            Mocker.SetConstant<IArchiveService>(Mocker.Resolve<ArchiveService>());
-
-            Subject.Execute(new ApplicationUpdateCommand());
-
-            updateSubFolder.Refresh();
-
-            updateSubFolder.Exists.Should().BeTrue();
-            updateSubFolder.GetDirectories("NzbDrone").Should().HaveCount(1);
-            updateSubFolder.GetDirectories().Should().HaveCount(1);
-            updateSubFolder.GetFiles().Should().NotBeEmpty();
         }
 
         [Test]
@@ -273,47 +217,26 @@ namespace NzbDrone.Core.Test.UpdateTests
             Mocker.GetMock<IAppFolderInfo>().SetupGet(c => c.StartUpFolder).Returns(@"C:\NzbDrone".AsOsAgnostic);
             Mocker.GetMock<IAppFolderInfo>().SetupGet(c => c.AppDataFolder).Returns(@"C:\NzbDrone\AppData".AsOsAgnostic);
 
-            Assert.Throws<CommandFailedException>(() => Subject.Execute(new ApplicationUpdateCommand()));
+            Assert.Throws<CommandFailedException>(() => Subject.Execute(Manual()));
             ExceptionVerification.ExpectedErrors(1);
         }
 
         [Test]
-        public void should_log_error_when_app_data_is_same_as_startup_folder()
+        public void should_install_from_the_program_folder_inside_the_data_folder_as_the_windows_installer_puts_it()
         {
-            Mocker.GetMock<IAppFolderInfo>().SetupGet(c => c.StartUpFolder).Returns(@"C:\NzbDrone".AsOsAgnostic);
-            Mocker.GetMock<IAppFolderInfo>().SetupGet(c => c.AppDataFolder).Returns(@"C:\NzbDrone".AsOsAgnostic);
+            Subject.Execute(Manual());
 
-            Assert.Throws<CommandFailedException>(() => Subject.Execute(new ApplicationUpdateCommand()));
-            ExceptionVerification.ExpectedErrors(1);
+            VerifyUpdaterStarted(Times.Once());
         }
 
         [Test]
         public void should_log_error_when_startup_folder_is_not_writable()
         {
-            Mocker.GetMock<IDiskProvider>()
-                  .Setup(c => c.FolderWritable(It.IsAny<string>()))
-                  .Returns(false);
+            Mocker.GetMock<IDiskProvider>().Setup(c => c.FolderWritable(It.IsAny<string>())).Returns(false);
 
-            var updateArchive = Path.Combine(_sandboxFolder, _updatePackage.FileName);
+            Assert.Throws<CommandFailedException>(() => Subject.Execute(Manual()));
 
-            Assert.Throws<CommandFailedException>(() => Subject.Execute(new ApplicationUpdateCommand()));
-
-            Mocker.GetMock<IHttpClient>().Verify(c => c.DownloadFile(_updatePackage.Url, updateArchive), Times.Never());
-            ExceptionVerification.ExpectedErrors(1);
-        }
-
-        [Test]
-        public void should_log_when_install_cannot_be_started()
-        {
-            Mocker.GetMock<IDiskProvider>()
-                  .Setup(c => c.FolderWritable(It.IsAny<string>()))
-                  .Returns(false);
-
-            var updateArchive = Path.Combine(_sandboxFolder, _updatePackage.FileName);
-
-            Assert.Throws<CommandFailedException>(() => Subject.Execute(new ApplicationUpdateCommand()));
-
-            Mocker.GetMock<IHttpClient>().Verify(c => c.DownloadFile(_updatePackage.Url, updateArchive), Times.Never());
+            VerifyDownloaded(Times.Never());
             ExceptionVerification.ExpectedErrors(1);
         }
 
@@ -322,32 +245,131 @@ namespace NzbDrone.Core.Test.UpdateTests
         {
             _updatePackage.Branch = "fake";
 
-            Subject.Execute(new ApplicationUpdateCommand());
+            Subject.Execute(Manual());
 
             Mocker.GetMock<IConfigFileProvider>()
                   .Verify(v => v.SaveConfigDictionary(It.Is<Dictionary<string, object>>(d => d.ContainsKey("Branch") && (string)d["Branch"] == "fake")), Times.Once());
         }
 
-        [Test]
-        public void should_not_update_with_built_in_updater_inside_docker_container()
+        [TestCase(UpdateInstallKind.Docker)]
+        [TestCase(UpdateInstallKind.External)]
+        [TestCase(UpdateInstallKind.NotWritable)]
+        [TestCase(UpdateInstallKind.NoPackage)]
+        [TestCase(UpdateInstallKind.Development)]
+        public void should_only_tell_when_this_install_does_not_update_itself(UpdateInstallKind kind)
         {
-            Mocker.GetMock<IDeploymentInfoProvider>().Setup(x => x.PackageUpdateMechanism).Returns(UpdateMechanism.Docker);
+            Mocker.GetMock<IUpdateInstallability>().Setup(c => c.Kind(It.IsAny<UpdatePackage>())).Returns(kind);
 
-            Subject.Execute(new ApplicationUpdateCommand());
+            Subject.Execute(Manual());
 
-            Mocker.GetMock<IProcessProvider>()
-                .Verify(c => c.Start(It.IsAny<string>(), It.Is<string>(s => s.StartsWith("12")), null, null, null), Times.Never());
+            VerifyDownloaded(Times.Never());
+            VerifyUpdaterStarted(Times.Never());
         }
 
         [Test]
-        public void should_not_update_with_built_in_updater_when_external_updater_is_configured()
+        public void should_not_install_by_itself_when_install_updates_automatically_is_off()
         {
-            Mocker.GetMock<IDeploymentInfoProvider>().Setup(x => x.IsExternalUpdateMechanism).Returns(true);
+            Mocker.GetMock<IConfigFileProvider>().SetupGet(s => s.UpdateAutomatically).Returns(false);
 
-            Subject.Execute(new ApplicationUpdateCommand());
+            Subject.Execute(Scheduled());
 
-            Mocker.GetMock<IProcessProvider>()
-                .Verify(c => c.Start(It.IsAny<string>(), It.Is<string>(s => s.StartsWith("12")), null, null, null), Times.Never());
+            VerifyDownloaded(Times.Never());
+        }
+
+        [Test]
+        public void should_install_when_asked_although_install_updates_automatically_is_off()
+        {
+            Mocker.GetMock<IConfigFileProvider>().SetupGet(s => s.UpdateAutomatically).Returns(false);
+
+            Subject.Execute(Manual());
+
+            VerifyUpdaterStarted(Times.Once());
+        }
+
+        [Test]
+        public void should_install_by_itself_when_nothing_is_running()
+        {
+            Subject.Execute(Scheduled());
+
+            VerifyUpdaterStarted(Times.Once());
+        }
+
+        [Test]
+        public void should_wait_while_a_transfer_is_running()
+        {
+            GivenBusy();
+
+            Subject.Execute(Scheduled());
+
+            VerifyDownloaded(Times.Never());
+            Subject.WaitingSince(_updatePackage.SemanticVersion).Should().Be(Now);
+        }
+
+        [Test]
+        public void should_keep_the_time_it_began_waiting()
+        {
+            GivenBusy();
+            Subject.Execute(Scheduled());
+
+            Subject.Now = () => Now.AddHours(5);
+            Subject.Execute(Scheduled());
+
+            Subject.WaitingSince(_updatePackage.SemanticVersion).Should().Be(Now);
+            VerifyDownloaded(Times.Never());
+        }
+
+        [Test]
+        public void should_install_anyway_after_24_hours_of_waiting()
+        {
+            GivenBusy();
+            Subject.Execute(Scheduled());
+
+            Subject.Now = () => Now.Add(InstallUpdateService.MaxWait);
+            Subject.Execute(Scheduled());
+
+            VerifyUpdaterStarted(Times.Once());
+        }
+
+        [Test]
+        public void should_not_wait_when_asked_to_install_now()
+        {
+            GivenBusy();
+
+            Subject.Execute(Manual());
+
+            VerifyUpdaterStarted(Times.Once());
+        }
+
+        [Test]
+        public void should_stop_waiting_once_installed()
+        {
+            GivenBusy();
+            Subject.Execute(Scheduled());
+
+            Mocker.GetMock<IUpdateQuietMoment>().Setup(c => c.Busy()).Returns((string)null);
+            Subject.Execute(Scheduled());
+
+            VerifyUpdaterStarted(Times.Once());
+            Subject.WaitingSince(_updatePackage.SemanticVersion).Should().BeNull();
+        }
+
+        [Test]
+        public void should_wait_afresh_for_a_different_version()
+        {
+            GivenBusy();
+            Subject.Execute(Scheduled());
+
+            Subject.WaitingSince(SemanticVersion.Parse("10.2.0")).Should().BeNull();
+        }
+
+        [Test]
+        public void should_not_install_a_new_major_version_by_itself()
+        {
+            _updatePackage.SemanticVersion = SemanticVersion.Parse("99.0.0");
+
+            Subject.Execute(Scheduled());
+
+            VerifyDownloaded(Times.Never());
         }
 
         [TearDown]

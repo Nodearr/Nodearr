@@ -10,13 +10,15 @@ namespace NzbDrone.Core.Test.Configuration
     [TestFixture]
     public class EnvironmentFixedSettingsFixture
     {
-        private static EnvironmentFixedSettings Given(ServerOptions server = null, AuthOptions auth = null, AppOptions app = null, LogOptions log = null)
+        private static EnvironmentFixedSettings Given(ServerOptions server = null, AuthOptions auth = null, AppOptions app = null, LogOptions log = null, UpdateOptions update = null, NetworkOptions network = null)
         {
             return new EnvironmentFixedSettings(
                 Options.Create(server ?? new ServerOptions()),
                 Options.Create(auth ?? new AuthOptions()),
                 Options.Create(app ?? new AppOptions()),
-                Options.Create(log ?? new LogOptions()));
+                Options.Create(log ?? new LogOptions()),
+                Options.Create(update ?? new UpdateOptions()),
+                Options.Create(network ?? new NetworkOptions()));
         }
 
         [Test]
@@ -47,16 +49,31 @@ namespace NzbDrone.Core.Test.Configuration
         }
 
         [Test]
+        public void the_update_settings_and_the_switch_for_nodearr_com_given_in_the_environment_should_be_fixed()
+        {
+            Given(update: new UpdateOptions { Check = false, Automatically = true }, network: new NetworkOptions { ContactNodearr = false })
+                .General().Should().BeEquivalentTo("updateCheck", "updateAutomatically", "contactNodearr");
+        }
+
+        [Test]
+        public void a_manifest_address_and_key_for_testing_are_not_settings_the_page_shows()
+        {
+            Given(update: new UpdateOptions { ManifestUrl = "http://127.0.0.1:1/", PublicKey = "ssh-rsa AAAA" }).General().Should().BeEmpty();
+        }
+
+        [Test]
         public void every_name_should_be_one_the_settings_page_knows()
         {
             var all = Given(
                 new ServerOptions { BindAddress = "*", Port = 1, UrlBase = "/n", EnableSsl = true, SslPort = 2, SslCertPath = "c", SslKeyPath = "k", SslCertPassword = "p" },
                 new AuthOptions { ApiKey = "k", Method = "Forms", Required = "Enabled" },
                 new AppOptions { InstanceName = "Nodearr", LaunchBrowser = false },
-                new LogOptions { Level = "debug", SizeLimit = 1 }).General();
+                new LogOptions { Level = "debug", SizeLimit = 1 },
+                new UpdateOptions { Check = true, Automatically = false },
+                new NetworkOptions { ContactNodearr = false }).General();
 
             all.Should().OnlyHaveUniqueItems();
-            all.Should().HaveCount(15);
+            all.Should().HaveCount(18);
             all.Should().OnlyContain(name => char.IsLower(name[0]));
         }
     }

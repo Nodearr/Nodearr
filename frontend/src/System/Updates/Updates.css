@@ -1,0 +1,18 @@
+.facts {
+  margin-bottom: 15px;
+  line-height: 1.8;
+}
+
+.command {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+  gap: 10px;
+
+  code {
+    padding: 6px 10px;
+    border-radius: 4px;
+    background-color: var(--inputBackgroundColor);
+    word-break: break-all;
+  }
+}

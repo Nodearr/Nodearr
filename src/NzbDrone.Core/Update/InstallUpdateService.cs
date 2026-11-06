@@ -1,8 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
+using System.Globalization;
 using System.IO;
-using System.Threading;
 using NLog;
 using NzbDrone.Common;
 using NzbDrone.Common.Disk;
@@ -13,19 +12,35 @@ using NzbDrone.Common.Instrumentation.Extensions;
 using NzbDrone.Common.Processes;
 using NzbDrone.Core.Backup;
 using NzbDrone.Core.Configuration;
-using NzbDrone.Core.Lifecycle;
 using NzbDrone.Core.Messaging.Commands;
-using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Update.Commands;
 
 namespace NzbDrone.Core.Update
 {
-    public class InstallUpdateService : IExecute<ApplicationUpdateCommand>, IExecute<ApplicationUpdateCheckCommand>, IHandle<ApplicationStartingEvent>
+    public interface IPendingUpdate
     {
+        // When an automatic update first waited for a quiet moment, or null when none is waiting.
+        DateTime? WaitingSince(SemanticVersion version);
+    }
+
+    // Installs the newer release the last check found (ADR 0024).
+    //
+    // Install now on System > Updates installs at once. An automatic update waits for a quiet moment,
+    // looked for every 5 minutes (UpdateWaiter), and after 24 hours of waiting goes anyway: a transfer
+    // cut off by the restart picks up from what had arrived.
+    public class InstallUpdateService : IExecute<ApplicationUpdateCommand>, IPendingUpdate
+    {
+        public static readonly TimeSpan MaxWait = TimeSpan.FromHours(24);
+
+        private const string PendingVersionKey = "updatependingversion";
+        private const string PendingSinceKey = "updatependingsince";
+
         private readonly ICheckUpdateService _checkUpdateService;
+        private readonly IUpdateInstallability _installability;
+        private readonly IUpdateQuietMoment _quietMoment;
+        private readonly IConfigRepository _configRepository;
         private readonly Logger _logger;
         private readonly IAppFolderInfo _appFolderInfo;
-        private readonly IManageCommandQueue _commandQueueManager;
         private readonly IDiskProvider _diskProvider;
         private readonly IDiskTransferService _diskTransferService;
         private readonly IHttpClient _httpClient;
@@ -33,15 +48,15 @@ namespace NzbDrone.Core.Update
         private readonly IProcessProvider _processProvider;
         private readonly IVerifyUpdates _updateVerifier;
         private readonly IStartupContext _startupContext;
-        private readonly IDeploymentInfoProvider _deploymentInfoProvider;
         private readonly IConfigFileProvider _configFileProvider;
         private readonly IRuntimeInfo _runtimeInfo;
         private readonly IBackupService _backupService;
-        private readonly IOsInfo _osInfo;
 
         public InstallUpdateService(ICheckUpdateService checkUpdateService,
+                                    IUpdateInstallability installability,
+                                    IUpdateQuietMoment quietMoment,
+                                    IConfigRepository configRepository,
                                     IAppFolderInfo appFolderInfo,
-                                    IManageCommandQueue commandQueueManager,
                                     IDiskProvider diskProvider,
                                     IDiskTransferService diskTransferService,
                                     IHttpClient httpClient,
@@ -49,21 +64,16 @@ namespace NzbDrone.Core.Update
                                     IProcessProvider processProvider,
                                     IVerifyUpdates updateVerifier,
                                     IStartupContext startupContext,
-                                    IDeploymentInfoProvider deploymentInfoProvider,
                                     IConfigFileProvider configFileProvider,
                                     IRuntimeInfo runtimeInfo,
                                     IBackupService backupService,
-                                    IOsInfo osInfo,
                                     Logger logger)
         {
-            if (configFileProvider == null)
-            {
-                throw new ArgumentNullException(nameof(configFileProvider));
-            }
-
             _checkUpdateService = checkUpdateService;
+            _installability = installability;
+            _quietMoment = quietMoment;
+            _configRepository = configRepository;
             _appFolderInfo = appFolderInfo;
-            _commandQueueManager = commandQueueManager;
             _diskProvider = diskProvider;
             _diskTransferService = diskTransferService;
             _httpClient = httpClient;
@@ -71,15 +81,131 @@ namespace NzbDrone.Core.Update
             _processProvider = processProvider;
             _updateVerifier = updateVerifier;
             _startupContext = startupContext;
-            _deploymentInfoProvider = deploymentInfoProvider;
             _configFileProvider = configFileProvider;
             _runtimeInfo = runtimeInfo;
             _backupService = backupService;
-            _osInfo = osInfo;
             _logger = logger;
         }
 
-        private bool InstallUpdate(UpdatePackage updatePackage)
+        // For testing: the time now.
+        public Func<DateTime> Now { get; set; } = () => DateTime.UtcNow;
+
+        public DateTime? WaitingSince(SemanticVersion version)
+        {
+            if (_configRepository.Get(PendingVersionKey)?.Value != version.ToString())
+            {
+                return null;
+            }
+
+            return DateTime.TryParse(_configRepository.Get(PendingSinceKey)?.Value, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var since)
+                ? since
+                : null;
+        }
+
+        public void Execute(ApplicationUpdateCommand message)
+        {
+            var package = GetUpdatePackage(message.Trigger);
+
+            if (package == null)
+            {
+                return;
+            }
+
+            try
+            {
+                InstallUpdate(package);
+                ForgetWaiting();
+                _logger.ProgressDebug("Restarting Nodearr to apply updates");
+            }
+            catch (UpdateFolderNotWritableException ex)
+            {
+                _logger.Error(ex, "Update process failed");
+                throw new CommandFailedException("Startup folder not writable by user '{0}'", ex, Environment.UserName);
+            }
+            catch (UpdateVerificationFailedException ex)
+            {
+                _logger.Error(ex, "Update process failed");
+                throw new CommandFailedException("Downloaded update package is corrupt", ex);
+            }
+            catch (UpdateFailedException ex)
+            {
+                _logger.Error(ex, "Update process failed");
+                throw new CommandFailedException(ex);
+            }
+        }
+
+        private UpdatePackage GetUpdatePackage(CommandTrigger trigger)
+        {
+            var package = _checkUpdateService.AvailableUpdate();
+
+            if (package == null)
+            {
+                _logger.ProgressDebug("No update available");
+                return null;
+            }
+
+            var kind = _installability.Kind(package);
+
+            if (kind is not (UpdateInstallKind.BuiltIn or UpdateInstallKind.Script))
+            {
+                _logger.ProgressDebug("Nodearr {0} is available, and this install does not update itself ({1})", package.SemanticVersion, kind);
+                return null;
+            }
+
+            if (trigger == CommandTrigger.Manual)
+            {
+                return package;
+            }
+
+            if (!_configFileProvider.UpdateAutomatically)
+            {
+                _logger.ProgressDebug("Install updates automatically is off: Nodearr {0} is not installed", package.SemanticVersion);
+                return null;
+            }
+
+            // As in Sonarr: a new major version is installed only from System > Updates.
+            if (package.SemanticVersion.Major > CheckUpdateService.CurrentVersion.Major)
+            {
+                _logger.ProgressInfo("Nodearr {0} is a new major version. Install it from System > Updates.", package.SemanticVersion);
+                return null;
+            }
+
+            var now = Now();
+            var since = WaitingSince(package.SemanticVersion) ?? StartWaiting(package.SemanticVersion, now);
+            var busy = _quietMoment.Busy();
+
+            if (busy != null)
+            {
+                if (now - since < MaxWait)
+                {
+                    _logger.ProgressDebug("Nodearr {0} will be installed when nothing is running: {1}", package.SemanticVersion, busy);
+                    return null;
+                }
+
+                _logger.Info("Installing Nodearr {0} after waiting {1:0} hours for a quiet moment, although {2}", package.SemanticVersion, (now - since).TotalHours, busy);
+            }
+
+            return package;
+        }
+
+        private DateTime StartWaiting(SemanticVersion version, DateTime now)
+        {
+            _configRepository.Upsert(PendingVersionKey, version.ToString());
+            _configRepository.Upsert(PendingSinceKey, now.ToString("O", CultureInfo.InvariantCulture));
+
+            return now;
+        }
+
+        private void ForgetWaiting()
+        {
+            if (_configRepository.Get(PendingVersionKey) != null)
+            {
+                _configRepository.Upsert(PendingVersionKey, string.Empty);
+                _configRepository.Upsert(PendingSinceKey, string.Empty);
+            }
+        }
+
+        private void InstallUpdate(UpdatePackage updatePackage)
         {
             EnsureAppDataSafety();
 
@@ -99,12 +225,6 @@ namespace NzbDrone.Core.Update
                 }
             }
 
-            if (_appFolderInfo.StartUpFolder.EndsWith("_output"))
-            {
-                _logger.ProgressDebug("Running in developer environment, not updating.");
-                return false;
-            }
-
             var tempFolder = _appFolderInfo.TempFolder;
             var updateSandboxFolder = _appFolderInfo.GetUpdateSandboxFolder();
 
@@ -121,9 +241,9 @@ namespace NzbDrone.Core.Update
                 _diskProvider.DeleteFolder(updateSandboxFolder, true);
             }
 
-            _logger.ProgressInfo("Downloading update {0}", updatePackage.Version);
+            _logger.ProgressInfo("Downloading update {0}", updatePackage.SemanticVersion);
             _logger.Debug("Downloading update package from [{0}] to [{1}]", updatePackage.Url, packageDestination);
-            _httpClient.DownloadFile(updatePackage.Url, packageDestination);
+            Download(updatePackage.Url, packageDestination);
 
             _logger.ProgressInfo("Verifying update package");
 
@@ -146,7 +266,7 @@ namespace NzbDrone.Core.Update
             if (_configFileProvider.UpdateMechanism == UpdateMechanism.Script)
             {
                 InstallUpdateWithScript(updateSandboxFolder);
-                return true;
+                return;
             }
 
             _logger.Info("Preparing client");
@@ -156,8 +276,7 @@ namespace NzbDrone.Core.Update
 
             if (!_diskProvider.FileExists(updateClientExePath))
             {
-                _logger.Warn("Update client {0} does not exist, aborting update.", updateClientExePath);
-                return false;
+                throw new UpdateFailedException("The package has no update client ({0}), so it cannot be installed from here", updateClientExePath);
             }
 
             // Set executable flag on update app
@@ -170,14 +289,49 @@ namespace NzbDrone.Core.Update
             _logger.ProgressInfo("Nodearr will restart shortly.");
 
             _processProvider.Start(updateClientExePath, GetUpdaterArgs(updateSandboxFolder));
+        }
 
-            return true;
+        // Like IHttpClient.DownloadFile, with the plain user agent the manifest is fetched with, no
+        // cookies, and time enough for a slow line.
+        private void Download(string url, string destination)
+        {
+            _diskProvider.EnsureFolder(Path.GetDirectoryName(destination));
+
+            var part = destination + ".part";
+
+            try
+            {
+                using (var stream = new FileStream(part, FileMode.Create, FileAccess.ReadWrite))
+                {
+                    var request = new HttpRequest(url)
+                    {
+                        UseSimplifiedUserAgent = true,
+                        AllowAutoRedirect = true,
+                        StoreRequestCookie = false,
+                        StoreResponseCookie = false,
+                        RequestTimeout = TimeSpan.FromMinutes(30),
+                        ResponseStream = stream
+                    };
+
+                    _httpClient.Get(request);
+                }
+
+                File.Move(part, destination, true);
+            }
+            finally
+            {
+                if (File.Exists(part))
+                {
+                    File.Delete(part);
+                }
+            }
         }
 
         private void EnsureValidBranch(UpdatePackage package)
         {
             var currentBranch = _configFileProvider.Branch;
-            if (package.Branch != currentBranch)
+
+            if (package.Branch.IsNotNullOrWhiteSpace() && package.Branch != currentBranch)
             {
                 try
                 {
@@ -228,148 +382,6 @@ namespace NzbDrone.Core.Update
                 _appFolderInfo.StartUpFolder.PathEquals(_appFolderInfo.AppDataFolder))
             {
                 throw new UpdateFailedException("Your Nodearr configuration '{0}' is being stored in application folder '{1}' which will cause data lost during the upgrade. Please remove any symlinks or redirects before trying again.", _appFolderInfo.AppDataFolder, _appFolderInfo.StartUpFolder);
-            }
-        }
-
-        private UpdatePackage GetUpdatePackage(CommandTrigger updateTrigger, bool installMajorUpdate)
-        {
-            _logger.ProgressDebug("Checking for updates");
-
-            var latestAvailable = _checkUpdateService.AvailableUpdate();
-
-            if (latestAvailable == null)
-            {
-                _logger.ProgressDebug("No update available");
-                return null;
-            }
-
-            if (latestAvailable.Version.Major > BuildInfo.Version.Major && !installMajorUpdate)
-            {
-                _logger.ProgressInfo("Unable to install major update, please update update manually from System: Updates");
-                return null;
-            }
-
-            if (!_configFileProvider.UpdateAutomatically && updateTrigger != CommandTrigger.Manual)
-            {
-                _logger.ProgressDebug("Auto-update not enabled, not installing available update.");
-                return null;
-            }
-
-            if (_configFileProvider.UpdateMechanism == UpdateMechanism.BuiltIn && _deploymentInfoProvider.PackageUpdateMechanism == UpdateMechanism.Docker)
-            {
-                _logger.ProgressDebug("Built-In updater disabled inside a docker container. Please update the container image.");
-                return null;
-            }
-
-            // Safety net, ConfigureUpdateMechanism should take care of invalid settings
-            if (_configFileProvider.UpdateMechanism == UpdateMechanism.BuiltIn && _deploymentInfoProvider.IsExternalUpdateMechanism)
-            {
-                _logger.ProgressDebug("Built-In updater disabled, please use {0} to install", _deploymentInfoProvider.PackageUpdateMechanism);
-                return null;
-            }
-            else if (_configFileProvider.UpdateMechanism != UpdateMechanism.Script && _deploymentInfoProvider.IsExternalUpdateMechanism)
-            {
-                _logger.ProgressDebug("Update available, please use {0} to install", _deploymentInfoProvider.PackageUpdateMechanism);
-                return null;
-            }
-
-            return latestAvailable;
-        }
-
-        public void Execute(ApplicationUpdateCheckCommand message)
-        {
-            if (GetUpdatePackage(message.Trigger, true) != null)
-            {
-                _commandQueueManager.Push(new ApplicationUpdateCommand(), trigger: message.Trigger);
-            }
-        }
-
-        public void Execute(ApplicationUpdateCommand message)
-        {
-            var latestAvailable = GetUpdatePackage(message.Trigger, message.InstallMajorUpdate);
-
-            if (latestAvailable != null)
-            {
-                try
-                {
-                    InstallUpdate(latestAvailable);
-                    _logger.ProgressDebug("Restarting Nodearr to apply updates");
-                }
-                catch (UpdateFolderNotWritableException ex)
-                {
-                    _logger.Error(ex, "Update process failed");
-                    throw new CommandFailedException("Startup folder not writable by user '{0}'", ex, Environment.UserName);
-                }
-                catch (UpdateVerificationFailedException ex)
-                {
-                    _logger.Error(ex, "Update process failed");
-                    throw new CommandFailedException("Downloaded update package is corrupt", ex);
-                }
-                catch (UpdateFailedException ex)
-                {
-                    _logger.Error(ex, "Update process failed");
-                    throw new CommandFailedException(ex);
-                }
-            }
-        }
-
-        public void Handle(ApplicationStartingEvent message)
-        {
-            // Check if we have to do an application update on startup
-
-            try
-            {
-                var updateMarker = Path.Combine(_appFolderInfo.AppDataFolder, "update_required");
-                if (!_diskProvider.FileExists(updateMarker))
-                {
-                    return;
-                }
-
-                _logger.Debug("Post-install update check requested");
-
-                // Don't do a prestartup update check unless BuiltIn update is enabled
-                if (!_configFileProvider.UpdateAutomatically ||
-                    _configFileProvider.UpdateMechanism != UpdateMechanism.BuiltIn ||
-                    _deploymentInfoProvider.IsExternalUpdateMechanism)
-                {
-                    _logger.Debug("Built-in updater disabled, skipping post-install update check");
-                    return;
-                }
-
-                var latestAvailable = _checkUpdateService.AvailableUpdate();
-                if (latestAvailable == null)
-                {
-                    _logger.Debug("No post-install update available");
-                    _diskProvider.DeleteFile(updateMarker);
-                    return;
-                }
-
-                _logger.Info("Installing post-install update from {0} to {1}", BuildInfo.Version, latestAvailable.Version);
-                _diskProvider.DeleteFile(updateMarker);
-
-                var installing = InstallUpdate(latestAvailable);
-
-                if (installing)
-                {
-                    _logger.Debug("Install in progress, giving installer 30 seconds.");
-
-                    var watch = Stopwatch.StartNew();
-
-                    while (watch.Elapsed < TimeSpan.FromSeconds(30))
-                    {
-                        Thread.Sleep(1000);
-                    }
-
-                    _logger.Error("Post-install update not completed within 30 seconds. Attempting to continue normal operation.");
-                }
-                else
-                {
-                    _logger.Debug("Post-install update cancelled for unknown reason. Attempting to continue normal operation.");
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.Error(ex, "Failed to perform the post-install update check. Attempting to continue normal operation.");
             }
         }
     }

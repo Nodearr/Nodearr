@@ -95,6 +95,15 @@
     </AssemblyAttribute>
   </ItemGroup>
 
+  <!-- The release version with its pre-release tag, such as 0.10.0-beta.1, which the assembly version
+       has no room for. Build-Release.ps1 and the Dockerfile pass it, and the update check compares it. -->
+  <ItemGroup Condition="'$(NodearrProject)'=='true' And '$(NodearrVersion)'!=''">
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>NodearrVersion</_Parameter1>
+      <_Parameter2>$(NodearrVersion)</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+
   <PropertyGroup>
     <!-- For now keep the NzbDrone namespace -->
     <RootNamespace Condition="'$(NodearrProject)'=='true'">$(MSBuildProjectName.Replace('Nodearr','NzbDrone'))</RootNamespace>

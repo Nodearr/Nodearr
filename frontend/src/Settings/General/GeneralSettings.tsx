@@ -18,6 +18,7 @@ import BackupSettings from './BackupSettings';
 import HostSettings from './HostSettings';
 import LoggingSettings from './LoggingSettings';
 import SecuritySettings from './SecuritySettings';
+import UpdateSettings from './UpdateSettings';
 import { useManageGeneralSettings } from './useGeneralSettings';
 
 const requiresRestartKeys = [
@@ -173,6 +174,14 @@ function GeneralSettings() {
             <LoggingSettings
               logLevel={settings.logLevel}
               logSizeLimit={settings.logSizeLimit}
+              isFixed={isFixed}
+              onInputChange={handleInputChange}
+            />
+
+            <UpdateSettings
+              contactNodearr={settings.contactNodearr}
+              updateCheck={settings.updateCheck}
+              updateAutomatically={settings.updateAutomatically}
               isFixed={isFixed}
               onInputChange={handleInputChange}
             />

@@ -15,6 +15,7 @@ import LogsTable from 'System/Events/LogsTable';
 import Logs from 'System/Logs/Logs';
 import Status from 'System/Status/Status';
 import Tasks from 'System/Tasks/Tasks';
+import Updates from 'System/Updates/Updates';
 import ApplicationSettings from '../Settings/Applications/ApplicationSettings';
 import GeneralSettings from '../Settings/General/GeneralSettings';
 import NodeSettings from '../Settings/Node/NodeSettings';
@@ -93,6 +94,8 @@ export function appRouteElements() {
       <Route path="/system/status" element={<Status />} />
 
       <Route path="/system/tasks" element={<Tasks />} />
+
+      <Route path="/system/updates" element={<Updates />} />
 
       <Route path="/system/backup" element={<Backups />} />
 

@@ -16,6 +16,7 @@ using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Nodes;
 using NzbDrone.Core.Nodes.Settings;
 using NzbDrone.Core.PeerCatalog;
+using NzbDrone.Core.Update.Commands;
 
 namespace NzbDrone.Core.Jobs
 {
@@ -100,6 +101,13 @@ namespace NzbDrone.Core.Jobs
                     {
                         Interval = 6 * 60,
                         TypeName = typeof(CheckHealthCommand).FullName
+                    },
+
+                    // updates.nodearr.com, as often as Sonarr and Radarr check for updates (ADR 0024).
+                    new ScheduledTask
+                    {
+                        Interval = 6 * 60,
+                        TypeName = typeof(ApplicationUpdateCheckCommand).FullName
                     },
 
                     new ScheduledTask

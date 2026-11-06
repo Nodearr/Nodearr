@@ -10,6 +10,7 @@ Use this guide to install Nodearr, connect your Arr apps and share with friends.
 - [Finding and fetching](finding-and-fetching.md): what friends have, how your apps find it, and what happens to a grab.
 - [Troubleshooting](troubleshooting.md): what each warning means, and what to do when a transfer fails.
 - [Settings](settings.md): settings, defaults and environment overrides.
+- [Updating](updating.md): how Nodearr hears of a new version, and installing it.
 - [Backups](backups.md): what a backup holds, and moving a node to a new machine.
 - [Privacy and security](privacy-and-security.md): what friends, the relay and anyone else can see.
 

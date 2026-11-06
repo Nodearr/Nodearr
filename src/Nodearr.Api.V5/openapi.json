@@ -3809,10 +3809,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/UpdateResource"
-                  }
+                  "$ref": "#/components/schemas/UpdateStatusResource"
                 }
               }
             }
@@ -5018,6 +5015,12 @@
           "updateAutomatically": {
             "type": "boolean"
           },
+          "updateCheck": {
+            "type": "boolean"
+          },
+          "contactNodearr": {
+            "type": "boolean"
+          },
           "updateMechanism": {
             "$ref": "#/components/schemas/UpdateMechanism"
           },
@@ -5309,6 +5312,7 @@
           "serverNotification",
           "systemTime",
           "updateAvailable",
+          "updateSignatureInvalid",
           "updateStartupNotWritable",
           "updateStartupTranslocation",
           "updateUiNotWritable"
@@ -7643,17 +7647,18 @@
         ],
         "type": "string"
       },
-      "UpdateChanges": {
+      "UpdateChangesResource": {
+        "required": [
+          "heading",
+          "items"
+        ],
         "type": "object",
         "properties": {
-          "new": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
+          "heading": {
+            "type": "string",
             "nullable": true
           },
-          "fixed": {
+          "items": {
             "type": "array",
             "items": {
               "type": "string"
@@ -7662,6 +7667,28 @@
           }
         },
         "additionalProperties": false
+      },
+      "UpdateCheckOutcome": {
+        "enum": [
+          "notChecked",
+          "off",
+          "checked",
+          "unavailable",
+          "badSignature"
+        ],
+        "type": "string"
+      },
+      "UpdateInstallKind": {
+        "enum": [
+          "builtIn",
+          "script",
+          "docker",
+          "external",
+          "notWritable",
+          "noPackage",
+          "development"
+        ],
+        "type": "string"
       },
       "UpdateMechanism": {
         "enum": [
@@ -7675,30 +7702,34 @@
       },
       "UpdateResource": {
         "required": [
-          "branch",
           "changes",
-          "fileName",
-          "hash",
-          "url",
+          "releaseUrl",
           "version"
         ],
         "type": "object",
         "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int32"
-          },
           "version": {
-            "type": "string",
-            "nullable": true
-          },
-          "branch": {
             "type": "string",
             "nullable": true
           },
           "releaseDate": {
             "type": "string",
             "format": "date-time"
+          },
+          "changelog": {
+            "type": "string",
+            "nullable": true
+          },
+          "summary": {
+            "type": "string",
+            "nullable": true
+          },
+          "changes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UpdateChangesResource"
+            },
+            "nullable": true
           },
           "fileName": {
             "type": "string",
@@ -7708,25 +7739,67 @@
             "type": "string",
             "nullable": true
           },
-          "installed": {
+          "size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "releaseUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "dockerCommand": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateStatusResource": {
+        "required": [
+          "branch",
+          "currentVersion"
+        ],
+        "type": "object",
+        "properties": {
+          "currentVersion": {
+            "type": "string",
+            "nullable": true
+          },
+          "branch": {
+            "type": "string",
+            "nullable": true
+          },
+          "updateCheck": {
             "type": "boolean"
           },
-          "installedOn": {
+          "contactNodearr": {
+            "type": "boolean"
+          },
+          "updateAutomatically": {
+            "type": "boolean"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/UpdateCheckOutcome"
+          },
+          "lastChecked": {
             "type": "string",
             "format": "date-time",
             "nullable": true
           },
-          "installable": {
-            "type": "boolean"
+          "available": {
+            "$ref": "#/components/schemas/UpdateResource"
           },
-          "latest": {
-            "type": "boolean"
-          },
-          "changes": {
-            "$ref": "#/components/schemas/UpdateChanges"
-          },
-          "hash": {
+          "availableSince": {
             "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "installKind": {
+            "$ref": "#/components/schemas/UpdateInstallKind"
+          },
+          "waitingSince": {
+            "type": "string",
+            "format": "date-time",
             "nullable": true
           }
         },

@@ -1,5 +1,8 @@
 using System;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
+using System.Threading;
 using NLog;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.EnvironmentInfo;
@@ -15,6 +18,16 @@ namespace NzbDrone.Update.UpdateEngine
 
     public class InstallUpdateService : IInstallUpdateService
     {
+        public const string TransportProcessName = "nodearr-transport";
+
+        // How long a new version has to start and answer its API before the old one is put back.
+        public static readonly TimeSpan StartupTimeout = TimeSpan.FromMinutes(3);
+
+        // How long the transport has to leave after Nodearr has, and how long a service manager has to
+        // start Nodearr again on Linux and macOS, before the updater acts itself. Shorter in tests.
+        public TimeSpan TransportWait { get; set; } = TimeSpan.FromSeconds(10);
+        public TimeSpan ExternalRestartWait { get; set; } = TimeSpan.FromSeconds(10);
+
         private readonly IDiskProvider _diskProvider;
         private readonly IDiskTransferService _diskTransferService;
         private readonly IDetectApplicationType _detectApplicationType;
@@ -24,6 +37,7 @@ namespace NzbDrone.Update.UpdateEngine
         private readonly IBackupAndRestore _backupAndRestore;
         private readonly IBackupAppData _backupAppData;
         private readonly IStartNzbDrone _startNzbDrone;
+        private readonly IStartupCheck _startupCheck;
         private readonly IProcessProvider _processProvider;
         private readonly Logger _logger;
 
@@ -36,6 +50,7 @@ namespace NzbDrone.Update.UpdateEngine
                                     IBackupAndRestore backupAndRestore,
                                     IBackupAppData backupAppData,
                                     IStartNzbDrone startNzbDrone,
+                                    IStartupCheck startupCheck,
                                     IProcessProvider processProvider,
                                     Logger logger)
         {
@@ -48,6 +63,7 @@ namespace NzbDrone.Update.UpdateEngine
             _backupAndRestore = backupAndRestore;
             _backupAppData = backupAppData;
             _startNzbDrone = startNzbDrone;
+            _startupCheck = startupCheck;
             _processProvider = processProvider;
             _logger = logger;
         }
@@ -85,8 +101,10 @@ namespace NzbDrone.Update.UpdateEngine
 
         public void Start(string installationFolder, int processId)
         {
+            var oldVersion = _detectExistingVersion.GetExistingVersion(installationFolder);
+
             _logger.Info("Installation Folder: {0}", installationFolder);
-            _logger.Info("Updating Nodearr from version {0} to version {1}", _detectExistingVersion.GetExistingVersion(installationFolder), BuildInfo.Version);
+            _logger.Info("Updating Nodearr from version {0} to version {1}", oldVersion, BuildInfo.NodearrVersion);
 
             Verify(installationFolder, processId);
 
@@ -104,6 +122,9 @@ namespace NzbDrone.Update.UpdateEngine
             if (OsInfo.IsWindows)
             {
                 _terminateNzbDrone.Terminate(processId);
+
+                // The sidecar leaves when Nodearr does, and its program cannot be replaced until it has.
+                StopTransport(installationFolder);
             }
 
             try
@@ -123,14 +144,15 @@ namespace NzbDrone.Update.UpdateEngine
                 try
                 {
                     _logger.Info("Copying new files to target folder");
+
+                    if (!OsInfo.IsWindows)
+                    {
+                        UnlinkReplacedFiles(_appFolderInfo.GetUpdatePackageFolder(), installationFolder);
+                    }
+
                     _diskTransferService.MirrorFolder(_appFolderInfo.GetUpdatePackageFolder(), installationFolder);
 
-                    // Set executable flag on app and ffprobe
-                    if (OsInfo.IsOsx || OsInfo.IsLinux)
-                    {
-                        _diskProvider.SetFilePermissions(Path.Combine(installationFolder, "Nodearr"), "755", null);
-                        _diskProvider.SetFilePermissions(Path.Combine(installationFolder, "ffprobe"), "755", null);
-                    }
+                    SetExecutable(installationFolder);
                 }
                 catch (Exception e)
                 {
@@ -141,30 +163,133 @@ namespace NzbDrone.Update.UpdateEngine
             }
             finally
             {
-                if (OsInfo.IsWindows)
+                StartAgain(appType, installationFolder, processId);
+            }
+
+            if (_startupCheck.Answers(StartupTimeout))
+            {
+                return;
+            }
+
+            _logger.Error("Nodearr {0} did not answer within {1:0} minutes of starting. Putting version {2} back: its program, its database and config.xml.", BuildInfo.NodearrVersion, StartupTimeout.TotalMinutes, oldVersion);
+
+            _terminateNzbDrone.Terminate(processId);
+            StopTransport(installationFolder);
+
+            if (!OsInfo.IsWindows)
+            {
+                UnlinkReplacedFiles(_appFolderInfo.GetUpdateBackUpFolder(), installationFolder);
+            }
+
+            _backupAndRestore.Restore(installationFolder);
+            SetExecutable(installationFolder);
+            _backupAppData.Restore();
+
+            StartAgain(appType, installationFolder, processId);
+
+            if (_startupCheck.Answers(StartupTimeout))
+            {
+                _logger.Info("Version {0} is running again. The update to {1} was not kept.", oldVersion, BuildInfo.NodearrVersion);
+            }
+            else
+            {
+                _logger.Error("Version {0} did not answer either. Start Nodearr by hand and look at its log.", oldVersion);
+            }
+        }
+
+        private void StartAgain(AppType appType, string installationFolder, int processId)
+        {
+            if (OsInfo.IsWindows)
+            {
+                _startNzbDrone.Start(appType, installationFolder);
+                return;
+            }
+
+            _terminateNzbDrone.Terminate(processId);
+
+            _logger.Info("Waiting for external auto-restart.");
+            var waited = Stopwatch.StartNew();
+            while (waited.Elapsed < ExternalRestartWait)
+            {
+                Thread.Sleep(TimeSpan.FromMilliseconds(Math.Min(1000, ExternalRestartWait.TotalMilliseconds)));
+
+                if (_processProvider.Exists(ProcessProvider.SONARR_PROCESS_NAME))
                 {
-                    _startNzbDrone.Start(appType, installationFolder);
+                    _logger.Info("Nodearr was restarted by external process.");
+                    break;
                 }
-                else
+            }
+
+            if (!_processProvider.Exists(ProcessProvider.SONARR_PROCESS_NAME))
+            {
+                _startNzbDrone.Start(appType, installationFolder);
+            }
+        }
+
+        // The sidecar exits when its standard input closes, which it does when Nodearr stops. Only the
+        // copy in this installation is waited for: another node on the machine keeps its own.
+        private void StopTransport(string installationFolder)
+        {
+            var watch = Stopwatch.StartNew();
+
+            while (true)
+            {
+                var running = _processProvider.FindProcessByName(TransportProcessName)
+                    .Where(p => p.StartPath != null && installationFolder.IsParentPath(p.StartPath))
+                    .ToList();
+
+                if (running.Count == 0)
                 {
-                    _terminateNzbDrone.Terminate(processId);
+                    return;
+                }
 
-                    _logger.Info("Waiting for external auto-restart.");
-                    var theDakoLimit = 10;
-                    for (var i = 0; i < theDakoLimit; i++)
+                if (watch.Elapsed >= TransportWait)
+                {
+                    foreach (var process in running)
                     {
-                        System.Threading.Thread.Sleep(1000);
-
-                        if (_processProvider.Exists(ProcessProvider.SONARR_PROCESS_NAME))
-                        {
-                            _logger.Info("Nodearr was restarted by external process.");
-                            break;
-                        }
+                        _logger.Info("Stopping the transport that is still running, {0}", process);
+                        _processProvider.Kill(process.Id);
                     }
 
-                    if (!_processProvider.Exists(ProcessProvider.SONARR_PROCESS_NAME))
+                    return;
+                }
+
+                Thread.Sleep(500);
+            }
+        }
+
+        // On Linux and macOS a running program, or a library it has loaded, is replaced by removing
+        // the old file and writing a new one. Writing over it in place fails or crashes the process.
+        // The process keeps the old file until it exits.
+        private void UnlinkReplacedFiles(string sourceFolder, string targetFolder)
+        {
+            if (!_diskProvider.FolderExists(sourceFolder))
+            {
+                return;
+            }
+
+            foreach (var source in _diskProvider.GetFiles(sourceFolder, true))
+            {
+                var target = Path.Combine(targetFolder, sourceFolder.GetRelativePath(source));
+
+                if (_diskProvider.FileExists(target))
+                {
+                    _diskProvider.DeleteFile(target);
+                }
+            }
+        }
+
+        private void SetExecutable(string installationFolder)
+        {
+            if (OsInfo.IsOsx || OsInfo.IsLinux)
+            {
+                foreach (var name in new[] { "Nodearr", "ffprobe", TransportProcessName, Path.Combine("Nodearr.Update", "Nodearr.Update") })
+                {
+                    var path = Path.Combine(installationFolder, name);
+
+                    if (_diskProvider.FileExists(path))
                     {
-                        _startNzbDrone.Start(appType, installationFolder);
+                        _diskProvider.SetFilePermissions(path, "755", null);
                     }
                 }
             }

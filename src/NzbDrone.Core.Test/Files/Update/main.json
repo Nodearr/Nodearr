@@ -1,0 +1,32 @@
+{
+  "format": 1,
+  "branch": "main",
+  "version": "0.8.1",
+  "released": "2026-11-06T16:09:40Z",
+  "changelog": "https://nodearr.com/changelog/#081-pre-release",
+  "summary": "Downloads recover when either node changes network address, keeping their progress and the download the Arr app is already following.",
+  "changes": [
+    {
+      "heading": "Fixed",
+      "items": [
+        "A download could stay in Downloading without making progress after switching networks, even when the nodes found each other again. Affected downloads now wait 15 seconds and reopen from their saved bytes using the current address. They keep their download IDs, do not use up a failure attempt, and do not need to be removed or grabbed again in the Arr app ([#128](https://github.com/Nodearr/Nodearr/issues/128), [ADR 0016](https://github.com/Nodearr/Nodearr/blob/v0.8.1/docs/adr/0016-transfers-and-the-download-client.md#2026-10-29-reopen-active-downloads-when-network-addresses-change-128))."
+      ]
+    }
+  ],
+  "image": "ghcr.io/nodearr/nodearr:0.8.1",
+  "rollout": 100,
+  "packages": {
+    "linux-musl-x64": {
+      "file": "Nodearr.0.8.1.linux-musl-x64.tar.gz",
+      "url": "http://127.0.0.1:9/Nodearr.0.8.1.linux-musl-x64.tar.gz",
+      "size": 3000,
+      "sha256": "c1a4d4fd7a4348970072a177acc4a02e189e7282639f683896a1fc7763f667a3"
+    },
+    "win-x64": {
+      "file": "Nodearr.0.8.1.win-x64.zip",
+      "url": "http://127.0.0.1:9/Nodearr.0.8.1.win-x64.zip",
+      "size": 4000,
+      "sha256": "fef89ed2d269aa1fbeb8b331a5a8437c585c501953e14da2f7eea17147e25721"
+    }
+  }
+}

@@ -2,72 +2,54 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Nodearr.Http;
-using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Update;
-using NzbDrone.Core.Update.History;
 
 namespace Nodearr.Api.V5.Update
 {
     [V5ApiController]
     public class UpdateController : Controller
     {
-        private readonly IRecentUpdateProvider _recentUpdateProvider;
-        private readonly IUpdateHistoryService _updateHistoryService;
+        private readonly ICheckUpdateService _checkUpdateService;
+        private readonly IUpdateInstallability _installability;
+        private readonly IPendingUpdate _pendingUpdate;
         private readonly IConfigFileProvider _configFileProvider;
 
-        public UpdateController(IRecentUpdateProvider recentUpdateProvider, IUpdateHistoryService updateHistoryService, IConfigFileProvider configFileProvider)
+        public UpdateController(ICheckUpdateService checkUpdateService,
+                                IUpdateInstallability installability,
+                                IPendingUpdate pendingUpdate,
+                                IConfigFileProvider configFileProvider)
         {
-            _recentUpdateProvider = recentUpdateProvider;
-            _updateHistoryService = updateHistoryService;
+            _checkUpdateService = checkUpdateService;
+            _installability = installability;
+            _pendingUpdate = pendingUpdate;
             _configFileProvider = configFileProvider;
         }
 
+        // What the last check found. It does not check again: the Check for updates task does, every
+        // 6 hours, or when started from this page.
         [HttpGet]
         [Produces("application/json")]
-        public Ok<List<UpdateResource>> GetRecentUpdates()
+        public Ok<UpdateStatusResource> GetStatus()
         {
-            var resources = _recentUpdateProvider.GetRecentUpdatePackages()
-                                                 .OrderByDescending(u => u.Version)
-                                                 .ToResource();
+            var status = _checkUpdateService.Status();
+            var available = status.Available;
+            var kind = _installability.Kind(available);
 
-            if (resources.Any())
+            return TypedResults.Ok(new UpdateStatusResource
             {
-                var first = resources.First();
-                first.Latest = true;
-
-                if (first.Version > BuildInfo.Version)
-                {
-                    first.Installable = true;
-                }
-
-                var installed = resources.SingleOrDefault(r => r.Version == BuildInfo.Version);
-
-                if (installed != null)
-                {
-                    installed.Installed = true;
-                }
-
-                if (!_configFileProvider.LogDbEnabled)
-                {
-                    return TypedResults.Ok(resources);
-                }
-
-                var updateHistory = _updateHistoryService.InstalledSince(resources.Last().ReleaseDate);
-                var installDates = updateHistory
-                                                        .DistinctBy(v => v.Version)
-                                                        .ToDictionary(v => v.Version);
-
-                foreach (var resource in resources)
-                {
-                    if (installDates.TryGetValue(resource.Version, out var installDate))
-                    {
-                        resource.InstalledOn = installDate.Date;
-                    }
-                }
-            }
-
-            return TypedResults.Ok(resources);
+                CurrentVersion = CheckUpdateService.CurrentVersion.ToString(),
+                Branch = _configFileProvider.Branch,
+                UpdateCheck = _configFileProvider.UpdateCheck,
+                ContactNodearr = _configFileProvider.ContactNodearr,
+                UpdateAutomatically = _configFileProvider.UpdateAutomatically,
+                Outcome = status.Outcome,
+                LastChecked = status.LastChecked,
+                Available = available?.ToResource(kind),
+                AvailableSince = status.AvailableSince,
+                InstallKind = kind,
+                WaitingSince = available == null ? null : _pendingUpdate.WaitingSince(available.SemanticVersion)
+            });
         }
     }
 }

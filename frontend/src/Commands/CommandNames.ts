@@ -1,6 +1,7 @@
 enum CommandNames {
   ApplicationIndexerSync = 'ApplicationIndexerSync',
   ApplicationUpdate = 'ApplicationUpdate',
+  ApplicationUpdateCheck = 'ApplicationUpdateCheck',
   Backup = 'Backup',
   CatalogRefresh = 'CatalogRefresh',
   PeerCatalogSync = 'PeerCatalogSync',

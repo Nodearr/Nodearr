@@ -28,6 +28,8 @@ Each package is one folder, `Nodearr`, holding:
 - the transport sidecar, `nodearr-transport`;
 - the licence and the notices (see [Licences](#licences)).
 
+- the updater, `Nodearr.Update`, in a folder of its own, which replaces the package folder with a newer release's ([ADR 0024](../adr/0024-update-checks-and-usage-reports-on-nodearr-com.md)).
+
 On Windows it also holds the tray application, `Nodearr.exe`, and `ServiceInstall.exe` / `ServiceUninstall.exe`. On Linux and macOS, start it with `./Nodearr`.
 
 Every Linux sidecar is a statically linked musl binary. It runs on glibc systems too, whatever their glibc version, so the glibc and musl packages for an architecture carry the same one.
@@ -46,7 +48,7 @@ macOS marks a downloaded archive as quarantined. As with Sonarr, clear it before
 
 ### On Windows: the installer
 
-The installer puts Nodearr in Program Files and asks how it should start, as Sonarr's does:
+The installer puts Nodearr in `C:\ProgramData\Nodearr\bin`, next to its data, and asks how it should start, as Sonarr's does. Everyone may change that folder, so the service, running as `LocalService`, can update itself, as Sonarr's and Radarr's do. Earlier versions installed into Program Files. Installing over one of them moves Nodearr, removes the old copy and updates the firewall rule ([ADR 0024](../adr/0024-update-checks-and-usage-reports-on-nodearr-com.md)).
 
 - **When you sign in, in the tray.** The default. A shortcut in your Startup folder runs `Nodearr.exe`, which shows an icon in the system tray. Its menu opens Nodearr or exits it. It runs as you, so it reads whatever your account can.
 - **When the computer starts, as a Windows service.** It runs whether anyone is signed in, as the `LocalService` account. That account may not be able to read your library, or a network share, until the service is given an account that can: Services, Nodearr, Properties, Log On. **System > Status** says when Nodearr cannot read the library.
@@ -66,7 +68,6 @@ From the zip, `ServiceInstall.exe` and `ServiceUninstall.exe`, run as administra
 
 - **FreeBSD.** Sonarr and Radarr release for it with a .NET runtime the community builds, from a package source of their own. Nodearr's sidecar is built on [iroh](https://www.iroh.computer/), and iroh on FreeBSD has not been tried. Until both have been, there is no FreeBSD package.
 - **A macOS app bundle** (`Nodearr.app`). Sonarr has one. Nodearr has the plain archive for now.
-- **An updater.** Nodearr does not update itself yet. A new version is installed over the old one, or pulled as a new image. ADR 0024 allows an update check against a signed manifest on `updates.nodearr.com`, and [#134](https://github.com/Nodearr/Nodearr/issues/134) builds it.
 
 ### Licences
 
@@ -110,6 +111,41 @@ A version is three numbers with an optional pre-release tag: `0.1.0`, `0.1.0-bet
 Run the workflow by hand from the Actions tab, with a version, to build the packages without drafting or pushing anything. They are kept as the run's artifacts.
 
 Publishing the release rebuilds [nodearr.com](https://nodearr.com) with that release's user guide, changelog and API description: `.github/workflows/website.yml` tells [Nodearr/nodearr.github.io](https://github.com/Nodearr/nodearr.github.io) to. It sends that as the Nodearr organisation's GitHub App, installed on the site repository with Contents set to read and write, so each run gets a token that lasts an hour and reaches only that repository. It needs the repository variable `SITE_APP_CLIENT_ID` and the secret `SITE_APP_PRIVATE_KEY`. Without them the workflow warns, and the site's Deploy workflow can be run by hand. Automatic publishing uses a release tag so it describes what can be downloaded. A manual Deploy run can choose another tag or branch.
+
+### The update manifest
+
+Nodes hear of a release from `https://updates.nodearr.com/v1/main.json`, and check it against `main.json.sig` with the key built into them ([ADR 0024](../adr/0024-update-checks-and-usage-reports-on-nodearr-com.md)). The key is the one you sign tags with. The release workflow never holds it, so you sign the manifest yourself, between the draft and publishing:
+
+1. Wait for the release workflow to draft the release.
+2. From the repository root, on the machine where you sign tags, run:
+
+   ```sh
+   pwsh build/Publish-UpdateManifest.ps1 -Version 0.1.0
+   ```
+
+   It reads the draft's packages and `SHA256SUMS` and the version's section of `CHANGELOG.md`, and writes `update-manifest.json`: the version, the date, the changes, a link to the changelog on nodearr.com, the image's tag, and each platform's zip or archive with its address, size and SHA-256. It signs it with `ssh-keygen -Y sign` in the namespace `nodearr-update`, through `gpg.ssh.program`, so 1Password asks as it does for a tag. It checks the signature against `build/update-signers`, then attaches both files to the draft.
+
+3. Publish the release.
+
+Publishing runs the **Update manifest** job in `.github/workflows/website.yml`. It checks the signature again, checks that the manifest is for the release's version, and commits the two files to [Nodearr/updates](https://github.com/Nodearr/updates) as `v1/main.json` and `v1/main.json.sig`, in one commit. GitHub Pages serves that repository at `updates.nodearr.com`. The job uses the same GitHub App as the website, which needs installing on Nodearr/updates with Contents set to read and write. It changes nothing when:
+
+- the release has no `update-manifest.json`: nodes keep hearing of the release before it, and the run warns;
+- the manifest already there is for a later version, so publishing an older patch release takes no node back.
+
+`-Rollout 10` sends a release to about one node in ten first: each node picks a number from 1 to 100 once and takes the release if its number is no higher. To widen it, run the script again with a higher number and copy the two files to Nodearr/updates by hand, since the release is already published.
+
+To change the key, ship the new public key in `UpdateSigningKey.cs` and `build/update-signers` in a release signed with the old one. Nodes take the new key with that release. A node that has not updated still trusts only the old one.
+
+#### Testing an update against a local manifest
+
+`-PackagesFolder` and `-BaseUrl` describe packages in a local folder, served from that address, and `-SigningKeyFile` signs with a key of your own. Nothing on GitHub is touched. Point a node at the folder and the key in its environment:
+
+| Variable | What it does |
+| --- | --- |
+| `Nodearr__Update__ManifestUrl` | The folder `main.json` is fetched from, in place of `https://updates.nodearr.com/v1/`. An `http` address is accepted only on this machine. |
+| `Nodearr__Update__PublicKey` | The SSH public key the manifest must be signed with, in place of the built-in one. |
+
+Neither is a setting on any page. Whoever sets a node's environment can replace its program anyway. `acceptance/Run-Updates.ps1` works this way.
 
 ## Building one package yourself
 

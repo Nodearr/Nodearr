@@ -67,9 +67,9 @@ if ($Down) {
     return
 }
 
-$keys = @{ A = New-Key; B = New-Key; C = New-Key; sonarrA = New-Key; radarrA = New-Key; sonarrB = New-Key; radarrB = New-Key }
+$keys = @{ A = New-Key; B = New-Key; C = New-Key; D = New-Key; sonarrA = New-Key; radarrA = New-Key; sonarrB = New-Key; radarrB = New-Key }
 $keys | ConvertTo-Json | Set-Content (Join-Path $run 'keys.json')
-@("NODEARR_A_API_KEY=$($keys.A)", "NODEARR_B_API_KEY=$($keys.B)", "NODEARR_C_API_KEY=$($keys.C)",
+@("NODEARR_A_API_KEY=$($keys.A)", "NODEARR_B_API_KEY=$($keys.B)", "NODEARR_C_API_KEY=$($keys.C)", "NODEARR_D_API_KEY=$($keys.D)",
   "SONARR_A_API_KEY=$($keys.sonarrA)", "RADARR_A_API_KEY=$($keys.radarrA)",
   "SONARR_B_API_KEY=$($keys.sonarrB)", "RADARR_B_API_KEY=$($keys.radarrB)") | Set-Content $envFile
 
@@ -80,6 +80,9 @@ $nodes = @{
 
     # Set up wrongly on purpose. See the compose file.
     C = @{ Url = 'http://127.0.0.1:6635'; Key = $keys.C; Inside = 'http://nodearr-c:6633'; Container = 'nodearr-s8-nodearr-c-1' }
+
+    # Given nothing, with Contact nodearr.com on as by default. See the compose file.
+    D = @{ Url = 'http://127.0.0.1:6636'; Key = $keys.D; Inside = 'http://nodearr-d:6633'; Container = 'nodearr-s8-nodearr-d-1' }
 }
 $arr = @{
     sonarrA = @{ Url = 'http://127.0.0.1:18989'; Key = $keys.sonarrA; Inside = 'http://sonarr-a:8989'; Container = 'nodearr-s8-sonarr-a-1' }
@@ -665,15 +668,35 @@ try {
 
     # --- 8. It contacts nothing it was not told to -----------------------------------------------
 
-    # Node C has logged every request it made since it started, minutes ago. It was told about
-    # one thing: John's Sonarr.
-    $log = (docker exec $nodes.C.Container sh -c 'cat /config/logs/*.txt') -join "`n"
-    $outbound = @([regex]::Matches($log, '(?m)\|HttpClient\|Req: \[\w+\] https?://([^/:\s]+)') | ForEach-Object { $_.Groups[1].Value.ToLowerInvariant() })
+    # Nodes C and D have logged every request they made since they started, minutes ago.
+    function Get-HostsContacted {
+        param([string] $Name)
+        $log = (docker exec $nodes[$Name].Container sh -c 'cat /config/logs/*.txt') -join "`n"
+        return @([regex]::Matches($log, '(?m)\|HttpClient\|Req: \[\w+\] https?://([^/:\s]+)') | ForEach-Object { $_.Groups[1].Value.ToLowerInvariant() })
+    }
+
+    # C was told about one thing, John's Sonarr, and runs with Contact nodearr.com off.
+    $outbound = Get-HostsContacted C
     $hosts = @($outbound | Sort-Object -Unique)
     $unexpected = @($hosts | Where-Object { $_ -ne 'sonarr-a' })
-    Assert-That 'Left alone for minutes, a node makes no request to anything but the Sonarr it was given' (
+    Assert-That 'Left alone for minutes with Contact nodearr.com off, a node makes no request to anything but the Sonarr it was given' (
         $outbound.Count -gt 0 -and $unexpected.Count -eq 0
     ) @{ requestsMade = $outbound.Count; hostsContacted = $hosts; unexpected = $unexpected }
+
+    # D was told about nothing, and has Contact nodearr.com on, as it is by default. It checks for
+    # updates soon after it starts. updates.nodearr.com may not answer, which says nothing: it is
+    # where the request went that counts. usage.nodearr.com is #133's, and allowed in advance.
+    $outbound = Get-HostsContacted D
+    $hosts = @($outbound | Sort-Object -Unique)
+    $unexpected = @($hosts | Where-Object { $_ -notin 'updates.nodearr.com', 'usage.nodearr.com' })
+    Assert-That 'Left alone with Contact nodearr.com on and no app, a node asks only nodearr.com, and only its update and usage hosts' (
+        $hosts -contains 'updates.nodearr.com' -and $unexpected.Count -eq 0
+    ) @{ requestsMade = $outbound.Count; hostsContacted = $hosts; unexpected = $unexpected }
+
+    $updates = Invoke-Node D GET '/update'
+    Assert-That 'A node in a container checks for updates, and says it never updates itself' (
+        $updates.installKind -eq 'docker' -and $updates.outcome -ne 'notChecked'
+    ) @{ installKind = $updates.installKind; outcome = $updates.outcome }
 }
 catch {
     Write-Host "Stopped: $_" -ForegroundColor Red
