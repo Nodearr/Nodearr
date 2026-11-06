@@ -36,6 +36,8 @@ export interface GeneralSettingsModel {
   instanceName: string;
   applicationUrl: string;
   updateAutomatically: boolean;
+  updateCheck: boolean;
+  contactNodearr: boolean;
   updateMechanism: UpdateMechanism;
   updateScriptPath: string;
   proxyEnabled: boolean;

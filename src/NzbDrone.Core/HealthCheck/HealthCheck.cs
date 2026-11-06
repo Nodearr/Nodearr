@@ -29,6 +29,8 @@ namespace NzbDrone.Core.HealthCheck
             [HealthCheckReason.PeerNetworkNoUdp] = "#a-friend-cannot-be-reached",
             [HealthCheckReason.PeerTransportNotRunning] = "#a-friend-cannot-be-reached",
             [HealthCheckReason.PairAttempts] = "#pairing-keeps-being-turned-away",
+            [HealthCheckReason.UpdateAvailable] = "#an-update-is-waiting",
+            [HealthCheckReason.UpdateSignatureInvalid] = "#the-update-check-was-refused",
         };
 
         public Type Source { get; set; }
@@ -145,6 +147,7 @@ namespace NzbDrone.Core.HealthCheck
         ServerNotification,
         SystemTime,
         UpdateAvailable,
+        UpdateSignatureInvalid,
         UpdateStartupNotWritable,
         UpdateStartupTranslocation,
         UpdateUiNotWritable

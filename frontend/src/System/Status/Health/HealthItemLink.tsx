@@ -24,6 +24,15 @@ function HealthItemLink(props: HealthItemLinkProps) {
           to="/settings/apps"
         />
       );
+    case 'UpdateCheck':
+      return (
+        <IconButton
+          name={icons.UPDATE}
+          title={translate('Updates')}
+          aria-label={translate('Updates')}
+          to="/system/updates"
+        />
+      );
     case 'PeerTransportCheck':
     case 'PeerNetworkCheck':
       return (

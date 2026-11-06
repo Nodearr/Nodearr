@@ -4,6 +4,18 @@ What changed in each release, newest first. Each item links to the decision reco
 
 ## Unreleased
 
+### Added
+
+- Nodearr checks `updates.nodearr.com` for a new version every 6 hours, as Sonarr and Radarr do, and shows it on the new **System > Updates** page with what changed. The answer is signed by the maintainer, and Nodearr ignores one that isn't, and warns on **System > Status**. It never takes a node back to an older version. The check sends no identifier, query string or cookie ([#134](https://github.com/Nodearr/Nodearr/issues/134), [Updating](docs/user-guide/updating.md), [ADR 0024](docs/adr/0024-update-checks-and-usage-reports-on-nodearr-com.md#2026-11-06-update-checks-and-automatic-updates-are-built-134)).
+- Installed with the Windows installer, or from a zip or archive it can change, Nodearr installs an update itself: **Install Now** on **System > Updates**, or by itself with **Install Updates Automatically**, on by default on Windows. It waits until nothing is being transferred, or 24 hours at most. If the new version doesn't answer within 3 minutes, the old one is put back with its database. A container never updates itself: the page shows the `docker pull` command instead ([#134](https://github.com/Nodearr/Nodearr/issues/134)).
+- **Settings > General** has an **Updates** section: **Check for Updates**, **Install Updates Automatically**, and **Contact nodearr.com**, which turns off everything Nodearr would contact on nodearr.com. Each can be set in the environment ([#134](https://github.com/Nodearr/Nodearr/issues/134), [Settings](docs/user-guide/settings.md#updates)).
+- **System > Updates** links to the updater's log files ([#134](https://github.com/Nodearr/Nodearr/issues/134)).
+
+### Changed
+
+- The Windows installer puts Nodearr in `C:\ProgramData\Nodearr\bin`, next to its data, as Sonarr and Radarr install theirs, and lets every account change that folder, so the service can update itself. Installing over an earlier version moves Nodearr out of Program Files and updates the firewall rule. The data stays where it was ([#134](https://github.com/Nodearr/Nodearr/issues/134)).
+- After an update, the **Updated** message links to the changelog on nodearr.com, in your browser, instead of listing changes Nodearr no longer fetches ([#134](https://github.com/Nodearr/Nodearr/issues/134)).
+
 ## 0.9.0 (pre-release)
 
 See what your node has sent and fetched over time, and why transfers failed, on a new Statistics page or in Prometheus and Grafana.

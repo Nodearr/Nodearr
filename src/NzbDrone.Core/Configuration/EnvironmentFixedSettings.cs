@@ -20,13 +20,17 @@ namespace NzbDrone.Core.Configuration
         private readonly AuthOptions _auth;
         private readonly AppOptions _app;
         private readonly LogOptions _log;
+        private readonly UpdateOptions _update;
+        private readonly NetworkOptions _network;
 
-        public EnvironmentFixedSettings(IOptions<ServerOptions> server, IOptions<AuthOptions> auth, IOptions<AppOptions> app, IOptions<LogOptions> log)
+        public EnvironmentFixedSettings(IOptions<ServerOptions> server, IOptions<AuthOptions> auth, IOptions<AppOptions> app, IOptions<LogOptions> log, IOptions<UpdateOptions> update, IOptions<NetworkOptions> network)
         {
             _server = server.Value;
             _auth = auth.Value;
             _app = app.Value;
             _log = log.Value;
+            _update = update.Value ?? new UpdateOptions();
+            _network = network.Value ?? new NetworkOptions();
         }
 
         public List<string> General()
@@ -57,6 +61,9 @@ namespace NzbDrone.Core.Configuration
             Add("authenticationRequired", _auth.Required);
             Add("logLevel", _log.Level);
             Add("logSizeLimit", _log.SizeLimit);
+            Add("updateCheck", _update.Check);
+            Add("updateAutomatically", _update.Automatically);
+            Add("contactNodearr", _network.ContactNodearr);
 
             return given;
         }

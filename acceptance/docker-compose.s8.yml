@@ -16,7 +16,12 @@
 #
 # nodearr-c is a third Nodearr set up wrongly on purpose: it is pointed at John's Sonarr, with
 # neither John's libraries nor John's /downloads mounted. It is there to be warned about. It
-# also runs with full logging and no relay, so the script can see everything it contacts.
+# also runs with full logging, no relay and Contact nodearr.com off, so the script can see that
+# it contacts nothing but that Sonarr.
+#
+# nodearr-d is given nothing at all, and Contact nodearr.com is left on, as it is by default. It
+# runs with full logging too, so the script can see that it contacts nothing but nodearr.com's
+# hosts (ADR 0024).
 name: nodearr-s8
 
 x-nodearr: &nodearr
@@ -133,12 +138,32 @@ services:
       Nodearr__Transport__Relay: disabled
       Nodearr__Transport__DisablePortMapping: "true"
       Nodearr__Transport__NodeName: Misconfigured
+      Nodearr__Network__ContactNodearr: "false"
     volumes:
       - c-config:/config
       - c-downloads:/downloads
     networks: [side-a]
     ports:
       - "127.0.0.1:6635:6633/tcp"
+
+  nodearr-d:
+    <<: *nodearr
+    hostname: nodearr-d
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: Etc/UTC
+      Nodearr__Auth__Method: External
+      Nodearr__Auth__ApiKey: ${NODEARR_D_API_KEY}
+      Nodearr__Log__Level: trace
+      Nodearr__Transport__Relay: disabled
+      Nodearr__Transport__DisablePortMapping: "true"
+      Nodearr__Transport__NodeName: Left alone
+    volumes:
+      - d-config:/config
+    networks: [side-a]
+    ports:
+      - "127.0.0.1:6636:6633/tcp"
 
   sonarr-b:
     <<: *arr
@@ -190,6 +215,7 @@ volumes:
   radarr-a-config:
   c-config:
   c-downloads:
+  d-config:
   b-config:
   b-downloads:
   b-tv:

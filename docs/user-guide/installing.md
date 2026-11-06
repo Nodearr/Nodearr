@@ -12,7 +12,7 @@ For a native installation, download the package for your machine from [Packages 
 
 ### Windows
 
-1. Run the Windows installer (`.exe`) you downloaded. It installs into Program Files.
+1. Run the Windows installer (`.exe`) you downloaded. It installs into `C:\ProgramData\Nodearr\bin`, next to the data, as Sonarr and Radarr install theirs.
 2. Keep **When you sign in, in the tray** selected. Nodearr runs as you and can read whatever your account can.
 3. Finish the installer.
 
@@ -201,4 +201,4 @@ Once setup is complete, **Home** shows warnings, titles sent by friends, files y
 
 ## Updating
 
-Nodearr does not update itself. [Create a backup](backups.md#when-they-are-made) before updating. Install the new version over the old one, or pull the new Docker image and recreate the container using the same `/config` volume. Keep the existing data folder to preserve settings, friends and the identity key.
+Nodearr checks for a new version every 6 hours and shows it on **System > Updates**. Installed with the Windows installer, or from a zip or archive it can change, it can install the update itself. In Docker you pull the new image and recreate the container with the same `/config` volume. See [Updating](updating.md).

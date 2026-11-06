@@ -202,9 +202,10 @@ It runs `acceptance/docker-compose.s8.yml`: two complete deployments, John's and
 - John blocks Ryan in the middle of a transfer. It is cut.
 - A connection check says "direct" between the two, and "relay" once the direct network is unplugged.
 - A third Nodearr, set up wrongly on purpose, is warned that it cannot read the library and that Sonarr cannot see its downloads. The two set up properly show no warnings.
-- That third node logs every request it makes for the whole run. All of them are to the one Sonarr it was given.
+- That third node runs with **Contact nodearr.com** off and logs every request it makes for the whole run. All of them are to the one Sonarr it was given.
+- A fourth node is given nothing, with **Contact nodearr.com** on as by default. It logs every request too. All of them are to `updates.nodearr.com`, and it says it runs in a container, which never updates itself ([ADR 0024](../docs/adr/0024-update-checks-and-usage-reports-on-nodearr-com.md)).
 
-`-KeepRunning` leaves it all up: John's Nodearr at `http://localhost:6633`, Ryan's at `http://localhost:6634` and the wrongly set up one at `http://localhost:6635`. By then John has blocked Ryan. `-Down` removes everything.
+`-KeepRunning` leaves it all up: John's Nodearr at `http://localhost:6633`, Ryan's at `http://localhost:6634`, the wrongly set up one at `http://localhost:6635` and the one given nothing at `http://localhost:6636`. By then John has blocked Ryan. `-Down` removes everything.
 
 ## Node settings
 
@@ -238,6 +239,22 @@ Requires PowerShell 7, a built Nodearr, Docker and a built transport sidecar. Ta
 - Resetting the API key replaces it at once, with no restart, and Sonarr is given the new one: its own tests of the Nodearr indexer and download client pass.
 
 `-KeepRunning` leaves it up at `http://localhost:6633/settings/general`. `-Down` stops it and deletes `.run/general`.
+
+## Updates
+
+```sh
+pwsh acceptance/Run-Updates.ps1
+```
+
+Requires PowerShell 7, a built Nodearr and `ssh-keygen`. Docker, the sidecar and the Arr apps are not needed. Takes about two minutes. One node on a free port, and a small web server on this machine that plays `updates.nodearr.com` ([ADR 0024](../docs/adr/0024-update-checks-and-usage-reports-on-nodearr-com.md)). The manifest is written and signed by `build/Publish-UpdateManifest.ps1` with a key made for the run, and the node is told to trust it through `Nodearr__Update__ManifestUrl` and `Nodearr__Update__PublicKey`. The server records every request. It checks:
+
+- Soon after it starts, the node notices a newer release, with the package for its platform. A development build says it never updates itself, and downloads nothing.
+- The check is two `GET`s, of `main.json` and `main.json.sig`, with no query, cookie or body, and a user agent that says `Nodearr` and two numbers of the version.
+- A manifest changed by one value after signing is fetched twice and refused. Nothing in it is offered, and **System > Status** warns. Signed again, it is offered again, and the warning goes.
+- A signed manifest for an older version is ignored.
+- With **Check for Updates** off, nothing is asked. With `Nodearr__Network__ContactNodearr=false`, nothing is asked whatever **Check for Updates** says, and **Settings > General** shows both as fixed.
+
+The updater itself, which replaces an installed Nodearr, is tried on real installs with the UI test kit, as [docs/guides/releases.md](../docs/guides/releases.md#testing-an-update-against-a-local-manifest) describes. `-KeepRunning` leaves the node and the server up. `-Down` stops them and deletes `.run/updates`.
 
 ## Between two machines
 

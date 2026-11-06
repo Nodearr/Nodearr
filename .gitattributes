@@ -10,3 +10,7 @@ distribution/osx/Nodearr text eol=lf
 # Custom for Visual Studio
 *.cs     diff=csharp
 *.sln    merge=union
+
+# Signed byte for byte: a line ending changed on checkout breaks the signature.
+src/NzbDrone.Core.Test/Files/Update/main.json -text
+src/NzbDrone.Core.Test/Files/Update/main.json.sig -text

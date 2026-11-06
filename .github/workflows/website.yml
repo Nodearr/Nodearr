@@ -52,3 +52,116 @@ jobs:
         run: |
           gh api repos/Nodearr/nodearr.github.io/dispatches -f event_type=nodearr-release -f "client_payload[tag]=$TAG"
           echo "nodearr.com is rebuilding with the docs of $TAG"
+
+  # The signed update manifest goes to Nodearr/updates, the GitHub Pages repository behind
+  # updates.nodearr.com (ADR 0024). The maintainer attached it to the release before publishing it,
+  # with build/Publish-UpdateManifest.ps1: the key that signs it is theirs, and never here. This
+  # checks the signature again, refuses a manifest for another version, and never replaces a manifest
+  # for a later version with one for an earlier, so publishing an older patch release takes no node
+  # back. The same GitHub App needs installing on Nodearr/updates with Contents set to read and write.
+  updates:
+    name: Update manifest
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: build/update-signers
+          sparse-checkout-cone-mode: false
+
+      - name: Fetch and check the signed manifest
+        id: manifest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+          CLIENT_ID: ${{ vars.SITE_APP_CLIENT_ID }}
+          HAS_KEY: ${{ secrets.SITE_APP_PRIVATE_KEY != '' }}
+        run: |
+          if ! gh release download "$TAG" -R "$GITHUB_REPOSITORY" -p update-manifest.json -p update-manifest.json.sig -D manifest; then
+            echo "::warning::$TAG has no update-manifest.json, so updates.nodearr.com still names the release before it. See docs/guides/releases.md."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          ssh-keygen -Y verify -f build/update-signers -I nodearr-release -n nodearr-update \
+            -s manifest/update-manifest.json.sig < manifest/update-manifest.json
+
+          version=$(jq -er .version manifest/update-manifest.json)
+          branch=$(jq -er .branch manifest/update-manifest.json)
+
+          if [ "v$version" != "$TAG" ]; then
+            echo "::error::The manifest attached to $TAG is for $version"
+            exit 1
+          fi
+
+          if ! echo "$branch" | grep -Eq '^[a-z0-9][a-z0-9-]*$'; then
+            echo "::error::The manifest's branch, '$branch', cannot be a file name"
+            exit 1
+          fi
+
+          if [ -z "$CLIENT_ID" ] || [ "$HAS_KEY" != "true" ]; then
+            echo "::warning::SITE_APP_CLIENT_ID or SITE_APP_PRIVATE_KEY is not set, so the manifest was not published. Copy it to Nodearr/updates by hand (docs/guides/releases.md)."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
+      - name: Get a token for the updates repository
+        id: token
+        if: steps.manifest.outputs.ready == 'true'
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.SITE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.SITE_APP_PRIVATE_KEY }}
+          owner: Nodearr
+          repositories: updates
+          permission-contents: write
+
+      - name: Publish it to updates.nodearr.com
+        if: steps.manifest.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+          VERSION: ${{ steps.manifest.outputs.version }}
+          BRANCH: ${{ steps.manifest.outputs.branch }}
+        run: |
+          path="v1/$BRANCH.json"
+
+          # Semantic versions: a release is later than its own pre-releases.
+          newer() {
+            python3 - "$1" "$2" <<'PY'
+          import re, sys
+          def key(v):
+              m = re.match(r'^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?', v)
+              core = tuple(int(x) for x in m.group(1, 2, 3))
+              pre = m.group(4)
+              if pre is None:
+                  return core + ((1,),)
+              return core + ((0,) + tuple((0, int(p), '') if p.isdigit() else (1, 0, p) for p in pre.split('.')),)
+          sys.exit(0 if key(sys.argv[1]) > key(sys.argv[2]) else 1)
+          PY
+          }
+
+          if current=$(gh api "repos/Nodearr/updates/contents/$path" --jq .content 2>/dev/null | base64 -d | jq -er .version); then
+            if ! newer "$VERSION" "$current"; then
+              echo "updates.nodearr.com already names $current for $BRANCH, which is not older than $VERSION. Nothing changed."
+              exit 0
+            fi
+          fi
+
+          # Both files in one commit, so the site never serves a manifest beside the wrong signature.
+          git clone --depth 1 "https://x-access-token:$GH_TOKEN@github.com/Nodearr/updates.git" site
+          mkdir -p "site/v1"
+          cp manifest/update-manifest.json "site/$path"
+          cp manifest/update-manifest.json.sig "site/$path.sig"
+          touch site/.nojekyll
+          cd site
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Nodearr $VERSION on $BRANCH"
+          git push origin HEAD
+          echo "updates.nodearr.com now names Nodearr $VERSION for $BRANCH"

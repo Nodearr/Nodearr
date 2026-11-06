@@ -88,6 +88,22 @@ For files you send, the friend's node decides whether to try again, and an uploa
 
 If **System > Status** on **your** node says nodes you do not know keep trying to pair: someone is trying invite codes. An invite cannot be guessed, and each node that keeps trying is turned away for 15 minutes. Check who you gave invites to, and whether the node needs to be reachable from where they are.
 
+## An update is waiting
+
+**System > Status** says a new version has been available for 14 days or more. Go to **System > Updates** to see what changed and how to install it:
+
+- **Install Now** is there when Nodearr can install the update itself. With **Install Updates Automatically** on, it would have done so at a quiet moment, so check why it didn't: a new major version waits for you, and the updater's log, under **Updater Log Files**, says if an update was tried and undone.
+- In Docker, run the `docker pull` command the page shows and recreate the container.
+- Otherwise, the page says why Nodearr can't install it and links to the package. See [Update by hand](updating.md#update-by-hand).
+
+## The update check was refused
+
+**System > Status** says the update information from `updates.nodearr.com` isn't signed by Nodearr's release key. Nodearr ignored it and installed nothing.
+
+Something between your node and `updates.nodearr.com` returned something else: a proxy, a captive portal, or a DNS entry pointing elsewhere. Check that `updates.nodearr.com` resolves on this machine to GitHub Pages, and that nothing on your network rewrites web pages. The warning goes when a later check finds a signed answer.
+
+Until then, get new versions from the Nodearr releases page on GitHub, and check each package against the release's `SHA256SUMS`. If the warning stays and nothing on your network explains it, report it as a security problem ([SECURITY.md](../../SECURITY.md)).
+
 ## Locked out of the web UI
 
 If you have forgotten the password, allow access from this machine for a moment:

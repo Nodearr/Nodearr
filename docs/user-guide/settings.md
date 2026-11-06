@@ -30,7 +30,7 @@ The page also shows your node ID: the public key derived from `node.key`. Changi
 
 ## Settings > General
 
-These settings control the web server, sign-in, logging and scheduled backups.
+These settings control the web server, sign-in, logging, updates and scheduled backups.
 
 ### Host
 
@@ -71,6 +71,18 @@ A new port, bind address or URL base takes effect after a restart. If you change
 | **Log Size Limit** | 1 MB, at most 10 | `Nodearr__Log__SizeLimit` |
 
 Additional logging settings are available only through environment variables: `Nodearr__Log__Rotate` (number of retained log files, 50 by default), `Nodearr__Log__ConsoleLevel`, `Nodearr__Log__ConsoleFormat` (`Standard` or `Clef`), `Nodearr__Log__SyslogServer`, `Nodearr__Log__SyslogPort`, `Nodearr__Log__SyslogLevel`, `Nodearr__Log__DbEnabled` and `Nodearr__Log__Sql`.
+
+### Updates
+
+| Setting | Default | Environment variable |
+| --- | --- | --- |
+| **Contact nodearr.com** | On | `Nodearr__Network__ContactNodearr` |
+| **Check for Updates** | On | `Nodearr__Update__Check` |
+| **Install Updates Automatically** | On for Windows, off elsewhere | `Nodearr__Update__Automatically` |
+
+- **Contact nodearr.com** off stops Nodearr contacting anything on nodearr.com, whatever the other two settings say ([ADR 0024](../adr/0024-update-checks-and-usage-reports-on-nodearr-com.md)).
+- **Check for Updates** asks `updates.nodearr.com` for the newest version every 6 hours. [Privacy and security](privacy-and-security.md#what-anyone-else-sees) lists what the request carries.
+- **Install Updates Automatically** installs a new version once nothing is being transferred, or after 24 hours of waiting. A container never updates itself, and a new major version is installed only from **System > Updates**. See [Updating](updating.md).
 
 ### Backups
 

@@ -24,11 +24,18 @@ namespace NzbDrone.Common.EnvironmentInfo
             }
 
             Release = $"{Version}-{Branch}";
+
+            // A development build has no release version, and is known by its first three numbers.
+            var nodearrVersion = attributes.OfType<AssemblyMetadataAttribute>().FirstOrDefault(a => a.Key == "NodearrVersion")?.Value;
+            NodearrVersion = string.IsNullOrWhiteSpace(nodearrVersion) ? Version.ToString(3) : nodearrVersion.Trim();
         }
 
         public static string AppName { get; } = "Nodearr";
 
         public static Version Version { get; }
+
+        // The release version as it was tagged, with any pre-release tag: 0.10.0 or 0.10.0-beta.1.
+        public static string NodearrVersion { get; }
         public static string Branch { get; }
         public static string Release { get; }
 

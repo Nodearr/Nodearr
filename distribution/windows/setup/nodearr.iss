@@ -29,10 +29,11 @@ AppPublisher=Nodearr
 AppPublisherURL=https://github.com/Nodearr/Nodearr
 AppSupportURL=https://github.com/Nodearr/Nodearr
 VersionInfoVersion={#NumericVersion}
-; Program Files, which only administrators can change. Sonarr installs into ProgramData, beside its
-; data, and that folder is open to every user so the service can write there. A service should not
-; run programs from a folder anyone can change.
-DefaultDirName={autopf}\Nodearr
+; ProgramData, beside the data, as Sonarr and Radarr install. Everyone may change the folder, so the
+; service, which runs as LocalService, can update itself (ADR 0024). Earlier versions put it in
+; Program Files, which only administrators can change. [InstallDelete] takes that copy away.
+DefaultDirName={commonappdata}\Nodearr\bin
+UsePreviousAppDir=no
 DisableDirPage=yes
 DefaultGroupName=Nodearr
 DisableProgramGroupPage=yes
@@ -64,8 +65,14 @@ Name: "none"; Description: "Do not start Nodearr automatically"; GroupDescriptio
 Name: "desktopIcon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [InstallDelete]
-; Nothing from an earlier version is left behind. The data folder, C:\ProgramData\Nodearr, is not touched.
+; Nothing from an earlier version is left behind: the program folder, and the copy that earlier versions
+; put in Program Files. The data around the program folder, in C:\ProgramData\Nodearr, is not touched.
 Type: filesandordirs; Name: "{app}"
+Type: filesandordirs; Name: "{autopf}\Nodearr"
+
+[Dirs]
+; The updater replaces these files as the account Nodearr runs as, which for the service is LocalService.
+Name: "{app}"; Permissions: everyone-modify
 
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -92,10 +99,15 @@ Filename: "{app}\Nodearr.Console.exe"; Parameters: "/u /exitimmediately"; Flags:
 
 [Code]
 // A running service holds the program's files open, so it is stopped before they are replaced.
+// A tray app started from Program Files, by an earlier version, is not one Windows closes for this install,
+// since none of its files are in the new folder. It is stopped too, so the old copy can be removed and
+// the new one can have the port.
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   ResultCode: Integer;
 begin
   Exec(ExpandConstant('{sys}\net.exe'), 'stop Nodearr', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+  if DirExists(ExpandConstant('{autopf}\Nodearr')) then
+    Exec(ExpandConstant('{sys}\taskkill.exe'), '/F /IM Nodearr.exe /IM Nodearr.Console.exe', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
   Result := '';
 end;

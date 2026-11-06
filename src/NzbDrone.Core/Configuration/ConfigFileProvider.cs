@@ -53,6 +53,8 @@ namespace NzbDrone.Core.Configuration
         string UiFolder { get; }
         string InstanceName { get; }
         bool UpdateAutomatically { get; }
+        bool UpdateCheck { get; }
+        bool ContactNodearr { get; }
         UpdateMechanism UpdateMechanism { get; }
         string UpdateScriptPath { get; }
         string SyslogServer { get; }
@@ -85,6 +87,7 @@ namespace NzbDrone.Core.Configuration
         private readonly AppOptions _appOptions;
         private readonly ServerOptions _serverOptions;
         private readonly UpdateOptions _updateOptions;
+        private readonly NetworkOptions _networkOptions;
         private readonly LogOptions _logOptions;
 
         private readonly string _configFile;
@@ -101,6 +104,7 @@ namespace NzbDrone.Core.Configuration
                                   IOptions<AppOptions> appOptions,
                                   IOptions<ServerOptions> serverOptions,
                                   IOptions<UpdateOptions> updateOptions,
+                                  IOptions<NetworkOptions> networkOptions,
                                   IOptions<LogOptions> logOptions)
         {
             _cache = cacheManager.GetCache<string>(GetType());
@@ -112,6 +116,7 @@ namespace NzbDrone.Core.Configuration
             _appOptions = appOptions.Value;
             _serverOptions = serverOptions.Value;
             _updateOptions = updateOptions.Value;
+            _networkOptions = networkOptions.Value ?? new NetworkOptions();
             _logOptions = logOptions.Value;
         }
 
@@ -311,6 +316,12 @@ namespace NzbDrone.Core.Configuration
         }
 
         public bool UpdateAutomatically => _updateOptions.Automatically ?? GetValueBoolean("UpdateAutomatically", OsInfo.IsWindows, false);
+
+        // Whether to ask updates.nodearr.com for the newest version, every 6 hours (ADR 0024).
+        public bool UpdateCheck => _updateOptions.Check ?? GetValueBoolean("UpdateCheck", true, false);
+
+        // Off, nothing on nodearr.com is contacted, whatever the update and usage settings say.
+        public bool ContactNodearr => _networkOptions.ContactNodearr ?? GetValueBoolean("ContactNodearr", true, false);
 
         public UpdateMechanism UpdateMechanism =>
             Enum.TryParse<UpdateMechanism>(_updateOptions.Mechanism, out var enumValue)

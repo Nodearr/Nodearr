@@ -139,6 +139,10 @@ const LINKS: SidebarItem[] = [
         to: '/system/tasks',
       },
       {
+        title: () => translate('Updates'),
+        to: '/system/updates',
+      },
+      {
         title: () => translate('Backup'),
         to: '/system/backup',
       },

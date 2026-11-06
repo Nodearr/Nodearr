@@ -1,15 +1,11 @@
 import useApiQuery from 'Helpers/Hooks/useApiQuery';
-import Update from 'typings/Update';
+import UpdateStatus from 'typings/UpdateStatus';
 
+// What the last check for updates found. Checking again is the ApplicationUpdateCheck command.
 const useUpdates = () => {
-  const result = useApiQuery<Update[]>({
+  return useApiQuery<UpdateStatus>({
     path: '/update',
   });
-
-  return {
-    ...result,
-    data: result.data ?? [],
-  };
 };
 
 export default useUpdates;
