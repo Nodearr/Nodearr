@@ -4,6 +4,12 @@ What changed in each release, newest first. Each item links to the decision reco
 
 ## Unreleased
 
+## 0.10.0 (pre-release)
+
+Nodearr tells you when there's a new version, and installs it itself where it can.
+
+Versions before 0.10.0 never check, so update to this one by hand, as before: see [Updating](docs/user-guide/updating.md#update-by-hand). The first release a node hears of by itself is the one after 0.10.0. On Windows, installing 0.10.0 over an earlier version moves Nodearr out of Program Files (see **Changed**).
+
 ### Added
 
 - Nodearr checks `updates.nodearr.com` for a new version every 6 hours, as Sonarr and Radarr do, and shows it on the new **System > Updates** page with what changed. The answer is signed by the maintainer, and Nodearr ignores one that isn't, and warns on **System > Status**. It never takes a node back to an older version. The check sends no identifier, query string or cookie ([#134](https://github.com/Nodearr/Nodearr/issues/134), [Updating](docs/user-guide/updating.md), [ADR 0024](docs/adr/0024-update-checks-and-usage-reports-on-nodearr-com.md#2026-11-06-update-checks-and-automatic-updates-are-built-134)).
@@ -14,7 +20,7 @@ What changed in each release, newest first. Each item links to the decision reco
 ### Changed
 
 - The Windows installer puts Nodearr in `C:\ProgramData\Nodearr\bin`, next to its data, as Sonarr and Radarr install theirs, and lets every account change that folder, so the service can update itself. Installing over an earlier version moves Nodearr out of Program Files and updates the firewall rule. The data stays where it was ([#134](https://github.com/Nodearr/Nodearr/issues/134)).
-- After an update, the **Updated** message links to the changelog on nodearr.com, in your browser, instead of listing changes Nodearr no longer fetches ([#134](https://github.com/Nodearr/Nodearr/issues/134)).
+- After an update, the **Updated** message links to the changelog on nodearr.com, opened in your browser ([#134](https://github.com/Nodearr/Nodearr/issues/134)).
 
 ## 0.9.0 (pre-release)
 
