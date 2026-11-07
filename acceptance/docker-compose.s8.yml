@@ -22,6 +22,9 @@
 # nodearr-d is given nothing at all, and Contact nodearr.com is left on, as it is by default. It
 # runs with full logging too, so the script can see that it contacts nothing but nodearr.com's
 # hosts (ADR 0024).
+#
+# usage-fake stands in for usage.nodearr.com. nodearr-a sends its usage report there, so the
+# script can check the report against the schema and for anything it must never hold.
 name: nodearr-s8
 
 x-nodearr: &nodearr
@@ -33,7 +36,6 @@ x-nodearr-env: &nodearr-env
   PGID: "1000"
   TZ: Etc/UTC
   Nodearr__Auth__Method: External
-  Nodearr__Log__AnalyticsEnabled: "false"
   Nodearr__Transport__Relay: custom
   Nodearr__Transport__RelayUrl: http://relay:3340
   Nodearr__Transport__DisablePortMapping: "true"
@@ -58,6 +60,10 @@ services:
       Nodearr__Transport__NodeName: John
       # Slow enough for the script to act in the middle of a transfer.
       Nodearr__Transport__UploadLimitKbps: ${UPLOAD_LIMIT_KBPS:-1024}
+      # Its usage report goes to the stand-in, not to usage.nodearr.com, and the debug log shows
+      # what was sent.
+      Nodearr__Usage__Url: http://usage-fake:8080/v1/report
+      Nodearr__Log__Level: debug
     volumes:
       - a-config:/config
       - a-downloads:/downloads
@@ -66,6 +72,14 @@ services:
     networks: [side-a, wan]
     ports:
       - "127.0.0.1:6633:6633/tcp"
+
+  usage-fake:
+    image: python:3.12-slim@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1
+    restart: "no"
+    command: ["python", "-u", "/usage-fake.py"]
+    volumes:
+      - ./usage-fake.py:/usage-fake.py:ro
+    networks: [side-a]
 
   sonarr-a:
     <<: *arr

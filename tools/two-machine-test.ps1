@@ -451,7 +451,7 @@ function Start-Apps {
             Nodearr__Server__BindAddress         = '127.0.0.1'
             Nodearr__Auth__Method                = 'External'
             Nodearr__Auth__ApiKey                = $script:state.nodearr_key
-            Nodearr__Log__AnalyticsEnabled       = 'false'
+            Nodearr__Usage__Send                 = 'false'
             Nodearr__Transport__NodeName         = $script:state.name
             Nodearr__Transport__Port             = "$($script:state.udp_port)"
             Nodearr__Transport__DownloadFolder   = (Join-Path $folder 'downloads')

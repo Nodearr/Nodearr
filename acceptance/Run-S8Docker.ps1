@@ -20,6 +20,10 @@
       - the direct route between the nodes goes away, leaving only a relay,
       - the sender blocks the receiver in the middle of a transfer.
 
+    Last, it checks what the nodes contact on their own, and that node A's usage report, sent to
+    a stand-in for usage.nodearr.com, matches usage/schema/v1/report.schema.json and holds
+    nothing that identifies John, Ryan or their libraries.
+
     Needs Docker and ffmpeg. Everything lives in .run/s8 next to this script and in the
     nodearr-s8 compose project.
 
@@ -697,6 +701,58 @@ try {
     Assert-That 'A node in a container checks for updates, and says it never updates itself' (
         $updates.installKind -eq 'docker' -and $updates.outcome -ne 'notChecked'
     ) @{ installKind = $updates.installKind; outcome = $updates.outcome }
+
+    # --- 9. The usage report holds only what the schema allows (#133) ----------------------------
+
+    # Node A has friends, Arr apps and transfers behind it by now, so its report has something in
+    # every part. It goes to usage-fake, which keeps what it is sent.
+    $shown = Invoke-Node A GET '/usage'
+    Invoke-NodeCommand A @{ name = 'SendUsageReport' }
+
+    $kept = @(docker exec nodearr-s8-usage-fake-1 sh -c 'ls /reports/*.json 2>/dev/null')
+    $body = if ($kept.Count -gt 0) { (docker exec nodearr-s8-usage-fake-1 cat $kept[-1]) -join "`n" } else { '' }
+    $request = if ($kept.Count -gt 0) { (docker exec nodearr-s8-usage-fake-1 cat ($kept[-1] -replace '\.json$', '.request')) -join "`n" | ConvertFrom-Json } else { $null }
+
+    $schemaFile = Join-Path $repo 'usage/schema/v1/report.schema.json'
+    $schemaErrors = @()
+    $matchesSchema = $body -and (Test-Json -Json $body -SchemaFile $schemaFile -ErrorVariable schemaErrors -ErrorAction SilentlyContinue)
+    $report = if ($body) { $body | ConvertFrom-Json } else { $null }
+    Assert-That 'The usage report is one POST to the address it is given, and matches the published schema' (
+        $kept.Count -eq 1 -and $request.method -eq 'POST' -and $request.path -eq '/v1/report' -and $matchesSchema
+    ) @{ reports = $kept.Count; method = $request.method; path = $request.path; schemaErrors = @($schemaErrors | ForEach-Object { "$_" }) }
+
+    Assert-That 'The usage report says what this node runs, without exact numbers' (
+        $report.nodearr.install -eq 'docker' -and $report.active -eq $true -and
+        (@($report.apps | ForEach-Object { $_.kind } | Sort-Object) -join ',') -eq 'radarr,sonarr' -and
+        @($report.apps | Where-Object { $_.version -notmatch '^\d+\.\d+$' }).Count -eq 0 -and
+        $report.past7Days.sent.finished -ne '0'
+    ) @{ nodearr = $report.nodearr; active = $report.active; apps = $report.apps; sent = $report.past7Days.sent }
+
+    # Everything that would identify John, Ryan, their nodes or their libraries.
+    $never = [System.Collections.Generic.List[string]]::new()
+    $never.AddRange([string[]] @($identityA.nodeId, $identityB.nodeId, 'John', 'Ryan', 'nodearr-a', 'nodearr-b', 'sonarr-a', 'radarr-a', 'sonarr-b', 'radarr-b', 'relay:3340', '/tv', '/movies', '/downloads', '/config'))
+    $never.AddRange([string[]] @($keys.Values))
+    foreach ($app in 'sonarrA', 'radarrA') {
+        $title = if ($app -eq 'sonarrA') { $series[$app].title } else { $movie[$app].title }
+        if ($title) { $never.Add($title) }
+    }
+    $found = @($never | Where-Object { $_ -and $body.Contains($_) })
+    $addresses = @([regex]::Matches($body, '\b\d{1,3}(\.\d{1,3}){3}\b') | ForEach-Object { $_.Value })
+    $headerNames = @($request.headers.PSObject.Properties.Name | ForEach-Object { $_.ToLowerInvariant() })
+    Assert-That 'The usage report holds no node ID, name, host, path, title, key or address, and no cookie' (
+        $body -and $found.Count -eq 0 -and $addresses.Count -eq 0 -and $headerNames -notcontains 'cookie'
+    ) @{ found = $found; addresses = $addresses; headers = $headerNames; userAgent = $request.headers.'User-Agent' }
+
+    $shownReport = $shown.report | ConvertFrom-Json
+    Assert-That 'Show Report shows the report as it is sent, with the same ID for the day' (
+        $shown.sending -eq $true -and $shownReport.id -eq $report.id -and (Test-Json -Json $shown.report -SchemaFile $schemaFile -ErrorAction SilentlyContinue)
+    ) @{ sending = $shown.sending; shownId = $shownReport.id; sentId = $report.id }
+
+    # The JSON sent is written to the debug log.
+    $logged = (docker exec $nodes.A.Container sh -c 'cat /config/logs/nodearr.debug*.txt') -join "`n"
+    Assert-That 'The report sent is written to the debug log' (
+        $logged.Contains('Sending the usage report to http://usage-fake:8080/v1/report') -and $logged.Contains($report.id)
+    ) @{ logged = $logged.Contains('Sending the usage report') }
 }
 catch {
     Write-Host "Stopped: $_" -ForegroundColor Red

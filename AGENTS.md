@@ -18,6 +18,7 @@ It is a fork of Sonarr: .NET 10 backend, React and TypeScript frontend, plus the
 - `src/*.Test/`: NUnit tests, beside the code they test (`src/NzbDrone.Core.Test/Catalog/`, `…/Transfers/` and so on).
 - `frontend/src/`: the UI. Nodearr's pages are mainly in `Catalog/`, `Nodes/`, `Home/`, `Activity/` and `Settings/`.
 - `transport/`: the `nodearr-transport` sidecar. Its HTTP API to Nodearr and its options are in `main.rs`; connections and blocking in `connections.rs`; file transfer, the upload queue and rate limits in `transfer.rs`. The sidecar is deliberately opaque: it doesn't read Nodearr's messages, and Nodearr tells it how to handle each one.
+- `usage/`: the `usage.nodearr.com` service that takes in the anonymous usage report, a Cloudflare Worker with D1, and the report's schema (`usage/schema/v1/report.schema.json`). The node side is `src/NzbDrone.Core/Usage/`. See [usage/README.md](usage/README.md).
 - `docs/overview-end-to-end-design.md`: how it all fits together. Start here.
 - `docs/adr/`: numbered decision records (NNNN-title.md). `docs/diagrams/`: flows in Mermaid. `docs/plans/v1-implementation-plan.md`: one line per slice, plus **What is still open**.
 - `docs/user-guide/`: the user guide. It is also synced to the website ([Nodearr/nodearr.github.io](https://github.com/Nodearr/nodearr.github.io)).
@@ -30,7 +31,7 @@ These come from the ADRs. Read the ADR before changing the area it covers. A cha
 
 - **The Arr apps are the source of truth** for the library (ADR 0006). Nodearr mirrors how Sonarr and Radarr model things, such as per-episode files and their quality and release conventions. It doesn't invent its own model alongside theirs.
 - **Content moves only over a direct path** (ADR 0011). File data, catalogs, catalog changes, posters and sent titles all wait for a direct path and are never sent over a relay. Pairing, pings and revoking may cross a relay. If a direct path can't be made, the action fails clearly; it never falls back to a relay.
-- **No calls home except two** (ADR 0018, ADR 0024). Nodearr contacts what its owner configured, plus `updates.nodearr.com` (update manifest) and `usage.nodearr.com` (anonymous usage report), each with its own setting and one switch that turns both off (**Contact nodearr.com**, `Nodearr__Network__ContactNodearr`). Packages are downloaded from GitHub Releases, which the signed manifest names. Don't add any other outbound call, error reporting or UI tracking. What goes to those hosts never identifies a node or its owner, and a change to it updates **What anyone else sees** in `docs/user-guide/privacy-and-security.md`, where `nodearr.com/privacy` points.
+- **No calls home except two** (ADR 0018, ADR 0024). Nodearr contacts what its owner configured, plus `updates.nodearr.com` (update manifest) and `usage.nodearr.com` (anonymous usage report), each with its own setting and one switch that turns both off (**Contact nodearr.com**, `Nodearr__Network__ContactNodearr`). Packages are downloaded from GitHub Releases, which the signed manifest names. Don't add any other outbound call, error reporting or UI tracking. What goes to those hosts never identifies a node or its owner, and a change to it updates **What anyone else sees** in `docs/user-guide/privacy-and-security.md`, where `nodearr.com/privacy` points. A change to the usage report also changes its schema in `usage/schema/` (see [usage/README.md](usage/README.md#changing-the-report)).
 - **A sender enforces its own limits.** Upload limits, the upload queue and sharing rules are enforced by the node that holds the files, never trusted to the receiver. An older or modified friend must fail safely, never get around a limit.
 - **Older friends keep working.** A wire change must either stay compatible with nodes from earlier releases or fail safely with them. S7 tests this with `-OlderNode A|B -OlderTransportBin <path>` (see [acceptance/README.md](acceptance/README.md)). Say which older release was tested.
 - **Settings** are saved in the UI and can be fixed by the environment (`Nodearr__Section__Key`) (ADR 0019).
@@ -45,6 +46,7 @@ dotnet build src/Nodearr.sln              # warnings are errors, StyleCop includ
 npm test                                  # all .NET test assemblies, then the Rust tests, as in CI
 cargo test --locked --manifest-path transport/Cargo.toml
 cargo build --release --manifest-path transport/Cargo.toml
+npm ci --prefix usage && npm test --prefix usage   # needs Node.js 22
 yarn install --immutable
 yarn lint && yarn stylelint && yarn typecheck && yarn build --env production
 pwsh build/Build-OpenApi.ps1              # after any API change; commit openapi.json

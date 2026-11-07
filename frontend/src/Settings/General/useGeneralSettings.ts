@@ -19,7 +19,6 @@ export interface GeneralSettingsModel {
   launchBrowser: boolean;
   authenticationMethod: string;
   authenticationRequired: string;
-  analyticsEnabled: boolean;
   username: string;
   password: string;
   passwordConfirmation: string;
@@ -38,6 +37,7 @@ export interface GeneralSettingsModel {
   updateAutomatically: boolean;
   updateCheck: boolean;
   contactNodearr: boolean;
+  usageSend: boolean;
   updateMechanism: UpdateMechanism;
   updateScriptPath: string;
   proxyEnabled: boolean;

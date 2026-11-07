@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted on 2026-11-04 ([#131](https://github.com/Nodearr/Nodearr/issues/131)). Update checks, automatic updates and the switch for both hosts were built on 2026-11-06 ([#134](https://github.com/Nodearr/Nodearr/issues/134)): see the amendment. Usage reports are [#133](https://github.com/Nodearr/Nodearr/issues/133), not built yet, so `usage.nodearr.com` is not contacted.
+Accepted on 2026-11-04 ([#131](https://github.com/Nodearr/Nodearr/issues/131)). Update checks, automatic updates and the switch for both hosts were built on 2026-11-06 ([#134](https://github.com/Nodearr/Nodearr/issues/134)): see the amendment. Usage reports were built the same day ([#133](https://github.com/Nodearr/Nodearr/issues/133)): see the second amendment.
 
 ## Context
 
@@ -130,3 +130,41 @@ The updater stops Nodearr and its sidecar, copies the new files over the old, an
   - the installer over a 0.1.1 install in Program Files: Nodearr moved to `C:\ProgramData\Nodearr\bin`, the Program Files copy gone, Everyone allowed to change the folder, the firewall rule naming the new path. As the tray app, **Install Now** took 14 s and asked for no administrator rights. Installed again as the service, running as `LocalService`, it updated itself in 10 s and ran again as the service;
   - a first attempt made while the disk was full stopped while backing up the old program, changed nothing and started the old version again.
 - A Linux archive (linux-x64, glibc) unpacked in a Debian 12 container, with no service manager: **Install Now** took 20 s, with one new sidecar and the programs still executable, and a broken test.3 was put back after 211 s. The first run of this showed Nodearr calling the container a Docker install, from `/.dockerenv`, and refusing to update. As in Sonarr, only the image's `package_info` says so now. macOS, systemd and a package manager were not tried.
+
+### 2026-11-06: usage reports are built ([#133](https://github.com/Nodearr/Nodearr/issues/133))
+
+**The report.** Every 6 hours the **Send Usage Report** task posts one JSON report to `https://usage.nodearr.com/v1/report`, if **Send Anonymous Usage Data** and **Contact nodearr.com** are both on. It's its own task, apart from the update check, as decided above. A new node sends its first report 6 hours after it first starts; a node that was off when one was due sends it soon after it starts again. A failure is logged at debug level and not tried again until the next run. The report describes the past 7 days, from the statistics roll-up of [#132](https://github.com/Nodearr/Nodearr/issues/132) and the node's own settings. Every field is in `usage/schema/v1/report.schema.json` and in the privacy page's **Anonymous usage report**, with an example:
+
+- the Nodearr version, `main` or `other` for the branch, the platform the package is for, the .NET version, the database, and how it was installed (the Windows installer as tray app or service, a zip, an archive, Docker, a package manager, or a development build);
+- `active`, as Sonarr's: whether the node moved a file or answered a grab in the past 30 days;
+- each Arr app's kind and major and minor version, asked from the app's `/system/status` at most once an hour;
+- ranges in place of counts: friends (`0`, `1`, `2-5`, `6-10`, `11+`), titles shared per kind of app, transfers finished and failed each way, failures by reason, data moved and titles sent;
+- friends by what the past week's connection checks found (direct, relay only, none), whether the public port varies, whether UDP gets out, the relay setting (`n0`, `own`, `off`) and Docker Desktop;
+- which features are on, and the UI language.
+
+A failure reason the schema doesn't know is sent as `Other`, a branch name other than `main` as `other`, and a version that isn't major and minor as `unknown`, so that free text never leaves the node.
+
+**The ID.** Random, kept in the node's database for the UTC day it was made, and replaced on the next. A restart the same day keeps it. Nothing else in a report could link two days.
+
+**The settings,** on **Settings > General** under **Usage Data**, with the environment key `Nodearr__Usage__Send` (ADR 0019). **Show Report** shows the exact JSON the next run would send, from `GET /api/v5/usage`. The report sent is written to the debug log. For testing, and only in the environment, `Nodearr__Usage__Url` sends the report somewhere else. The setting inherited from Sonarr, `AnalyticsEnabled` (`Nodearr__Log__AnalyticsEnabled`), did nothing in Nodearr, and is gone: there is one setting for usage data.
+
+**`usage.nodearr.com`** is a Cloudflare Worker with a D1 database, in `usage/` in this repository, so what it keeps can be checked beside the code that sends to it. It:
+
+- refuses, with 400, a report that doesn't match the schema, which allows no field it doesn't list;
+- never reads the address a request came from or any header but `Content-Type` and `Content-Length`, has Workers Logs off and no Logpush, and stores a report with only its ID and the UTC day it arrived, keeping the latest report for each ID;
+- adds up each UTC day once it's over, keeps those totals, and removes reports after 90 days;
+- publishes the totals at `/v1/stats.json`, with any count under 10 given as `null`, and the schema at `/v1/schema.json`.
+
+`nodearr.com/stats` shows the totals, read from `/v1/stats.json` in the browser. `nodearr.com/privacy` already points to the privacy page, which now lists every field.
+
+**Trade-offs.**
+
+- **Cloudflare sees the address a report comes from**, as any host would, while it answers. The Worker never reads it. Cloudflare's own handling is under its privacy policy, not this project's.
+- **Anyone can post a report that matches the schema.** The totals are a guide, not a census: nothing stops someone sending made-up reports, and nothing could without identifying nodes. A Cloudflare rate limit can be added if it becomes a problem.
+- **A node's clock decides its midnight.** A node whose clock is wrong sends its new ID a little early or late. The ingest keeps the latest report per ID under the day it arrived, so a node counts once either way.
+
+**Evidence.**
+
+- Unit tests: a report from a busy node and from a new one matches the schema, checked by a test that reads the schema itself; nothing that names a friend, a node, an app's address, an API key, an IP address, a relay, a title, a share list or a path appears in it; counts given as ranges at each boundary; only the past 7 days counted, and failures asked for again left out; `active` true at 29 days and false at 31, and while a transfer runs; the ID the same at 23:59:59.999 UTC as at midnight, different a millisecond later, following UTC and not the local clock, and kept in the database; the environment key and **Contact nodearr.com** winning over the saved setting; one `POST` with no cookies, nothing sent with either setting off, a refused or unreachable report failing quietly and sent once; the task every 6 hours, due at start-up when overdue.
+- `usage/`: 20 tests with `node --test`, against SQLite through a stand-in for D1: a report taken and stored with only its ID, day and body, an unknown field anywhere refused, a later report for an ID replacing the earlier, a day added up once it's over and only once, counts under 10 published as `null`, reports removed after 90 days. Run in `wrangler dev --local`, the Worker took the example report with 204, refused one with an unknown field with 400, and served the schema.
+- `acceptance/Run-S8Docker.ps1`: node A, after its transfers, sends its report to a stand-in for `usage.nodearr.com`. The report is checked against the schema with PowerShell's `Test-Json`, and for the node IDs, names, host names, paths, titles, keys and IP addresses of the deployment.

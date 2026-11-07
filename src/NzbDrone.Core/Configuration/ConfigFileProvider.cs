@@ -36,7 +36,6 @@ namespace NzbDrone.Core.Configuration
         bool LaunchBrowser { get; }
         AuthenticationType AuthenticationMethod { get; }
         AuthenticationRequiredType AuthenticationRequired { get; }
-        bool AnalyticsEnabled { get; }
         string LogLevel { get; }
         string ConsoleLogLevel { get; }
         ConsoleLogFormat ConsoleLogFormat { get; }
@@ -55,6 +54,7 @@ namespace NzbDrone.Core.Configuration
         bool UpdateAutomatically { get; }
         bool UpdateCheck { get; }
         bool ContactNodearr { get; }
+        bool UsageSend { get; }
         UpdateMechanism UpdateMechanism { get; }
         string UpdateScriptPath { get; }
         string SyslogServer { get; }
@@ -88,6 +88,7 @@ namespace NzbDrone.Core.Configuration
         private readonly ServerOptions _serverOptions;
         private readonly UpdateOptions _updateOptions;
         private readonly NetworkOptions _networkOptions;
+        private readonly UsageOptions _usageOptions;
         private readonly LogOptions _logOptions;
 
         private readonly string _configFile;
@@ -105,6 +106,7 @@ namespace NzbDrone.Core.Configuration
                                   IOptions<ServerOptions> serverOptions,
                                   IOptions<UpdateOptions> updateOptions,
                                   IOptions<NetworkOptions> networkOptions,
+                                  IOptions<UsageOptions> usageOptions,
                                   IOptions<LogOptions> logOptions)
         {
             _cache = cacheManager.GetCache<string>(GetType());
@@ -117,6 +119,7 @@ namespace NzbDrone.Core.Configuration
             _serverOptions = serverOptions.Value;
             _updateOptions = updateOptions.Value;
             _networkOptions = networkOptions.Value ?? new NetworkOptions();
+            _usageOptions = usageOptions.Value ?? new UsageOptions();
             _logOptions = logOptions.Value;
         }
 
@@ -248,8 +251,6 @@ namespace NzbDrone.Core.Configuration
 
         public bool TrustCgnatIpAddresses => _authOptions.TrustCgnatIpAddresses ?? GetValueBoolean("TrustCgnatIpAddresses", false, persist: false);
 
-        public bool AnalyticsEnabled => _logOptions.AnalyticsEnabled ?? GetValueBoolean("AnalyticsEnabled", true, persist: false);
-
         public string Branch => _updateOptions.Branch ?? GetValue("Branch", "main").ToLowerInvariant();
 
         public string LogLevel => _logOptions.Level ?? GetValue("LogLevel", "debug").ToLowerInvariant();
@@ -322,6 +323,10 @@ namespace NzbDrone.Core.Configuration
 
         // Off, nothing on nodearr.com is contacted, whatever the update and usage settings say.
         public bool ContactNodearr => _networkOptions.ContactNodearr ?? GetValueBoolean("ContactNodearr", true, false);
+
+        // Whether to send the anonymous usage report to usage.nodearr.com every 6 hours. On by
+        // default, as Sonarr's and Radarr's Send Anonymous Usage Data (ADR 0024).
+        public bool UsageSend => _usageOptions.Send ?? GetValueBoolean("UsageSend", true, false);
 
         public UpdateMechanism UpdateMechanism =>
             Enum.TryParse<UpdateMechanism>(_updateOptions.Mechanism, out var enumValue)

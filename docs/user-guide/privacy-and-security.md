@@ -29,16 +29,123 @@ To use your own relay, follow [iroh's relay setup guide](https://docs.iroh.compu
 
 ## What anyone else sees
 
-Nodearr contacts the Nodearr project in one way: it checks `updates.nodearr.com` for a new version every 6 hours ([ADR 0024](../adr/0024-update-checks-and-usage-reports-on-nodearr-com.md)). It sends no error reports, analytics, news requests or time-service requests. Those inherited calls were removed ([ADR 0018](../adr/0018-diagnostics-and-no-calls-home.md)).
+Nodearr contacts the Nodearr project in two ways, each every 6 hours and each with its own setting ([ADR 0024](../adr/0024-update-checks-and-usage-reports-on-nodearr-com.md)): it checks `updates.nodearr.com` for a new version, and it sends an anonymous usage report to `usage.nodearr.com`. It sends no error reports, news requests or time-service requests, and the web interface has no tracking script. Those inherited calls were removed ([ADR 0018](../adr/0018-diagnostics-and-no-calls-home.md)).
 
-What the update check sends and receives:
+To stop both, turn off **Contact nodearr.com** under **Settings > General** ([Settings](settings.md#updates)). With it off, Nodearr contacts only the Arr apps you connect, the friends you trust and the relay you choose.
+
+### Update checks
 
 - **Two requests for files, and nothing else:** `GET https://updates.nodearr.com/v1/main.json` and `GET https://updates.nodearr.com/v1/main.json.sig`. They carry no identifier, no query string and no cookies. The `User-Agent` header says `Nodearr` and the first two numbers of the version, such as `Nodearr/0.10`.
 - **Who sees them:** the host of `updates.nodearr.com`, which is [GitHub Pages](https://pages.github.com/). Like any web server it sees the address the requests come from, so it can tell that an address runs Nodearr. Nothing in the requests links one check to the next. The Nodearr project receives no logs of them.
 - **What it gets back:** a list of the newest release's packages, signed by the maintainer. Nodearr checks the signature with a key built into it, and uses nothing from a list that isn't signed.
 - **When it installs an update:** it downloads the package for your platform from GitHub Releases, with the same `User-Agent` and no cookies.
 
-To stop the check, turn off **Check for Updates**, or **Contact nodearr.com** to stop everything on nodearr.com, under **Settings > General** ([Settings](settings.md#updates)). With **Contact nodearr.com** off, Nodearr contacts only the Arr apps you connect, the friends you trust and the relay you choose.
+To stop the check alone, turn off **Check for Updates**.
+
+### Anonymous usage report
+
+Like Sonarr's and Radarr's **Send Anonymous Usage Data**, this is on by default. It tells the maintainer roughly how many nodes run, on which platforms, versions and Arr apps, and how often transfers fail and why, so that testing and fixes go where they matter. The totals are public, at [nodearr.com/stats](https://nodearr.com/stats).
+
+- **One request, and nothing else:** `POST https://usage.nodearr.com/v1/report` every 6 hours, with the report as JSON. No query string and no cookies, and the same `User-Agent` as the update check. A report that can't be sent is dropped, and the next one is sent 6 hours later.
+- **What it never holds:** titles, paths or file names, node IDs, the names or IDs of friends, IP addresses, host names, user names, API keys, Arr app addresses, or exact counts. Every count is a range, such as `2-5`.
+- **No identifier that lasts:** each report carries a random ID that is replaced at midnight UTC. It lets the totals count each node once a day. Nothing links one day's reports to the next.
+- **See it before it goes:** **Show Report** under **Settings > General** shows the exact report the next run would send. The report sent is also written to the debug log.
+- **What is kept, and for how long:** `usage.nodearr.com` runs on [Cloudflare Workers](https://workers.cloudflare.com/). It refuses a report with any field not in its [published schema](https://github.com/Nodearr/Nodearr/blob/main/usage/schema/v1/report.schema.json). It never reads or stores the address a report came from, keeps no request logs, and stores each report with only the UTC day it arrived, keeping the latest one for each ID. Reports are kept 90 days, then only each day's totals. In the published totals, any count under 10 is shown as "fewer than 10". The service's code is [in the Nodearr repository](https://github.com/Nodearr/Nodearr/tree/main/usage). Like any host, Cloudflare sees the address a request comes from while it answers it.
+
+To stop the report alone, turn off **Send Anonymous Usage Data**.
+
+Every field the report holds:
+
+| Field | What it is |
+| --- | --- |
+| `schema` | The version of the report's format: `1`. |
+| `id` | The random ID for the day. |
+| `nodearr.version`, `nodearr.branch` | The Nodearr version, such as `0.11.0`, and `main`, or `other` for a branch you named yourself. |
+| `nodearr.platform`, `nodearr.runtime` | The platform the package is for, such as `win-x64` or `linux-musl-arm64`, and the .NET version. |
+| `nodearr.database` | `sqlite` or `postgres`. |
+| `nodearr.install` | How Nodearr was installed: `installerTray`, `installerService`, `zip`, `tarball`, `docker`, `package` or `development`. |
+| `active` | Whether this node moved a file or answered a grab in the past 30 days. |
+| `apps` | Each Arr app connected: its kind, such as `sonarr`, and its major and minor version, such as `4.0`. Not its address or name. |
+| `friends` | How many trusted friends, as a range: `0`, `1`, `2-5`, `6-10` or `11+`. |
+| `sharedTitles` | For each kind of Arr app, how many titles are shared with at least one friend, as a range. |
+| `past7Days.sent`, `past7Days.fetched` | Transfers finished and failed in the past 7 days, the data moved, and failures by reason, such as `NoDirectRoute`. All ranges. |
+| `past7Days.sends` | How many titles were sent to a friend with **Send**, as a range. |
+| `network.friendsDirect`, `network.friendsRelayOnly`, `network.friendsUnreachable` | How many friends the connection checks of the past 7 days reached directly, only through a relay, or not at all. Ranges. |
+| `network.portVaries`, `network.udp` | Whether this node's network gives a different public port for each destination, and whether UDP gets out. |
+| `network.relay` | Which relay is set: `n0` for the default, `own` or `off`. Not its address. |
+| `network.dockerDesktop` | Whether Nodearr runs in a container on Docker Desktop. |
+| `features` | Which features are on: share lists, the Hidden list, sharing everything with a friend, fetching new files automatically, the upload and download limits, and whether **Most Uploads at Once** is the default, another number or no limit. |
+| `language` | The language of the web interface, such as `en`. |
+
+An example report:
+
+```json
+{
+  "schema": 1,
+  "id": "3b2f7c1e-9a4d-4f6b-8e2a-5c7d1f0b9e34",
+  "nodearr": {
+    "version": "0.11.0",
+    "branch": "main",
+    "platform": "linux-musl-x64",
+    "runtime": "10.0.1",
+    "database": "sqlite",
+    "install": "docker"
+  },
+  "active": true,
+  "apps": [
+    {
+      "kind": "radarr",
+      "version": "5.28"
+    },
+    {
+      "kind": "sonarr",
+      "version": "4.0"
+    }
+  ],
+  "friends": "2-5",
+  "sharedTitles": {
+    "radarr": "101-1000",
+    "sonarr": "11-100"
+  },
+  "past7Days": {
+    "sent": {
+      "finished": "6-25",
+      "failed": "1-5",
+      "data": "10-100GB",
+      "failures": {
+        "NoDirectRoute": "1-5"
+      }
+    },
+    "fetched": {
+      "finished": "1-5",
+      "failed": "0",
+      "data": "1-10GB",
+      "failures": {}
+    },
+    "sends": "0"
+  },
+  "network": {
+    "friendsDirect": "2-5",
+    "friendsRelayOnly": "1",
+    "friendsUnreachable": "0",
+    "portVaries": false,
+    "udp": true,
+    "relay": "n0",
+    "dockerDesktop": false
+  },
+  "features": {
+    "shareLists": false,
+    "hiddenTitles": true,
+    "shareEverything": true,
+    "fetchAutomatically": true,
+    "uploadLimit": false,
+    "totalUploadLimit": false,
+    "downloadLimit": false,
+    "maxUploads": "default"
+  },
+  "language": "en"
+}
+```
 
 This doesn't hide your network traffic: friends and relay operators can see the connection metadata described above.
 

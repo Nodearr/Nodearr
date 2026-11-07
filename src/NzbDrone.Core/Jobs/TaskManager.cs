@@ -17,6 +17,7 @@ using NzbDrone.Core.Nodes;
 using NzbDrone.Core.Nodes.Settings;
 using NzbDrone.Core.PeerCatalog;
 using NzbDrone.Core.Update.Commands;
+using NzbDrone.Core.Usage.Commands;
 
 namespace NzbDrone.Core.Jobs
 {
@@ -108,6 +109,14 @@ namespace NzbDrone.Core.Jobs
                     {
                         Interval = 6 * 60,
                         TypeName = typeof(ApplicationUpdateCheckCommand).FullName
+                    },
+
+                    // usage.nodearr.com, as often as Sonarr and Radarr send their usage data, but
+                    // apart from the update check (ADR 0024).
+                    new ScheduledTask
+                    {
+                        Interval = 6 * 60,
+                        TypeName = typeof(SendUsageReportCommand).FullName
                     },
 
                     new ScheduledTask

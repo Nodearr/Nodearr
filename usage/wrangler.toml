@@ -1,0 +1,32 @@
+# usage.nodearr.com, as a Cloudflare Worker with a D1 database (ADR 0024).
+# Deploying: see README.md. The database ID is filled in once the database is made.
+name = "nodearr-usage"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+# The Worker answers only on its own host. workers.dev stays off, so the host in a firewall or
+# DNS log is always usage.nodearr.com.
+workers_dev = false
+preview_urls = false
+routes = [
+  { pattern = "usage.nodearr.com", custom_domain = true }
+]
+
+# No logs of requests: Workers Logs and traces are off, and no Logpush job is set up.
+[observability]
+enabled = false
+
+[observability.logs]
+enabled = false
+invocation_logs = false
+
+[[d1_databases]]
+binding = "DB"
+database_name = "nodearr-usage"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+# Once a day, just after midnight UTC: add up the day before, publish the totals, and remove
+# reports older than 90 days.
+[triggers]
+crons = ["20 0 * * *"]

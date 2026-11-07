@@ -3861,6 +3861,25 @@
           }
         }
       }
+    },
+    "/api/v5/usage": {
+      "get": {
+        "tags": [
+          "Usage"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsageReportResource"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4949,9 +4968,6 @@
           "authenticationRequired": {
             "$ref": "#/components/schemas/AuthenticationRequiredType"
           },
-          "analyticsEnabled": {
-            "type": "boolean"
-          },
           "username": {
             "type": "string",
             "nullable": true
@@ -5019,6 +5035,9 @@
             "type": "boolean"
           },
           "contactNodearr": {
+            "type": "boolean"
+          },
+          "usageSend": {
             "type": "boolean"
           },
           "updateMechanism": {
@@ -7907,6 +7926,19 @@
         ],
         "type": "string"
       },
+      "UsageReportResource": {
+        "type": "object",
+        "properties": {
+          "sending": {
+            "type": "boolean"
+          },
+          "report": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "ValidationFailure": {
         "type": "object",
         "properties": {
@@ -8079,6 +8111,9 @@
     },
     {
       "name": "UpdateLogFile"
+    },
+    {
+      "name": "Usage"
     }
   ]
 }

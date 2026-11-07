@@ -453,7 +453,7 @@ function Start-Apps($State) {
             Nodearr__Server__Port          = "$($State.nodearr_port)"
             Nodearr__Server__BindAddress   = '127.0.0.1'
             Nodearr__Transport__Port       = "$($State.nodearr_port)"
-            Nodearr__Log__AnalyticsEnabled = 'false'
+            Nodearr__Usage__Send = 'false'
         }
         Save-State $State
 

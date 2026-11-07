@@ -4,6 +4,16 @@ What changed in each release, newest first. Each item links to the decision reco
 
 ## Unreleased
 
+### Added
+
+- Nodearr sends an anonymous usage report to `usage.nodearr.com` every 6 hours, as Sonarr and Radarr send theirs: the version and platform, how it was installed, the kinds and versions of the Arr apps connected, and how transfers went over the past week. Every count is a range, the report's ID changes every day at midnight UTC, and nothing in it names your node, your friends, your titles or your addresses. The totals are public at nodearr.com/stats ([#133](https://github.com/Nodearr/Nodearr/issues/133), [Privacy and security](docs/user-guide/privacy-and-security.md#anonymous-usage-report), [ADR 0024](docs/adr/0024-update-checks-and-usage-reports-on-nodearr-com.md#2026-11-06-usage-reports-are-built-133)).
+- **Settings > General** has a **Usage Data** section: **Send Anonymous Usage Data**, on by default and also set by `Nodearr__Usage__Send`, and **Show Report**, which shows the exact report the next run would send. **Contact nodearr.com** off stops the report too ([#133](https://github.com/Nodearr/Nodearr/issues/133), [Settings](docs/user-guide/settings.md#usage-data)).
+- The code of `usage.nodearr.com`, which takes in the reports, keeps no addresses and publishes daily totals, is in `usage/`, with the report's schema ([#133](https://github.com/Nodearr/Nodearr/issues/133)).
+
+### Removed
+
+- The **AnalyticsEnabled** setting inherited from Sonarr, and its environment key `Nodearr__Log__AnalyticsEnabled`. It did nothing in Nodearr; **Send Anonymous Usage Data** is the one setting for usage data now ([#133](https://github.com/Nodearr/Nodearr/issues/133)).
+
 ## 0.10.0 (pre-release)
 
 Nodearr tells you when there's a new version, and installs it itself where it can.

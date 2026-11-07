@@ -122,7 +122,7 @@ function Start-Node {
     $env:Nodearr__Server__Port = $node.Port
     $env:Nodearr__Auth__ApiKey = $node.Key
     $env:Nodearr__Auth__Method = 'External'
-    $env:Nodearr__Log__AnalyticsEnabled = 'false'
+    $env:Nodearr__Usage__Send = 'false'
     $env:Nodearr__Transport__BinaryPath = $TransportBin
     $env:Nodearr__Transport__Relay = 'disabled'
     $env:Nodearr__Transport__DisablePortMapping = 'true'

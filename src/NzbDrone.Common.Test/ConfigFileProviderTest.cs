@@ -66,6 +66,10 @@ namespace NzbDrone.Common.Test
                 .Setup(v => v.Value)
                 .Returns(new NetworkOptions());
 
+            Mocker.GetMock<IOptions<UsageOptions>>()
+                .Setup(v => v.Value)
+                .Returns(new UsageOptions());
+
             Mocker.GetMock<IOptions<UpdateOptions>>()
                 .Setup(v => v.Value)
                 .Returns(new UpdateOptions());
@@ -196,6 +200,45 @@ namespace NzbDrone.Common.Test
 
             Subject.Port.Should().Be(port);
             Subject.SslPort.Should().Be(sslPort);
+        }
+
+        [Test]
+        public void usage_data_should_be_sent_by_default_as_in_sonarr_and_radarr()
+        {
+            Subject.UsageSend.Should().BeTrue();
+        }
+
+        [Test]
+        public void usage_data_saved_off_in_the_ui_should_stay_off()
+        {
+            Subject.SaveConfigDictionary(new Dictionary<string, object> { { "UsageSend", false } });
+
+            Subject.UsageSend.Should().BeFalse();
+        }
+
+        [TestCase(true, false)]
+        [TestCase(false, true)]
+        public void usage_data_given_in_the_environment_should_win_over_the_ui(bool environment, bool saved)
+        {
+            Mocker.GetMock<IOptions<UsageOptions>>()
+                .Setup(v => v.Value)
+                .Returns(new UsageOptions { Send = environment });
+
+            Subject.SaveConfigDictionary(new Dictionary<string, object> { { "UsageSend", saved } });
+
+            Subject.UsageSend.Should().Be(environment);
+        }
+
+        [Test]
+        public void contact_nodearr_given_in_the_environment_should_win_over_the_ui()
+        {
+            Mocker.GetMock<IOptions<NetworkOptions>>()
+                .Setup(v => v.Value)
+                .Returns(new NetworkOptions { ContactNodearr = false });
+
+            Subject.SaveConfigDictionary(new Dictionary<string, object> { { "ContactNodearr", true } });
+
+            Subject.ContactNodearr.Should().BeFalse();
         }
 
         [Test]

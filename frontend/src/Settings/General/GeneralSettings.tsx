@@ -19,6 +19,7 @@ import HostSettings from './HostSettings';
 import LoggingSettings from './LoggingSettings';
 import SecuritySettings from './SecuritySettings';
 import UpdateSettings from './UpdateSettings';
+import UsageSettings from './UsageSettings';
 import { useManageGeneralSettings } from './useGeneralSettings';
 
 const requiresRestartKeys = [
@@ -182,6 +183,13 @@ function GeneralSettings() {
               contactNodearr={settings.contactNodearr}
               updateCheck={settings.updateCheck}
               updateAutomatically={settings.updateAutomatically}
+              isFixed={isFixed}
+              onInputChange={handleInputChange}
+            />
+
+            <UsageSettings
+              contactNodearr={settings.contactNodearr}
+              usageSend={settings.usageSend}
               isFixed={isFixed}
               onInputChange={handleInputChange}
             />

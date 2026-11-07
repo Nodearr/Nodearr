@@ -193,7 +193,7 @@ function Start-Node {
     $env:Nodearr__Server__Port = $node.Port
     $env:Nodearr__Auth__ApiKey = $node.Key
     $env:Nodearr__Auth__Method = 'External'
-    $env:Nodearr__Log__AnalyticsEnabled = 'false'
+    $env:Nodearr__Usage__Send = 'false'
     $env:Nodearr__Transport__BinaryPath = $TransportBin
     Remove-Item Env:Nodearr__Transport__MaxUploads, Env:Nodearr__Transport__TotalUploadLimitKbps -ErrorAction SilentlyContinue
     if ($Name -eq $OlderNode) {

@@ -1,0 +1,10 @@
+.report {
+  overflow: auto;
+  margin: 0;
+  padding: 10px;
+  max-height: 60vh;
+  border-radius: 4px;
+  background-color: var(--inputBackgroundColor);
+  font-size: 12px;
+  font-family: var(--monoSpaceFontFamily);
+}
