@@ -207,7 +207,6 @@ $sonarrKey = New-Key
 
 try {
     foreach ($name in 'Nodearr__Server__Port', 'Nodearr__Auth__ApiKey', 'Nodearr__Auth__Method') { Remove-Item "Env:$name" -ErrorAction SilentlyContinue }
-    $env:Nodearr__Log__AnalyticsEnabled = 'false'
     $env:Nodearr__Transport__BinaryPath = $TransportBin
     $env:Nodearr__Transport__Relay = 'disabled'
     $env:Nodearr__Transport__DisablePortMapping = 'true'

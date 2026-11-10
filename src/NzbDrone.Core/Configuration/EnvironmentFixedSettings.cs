@@ -22,8 +22,9 @@ namespace NzbDrone.Core.Configuration
         private readonly LogOptions _log;
         private readonly UpdateOptions _update;
         private readonly NetworkOptions _network;
+        private readonly UsageOptions _usage;
 
-        public EnvironmentFixedSettings(IOptions<ServerOptions> server, IOptions<AuthOptions> auth, IOptions<AppOptions> app, IOptions<LogOptions> log, IOptions<UpdateOptions> update, IOptions<NetworkOptions> network)
+        public EnvironmentFixedSettings(IOptions<ServerOptions> server, IOptions<AuthOptions> auth, IOptions<AppOptions> app, IOptions<LogOptions> log, IOptions<UpdateOptions> update, IOptions<NetworkOptions> network, IOptions<UsageOptions> usage)
         {
             _server = server.Value;
             _auth = auth.Value;
@@ -31,6 +32,7 @@ namespace NzbDrone.Core.Configuration
             _log = log.Value;
             _update = update.Value ?? new UpdateOptions();
             _network = network.Value ?? new NetworkOptions();
+            _usage = usage.Value ?? new UsageOptions();
         }
 
         public List<string> General()
@@ -64,6 +66,7 @@ namespace NzbDrone.Core.Configuration
             Add("updateCheck", _update.Check);
             Add("updateAutomatically", _update.Automatically);
             Add("contactNodearr", _network.ContactNodearr);
+            Add("usageSend", _usage.Send);
 
             return given;
         }

@@ -3,7 +3,7 @@
   "CheckForUpdatesHelpText": "Every 6 hours, ask updates.nodearr.com for the newest version. Nothing that identifies this node is sent.",
   "CheckForUpdatesNow": "Check Now",
   "ContactNodearr": "Contact nodearr.com",
-  "ContactNodearrHelpText": "When this is off, {appName} contacts nothing on nodearr.com, whatever the settings below say, and doesn't hear of new versions.",
+  "ContactNodearrHelpText": "When this is off, {appName} contacts nothing on nodearr.com, whatever the settings below say: it doesn't hear of new versions or send usage data.",
   "Documentation": "Documentation",
   "DocumentationHelp": "Documentation: {topic} (opens in a new tab)",
   "Installed": "Installed",
@@ -109,8 +109,6 @@
   "AnEpisodeIsDownloading": "An Episode is downloading",
   "AnalyseVideoFiles": "Analyse video files",
   "AnalyseVideoFilesHelpText": "Extract video information such as resolution, runtime and codec information from files. This requires {appName} to read parts of the file which may cause high disk or network activity during scans.",
-  "Analytics": "Analytics",
-  "AnalyticsEnabledHelpText": "Send anonymous usage and error information to {appName}'s servers. This includes information on your browser, which {appName} WebUI pages you use, error reporting as well as OS and runtime version. We will use this information to prioritize features and bug fixes.",
   "Anime": "Anime",
   "AnimeEpisodeFormat": "Anime Episode Format",
   "AnimeEpisodeTypeDescription": "Episodes released using an absolute episode number",
@@ -2774,5 +2772,12 @@
   "MusicUnknownTrack": "Untitled song",
   "MusicTrackStatusUnknown": "Local status unknown",
   "MusicTrackListUnavailable": "Refresh the local catalog, or sync your friend's catalog, to obtain the song list.",
-  "ReceivedAlbumSent": "Sent to you"
+  "ReceivedAlbumSent": "Sent to you",
+  "SendAnonymousUsageDataHelpText": "Every 6 hours, send usage.nodearr.com a report of the version, platform and Arr apps this node uses, and how its transfers went. Counts are ranges, and nothing in it names this node, its friends, its titles or its addresses.",
+  "ShowReport": "Show Report",
+  "UsageData": "Usage Data",
+  "UsageReport": "Usage Report",
+  "UsageReportIntro": "This is exactly what the next report sends to usage.nodearr.com, as things stand now. The ID in it changes every day at midnight UTC.",
+  "UsageReportLoadError": "Unable to load the usage report",
+  "UsageReportNotSending": "Send Anonymous Usage Data or Contact nodearr.com is off, so nothing is sent. This is what would be sent if both were on."
 }

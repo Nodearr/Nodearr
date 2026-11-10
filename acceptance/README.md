@@ -204,6 +204,7 @@ It runs `acceptance/docker-compose.s8.yml`: two complete deployments, John's and
 - A third Nodearr, set up wrongly on purpose, is warned that it cannot read the library and that Sonarr cannot see its downloads. The two set up properly show no warnings.
 - That third node runs with **Contact nodearr.com** off and logs every request it makes for the whole run. All of them are to the one Sonarr it was given.
 - A fourth node is given nothing, with **Contact nodearr.com** on as by default. It logs every request too. All of them are to `updates.nodearr.com`, and it says it runs in a container, which never updates itself ([ADR 0024](../docs/adr/0024-update-checks-and-usage-reports-on-nodearr-com.md)).
+- Node A sends its usage report, by the **Send Usage Report** task, to `usage-fake`, a stand-in for `usage.nodearr.com` (`acceptance/usage-fake.py`). It is one `POST` with no cookie. The body matches `usage/schema/v1/report.schema.json` (`Test-Json`), says Docker, active, and a Sonarr and a Radarr by major and minor version, and holds none of the run's node IDs, names, host names, paths, titles, API keys or IP addresses. **Show Report** gives the same ID, and the report sent is in the debug log ([#133](https://github.com/Nodearr/Nodearr/issues/133)).
 
 `-KeepRunning` leaves it all up: John's Nodearr at `http://localhost:6633`, Ryan's at `http://localhost:6634`, the wrongly set up one at `http://localhost:6635` and the one given nothing at `http://localhost:6636`. By then John has blocked Ryan. `-Down` removes everything.
 

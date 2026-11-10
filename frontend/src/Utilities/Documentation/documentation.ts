@@ -55,6 +55,7 @@ export const documentation = {
   backups: { path: '/guide/backups/', label: 'Backups' },
   updates: { path: '/guide/updating/', label: 'Updates' },
   updateSettings: { path: '/guide/settings/#updates', label: 'Updates' },
+  usageSettings: { path: '/guide/settings/#usage-data', label: 'UsageData' },
   apps: { path: '/guide/connecting-apps/', label: 'Applications' },
   paths: {
     path: '/guide/connecting-apps/#the-two-folders-that-have-to-line-up',

@@ -1,0 +1,22 @@
+{
+  "name": "nodearr-usage",
+  "private": true,
+  "type": "module",
+  "description": "usage.nodearr.com: takes in Nodearr's anonymous usage reports and publishes daily totals (ADR 0024)",
+  "license": "GPL-3.0-only",
+  "scripts": {
+    "test": "node --test \"test/*.test.mjs\"",
+    "dev": "wrangler dev --local",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@cfworker/json-schema": "4.1.1"
+  },
+  "devDependencies": {
+    "sql.js": "1.14.2",
+    "wrangler": "4.152.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

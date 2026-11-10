@@ -16,7 +16,6 @@ public class GeneralSettingsResource : RestResource
     public bool LaunchBrowser { get; set; }
     public AuthenticationType AuthenticationMethod { get; set; }
     public AuthenticationRequiredType AuthenticationRequired { get; set; }
-    public bool AnalyticsEnabled { get; set; }
     public string? Username { get; set; }
     public string? Password { get; set; }
     public string? PasswordConfirmation { get; set; }
@@ -35,6 +34,7 @@ public class GeneralSettingsResource : RestResource
     public bool UpdateAutomatically { get; set; }
     public bool UpdateCheck { get; set; }
     public bool ContactNodearr { get; set; }
+    public bool UsageSend { get; set; }
     public UpdateMechanism UpdateMechanism { get; set; }
     public string? UpdateScriptPath { get; set; }
     public bool ProxyEnabled { get; set; }
@@ -68,7 +68,6 @@ public static class GeneralSettingsResourceMapper
             LaunchBrowser = model.LaunchBrowser,
             AuthenticationMethod = model.AuthenticationMethod,
             AuthenticationRequired = model.AuthenticationRequired,
-            AnalyticsEnabled = model.AnalyticsEnabled,
             LogLevel = model.LogLevel,
             LogSizeLimit = model.LogSizeLimit,
             ConsoleLogLevel = model.ConsoleLogLevel,
@@ -83,6 +82,7 @@ public static class GeneralSettingsResourceMapper
             UpdateAutomatically = model.UpdateAutomatically,
             UpdateCheck = model.UpdateCheck,
             ContactNodearr = model.ContactNodearr,
+            UsageSend = model.UsageSend,
             UpdateMechanism = model.UpdateMechanism,
             UpdateScriptPath = model.UpdateScriptPath,
             ProxyEnabled = configService.ProxyEnabled,

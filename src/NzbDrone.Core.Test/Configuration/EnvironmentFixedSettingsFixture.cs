@@ -10,7 +10,7 @@ namespace NzbDrone.Core.Test.Configuration
     [TestFixture]
     public class EnvironmentFixedSettingsFixture
     {
-        private static EnvironmentFixedSettings Given(ServerOptions server = null, AuthOptions auth = null, AppOptions app = null, LogOptions log = null, UpdateOptions update = null, NetworkOptions network = null)
+        private static EnvironmentFixedSettings Given(ServerOptions server = null, AuthOptions auth = null, AppOptions app = null, LogOptions log = null, UpdateOptions update = null, NetworkOptions network = null, UsageOptions usage = null)
         {
             return new EnvironmentFixedSettings(
                 Options.Create(server ?? new ServerOptions()),
@@ -18,7 +18,8 @@ namespace NzbDrone.Core.Test.Configuration
                 Options.Create(app ?? new AppOptions()),
                 Options.Create(log ?? new LogOptions()),
                 Options.Create(update ?? new UpdateOptions()),
-                Options.Create(network ?? new NetworkOptions()));
+                Options.Create(network ?? new NetworkOptions()),
+                Options.Create(usage ?? new UsageOptions()));
         }
 
         [Test]
@@ -62,6 +63,18 @@ namespace NzbDrone.Core.Test.Configuration
         }
 
         [Test]
+        public void sending_usage_data_given_in_the_environment_should_be_fixed()
+        {
+            Given(usage: new UsageOptions { Send = false }).General().Should().BeEquivalentTo("usageSend");
+        }
+
+        [Test]
+        public void a_usage_address_for_testing_is_not_a_setting_the_page_shows()
+        {
+            Given(usage: new UsageOptions { Url = "http://127.0.0.1:1/v1/report" }).General().Should().BeEmpty();
+        }
+
+        [Test]
         public void every_name_should_be_one_the_settings_page_knows()
         {
             var all = Given(
@@ -70,10 +83,11 @@ namespace NzbDrone.Core.Test.Configuration
                 new AppOptions { InstanceName = "Nodearr", LaunchBrowser = false },
                 new LogOptions { Level = "debug", SizeLimit = 1 },
                 new UpdateOptions { Check = true, Automatically = false },
-                new NetworkOptions { ContactNodearr = false }).General();
+                new NetworkOptions { ContactNodearr = false },
+                new UsageOptions { Send = false }).General();
 
             all.Should().OnlyHaveUniqueItems();
-            all.Should().HaveCount(18);
+            all.Should().HaveCount(19);
             all.Should().OnlyContain(name => char.IsLower(name[0]));
         }
     }

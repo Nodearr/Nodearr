@@ -62,6 +62,8 @@ ARG VERSION=
 # .editorconfig sets which analyzer rules are errors. Without it every rule is.
 COPY .editorconfig ./
 COPY Logo ./Logo
+# The usage report schema, which the tests copy beside them.
+COPY usage/schema ./usage/schema
 COPY src ./src
 RUN --mount=type=cache,target=/root/.nuget/packages \
     dotnet build src/Nodearr.sln --configuration Release -p:Platform=Posix --nologo --verbosity minimal \

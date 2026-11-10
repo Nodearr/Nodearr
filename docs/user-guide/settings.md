@@ -30,7 +30,7 @@ The page also shows your node ID: the public key derived from `node.key`. Changi
 
 ## Settings > General
 
-These settings control the web server, sign-in, logging, updates and scheduled backups.
+These settings control the web server, sign-in, logging, updates, usage data and scheduled backups.
 
 ### Host
 
@@ -80,9 +80,20 @@ Additional logging settings are available only through environment variables: `N
 | **Check for Updates** | On | `Nodearr__Update__Check` |
 | **Install Updates Automatically** | On for Windows, off elsewhere | `Nodearr__Update__Automatically` |
 
-- **Contact nodearr.com** off stops Nodearr contacting anything on nodearr.com, whatever the other two settings say ([ADR 0024](../adr/0024-update-checks-and-usage-reports-on-nodearr-com.md)).
+- **Contact nodearr.com** off stops Nodearr contacting anything on nodearr.com, whatever the other settings here and under **Usage Data** say ([ADR 0024](../adr/0024-update-checks-and-usage-reports-on-nodearr-com.md)).
 - **Check for Updates** asks `updates.nodearr.com` for the newest version every 6 hours. [Privacy and security](privacy-and-security.md#what-anyone-else-sees) lists what the request carries.
 - **Install Updates Automatically** installs a new version once nothing is being transferred, or after 24 hours of waiting. A container never updates itself, and a new major version is installed only from **System > Updates**. See [Updating](updating.md).
+
+### Usage data
+
+| Setting | Default | Environment variable |
+| --- | --- | --- |
+| **Send Anonymous Usage Data** | On | `Nodearr__Usage__Send` |
+
+- **Send Anonymous Usage Data** sends `usage.nodearr.com` a report every 6 hours: the Nodearr version and platform, the kinds and versions of the Arr apps connected, and how transfers went over the past 7 days. Counts are ranges, and nothing in it names your node, your friends, your titles or your addresses. It's on by default, as in Sonarr and Radarr. **Contact nodearr.com** off stops it too. [Privacy and security](privacy-and-security.md#anonymous-usage-report) lists every field.
+- **Show Report** shows the exact report the next run would send, whether or not sending is on.
+
+The report is sent by the **Send Usage Report** task on **System > Tasks**.
 
 ### Backups
 

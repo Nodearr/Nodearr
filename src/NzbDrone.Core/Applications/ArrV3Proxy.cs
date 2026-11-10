@@ -27,6 +27,9 @@ namespace NzbDrone.Core.Applications
         T Get<T>(IArrConnection settings, string resource)
             where T : new();
         JArray GetArray(IArrConnection settings, string resource);
+
+        // The version the app reports in /system/status, asked with a short timeout.
+        Version GetVersion(IArrConnection settings);
         JObject Post(IArrConnection settings, string resource, JObject body);
         JObject Put(IArrConnection settings, string resource, JObject body);
 
@@ -90,6 +93,13 @@ namespace NzbDrone.Core.Applications
             return JArray.Parse(Execute(settings, resource, HttpMethod.Get, null));
         }
 
+        public Version GetVersion(IArrConnection settings)
+        {
+            var status = JObject.Parse(Send(settings, settings.ApiRoute + "/system/status", HttpMethod.Get, null, false, TimeSpan.FromSeconds(10)).Content);
+
+            return Version.TryParse(status.Value<string>("version"), out var version) ? version : null;
+        }
+
         public JObject Post(IArrConnection settings, string resource, JObject body)
         {
             return JObject.Parse(Execute(settings, resource, HttpMethod.Post, body));
@@ -122,7 +132,7 @@ namespace NzbDrone.Core.Applications
             return Send(settings, settings.ApiRoute + resource, method, body, false).Content;
         }
 
-        private HttpResponse Send(IArrConnection settings, string path, HttpMethod method, JObject body, bool allowNotFound)
+        private HttpResponse Send(IArrConnection settings, string path, HttpMethod method, JObject body, bool allowNotFound, TimeSpan? timeout = null)
         {
             var requestBuilder = new HttpRequestBuilder(settings.BaseUrl.TrimEnd('/'))
                 .Resource(path)
@@ -139,6 +149,11 @@ namespace NzbDrone.Core.Applications
             request.Headers.ContentType = "application/json";
             request.Method = method;
             request.AllowAutoRedirect = true;
+
+            if (timeout.HasValue)
+            {
+                request.RequestTimeout = timeout.Value;
+            }
 
             if (body != null)
             {

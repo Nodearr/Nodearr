@@ -173,7 +173,7 @@ if (-not (Test-Path $dll)) { throw 'Build Nodearr first: dotnet build src/Nodear
 $env:Nodearr__Server__Port = $NodearrPort
 $env:Nodearr__Auth__ApiKey = $keys.NODEARR_API_KEY
 $env:Nodearr__Auth__Method = 'External'
-$env:Nodearr__Log__AnalyticsEnabled = 'false'
+$env:Nodearr__Usage__Send = 'false'
 
 $nodearr = Start-Process dotnet -ArgumentList "`"$dll`"", '-nobrowser', "-data=`"$nodearrData`"" -PassThru -WindowStyle Hidden `
     -RedirectStandardOutput (Join-Path $run 'nodearr.out.log') -RedirectStandardError (Join-Path $run 'nodearr.err.log')

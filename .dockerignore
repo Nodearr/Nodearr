@@ -17,6 +17,8 @@
 !transport/Cargo.toml
 !transport/Cargo.lock
 !transport/src
+# The usage report schema, which the tests read.
+!usage/schema
 
 # Build leftovers inside those folders.
 **/bin

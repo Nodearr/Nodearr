@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "id": "3b2f7c1e-9a4d-4f6b-8e2a-5c7d1f0b9e34",
+  "nodearr": {
+    "version": "0.11.0",
+    "branch": "main",
+    "platform": "linux-musl-x64",
+    "runtime": "10.0.1",
+    "database": "sqlite",
+    "install": "docker"
+  },
+  "active": true,
+  "apps": [
+    {
+      "kind": "radarr",
+      "version": "5.28"
+    },
+    {
+      "kind": "sonarr",
+      "version": "4.0"
+    }
+  ],
+  "friends": "2-5",
+  "sharedTitles": {
+    "radarr": "101-1000",
+    "sonarr": "11-100"
+  },
+  "past7Days": {
+    "sent": {
+      "finished": "6-25",
+      "failed": "1-5",
+      "data": "10-100GB",
+      "failures": {
+        "NoDirectRoute": "1-5"
+      }
+    },
+    "fetched": {
+      "finished": "1-5",
+      "failed": "0",
+      "data": "1-10GB",
+      "failures": {}
+    },
+    "sends": "0"
+  },
+  "network": {
+    "friendsDirect": "2-5",
+    "friendsRelayOnly": "1",
+    "friendsUnreachable": "0",
+    "portVaries": false,
+    "udp": true,
+    "relay": "n0",
+    "dockerDesktop": false
+  },
+  "features": {
+    "shareLists": false,
+    "hiddenTitles": true,
+    "shareEverything": true,
+    "fetchAutomatically": true,
+    "uploadLimit": false,
+    "totalUploadLimit": false,
+    "downloadLimit": false,
+    "maxUploads": "default"
+  },
+  "language": "en"
+}

@@ -1,5 +1,6 @@
 # Every push and pull request: the web UI is linted and built, the application is built and its
-# unit tests run on Linux and Windows, the transport sidecar is built, and the image is built.
+# unit tests run on Linux and Windows, the transport sidecar is built, the usage.nodearr.com
+# service is tested, and the image is built.
 #
 # The tests are the ones Sonarr's own CI runs: everything but the manual, integration and
 # automation tests, and the tests for the other operating system.
@@ -99,6 +100,19 @@ jobs:
 
       - run: cargo build --locked --manifest-path transport/Cargo.toml
       - run: cargo test --locked --manifest-path transport/Cargo.toml
+
+  usage:
+    name: usage.nodearr.com
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - run: npm ci --prefix usage
+      - run: npm test --prefix usage
 
   docker:
     name: Image

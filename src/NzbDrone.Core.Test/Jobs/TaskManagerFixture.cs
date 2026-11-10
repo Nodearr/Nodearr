@@ -11,6 +11,7 @@ using NzbDrone.Core.Jobs;
 using NzbDrone.Core.Lifecycle;
 using NzbDrone.Core.PeerCatalog;
 using NzbDrone.Core.Test.Framework;
+using NzbDrone.Core.Usage.Commands;
 
 namespace NzbDrone.Core.Test.Jobs
 {
@@ -94,6 +95,40 @@ namespace NzbDrone.Core.Test.Jobs
             Subject.Handle(new ApplicationStartedEvent());
 
             IntervalOf<CatalogRefreshCommand>().Should().Be(12 * 60);
+        }
+
+        // As often as Sonarr and Radarr send theirs, and as its own task, apart from the update check.
+        [Test]
+        public void the_usage_report_should_be_sent_every_6_hours()
+        {
+            GivenCatalogSyncInterval(15);
+
+            Subject.Handle(new ApplicationStartedEvent());
+
+            IntervalOf<SendUsageReportCommand>().Should().Be(6 * 60);
+        }
+
+        // Like the other tasks: a node that was off when a report was due sends it soon after it starts.
+        [Test]
+        public void an_overdue_usage_report_should_be_due_at_start_up()
+        {
+            GivenCatalogSyncInterval(15);
+            _stored.Add(new ScheduledTask { Id = 9, TypeName = typeof(SendUsageReportCommand).FullName, Interval = 6 * 60, LastExecution = System.DateTime.UtcNow.AddHours(-7) });
+
+            Subject.Handle(new ApplicationStartedEvent());
+
+            Subject.GetPending().Should().Contain(t => t.TypeName == typeof(SendUsageReportCommand).FullName);
+        }
+
+        [Test]
+        public void a_usage_report_sent_less_than_6_hours_ago_should_not_be_due()
+        {
+            GivenCatalogSyncInterval(15);
+            _stored.Add(new ScheduledTask { Id = 9, TypeName = typeof(SendUsageReportCommand).FullName, Interval = 6 * 60, LastExecution = System.DateTime.UtcNow.AddHours(-5) });
+
+            Subject.Handle(new ApplicationStartedEvent());
+
+            Subject.GetPending().Should().NotContain(t => t.TypeName == typeof(SendUsageReportCommand).FullName);
         }
     }
 }

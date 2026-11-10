@@ -1,0 +1,339 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://usage.nodearr.com/v1/schema.json",
+  "title": "Nodearr anonymous usage report, version 1",
+  "description": "What a Nodearr node posts to https://usage.nodearr.com/v1/report every 6 hours when Send Anonymous Usage Data and Contact nodearr.com are on (ADR 0024). A report with any field not listed here is refused. Nothing in it names a node, its owner, a friend, a title, a path or an address, and every count is a range. The same list, in plain words, is at https://nodearr.com/privacy.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "id",
+    "nodearr",
+    "active",
+    "apps",
+    "friends",
+    "sharedTitles",
+    "past7Days",
+    "network",
+    "features",
+    "language"
+  ],
+  "properties": {
+    "schema": {
+      "const": 1,
+      "description": "The version of this schema."
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "description": "Random, and new each day at midnight UTC. Counts the nodes that ran that day; nothing links one day's reports to the next."
+    },
+    "nodearr": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "branch",
+        "platform",
+        "runtime",
+        "database",
+        "install"
+      ],
+      "properties": {
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]{1,40})?$",
+          "maxLength": 60
+        },
+        "branch": {
+          "enum": [
+            "main",
+            "other"
+          ]
+        },
+        "platform": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]{3,40}$",
+          "description": "The .NET runtime identifier, such as win-x64 or linux-musl-arm64."
+        },
+        "runtime": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+          "description": "The .NET runtime version."
+        },
+        "database": {
+          "enum": [
+            "sqlite",
+            "postgres"
+          ]
+        },
+        "install": {
+          "enum": [
+            "installerTray",
+            "installerService",
+            "zip",
+            "tarball",
+            "docker",
+            "package",
+            "development"
+          ]
+        }
+      }
+    },
+    "active": {
+      "type": "boolean",
+      "description": "Moved a file or answered a grab in the past 30 days."
+    },
+    "apps": {
+      "type": "array",
+      "maxItems": 50,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "version"
+        ],
+        "properties": {
+          "kind": {
+            "enum": [
+              "sonarr",
+              "radarr",
+              "lidarr",
+              "whisparr",
+              "prowlarr",
+              "other"
+            ]
+          },
+          "version": {
+            "type": "string",
+            "pattern": "^([0-9]{1,4}\\.[0-9]{1,4}|unknown)$",
+            "description": "Major and minor version only."
+          }
+        }
+      }
+    },
+    "friends": {
+      "$ref": "#/$defs/friends"
+    },
+    "sharedTitles": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Titles shared with at least one friend, by kind of Arr app. A kind with no app connected is left out.",
+      "properties": {
+        "sonarr": {
+          "$ref": "#/$defs/titles"
+        },
+        "radarr": {
+          "$ref": "#/$defs/titles"
+        },
+        "lidarr": {
+          "$ref": "#/$defs/titles"
+        },
+        "whisparr": {
+          "$ref": "#/$defs/titles"
+        }
+      }
+    },
+    "past7Days": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sent",
+        "fetched",
+        "sends"
+      ],
+      "properties": {
+        "sent": {
+          "$ref": "#/$defs/direction"
+        },
+        "fetched": {
+          "$ref": "#/$defs/direction"
+        },
+        "sends": {
+          "$ref": "#/$defs/count"
+        }
+      }
+    },
+    "network": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "friendsDirect",
+        "friendsRelayOnly",
+        "friendsUnreachable",
+        "portVaries",
+        "udp",
+        "relay",
+        "dockerDesktop"
+      ],
+      "properties": {
+        "friendsDirect": {
+          "$ref": "#/$defs/friends"
+        },
+        "friendsRelayOnly": {
+          "$ref": "#/$defs/friends"
+        },
+        "friendsUnreachable": {
+          "$ref": "#/$defs/friends"
+        },
+        "portVaries": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "udp": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "relay": {
+          "enum": [
+            "n0",
+            "own",
+            "off"
+          ]
+        },
+        "dockerDesktop": {
+          "type": "boolean"
+        }
+      }
+    },
+    "features": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "shareLists",
+        "hiddenTitles",
+        "shareEverything",
+        "fetchAutomatically",
+        "uploadLimit",
+        "totalUploadLimit",
+        "downloadLimit",
+        "maxUploads"
+      ],
+      "properties": {
+        "shareLists": {
+          "type": "boolean"
+        },
+        "hiddenTitles": {
+          "type": "boolean"
+        },
+        "shareEverything": {
+          "type": "boolean"
+        },
+        "fetchAutomatically": {
+          "type": "boolean"
+        },
+        "uploadLimit": {
+          "type": "boolean"
+        },
+        "totalUploadLimit": {
+          "type": "boolean"
+        },
+        "downloadLimit": {
+          "type": "boolean"
+        },
+        "maxUploads": {
+          "enum": [
+            "default",
+            "other",
+            "none"
+          ]
+        }
+      }
+    },
+    "language": {
+      "type": "string",
+      "pattern": "^([a-z]{2,3}(-[A-Z]{2})?|other)$"
+    }
+  },
+  "$defs": {
+    "friends": {
+      "enum": [
+        "0",
+        "1",
+        "2-5",
+        "6-10",
+        "11+"
+      ]
+    },
+    "count": {
+      "enum": [
+        "0",
+        "1-5",
+        "6-25",
+        "26-100",
+        "101-500",
+        "501+"
+      ]
+    },
+    "titles": {
+      "enum": [
+        "0",
+        "1-10",
+        "11-100",
+        "101-1000",
+        "1001-10000",
+        "10001+"
+      ]
+    },
+    "data": {
+      "enum": [
+        "0",
+        "<1GB",
+        "1-10GB",
+        "10-100GB",
+        "100GB-1TB",
+        ">1TB"
+      ]
+    },
+    "direction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "finished",
+        "failed",
+        "data",
+        "failures"
+      ],
+      "properties": {
+        "finished": {
+          "$ref": "#/$defs/count"
+        },
+        "failed": {
+          "$ref": "#/$defs/count"
+        },
+        "data": {
+          "$ref": "#/$defs/data"
+        },
+        "failures": {
+          "type": "object",
+          "propertyNames": {
+            "enum": [
+              "NoDirectRoute",
+              "DirectPathLost",
+              "ConnectionLost",
+              "PeerUnreachable",
+              "NotAuthorized",
+              "Revoked",
+              "Blocked",
+              "NotFound",
+              "VerificationFailed",
+              "DiskError",
+              "Failed",
+              "Stopped",
+              "Other"
+            ]
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/count"
+          },
+          "description": "Failed transfers by reason. A reason with none is left out."
+        }
+      }
+    }
+  }
+}
