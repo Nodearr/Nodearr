@@ -4,6 +4,12 @@ What changed in each release, newest first. Each item links to the decision reco
 
 ## Unreleased
 
+## 0.11.0 (pre-release)
+
+Nodearr sends an anonymous usage report, on by default and easy to turn off, and the totals are public at nodearr.com/stats.
+
+A node on 0.10.0 hears of this release by itself and, where it can, installs it: the first release to arrive that way. It sends its first report 6 hours after updating. Until then, **Show Report** on **Settings > General** shows exactly what it would send, and **Send Anonymous Usage Data** beside it turns the report off.
+
 ### Added
 
 - Nodearr sends an anonymous usage report to `usage.nodearr.com` every 6 hours, as Sonarr and Radarr send theirs: the version and platform, how it was installed, the kinds and versions of the Arr apps connected, and how transfers went over the past week. Every count is a range, the report's ID changes every day at midnight UTC, and nothing in it names your node, your friends, your titles or your addresses. The totals are public at nodearr.com/stats ([#133](https://github.com/Nodearr/Nodearr/issues/133), [Privacy and security](docs/user-guide/privacy-and-security.md#anonymous-usage-report), [ADR 0024](docs/adr/0024-update-checks-and-usage-reports-on-nodearr-com.md#2026-11-06-usage-reports-are-built-133)).
