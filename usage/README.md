@@ -21,6 +21,8 @@ What it keeps:
 
 It never reads the address a request came from, or any header but `Content-Type` and `Content-Length`. Workers Logs and traces are off in [`wrangler.toml`](wrangler.toml), and no Logpush job is set up for it. Like any host, Cloudflare sees the address while it answers.
 
+A rate-limiting rule on the `nodearr.com` zone keeps one address from flooding it: Cloudflare counts posts to `/v1/report` per address over 10 seconds, and answers the third and later with `429` for the next 10 seconds, before the Worker runs. A node posts once every 6 hours, so it never meets the limit, even with a few nodes behind one address. One address can then send at most about 8,600 reports a day, some 17,000 rows written, a sixth of what D1's free plan allows in a day. A flood from many addresses isn't stopped; nothing could stop it without identifying nodes.
+
 ## Testing
 
 Node.js 22 or later.
@@ -53,6 +55,14 @@ Done once, by the owner of the Cloudflare account that holds `nodearr.com`'s DNS
 5. Check it: `curl https://usage.nodearr.com/v1/schema.json`, then post the example report as above and expect `204`.
 6. Check that **Workers Logs** is off for `nodearr-usage` on the Cloudflare dashboard, and that no Logpush job includes it.
 7. Turn off **Network Error Logging** for the `nodearr.com` zone. Otherwise Cloudflare adds `NEL` and `Report-To` headers, which ask browsers that load `nodearr.com/stats` to report failed requests to Cloudflare. Check that `curl -sI https://usage.nodearr.com/v1/schema.json` shows neither header.
+8. Add a rate-limiting rule to the `nodearr.com` zone: on its **Security rules** page, **Create rule** > **Rate limiting rules**, then **Deploy**:
+   - **Rule name:** `Usage reports per address`
+   - **If incoming requests match:** URI Path equals `/v1/report`
+   - **With the same characteristics:** IP
+   - **When rate exceeds:** 2 requests per 10 seconds
+   - **Then take action:** Block, for 10 seconds
+
+   The Free plan allows one rate-limiting rule, and these are its only period and duration. Check it: post `{}` three times in a row, `curl -s -o /dev/null -w "%{http_code}\n" -X POST -H "Content-Type: application/json" --data "{}" https://usage.nodearr.com/v1/report`, and expect `400`, `400`, `429`. An empty report is refused by the schema, so the check stores nothing.
 
 After that, `npx wrangler deploy` from this folder deploys a change, and a new file in `migrations/` is applied with step 3.
 

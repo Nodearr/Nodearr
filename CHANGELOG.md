@@ -4,6 +4,10 @@ What changed in each release, newest first. Each item links to the decision reco
 
 ## Unreleased
 
+### Changed
+
+- `usage.nodearr.com` turns away a third report sent within 10 seconds from the same address, so one machine can't flood it. Cloudflare does the counting before the service runs, so the service still never reads addresses. A node sends one report every 6 hours and never meets the limit ([Privacy and security](docs/user-guide/privacy-and-security.md#anonymous-usage-report), [ADR 0024](docs/adr/0024-update-checks-and-usage-reports-on-nodearr-com.md#2026-11-10-a-rate-limit-for-usage-reports)).
+
 ## 0.11.0 (pre-release)
 
 Nodearr sends an anonymous usage report, on by default and easy to turn off, and the totals are public at nodearr.com/stats.
