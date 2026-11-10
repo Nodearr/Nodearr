@@ -52,6 +52,7 @@ Done once, by the owner of the Cloudflare account that holds `nodearr.com`'s DNS
 4. Deploy: `npx wrangler deploy`. The `routes` entry makes `usage.nodearr.com` the Worker's custom domain, and Cloudflare adds its DNS record. `nodearr.com` must be a zone in the same account.
 5. Check it: `curl https://usage.nodearr.com/v1/schema.json`, then post the example report as above and expect `204`.
 6. Check that **Workers Logs** is off for `nodearr-usage` on the Cloudflare dashboard, and that no Logpush job includes it.
+7. Turn off **Network Error Logging** for the `nodearr.com` zone. Otherwise Cloudflare adds `NEL` and `Report-To` headers, which ask browsers that load `nodearr.com/stats` to report failed requests to Cloudflare. Check that `curl -sI https://usage.nodearr.com/v1/schema.json` shows neither header.
 
 After that, `npx wrangler deploy` from this folder deploys a change, and a new file in `migrations/` is applied with step 3.
 
