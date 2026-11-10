@@ -23,7 +23,7 @@ invocation_logs = false
 [[d1_databases]]
 binding = "DB"
 database_name = "nodearr-usage"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "bc54fc64-61f4-4339-9a3f-61db600964ad"
 migrations_dir = "migrations"
 
 # Once a day, just after midnight UTC: add up the day before, publish the totals, and remove
