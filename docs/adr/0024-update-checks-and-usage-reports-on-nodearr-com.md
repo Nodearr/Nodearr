@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted on 2026-11-04 ([#131](https://github.com/Nodearr/Nodearr/issues/131)). Update checks, automatic updates and the switch for both hosts were built on 2026-11-06 ([#134](https://github.com/Nodearr/Nodearr/issues/134)): see the amendment. Usage reports were built the same day ([#133](https://github.com/Nodearr/Nodearr/issues/133)): see the second amendment.
+Accepted on 2026-11-04 ([#131](https://github.com/Nodearr/Nodearr/issues/131)). Update checks, automatic updates and the switch for both hosts were built on 2026-11-06 ([#134](https://github.com/Nodearr/Nodearr/issues/134)): see the amendment. Usage reports were built the same day ([#133](https://github.com/Nodearr/Nodearr/issues/133)): see the second amendment. A rate limit for reports was added on 2026-11-10: see the third.
 
 ## Context
 
@@ -168,3 +168,13 @@ A failure reason the schema doesn't know is sent as `Other`, a branch name other
 - Unit tests: a report from a busy node and from a new one matches the schema, checked by a test that reads the schema itself; nothing that names a friend, a node, an app's address, an API key, an IP address, a relay, a title, a share list or a path appears in it; counts given as ranges at each boundary; only the past 7 days counted, and failures asked for again left out; `active` true at 29 days and false at 31, and while a transfer runs; the ID the same at 23:59:59.999 UTC as at midnight, different a millisecond later, following UTC and not the local clock, and kept in the database; the environment key and **Contact nodearr.com** winning over the saved setting; one `POST` with no cookies, nothing sent with either setting off, a refused or unreachable report failing quietly and sent once; the task every 6 hours, due at start-up when overdue.
 - `usage/`: 20 tests with `node --test`, against SQLite through a stand-in for D1: a report taken and stored with only its ID, day and body, an unknown field anywhere refused, a later report for an ID replacing the earlier, a day added up once it's over and only once, counts under 10 published as `null`, reports removed after 90 days. Run in `wrangler dev --local`, the Worker took the example report with 204, refused one with an unknown field with 400, and served the schema. Deployed on 2026-11-10, at `usage.nodearr.com`, it served the schema and took the example report with 204.
 - `acceptance/Run-S8Docker.ps1`: node A, after its transfers, sends its report to a stand-in for `usage.nodearr.com`. The report is checked against the schema with PowerShell's `Test-Json`, and for the node IDs, names, host names, paths, titles, keys and IP addresses of the deployment.
+
+### 2026-11-10: a rate limit for usage reports
+
+**What changed.** The second amendment left a rate limit for when floods became a problem. It is added now, before one is: on Cloudflare's Free plan a flood costs nothing but the day's counts, but D1 bills every row written on the paid plan, and the limit is free either way.
+
+**The rule.** A rate-limiting rule on the `nodearr.com` zone counts posts to `/v1/report` per address over 10 seconds and blocks the third and later, with `429`, for 10 seconds, before the Worker runs. The Free plan allows one such rule, counted by address, over 10 seconds, blocking for 10 seconds; these values are its only ones. A node posts once every 6 hours, so even a few nodes behind one address never meet it, and a report turned away is dropped like any other failed one. One address can send at most about 8,600 reports a day, some 17,000 rows written, a sixth of D1's free daily allowance. The steps are in `usage/README.md`.
+
+**Why Cloudflare and not the Worker.** Counting per sender needs the sender's address, and the Worker never reads it. Cloudflare sees it anyway while it answers, and its rate limiter keeps a count per address for the 10 seconds. Counting per report ID wouldn't help: anyone flooding can make up an ID for every post. The privacy page says Cloudflare counts reports per address.
+
+**What it doesn't do.** A flood from many addresses still gets through, and so do made-up reports sent slowly. The totals stay a guide, not a census.
