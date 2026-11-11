@@ -71,8 +71,13 @@
   <PropertyGroup Condition="'$(NodearrProject)'=='true'">
     <Product>Nodearr</Product>
     <Company>nodearr.com</Company>
-    <!-- Sonarr's notice is kept, as the GPL asks: most of Nodearr is derived from Sonarr (NOTICE.md). -->
-    <Copyright>Copyright 2014-$([System.DateTime]::Now.ToString('yyyy')) sonarr.tv, and Nodearr's contributors (GNU General Public v3)</Copyright>
+    <!-- Sonarr's and Prowlarr's notices are kept with the years their code came with, and Nodearr's
+         contributors have their own years, from 2026 to the year of the build (NOTICE.md, Assembly
+         copyright). %3B is a semicolon, escaped for MSBuild. -->
+    <NodearrBuildYear Condition="'$(NodearrBuildYear)' == ''">$([System.DateTime]::Now.ToString('yyyy'))</NodearrBuildYear>
+    <NodearrCopyrightYears>2026</NodearrCopyrightYears>
+    <NodearrCopyrightYears Condition="'$(NodearrBuildYear)' != '2026'">2026-$(NodearrBuildYear)</NodearrCopyrightYears>
+    <Copyright>Copyright 2014-2026 sonarr.tv%3B Copyright 2014-2026 prowlarr.com%3B Copyright $(NodearrCopyrightYears) Nodearr's contributors (GNU General Public v3)</Copyright>
     
     <!-- Should be replaced by CI -->
     <AssemblyVersion>10.0.0.*</AssemblyVersion>

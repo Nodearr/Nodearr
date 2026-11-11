@@ -145,6 +145,8 @@ Then a settings page. ADR 0019. Branch `v1/s10-node-settings`.
 
 - `usage.nodearr.com` refuses floods from one address: a Cloudflare rate-limiting rule on the zone blocks a third report within 10 seconds from the same address, for 10 seconds, before the Worker runs, so the Worker still never reads addresses. Added before a flood happened, because D1 bills rows written on the paid plan (ADR 0024, third amendment). The rule's settings and a check are in `usage/README.md`; the privacy page says Cloudflare counts reports per address. Branch `v1/s107-usage-rate-limit`.
 
+- The assemblies' copyright notice follows the GPL, the SFLC's guide to managing copyright information and the GNU maintainers' guide: Sonarr's and Prowlarr's notices kept with the years their code came with, ending at 2026, and Nodearr's contributors with their own, from 2026. It had shared one range ending in the build year between Sonarr and Nodearr's contributors and left out Prowlarr; `NOTICE.md` now records Prowlarr's notice too. Branch `v1/s109-copyright-notices`.
+
 ## Where V1 stands
 
 The plan's definition of done is "a real Sonarr/Radarr import of a verified, permitted peer transfer between two deployed instances". That has been met between two deployed instances on one machine, many times over, with the failure cases checked. On 2026-10-12 it was met between two machines on different networks: a PC at home and a rented cloud machine, with no port forwarded on the home router (ADR 0011, "Runs between two machines"). The cloud machine had to allow UDP in for the connection to be direct, because the home side ran in Docker Desktop.

@@ -21,6 +21,8 @@ What is derived from Sonarr:
 
 - Source: <https://github.com/Prowlarr/Prowlarr>
 - License: GPL-3.0
+- Upstream copyright notice: `Copyright 2014-<year> prowlarr.com (GNU General Public v3)`
+- Version taken: not recorded. The application sync was first ported on 2026-05-24.
 
 What is derived from Prowlarr:
 
@@ -43,4 +45,14 @@ A release also carries work by others under their own licences: the [Rust](https
 
 ## Assembly copyright
 
-The rename had changed the assembly copyright string in `src/Directory.Build.props` from `sonarr.tv` to `nodearr.com`, so built assemblies no longer named Sonarr. Since 2026-10-15 it reads `Copyright 2014-<year> sonarr.tv, and Nodearr's contributors (GNU General Public v3)`.
+Every assembly carries this copyright notice, set in `src/Directory.Build.props`:
+
+`Copyright 2014-2026 sonarr.tv; Copyright 2014-2026 prowlarr.com; Copyright 2026 Nodearr's contributors (GNU General Public v3)`
+
+- Sonarr's and Prowlarr's notices are kept, as the GPL and the guidance below expect for code taken from them, with the years their code came with. Those years end at 2026, when it was taken. They change only if more of their code is taken.
+- Nodearr's contributors have their own notice, from 2026, when Nodearr began. From 2027 it reads `2026-<year>`, where `<year>` is the year the assembly was built.
+- Each holder has its own years, so no range covers a year in which that holder's work isn't in Nodearr.
+
+Followed: the [GNU GPL v3](LICENSE), sections 4 and 5; the Software Freedom Law Center's [Managing Copyright Information within a Free Software Project](https://softwarefreedom.org/resources/2012/ManagingCopyrightInformation.html); and the GNU maintainers' guide on [copyright notices](https://www.gnu.org/prep/maintain/html_node/Copyright-Notices.html).
+
+Until 2026-10-15 the rename had made the notice `nodearr.com`, so built assemblies no longer named Sonarr. From then until 0.11.1 it read `Copyright 2014-<year> sonarr.tv, and Nodearr's contributors (GNU General Public v3)`, which gave both holders one range ending in the year of the build, and left out Prowlarr.
