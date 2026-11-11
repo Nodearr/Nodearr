@@ -130,6 +130,7 @@ The updater stops Nodearr and its sidecar, copies the new files over the old, an
   - the installer over a 0.1.1 install in Program Files: Nodearr moved to `C:\ProgramData\Nodearr\bin`, the Program Files copy gone, Everyone allowed to change the folder, the firewall rule naming the new path. As the tray app, **Install Now** took 14 s and asked for no administrator rights. Installed again as the service, running as `LocalService`, it updated itself in 10 s and ran again as the service;
   - a first attempt made while the disk was full stopped while backing up the old program, changed nothing and started the old version again.
 - A Linux archive (linux-x64, glibc) unpacked in a Debian 12 container, with no service manager: **Install Now** took 20 s, with one new sidecar and the programs still executable, and a broken test.3 was put back after 211 s. The first run of this showed Nodearr calling the container a Docker install, from `/.dockerenv`, and refusing to update. As in Sonarr, only the image's `package_info` says so now. macOS, systemd and a package manager were not tried.
+- The first release through the published manifest, 0.11.0, on 2026-11-10 and 11: a fresh install of 0.10.0 updated itself at the check soon after it started, and asked its open page to reload; the owner's laptop, on 0.10.0, updated itself with nobody there; the owner's Docker node offered the `docker pull` command and changed nothing.
 
 ### 2026-11-06: usage reports are built ([#133](https://github.com/Nodearr/Nodearr/issues/133))
 
