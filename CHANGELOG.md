@@ -4,6 +4,12 @@ What changed in each release, newest first. Each item links to the decision reco
 
 ## Unreleased
 
+## 0.11.1 (pre-release)
+
+Nodearr's copyright notice credits Sonarr, Prowlarr and Nodearr's contributors each for their own years, and `usage.nodearr.com` can't be flooded from one machine.
+
+Nodes on 0.10.0 and later hear of this release by themselves and, where they can, install it.
+
 ### Changed
 
 - `usage.nodearr.com` turns away a third report sent within 10 seconds from the same address, so one machine can't flood it. Cloudflare does the counting before the service runs, so the service still never reads addresses. A node sends one report every 6 hours and never meets the limit ([Privacy and security](docs/user-guide/privacy-and-security.md#anonymous-usage-report), [ADR 0024](docs/adr/0024-update-checks-and-usage-reports-on-nodearr-com.md#2026-11-10-a-rate-limit-for-usage-reports)).
